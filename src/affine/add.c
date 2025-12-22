@@ -13,17 +13,46 @@ static void add_forward(expr *node, const double *u)
     }
 }
 
+static void jacobian_init(expr *node)
+{
+    /* initialize children's jacobians */
+    node->left->jacobian_init(node->left);
+    node->right->jacobian_init(node->right);
+
+    /* we never have to store more than the sum of children's nnz */
+    int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
+    node->jacobian = new_csr_matrix(node->m, node->n_vars, nnz_max);
+}
+
+static void eval_jacobian(expr *node)
+{
+    /* evaluate children's jacobians */
+    node->left->eval_jacobian(node->left);
+    node->right->eval_jacobian(node->right);
+
+    /* sum children's jacobians */
+    sum_csr_matrices(node->left->jacobian, node->right->jacobian, node->jacobian);
+}
+
+static bool is_affine(expr *node)
+{
+    return node->left->is_affine(node->left) && node->right->is_affine(node->right);
+}
+
 expr *new_add(expr *left, expr *right)
 {
     if (!left || !right) return NULL;
-    if (left->m != right->m) return NULL; /* Dimension mismatch */
+    if (left->m != right->m) return NULL;
 
-    expr *node = new_expr(left->m);
+    expr *node = new_expr(left->m, left->n_vars);
     if (!node) return NULL;
 
     node->left = left;
     node->right = right;
     node->forward = add_forward;
+    node->is_affine = is_affine;
+    node->jacobian_init = jacobian_init;
+    node->eval_jacobian = eval_jacobian;
 
     return node;
 }

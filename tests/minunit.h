@@ -32,7 +32,7 @@
         if (message)                                                                \
         {                                                                           \
             printf("FAILED: %s\n", message);                                        \
-            return message;                                                         \
+            return 1;                                                               \
         }                                                                           \
         printf("PASSED\n\n");                                                       \
     } while (0)
