@@ -31,6 +31,8 @@ const char *test_jacobian_composite_log()
     mu_assert("rows fail", cmp_int_array(log_node->jacobian->p, rows, 3));
     mu_assert("cols fail", cmp_int_array(log_node->jacobian->i, cols, 6));
     free_expr(log_node);
+    free_expr(Au);
+    free_expr(u);
     free_csr_matrix(A);
     return 0;
 }
@@ -90,6 +92,12 @@ const char *test_jacobian_composite_log_add()
     mu_assert("rows fail", cmp_int_array(sum->jacobian->p, rows, 4));
     mu_assert("cols fail", cmp_int_array(sum->jacobian->i, cols, 15));
     free_expr(sum);
+    free_expr(log_Ax);
+    free_expr(log_By);
+    free_expr(Ax_expr);
+    free_expr(By_expr);
+    free_expr(x);
+    free_expr(y);
     free_csr_matrix(A);
     free_csr_matrix(B);
     return 0;

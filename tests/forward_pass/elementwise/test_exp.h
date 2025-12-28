@@ -17,5 +17,6 @@ const char *test_exp()
     double correct[2] = {exp(0.0), exp(1.0)};
     mu_assert("fail", cmp_double_array(exp_node->value, correct, 2));
     free_expr(exp_node);
+    free_expr(var);
     return 0;
 }

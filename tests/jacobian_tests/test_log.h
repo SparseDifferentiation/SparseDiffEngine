@@ -21,5 +21,6 @@ const char *test_jacobian_log()
     mu_assert("rows fail", cmp_int_array(log_node->jacobian->p, expected_Ap, 4));
     mu_assert("cols fail", cmp_int_array(log_node->jacobian->i, expected_Ai, 3));
     free_expr(log_node);
+    free_expr(u);
     return 0;
 }

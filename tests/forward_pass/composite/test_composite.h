@@ -28,5 +28,9 @@ const char *test_composite()
     mu_assert("failed", cmp_double_array(log_node->value, correct, 2));
 
     free_expr(log_node);
+    free_expr(sum);
+    free_expr(exp_node);
+    free_expr(const_node);
+    free_expr(var);
     return 0;
 }

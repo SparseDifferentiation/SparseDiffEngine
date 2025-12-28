@@ -20,5 +20,7 @@ const char *test_addition()
     double expected[2] = {4.0, 6.0};
     mu_assert("Addition test failed", cmp_double_array(sum->value, expected, 2));
     free_expr(sum);
+    free_expr(var);
+    free_expr(const_node);
     return 0;
 }
