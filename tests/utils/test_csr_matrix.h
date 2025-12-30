@@ -217,7 +217,7 @@ const char *test_sum_all_rows_csr()
     memcpy(A->i, Ai, 7 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
     CSR_Matrix *C = new_csr_matrix(1, 4, 4);
-    int_double_pair *pairs = new_int_double_pair_array(4);
+    int_double_pair *pairs = new_int_double_pair_array(7);
     sum_all_rows_csr(A, C, pairs);
     double Cx_correct[4] = {6.0, 5.0, 10.0, 7.0};
     int Ci_correct[4] = {0, 1, 2, 3};

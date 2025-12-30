@@ -14,9 +14,9 @@ static bool is_affine(expr *node)
     return true; /* constant is affine */
 }
 
-expr *new_constant(int d1, int d2, const double *values)
+expr *new_constant(int d1, int d2, int n_vars, const double *values)
 {
-    expr *node = new_expr(d1, d2, node->n_vars);
+    expr *node = new_expr(d1, d2, n_vars);
     if (!node) return NULL;
 
     /* Copy constant values */

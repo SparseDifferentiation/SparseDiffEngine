@@ -16,7 +16,7 @@ const char *test_composite()
     /* Build tree: log(exp(x) + c) */
     expr *var = new_variable(2, 1, 0, 2);
     expr *exp_node = new_exp(var);
-    expr *const_node = new_constant(2, 1, c);
+    expr *const_node = new_constant(2, 1, 0, c);
     expr *sum = new_add(exp_node, const_node);
     expr *log_node = new_log(sum);
 

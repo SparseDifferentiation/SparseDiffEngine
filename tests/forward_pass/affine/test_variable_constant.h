@@ -21,7 +21,7 @@ const char *test_constant()
 {
     double c[2] = {5.0, 10.0};
     double u[2] = {0.0, 0.0};
-    expr *const_node = new_constant(2, 1, c);
+    expr *const_node = new_constant(2, 1, 0, c);
     const_node->forward(const_node, u);
     mu_assert("Constant test failed", cmp_double_array(const_node->value, c, 2));
     free_expr(const_node);
