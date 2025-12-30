@@ -5,6 +5,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/int_double_pair.h"
 
 const char *test_diag_csr_mult()
 {
@@ -195,6 +196,198 @@ const char *test_csr_vecmat_values_sparse()
     free_csr_matrix(A);
     free_csr_matrix(AT);
     free_csr_matrix(C);
+
+    return 0;
+}
+const char *test_sum_all_rows_csr()
+{
+    /* Create a 3x4 CSR matrix A:
+     * [1.0  2.0  0.0  0.0]
+     * [0.0  3.0  4.0  0.0]
+     * [5.0  0.0  6.0  7.0]
+     *
+     * Sum all rows should give:
+     * [6.0  5.0  10.0  7.0]
+     */
+    CSR_Matrix *A = new_csr_matrix(3, 4, 7);
+    double Ax[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    int Ai[7] = {0, 1, 1, 2, 0, 2, 3};
+    int Ap[4] = {0, 2, 4, 7};
+    memcpy(A->x, Ax, 7 * sizeof(double));
+    memcpy(A->i, Ai, 7 * sizeof(int));
+    memcpy(A->p, Ap, 4 * sizeof(int));
+    CSR_Matrix *C = new_csr_matrix(1, 4, 4);
+    int_double_pair *pairs = new_int_double_pair_array(4);
+    sum_all_rows_csr(A, C, pairs);
+    double Cx_correct[4] = {6.0, 5.0, 10.0, 7.0};
+    int Ci_correct[4] = {0, 1, 2, 3};
+    int Cp_correct[2] = {0, 4};
+
+    mu_assert("C nnz incorrect", C->nnz == 4);
+    mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 4));
+    mu_assert("C cols incorrect", cmp_int_array(C->i, Ci_correct, 4));
+    mu_assert("C rows incorrect", cmp_int_array(C->p, Cp_correct, 2));
+
+    free_csr_matrix(A);
+    free_csr_matrix(C);
+    free_int_double_pair_array(pairs);
+
+    return 0;
+}
+const char *test_sum_block_of_rows_csr()
+{
+    /* Create a 9x4 CSR matrix A and sum blocks of size 3
+     * Block 0 (rows 0-2):
+     * [1.0  2.0  0.0  0.0]
+     * [0.0  3.0  1.0  0.0]
+     * [0.0  0.0  4.0  5.0]
+     * Sum: [1.0  5.0  5.0  5.0]
+     *
+     * Block 1 (rows 3-5):
+     * [2.0  0.0  0.0  1.0]
+     * [0.0  1.0  2.0  0.0]
+     * [3.0  0.0  0.0  0.0]
+     * Sum: [5.0  1.0  2.0  1.0]
+     *
+     * Block 2 (rows 6-8):
+     * [0.0  4.0  0.0  0.0]
+     * [1.0  0.0  3.0  0.0]
+     * [0.0  2.0  0.0  6.0]
+     * Sum: [1.0  6.0  3.0  6.0]
+     *
+     * Result C should be 3x4 matrix with the sums above
+     */
+    CSR_Matrix *A = new_csr_matrix(9, 4, 18);
+
+    double Ax[18] = {1.0, 2.0,  /* row 0 */
+                     3.0, 1.0,  /* row 1 */
+                     4.0, 5.0,  /* row 2 */
+                     2.0, 1.0,  /* row 3 */
+                     1.0, 2.0,  /* row 4 */
+                     3.0,       /* row 5 */
+                     4.0,       /* row 6 */
+                     1.0, 3.0,  /* row 7 */
+                     2.0, 6.0}; /* row 8 */
+
+    int Ai[18] = {0, 1,  /* row 0 */
+                  1, 2,  /* row 1 */
+                  2, 3,  /* row 2 */
+                  0, 3,  /* row 3 */
+                  1, 2,  /* row 4 */
+                  0,     /* row 5 */
+                  1,     /* row 6 */
+                  0, 2,  /* row 7 */
+                  1, 3}; /* row 8 */
+
+    int Ap[10] = {0, 2, 4, 6, 8, 10, 11, 12, 14, 16};
+
+    memcpy(A->x, Ax, 18 * sizeof(double));
+    memcpy(A->i, Ai, 18 * sizeof(int));
+    memcpy(A->p, Ap, 10 * sizeof(int));
+
+    /* Allocate C for 3 blocks and enough space for all nonzeros */
+    CSR_Matrix *C = new_csr_matrix(3, 4, 12);
+    int_double_pair *pairs = new_int_double_pair_array(18);
+
+    sum_block_of_rows_csr(A, C, pairs, 3);
+
+    /* Expected results for 3 blocks */
+    double Cx_correct[12] = {1.0, 5.0, 5.0, 5.0,  /* block 0 sum */
+                             5.0, 1.0, 2.0, 1.0,  /* block 1 sum */
+                             1.0, 6.0, 3.0, 6.0}; /* block 2 sum */
+
+    int Ci_correct[12] = {0, 1, 2, 3,  /* block 0 columns */
+                          0, 1, 2, 3,  /* block 1 columns */
+                          0, 1, 2, 3}; /* block 2 columns */
+
+    int Cp_correct[4] = {0, 4, 8, 12};
+
+    mu_assert("C nnz incorrect", C->nnz == 12);
+    mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 12));
+    mu_assert("C cols incorrect", cmp_int_array(C->i, Ci_correct, 12));
+    mu_assert("C rows incorrect", cmp_int_array(C->p, Cp_correct, 4));
+
+    free_csr_matrix(A);
+    free_csr_matrix(C);
+    free_int_double_pair_array(pairs);
+
+    return 0;
+}
+const char *test_sum_evenly_spaced_rows_csr()
+{
+    /* Create a 9x4 CSR matrix A (same as test_sum_block_of_rows_csr) and sum evenly
+     * spaced rows With row_spacing=3:
+
+
+    A = 9x4 CSR matrix:
+            1 2 0 0
+            0 3 1 0
+            0 0 4 5
+            2 0 0 1
+            0 1 2 0
+            3 0 0 0
+            0 4 0 0
+            1 0 3 0
+            0 2 0 6
+
+    Result C should be 3x4 matrix:
+            row 0: sum of rows 0, 3, 6 = [3 6 0 1]
+            row 1: sum of rows 1, 4, 7 = [1 4 6 0]
+            row 2: sum of rows 2, 5, 8 = [3 2 4 11]
+    */
+    CSR_Matrix *A = new_csr_matrix(9, 4, 18);
+
+    double Ax[18] = {1.0, 2.0,  /* row 0 */
+                     3.0, 1.0,  /* row 1 */
+                     4.0, 5.0,  /* row 2 */
+                     2.0, 1.0,  /* row 3 */
+                     1.0, 2.0,  /* row 4 */
+                     3.0,       /* row 5 */
+                     4.0,       /* row 6 */
+                     1.0, 3.0,  /* row 7 */
+                     2.0, 6.0}; /* row 8 */
+
+    int Ai[18] = {0, 1,  /* row 0 */
+                  1, 2,  /* row 1 */
+                  2, 3,  /* row 2 */
+                  0, 3,  /* row 3 */
+                  1, 2,  /* row 4 */
+                  0,     /* row 5 */
+                  1,     /* row 6 */
+                  0, 2,  /* row 7 */
+                  1, 3}; /* row 8 */
+
+    int Ap[10] = {0, 2, 4, 6, 8, 10, 11, 12, 14, 16};
+
+    memcpy(A->x, Ax, 18 * sizeof(double));
+    memcpy(A->i, Ai, 18 * sizeof(int));
+    memcpy(A->p, Ap, 10 * sizeof(int));
+
+    /* Allocate C for 3 rows (row_spacing=3) and enough space for all nonzeros */
+    CSR_Matrix *C = new_csr_matrix(3, 4, 10);
+    int_double_pair *pairs = new_int_double_pair_array(18);
+
+    sum_evenly_spaced_rows_csr(A, C, pairs, 3);
+
+    /* Expected results for evenly spaced rows */
+    double Cx_correct[10] = {3.0, 6.0, 1.0,        /* output row 0 */
+                             1.0, 4.0, 6.0,        /* output row 1 */
+                             3.0, 2.0, 4.0, 11.0}; /* output row 2 */
+
+    int Ci_correct[10] = {0, 1, 3,     /* output row 0 columns */
+                          0, 1, 2,     /* output row 1 columns */
+                          0, 1, 2, 3}; /* output row 2 columns */
+
+    int Cp_correct[4] = {0, 3, 6, 10};
+
+    mu_assert("C nnz incorrect", C->nnz == 10);
+    mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 10));
+    mu_assert("C cols incorrect", cmp_int_array(C->i, Ci_correct, 10));
+    mu_assert("C rows incorrect", cmp_int_array(C->p, Cp_correct, 4));
+
+    free_csr_matrix(A);
+    free_csr_matrix(C);
+    free_int_double_pair_array(pairs);
 
     return 0;
 }

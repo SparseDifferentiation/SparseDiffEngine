@@ -10,7 +10,7 @@ static void forward(expr *node, const double *u)
     double *x = node->left->value;
 
     /* local forward pass */
-    for (int i = 0; i < node->m; i++)
+    for (int i = 0; i < node->size; i++)
     {
         node->value[i] = pow(x[i], node->p);
     }
@@ -19,7 +19,7 @@ static void forward(expr *node, const double *u)
 static void eval_local_jacobian(expr *node, double *vals)
 {
     double *x = node->left->value;
-    for (int j = 0; j < node->m; j++)
+    for (int j = 0; j < node->d1; j++)
     {
         vals[j] = node->p * pow(x[j], node->p - 1);
     }
@@ -27,7 +27,7 @@ static void eval_local_jacobian(expr *node, double *vals)
 
 expr *new_power(expr *child, int p)
 {
-    expr *node = new_expr(child->m, child->n_vars);
+    expr *node = new_expr(child->d1, child->d2, child->n_vars);
     node->p = p;
     node->left = child;
     expr_retain(child);

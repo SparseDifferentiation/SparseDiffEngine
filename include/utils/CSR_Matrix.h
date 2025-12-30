@@ -2,6 +2,9 @@
 #define CSR_MATRIX_H
 #include <stdbool.h>
 
+/* forward declaration */
+struct int_double_pair;
+
 /* CSR (Compressed Sparse Row) Matrix Format
  *
  * For an m x n matrix with nnz nonzeros:
@@ -59,6 +62,18 @@ void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,
                              const double *d1, const double *d2);
 
+/* Sum all rows of A into a single row matrix C */
+void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+                      struct int_double_pair *pairs);
+
+/* Sum blocks of rows of A into a matrix C */
+void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+                           struct int_double_pair *pairs, int row_block_size);
+
+/* Sum evenly spaced rows of A into a matrix C */
+void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+                                struct int_double_pair *pairs, int row_spacing);
+
 /* Count number of columns with nonzero entries */
 int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz);
 
@@ -66,4 +81,5 @@ int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz);
 void insert_idx(int idx, int *arr, int len);
 
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork);
+
 #endif /* CSR_MATRIX_H */

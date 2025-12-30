@@ -20,7 +20,7 @@ static void forward(expr *node, const double *u)
     /* local forward pass */
     node->value[0] = 0.0;
 
-    for (int i = 0; i < x->m; i++)
+    for (int i = 0; i < x->d1; i++)
     {
         node->value[0] += x->value[i] * x->value[i];
     }
@@ -36,23 +36,23 @@ static void jacobian_init(expr *node)
     /* if left node is a variable */
     if (x->var_id != -1)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->m + 1);
+        node->jacobian = new_csr_matrix(1, node->n_vars, x->d1 + 1);
         node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = x->m + 1;
+        node->jacobian->p[1] = x->d1 + 1;
 
         /* if x has lower idx than y*/
         if (x->var_id < y->var_id)
         {
-            for (int j = 0; j < x->m; j++)
+            for (int j = 0; j < x->d1; j++)
             {
                 node->jacobian->i[j] = x->var_id + j;
             }
-            node->jacobian->i[x->m] = y->var_id;
+            node->jacobian->i[x->d1] = y->var_id;
         }
         else /* y has lower idx than x */
         {
             node->jacobian->i[0] = y->var_id;
-            for (int j = 0; j < x->m; j++)
+            for (int j = 0; j < x->d1; j++)
             {
                 node->jacobian->i[j + 1] = x->var_id + j;
             }
@@ -60,7 +60,7 @@ static void jacobian_init(expr *node)
     }
     else /* left node is not a variable */
     {
-        node->dwork = (double *) malloc(x->m * sizeof(double));
+        node->dwork = (double *) malloc(x->d1 * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
@@ -115,16 +115,16 @@ static void eval_jacobian(expr *node)
         /* if x has lower idx than y*/
         if (x->var_id < y->var_id)
         {
-            for (int j = 0; j < x->m; j++)
+            for (int j = 0; j < x->d1; j++)
             {
                 node->jacobian->x[j] = (2.0 * x->value[j]) / y->value[0];
             }
-            node->jacobian->x[x->m] = -node->value[0] / y->value[0];
+            node->jacobian->x[x->d1] = -node->value[0] / y->value[0];
         }
         else /* y has lower idx than x */
         {
             node->jacobian->x[0] = -node->value[0] / y->value[0];
-            for (int j = 0; j < x->m; j++)
+            for (int j = 0; j < x->d1; j++)
             {
                 node->jacobian->x[j + 1] = (2.0 * x->value[j]) / y->value[0];
             }
@@ -133,7 +133,7 @@ static void eval_jacobian(expr *node)
     else /* x is not a variable */
     {
         /* local jacobian */
-        for (int j = 0; j < x->m; j++)
+        for (int j = 0; j < x->d1; j++)
         {
             node->dwork[j] = (2.0 * x->value[j]) / y->value[0];
         }
@@ -150,7 +150,7 @@ static void eval_jacobian(expr *node)
 
 expr *new_quad_over_lin(expr *left, expr *right)
 {
-    expr *node = new_expr(left->m, left->n_vars);
+    expr *node = new_expr(left->d1, 1, left->n_vars);
     node->left = left;
     node->right = right;
     expr_retain(left);

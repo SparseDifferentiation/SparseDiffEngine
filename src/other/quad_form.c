@@ -15,7 +15,7 @@ static void forward(expr *node, const double *u)
 
     node->value[0] = 0.0;
 
-    for (int i = 0; i < x->m; i++)
+    for (int i = 0; i < x->d1; i++)
     {
         node->value[0] += x->value[i] * node->dwork[i];
     }
@@ -24,16 +24,16 @@ static void forward(expr *node, const double *u)
 static void jacobian_init(expr *node)
 {
     expr *x = node->left;
-    node->dwork = (double *) malloc(x->m * sizeof(double));
+    node->dwork = (double *) malloc(x->d1 * sizeof(double));
 
     /* if x is a variable */
     if (x->var_id != -1)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->m);
+        node->jacobian = new_csr_matrix(1, node->n_vars, x->d1);
         node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = x->m;
+        node->jacobian->p[1] = x->d1;
 
-        for (int j = 0; j < x->m; j++)
+        for (int j = 0; j < x->d1; j++)
         {
             node->jacobian->i[j] = x->var_id + j;
         }
@@ -78,7 +78,7 @@ static void eval_jacobian(expr *node)
     {
         csr_matvec(Q, x->value, node->jacobian->x, 0);
 
-        for (int j = 0; j < x->m; j++)
+        for (int j = 0; j < x->d1; j++)
         {
             node->jacobian->x[j] *= 2.0;
         }
@@ -88,7 +88,7 @@ static void eval_jacobian(expr *node)
         /* local jacobian */
         csr_matvec(Q, x->value, node->dwork, 0);
 
-        for (int j = 0; j < x->m; j++)
+        for (int j = 0; j < x->d1; j++)
         {
             node->dwork[j] *= 2.0;
         }
@@ -100,7 +100,7 @@ static void eval_jacobian(expr *node)
 
 expr *new_quad_form(expr *left, CSR_Matrix *Q)
 {
-    expr *node = new_expr(left->m, left->n_vars);
+    expr *node = new_expr(left->d1, 1, left->n_vars);
     node->left = left;
     expr_retain(left);
     node->Q = Q;

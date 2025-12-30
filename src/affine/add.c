@@ -1,4 +1,4 @@
-#include "affine/add.h"
+#include "affine.h"
 
 static void add_forward(expr *node, const double *u)
 {
@@ -7,7 +7,7 @@ static void add_forward(expr *node, const double *u)
     node->right->forward(node->right, u);
 
     /* add left and right values */
-    for (int i = 0; i < node->m; i++)
+    for (int i = 0; i < node->size; i++)
     {
         node->value[i] = node->left->value[i] + node->right->value[i];
     }
@@ -21,7 +21,7 @@ static void jacobian_init(expr *node)
 
     /* we never have to store more than the sum of children's nnz */
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian = new_csr_matrix(node->m, node->n_vars, nnz_max);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
 }
 
 static void eval_jacobian(expr *node)
@@ -42,9 +42,10 @@ static bool is_affine(expr *node)
 expr *new_add(expr *left, expr *right)
 {
     if (!left || !right) return NULL;
-    if (left->m != right->m) return NULL;
+    if (left->d1 != right->d1) return NULL;
+    if (left->d2 != right->d2) return NULL;
 
-    expr *node = new_expr(left->m, left->n_vars);
+    expr *node = new_expr(left->d1, left->d2, left->n_vars);
     if (!node) return NULL;
 
     node->left = left;

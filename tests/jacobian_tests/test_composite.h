@@ -1,7 +1,6 @@
 #include <stdio.h>
 
-#include "affine/linear_op.h"
-#include "affine/variable.h"
+#include "affine.h"
 #include "elementwise_univariate.h"
 #include "minunit.h"
 #include "test_helpers.h"
@@ -18,7 +17,7 @@ const char *test_jacobian_composite_log()
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 3 * sizeof(int));
 
-    expr *u = new_variable(3, 2, 6);
+    expr *u = new_variable(3, 1, 2, 6);
     expr *Au = new_linear(u, A);
     expr *log_node = new_log(Au);
     log_node->forward(log_node, u_vals);
@@ -70,8 +69,8 @@ const char *test_jacobian_composite_log_add()
     memcpy(B->i, Bi, 6 * sizeof(int));
     memcpy(B->p, Bp, 4 * sizeof(int));
 
-    expr *x = new_variable(3, 2, 7);
-    expr *y = new_variable(2, 5, 7);
+    expr *x = new_variable(3, 1, 2, 7);
+    expr *y = new_variable(2, 1, 5, 7);
     expr *Ax_expr = new_linear(x, A);
     expr *By_expr = new_linear(y, B);
     expr *log_Ax = new_log(Ax_expr);

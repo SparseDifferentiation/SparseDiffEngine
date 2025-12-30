@@ -9,7 +9,7 @@ static void forward(expr *node, const double *u)
     child->forward(child, u);
 
     /* local forward pass */
-    for (int i = 0; i < node->m; i++)
+    for (int i = 0; i < node->size; i++)
     {
         node->value[i] = -child->value[i] * log(child->value[i]);
     }
@@ -18,7 +18,7 @@ static void forward(expr *node, const double *u)
 static void eval_local_jacobian(expr *node, double *vals)
 {
     expr *child = node->left;
-    for (int j = 0; j < node->m; j++)
+    for (int j = 0; j < node->d1; j++)
     {
         vals[j] = -log(child->value[j]) - 1.0;
     }
@@ -26,7 +26,7 @@ static void eval_local_jacobian(expr *node, double *vals)
 
 expr *new_entr(expr *child)
 {
-    expr *node = new_expr(child->m, child->n_vars);
+    expr *node = new_expr(child->d1, child->d2, child->n_vars);
     node->left = child;
     expr_retain(child);
     node->forward = forward;

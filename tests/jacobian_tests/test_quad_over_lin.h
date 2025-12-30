@@ -1,5 +1,5 @@
-#include "affine/linear_op.h"
-#include "affine/variable.h"
+#include "affine.h"
+
 #include "bivariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -13,8 +13,8 @@ const char *test_quad_over_lin1()
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of x^T x / y
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0};
-    expr *x = new_variable(3, 2, 8);
-    expr *y = new_variable(1, 7, 8);
+    expr *x = new_variable(3, 1, 2, 8);
+    expr *y = new_variable(1, 1, 7, 8);
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
@@ -39,8 +39,8 @@ const char *test_quad_over_lin2()
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of x^T x / y
     double u_vals[10] = {0, 0, 4, 0, 0, 1.0, 2.0, 3.0};
-    expr *x = new_variable(3, 5, 8);
-    expr *y = new_variable(1, 2, 8);
+    expr *x = new_variable(3, 1, 5, 8);
+    expr *y = new_variable(1, 1, 2, 8);
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
@@ -76,8 +76,8 @@ const char *test_quad_over_lin3()
     memcpy(A->p, Ap, 3 * sizeof(int));
 
     // Create variables with global indices
-    expr *x = new_variable(3, 2, 8);
-    expr *y = new_variable(1, 7, 8);
+    expr *x = new_variable(3, 1, 2, 8);
+    expr *y = new_variable(1, 1, 7, 8);
     expr *Ax_expr = new_linear(x, A);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0};
@@ -119,8 +119,8 @@ const char *test_quad_over_lin4()
     memcpy(A->p, Ap, 3 * sizeof(int));
 
     // Create variables with global indices
-    expr *x = new_variable(3, 5, 8);
-    expr *y = new_variable(1, 2, 8);
+    expr *x = new_variable(3, 1, 5, 8);
+    expr *y = new_variable(1, 1, 2, 8);
     expr *Ax_expr = new_linear(x, A);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {0, 0, 4, 0, 0, 1.0, 2.0, 3.0};
@@ -162,8 +162,8 @@ const char *test_quad_over_lin5()
     memcpy(A->p, Ap, 3 * sizeof(int));
 
     // Create variables with global indices
-    expr *u = new_variable(8, 0, 8);
-    expr *y = new_variable(1, 2, 8);
+    expr *u = new_variable(8, 1, 0, 8);
+    expr *y = new_variable(1, 1, 2, 8);
     expr *Ax_expr = new_linear(u, A);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {1, 2, 4, 3, 2, 1.0, 2.0, 3.0};

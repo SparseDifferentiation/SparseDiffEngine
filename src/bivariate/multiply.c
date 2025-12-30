@@ -5,7 +5,7 @@
 // ------------------------------------------------------------------------------
 // Implementation of elementwise multiplication when both arguments are vectors.
 // If one argument is a scalar variable, the broadcasting should be represented
-// as a linear operator child node?
+// as a linear operator child node? How to treat if one variable is a constant?
 // ------------------------------------------------------------------------------
 static void forward(expr *node, const double *u)
 {
@@ -17,7 +17,7 @@ static void forward(expr *node, const double *u)
     y->forward(y, u);
 
     /* local forward pass */
-    for (int i = 0; i < node->m; i++)
+    for (int i = 0; i < node->size; i++)
     {
         node->value[i] = x->value[i] * y->value[i];
     }
@@ -37,9 +37,9 @@ static void jacobian_init(expr *node)
         node->right->jacobian_init(node->right);
     }
 
-    node->dwork = (double *) malloc(2 * node->m * sizeof(double));
+    node->dwork = (double *) malloc(2 * node->size * sizeof(double));
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian = new_csr_matrix(node->m, node->n_vars, nnz_max);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
 }
 
 static void eval_jacobian(expr *node)
@@ -54,7 +54,7 @@ static void eval_jacobian(expr *node)
 
 expr *new_elementwise_mult(expr *left, expr *right)
 {
-    expr *node = new_expr(left->m, left->n_vars);
+    expr *node = new_expr(left->d1, 1, left->n_vars);
     node->left = left;
     node->right = right;
     expr_retain(left);

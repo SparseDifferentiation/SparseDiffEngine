@@ -9,6 +9,7 @@
 
 /* Forward declarations */
 struct expr;
+struct int_double_pair;
 
 /* Function pointer types */
 typedef void (*forward_fn)(struct expr *node, const double *u);
@@ -23,7 +24,7 @@ typedef struct expr
     // ------------------------------------------------------------------------
     //                         general quantities
     // ------------------------------------------------------------------------
-    int m;
+    int d1, d2, size;
     int n_vars;
     int var_id;
     int refcount;
@@ -31,7 +32,9 @@ typedef struct expr
     struct expr *right;
     double *dwork;
     int *iwork;
-    int p; /* power of power expression */
+    struct int_double_pair *int_double_pairs; /* for sorting jacobian entries */
+    int p;                                    /* power of power expression */
+    int axis; /* axis for sum or similar operations */
 
     // ------------------------------------------------------------------------
     //                     forward pass related quantities
@@ -52,7 +55,7 @@ typedef struct expr
 
 } expr;
 
-expr *new_expr(int m, int n_vars);
+expr *new_expr(int d1, int d2, int n_vars);
 void free_expr(expr *node);
 
 /* Reference counting helpers */

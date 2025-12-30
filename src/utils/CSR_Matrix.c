@@ -1,10 +1,10 @@
 #include "utils/CSR_Matrix.h"
+#include "utils/int_double_pair.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
 {
     CSR_Matrix *matrix = (CSR_Matrix *) malloc(sizeof(CSR_Matrix));
@@ -219,6 +219,150 @@ void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matri
     }
 
     C->p[A->m] = C->nnz;
+}
+
+/* Helper function for qsort to compare column indices */
+static int compare_cols(const void *a, const void *b)
+{
+    int col_a = *((int *) a);
+    int col_b = *((int *) b);
+    return col_a - col_b;
+}
+
+void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C, int_double_pair *pairs)
+{
+    assert(C->m == 1);
+    C->n = A->n;
+    C->p[0] = 0;
+
+    /* copy A's values and column indices into pairs */
+    set_int_double_pair_array(pairs, A->i, A->x, A->nnz);
+
+    /* sort so columns are in order */
+    sort_int_double_pair_array(pairs, A->nnz);
+
+    /* merge entries with same columns and insert result in C */
+    C->nnz = 0;
+    for (int j = 0; j < A->nnz;)
+    {
+        int current_col = pairs[j].col;
+        double sum_val = 0.0;
+
+        /* sum all values with the same column */
+        while (j < A->nnz && pairs[j].col == current_col)
+        {
+            sum_val += pairs[j].val;
+            j++;
+        }
+
+        /* insert into C */
+        C->i[C->nnz] = current_col;
+        C->x[C->nnz] = sum_val;
+        C->nnz++;
+    }
+
+    C->p[1] = C->nnz;
+}
+
+void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+                           int_double_pair *pairs, int row_block_size)
+{
+    assert(A->m % row_block_size == 0);
+    int n_blocks = A->m / row_block_size;
+    assert(C->m == n_blocks);
+    C->n = A->n;
+    C->p[0] = 0;
+
+    C->nnz = 0;
+    for (int block = 0; block < n_blocks; block++)
+    {
+        int start_row = block * row_block_size;
+        int end_row = start_row + row_block_size;
+
+        /* copy block rows' values and column indices into pairs */
+        int pair_idx = 0;
+        for (int row = start_row; row < end_row; row++)
+        {
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                pairs[pair_idx].col = A->i[j];
+                pairs[pair_idx].val = A->x[j];
+                pair_idx++;
+            }
+        }
+
+        /* sort so columns are in order */
+        sort_int_double_pair_array(pairs, pair_idx);
+
+        /* merge entries with same columns and insert result in C */
+        for (int j = 0; j < pair_idx;)
+        {
+            int current_col = pairs[j].col;
+            double sum_val = 0.0;
+
+            /* sum all values with the same column */
+            while (j < pair_idx && pairs[j].col == current_col)
+            {
+                sum_val += pairs[j].val;
+                j++;
+            }
+
+            /* insert into C */
+            C->i[C->nnz] = current_col;
+            C->x[C->nnz] = sum_val;
+            C->nnz++;
+        }
+
+        C->p[block + 1] = C->nnz;
+    }
+}
+
+void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+                                struct int_double_pair *pairs, int row_spacing)
+{
+    assert(C->m == row_spacing);
+    C->n = A->n;
+    C->p[0] = 0;
+    C->nnz = 0;
+
+    for (int C_row = 0; C_row < C->m; C_row++)
+    {
+        /* copy evenly spaced rows into pairs */
+        int pair_idx = 0;
+        for (int row = C_row; row < A->m; row += row_spacing)
+        {
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                pairs[pair_idx].col = A->i[j];
+                pairs[pair_idx].val = A->x[j];
+                pair_idx++;
+            }
+        }
+
+        /* sort so columns are in order */
+        sort_int_double_pair_array(pairs, pair_idx);
+
+        /* merge entries with same columns and insert result in C */
+        for (int j = 0; j < pair_idx;)
+        {
+            int current_col = pairs[j].col;
+            double sum_val = 0.0;
+
+            /* sum all values with the same column */
+            while (j < pair_idx && pairs[j].col == current_col)
+            {
+                sum_val += pairs[j].val;
+                j++;
+            }
+
+            /* insert into C */
+            C->i[C->nnz] = current_col;
+            C->x[C->nnz] = sum_val;
+            C->nnz++;
+        }
+
+        C->p[C_row + 1] = C->nnz;
+    }
 }
 
 void csr_insert_value(CSR_Matrix *A, int col_idx, double value)

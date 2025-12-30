@@ -1,5 +1,5 @@
-#include "affine/linear_op.h"
-#include "affine/variable.h"
+#include "affine.h"
+
 #include "bivariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -14,7 +14,7 @@ const char *test_quad_form()
     // x^T Q x where x is 3 x 1 variable and has global index 2,
     // Q = [1 2 0; 2 3 0; 0 0 4]
     double u_vals[5] = {0, 0, 1, 2, 3};
-    expr *x = new_variable(3, 2, 5);
+    expr *x = new_variable(3, 1, 2, 5);
     CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
@@ -51,7 +51,7 @@ const char *test_quad_form2()
              0 0 4 5 6 0;
              1 0 0 2 0 1] */
     double u_vals[6] = {1, 2, 3, 4, 5, 6};
-    expr *u = new_variable(6, 0, 6);
+    expr *u = new_variable(6, 1, 0, 6);
     CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};

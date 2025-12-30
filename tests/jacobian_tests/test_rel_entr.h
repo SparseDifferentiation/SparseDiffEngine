@@ -1,4 +1,4 @@
-#include "affine/variable.h"
+#include "affine.h"
 #include "bivariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -11,8 +11,8 @@ const char *test_jacobian_rel_entr_vector_args_1()
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of x log(x) - x log(y)
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
-    expr *x = new_variable(3, 2, 10);
-    expr *y = new_variable(3, 7, 10);
+    expr *x = new_variable(3, 1, 2, 10);
+    expr *y = new_variable(3, 1, 7, 10);
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
@@ -44,8 +44,8 @@ const char *test_jacobian_rel_entr_vector_args_2()
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of x log(x) - x log(y)
     double u_vals[10] = {0, 0, 4, 5, 6, 0, 0, 1.0, 2.0, 3.0};
-    expr *x = new_variable(3, 7, 10);
-    expr *y = new_variable(3, 2, 10);
+    expr *x = new_variable(3, 1, 7, 10);
+    expr *y = new_variable(3, 1, 2, 10);
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);

@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "affine/linear_op.h"
-#include "affine/variable.h"
+#include "affine.h"
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"
@@ -24,7 +23,7 @@ const char *test_linear_op()
     memcpy(A->i, Ai, 7 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
 
-    expr *var = new_variable(3, 2, 6);
+    expr *var = new_variable(3, 1, 2, 6);
     expr *linear_node = new_linear(var, A);
     double x[6] = {0, 0, 1, 2, 3, 0};
     linear_node->forward(linear_node, x);

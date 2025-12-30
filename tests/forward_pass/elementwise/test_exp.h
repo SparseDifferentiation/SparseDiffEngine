@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "affine/variable.h"
+#include "affine.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -11,7 +11,7 @@
 const char *test_exp()
 {
     double u[2] = {0.0, 1.0};
-    expr *var = new_variable(2, 0, 2);
+    expr *var = new_variable(2, 1, 0, 2);
     expr *exp_node = new_exp(var);
     exp_node->forward(exp_node, u);
     double correct[2] = {exp(0.0), exp(1.0)};

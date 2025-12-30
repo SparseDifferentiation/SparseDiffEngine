@@ -1,16 +1,19 @@
 #include "expr.h"
+#include "utils/int_double_pair.h"
 #include <stdlib.h>
 #include <string.h>
 
-expr *new_expr(int m, int n_vars)
+expr *new_expr(int d1, int d2, int n_vars)
 {
     expr *node = (expr *) calloc(1, sizeof(expr));
     if (!node) return NULL;
 
-    node->m = m;
+    node->d1 = d1;
+    node->d2 = d2;
+    node->size = d1 * d2;
     node->n_vars = n_vars;
     node->refcount = 1;
-    node->value = (double *) calloc(m, sizeof(double));
+    node->value = (double *) calloc(d1 * d2, sizeof(double));
     if (!node->value)
     {
         free(node);
@@ -49,6 +52,7 @@ void free_expr(expr *node)
     free_csr_matrix(node->CSR_work);
     free(node->dwork);
     free(node->iwork);
+    free_int_double_pair_array(node->int_double_pairs);
 
     /* free the node itself */
     free(node);

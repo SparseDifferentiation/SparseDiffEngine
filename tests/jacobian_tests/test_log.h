@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "affine/variable.h"
+#include "affine.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -12,7 +12,7 @@ const char *test_jacobian_log()
     double expected_Ax[3] = {1.0, 0.5, 0.333333333};
     int expected_Ap[4] = {0, 1, 2, 3};
     int expected_Ai[3] = {2, 3, 4};
-    expr *u = new_variable(3, 2, 5);
+    expr *u = new_variable(3, 1, 2, 5);
     expr *log_node = new_log(u);
     log_node->forward(log_node, u_vals);
     log_node->jacobian_init(log_node);

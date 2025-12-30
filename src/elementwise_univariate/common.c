@@ -8,20 +8,20 @@ void jacobian_init_elementwise(expr *node)
     // if the variable is a child
     if (child->var_id != -1)
     {
-        node->jacobian = new_csr_matrix(node->m, node->n_vars, node->m);
-        for (int j = 0; j < node->m; j++)
+        node->jacobian = new_csr_matrix(node->size, node->n_vars, node->size);
+        for (int j = 0; j < node->size; j++)
         {
             node->jacobian->p[j] = j;
             node->jacobian->i[j] = j + child->var_id;
         }
-        node->jacobian->p[node->m] = node->m;
+        node->jacobian->p[node->size] = node->size;
     }
     // otherwise it should be a linear operator
     else
     {
         node->jacobian = new_csr_matrix(child->jacobian->m, child->jacobian->n,
                                         child->jacobian->nnz);
-        node->dwork = (double *) malloc(node->m * sizeof(double));
+        node->dwork = (double *) malloc(node->size * sizeof(double));
     }
 }
 

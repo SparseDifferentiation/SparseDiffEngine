@@ -2,9 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "affine/add.h"
-#include "affine/constant.h"
-#include "affine/variable.h"
+#include "affine.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -16,9 +14,9 @@ const char *test_composite()
     double c[2] = {1.0, 1.0};
 
     /* Build tree: log(exp(x) + c) */
-    expr *var = new_variable(2, 0, 2);
+    expr *var = new_variable(2, 1, 0, 2);
     expr *exp_node = new_exp(var);
-    expr *const_node = new_constant(2, c);
+    expr *const_node = new_constant(2, 1, c);
     expr *sum = new_add(exp_node, const_node);
     expr *log_node = new_log(sum);
 

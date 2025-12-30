@@ -1,4 +1,4 @@
-#include "affine/linear_op.h"
+#include "affine.h"
 #include <stdlib.h>
 
 static void forward(expr *node, const double *u)
@@ -18,7 +18,7 @@ static bool is_affine(expr *node)
 
 expr *new_linear(expr *u, const CSR_Matrix *A)
 {
-    expr *node = new_expr(A->m, u->n_vars);
+    expr *node = new_expr(A->m, 1, u->n_vars);
     if (!node) return NULL;
 
     node->left = u;

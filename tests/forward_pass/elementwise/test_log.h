@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "affine/variable.h"
+#include "affine.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
@@ -11,7 +11,7 @@
 const char *test_log()
 {
     double u[2] = {1.0, 2.718281828};
-    expr *var = new_variable(2, 0, 2);
+    expr *var = new_variable(2, 1, 0, 2);
     expr *log_node = new_log(var);
     log_node->forward(log_node, u);
     double correct[2] = {log(1.0), log(2.718281828)};

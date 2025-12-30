@@ -16,7 +16,7 @@ static void forward_vector_args(expr *node, const double *u)
     y->forward(y, u);
 
     /* local forward pass */
-    for (int i = 0; i < node->m; i++)
+    for (int i = 0; i < node->size; i++)
     {
         node->value[i] = x->value[i] * log(x->value[i] / y->value[i]);
     }
@@ -24,7 +24,7 @@ static void forward_vector_args(expr *node, const double *u)
 
 static void jacobian_init_vectors_args(expr *node)
 {
-    node->jacobian = new_csr_matrix(node->m, node->n_vars, 2 * node->m);
+    node->jacobian = new_csr_matrix(node->d1, node->n_vars, 2 * node->d1);
 
     expr *x = node->left;
     expr *y = node->right;
@@ -32,7 +32,7 @@ static void jacobian_init_vectors_args(expr *node)
     /* if x has lower variable idx than y it should appear first */
     if (x->var_id < y->var_id)
     {
-        for (int j = 0; j < node->m; j++)
+        for (int j = 0; j < node->d1; j++)
         {
             node->jacobian->i[2 * j] = j + x->var_id;
             node->jacobian->i[2 * j + 1] = j + y->var_id;
@@ -41,7 +41,7 @@ static void jacobian_init_vectors_args(expr *node)
     }
     else
     {
-        for (int j = 0; j < node->m; j++)
+        for (int j = 0; j < node->d1; j++)
         {
             node->jacobian->i[2 * j] = j + y->var_id;
             node->jacobian->i[2 * j + 1] = j + x->var_id;
@@ -49,7 +49,7 @@ static void jacobian_init_vectors_args(expr *node)
         }
     }
 
-    node->jacobian->p[node->m] = 2 * node->m;
+    node->jacobian->p[node->d1] = 2 * node->d1;
 }
 
 static void eval_jacobian_vector_args(expr *node)
@@ -60,7 +60,7 @@ static void eval_jacobian_vector_args(expr *node)
     /* if x has lower variable idx than y */
     if (x->var_id < y->var_id)
     {
-        for (int i = 0; i < node->m; i++)
+        for (int i = 0; i < node->size; i++)
         {
             node->jacobian->x[2 * i] = log(x->value[i] / y->value[i]) + 1;
             node->jacobian->x[2 * i + 1] = -x->value[i] / y->value[i];
@@ -68,7 +68,7 @@ static void eval_jacobian_vector_args(expr *node)
     }
     else
     {
-        for (int i = 0; i < node->m; i++)
+        for (int i = 0; i < node->size; i++)
         {
             node->jacobian->x[2 * i] = -x->value[i] / y->value[i];
             node->jacobian->x[2 * i + 1] = log(x->value[i] / y->value[i]) + 1;
@@ -78,7 +78,7 @@ static void eval_jacobian_vector_args(expr *node)
 
 expr *new_rel_entr_vector_args(expr *left, expr *right)
 {
-    expr *node = new_expr(left->m, left->n_vars);
+    expr *node = new_expr(left->d1, 1, left->n_vars);
     node->left = left;
     node->right = right;
     expr_retain(left);
