@@ -82,4 +82,8 @@ void insert_idx(int idx, int *arr, int len);
 
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork);
 
+/* Expand symmetric CSR matrix A to full matrix C. A is assumed to store
+   only upper triangle. C must be pre-allocated with sufficient nnz */
+void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_Matrix *C);
+
 #endif /* CSR_MATRIX_H */

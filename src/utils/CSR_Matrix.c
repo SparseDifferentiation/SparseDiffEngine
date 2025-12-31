@@ -474,3 +474,49 @@ void csr_matvec_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C
 //         C->x[]
 //     }
 // }
+
+void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_Matrix *C)
+{
+    int i, j, col;
+
+    /* Count entries per row */
+    int *counts = (int *) calloc(m, sizeof(int));
+    for (i = 0; i < m; i++)
+    {
+        for (j = Ap[i]; j < Ap[i + 1]; j++)
+        {
+            counts[i]++;
+            if (Ai[j] != i) counts[Ai[j]]++;
+        }
+    }
+
+    /* Build row pointers */
+    C->p[0] = 0;
+    for (i = 0; i < m; i++)
+    {
+        C->p[i + 1] = C->p[i] + counts[i];
+    }
+
+    /* Fill column indices */
+    memset(counts, 0, m * sizeof(int));
+    for (i = 0; i < m; i++)
+    {
+        for (j = Ap[i]; j < Ap[i + 1]; j++)
+        {
+            col = Ai[j];
+
+            /* Add to row i */
+            C->i[C->p[i] + counts[i]] = col;
+            counts[i]++;
+
+            /* Add symmetric entry to row col */
+            if (col != i)
+            {
+                C->i[C->p[col] + counts[col]] = i;
+                counts[col]++;
+            }
+        }
+    }
+
+    free(counts);
+}

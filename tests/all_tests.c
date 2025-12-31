@@ -19,6 +19,7 @@
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
 #include "jacobian_tests/test_sum.h"
+#include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
 
 int main(void)
@@ -75,6 +76,9 @@ int main(void)
     mu_run_test(test_sum_all_rows_csr, tests_run);
     mu_run_test(test_sum_block_of_rows_csr, tests_run);
     mu_run_test(test_sum_evenly_spaced_rows_csr, tests_run);
+    mu_run_test(test_ATA_alloc_simple, tests_run);
+    mu_run_test(test_ATA_alloc_diagonal_like, tests_run);
+    mu_run_test(test_ATA_alloc_random, tests_run);
 
     printf("\n=== All %d tests passed ===\n", tests_run);
 
