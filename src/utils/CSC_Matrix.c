@@ -84,9 +84,6 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
 
     /* Allocate C and symmetrize it */
     CSR_Matrix *C = new_csr_matrix(n, n, nnz);
-
-    /* TODO: do we need to symmetrize here? If we are a bit careful with symmetry
-       throughout the implementation we can skip this step. */
     symmetrize_csr(Cp, Ci->data, n, C);
 
     /* free workspace */
@@ -151,4 +148,50 @@ void ATDA_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
             }
         }
     }
+}
+
+CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
+{
+    CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
+
+    int i, j, start;
+    int *count = malloc(A->n * sizeof(int));
+
+    memset(count, 0, A->n * sizeof(int));
+
+    // -------------------------------------------------------------------
+    //              compute nnz in each column of A
+    // -------------------------------------------------------------------
+    for (i = 0; i < A->m; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; ++j)
+        {
+            count[A->i[j]]++;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    //                      compute column pointers
+    // ------------------------------------------------------------------
+    C->p[0] = 0;
+    for (i = 0; i < A->n; ++i)
+    {
+        C->p[i + 1] = C->p[i] + count[i];
+        count[i] = C->p[i];
+    }
+
+    // ------------------------------------------------------------------
+    //                         fill matrix
+    // ------------------------------------------------------------------
+    for (i = 0; i < A->m; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; ++j)
+        {
+            C->x[count[A->i[j]]] = A->x[j];
+            C->i[count[A->i[j]]] = i;
+            count[A->i[j]]++;
+        }
+    }
+
+    return C;
 }

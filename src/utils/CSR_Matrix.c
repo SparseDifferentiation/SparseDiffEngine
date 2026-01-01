@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
 {
     CSR_Matrix *matrix = (CSR_Matrix *) malloc(sizeof(CSR_Matrix));
@@ -423,7 +424,7 @@ CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
     }
 
     // ------------------------------------------------------------------
-    //  fill transposed matrix (this is a bottleneck)
+    //  fill transposed matrix
     // ------------------------------------------------------------------
     for (i = 0; i < A->m; ++i)
     {

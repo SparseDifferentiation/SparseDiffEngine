@@ -72,6 +72,8 @@ int main(void)
     mu_run_test(test_csr_sum, tests_run);
     mu_run_test(test_csr_sum2, tests_run);
     mu_run_test(test_transpose, tests_run);
+    mu_run_test(test_csr_to_csc1, tests_run);
+    mu_run_test(test_csr_to_csc2, tests_run);
     mu_run_test(test_csr_vecmat_values_sparse, tests_run);
     mu_run_test(test_sum_all_rows_csr, tests_run);
     mu_run_test(test_sum_block_of_rows_csr, tests_run);

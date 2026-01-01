@@ -36,7 +36,7 @@ void eval_jacobian_elementwise(expr *node)
     else
     {
         node->eval_local_jacobian(node, node->dwork);
-        diag_csr_mult(node->dwork, child->jacobian, node->jacobian);
+        diag_csr_mult(node->dwork, child->A_csr, node->jacobian);
     }
 }
 

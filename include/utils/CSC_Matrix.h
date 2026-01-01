@@ -29,8 +29,9 @@ CSC_Matrix *new_csc_matrix(int m, int n, int nnz);
 /* Free a CSC matrix */
 void free_csc_matrix(CSC_Matrix *matrix);
 
-/* Allocate sparsity pattern for C = A^T D A or C = A^T A
- */
+CSC_Matrix *csr_to_csc(const CSR_Matrix *A);
+
+/* Allocate sparsity pattern for C = A^T D A for diagonal D */
 CSR_Matrix *ATA_alloc(const CSC_Matrix *A);
 
 /* Compute values for C = A^T D A

@@ -59,6 +59,8 @@ void free_expr(expr *node)
     free(node->value);
     free_csr_matrix(node->jacobian);
     free_csr_matrix(node->CSR_work);
+    free_csr_matrix(node->A_csr);
+    free_csc_matrix(node->A_csc);
     free(node->dwork);
     free(node->iwork);
     free_int_double_pair_array(node->int_double_pairs);

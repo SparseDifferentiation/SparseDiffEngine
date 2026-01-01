@@ -27,8 +27,13 @@ expr *new_linear(expr *u, const CSR_Matrix *A)
     node->is_affine = is_affine;
 
     /* allocate jacobian and copy A into it */
+    // TODO: this should eventually be removed
     node->jacobian = new_csr_matrix(A->m, A->n, A->nnz);
     copy_csr_matrix(A, node->jacobian);
+
+    node->A_csr = new_csr_matrix(A->m, A->n, A->nnz);
+    copy_csr_matrix(A, node->A_csr);
+    node->A_csc = csr_to_csc(A);
 
     return node;
 }

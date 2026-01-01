@@ -1,6 +1,7 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -17,6 +18,8 @@ typedef void (*jacobian_init_fn)(struct expr *node);
 typedef void (*eval_jacobian_fn)(struct expr *node);
 typedef void (*eval_local_jacobian_fn)(struct expr *node, double *out);
 typedef bool (*is_affine_fn)(struct expr *node);
+
+/* TODO: implement proper polymorphism */
 
 /* Expression node structure */
 typedef struct expr
@@ -36,7 +39,8 @@ typedef struct expr
     int *iwork;
     struct int_double_pair *int_double_pairs; /* for sorting jacobian entries */
     int p;                                    /* power of power expression */
-    int axis; /* axis for sum or similar operations */
+    int axis;      /* axis for sum or similar operations */
+    CSR_Matrix *Q; /* Q for quad_form */
 
     // ------------------------------------------------------------------------
     //                     forward pass related quantities
@@ -48,12 +52,15 @@ typedef struct expr
     //                      jacobian related quantities
     // ------------------------------------------------------------------------
     CSR_Matrix *jacobian;
-    CSR_Matrix *Q;
     CSR_Matrix *CSR_work;
     jacobian_init_fn jacobian_init;
     eval_jacobian_fn eval_jacobian;
     eval_local_jacobian_fn eval_local_jacobian;
     is_affine_fn is_affine;
+
+    // for every linear operator we store A in CSR and CSC
+    CSC_Matrix *A_csc;
+    CSR_Matrix *A_csr;
 
 } expr;
 
