@@ -193,5 +193,6 @@ CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
         }
     }
 
+    free(count);
     return C;
 }
