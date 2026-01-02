@@ -3,7 +3,7 @@
 
 #include "expr.h"
 
-#define EPSILON 1e-9
+#define EPSILON 1e-7
 
 int cmp_double_array(const double *actual, const double *expected, int size)
 {

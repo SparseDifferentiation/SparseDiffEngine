@@ -10,7 +10,7 @@ CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
 {
     CSR_Matrix *matrix = (CSR_Matrix *) malloc(sizeof(CSR_Matrix));
     matrix->p = (int *) calloc(m + 1, sizeof(int));
-    matrix->i = (int *) malloc(nnz * sizeof(int));
+    matrix->i = (int *) calloc(nnz, sizeof(int));
     matrix->x = (double *) malloc(nnz * sizeof(double));
     matrix->m = m;
     matrix->n = n;

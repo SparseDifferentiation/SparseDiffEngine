@@ -15,8 +15,11 @@ struct int_double_pair;
 /* Function pointer types */
 typedef void (*forward_fn)(struct expr *node, const double *u);
 typedef void (*jacobian_init_fn)(struct expr *node);
+typedef void (*wsum_hess_init_fn)(struct expr *node);
 typedef void (*eval_jacobian_fn)(struct expr *node);
-typedef void (*eval_local_jacobian_fn)(struct expr *node, double *out);
+typedef void (*wsum_hess_fn)(struct expr *node, double *w);
+typedef void (*local_jacobian_fn)(struct expr *node, double *out);
+typedef void (*local_wsum_hess_fn)(struct expr *node, double *out, double *w);
 typedef bool (*is_affine_fn)(struct expr *node);
 
 /* TODO: implement proper polymorphism */
@@ -52,10 +55,14 @@ typedef struct expr
     //                      jacobian related quantities
     // ------------------------------------------------------------------------
     CSR_Matrix *jacobian;
+    CSR_Matrix *wsum_hess;
     CSR_Matrix *CSR_work;
     jacobian_init_fn jacobian_init;
+    wsum_hess_init_fn wsum_hess_init;
     eval_jacobian_fn eval_jacobian;
-    eval_local_jacobian_fn eval_local_jacobian;
+    wsum_hess_fn eval_wsum_hess;
+    local_jacobian_fn local_jacobian;
+    local_wsum_hess_fn local_wsum_hess;
     is_affine_fn is_affine;
 
     // for every linear operator we store A in CSR and CSC

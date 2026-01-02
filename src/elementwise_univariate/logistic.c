@@ -23,7 +23,7 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void eval_local_jacobian(expr *node, double *vals)
+static void local_jacobian(expr *node, double *vals)
 {
     double *x = node->left->value;
     for (int j = 0; j < node->size; j++)
@@ -40,15 +40,46 @@ static void eval_local_jacobian(expr *node, double *vals)
     }
 }
 
+static void local_wsum_hess(expr *node, double *out, double *w)
+{
+    double *x = node->left->value;
+    double *sigmas;
+
+    if (node->left->var_id != -1)
+    {
+        sigmas = node->jacobian->x;
+    }
+    else
+    {
+        sigmas = node->dwork;
+    }
+
+    // double sigma;
+
+    for (int j = 0; j < node->size; j++)
+    {
+        /*
+        if (x[j] >= 0)
+        {
+            sigma = 1.0 / (1.0 + exp(-x[j]));
+        }
+        else
+        {
+            double exp_x = exp(x[j]);
+            sigma = exp_x / (1.0 + exp_x);
+        }
+
+        out[j] = w[j] * sigma * (1.0 - sigma);
+        */
+        out[j] = sigmas[j] * (1.0 - sigmas[j]) * w[j];
+    }
+}
+
 expr *new_logistic(expr *child)
 {
-    expr *node = new_expr(child->d1, child->d2, child->n_vars);
-    node->left = child;
-    expr_retain(child);
+    expr *node = new_elementwise(child);
     node->forward = forward;
-    node->jacobian_init = jacobian_init_elementwise;
-    node->eval_jacobian = eval_jacobian_elementwise;
-    node->is_affine = is_affine_elementwise;
-    node->eval_local_jacobian = eval_local_jacobian;
+    node->local_jacobian = local_jacobian;
+    node->local_wsum_hess = local_wsum_hess;
     return node;
 }

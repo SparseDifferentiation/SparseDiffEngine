@@ -58,6 +58,7 @@ void free_expr(expr *node)
     /* free value array and jacobian */
     free(node->value);
     free_csr_matrix(node->jacobian);
+    free_csr_matrix(node->wsum_hess);
     free_csr_matrix(node->CSR_work);
     free_csr_matrix(node->A_csr);
     free_csc_matrix(node->A_csc);

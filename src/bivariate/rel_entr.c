@@ -87,7 +87,7 @@ expr *new_rel_entr_vector_args(expr *left, expr *right)
     node->jacobian_init = jacobian_init_vectors_args;
     node->eval_jacobian = eval_jacobian_vector_args;
     // node->is_affine = is_affine_elementwise;
-    // node->eval_local_jacobian = eval_local_jacobian;
+    // node->local_jacobian = local_jacobian;
     return node;
 }
 

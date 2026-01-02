@@ -1,4 +1,5 @@
 #include "elementwise_univariate.h"
+#include <assert.h>
 #include <math.h>
 
 /* ----------------------- sinh ----------------------- */
@@ -11,7 +12,7 @@ static void sinh_forward(expr *node, const double *u)
     }
 }
 
-static void sinh_eval_local_jacobian(expr *node, double *vals)
+static void sinh_local_jacobian(expr *node, double *vals)
 {
     expr *child = node->left;
     for (int j = 0; j < node->size; j++)
@@ -20,16 +21,21 @@ static void sinh_eval_local_jacobian(expr *node, double *vals)
     }
 }
 
+static void sinh_local_wsum_hess(expr *node, double *out, double *w)
+{
+    double *x = node->left->value;
+    for (int j = 0; j < node->size; j++)
+    {
+        out[j] = w[j] * sinh(x[j]);
+    }
+}
+
 expr *new_sinh(expr *child)
 {
-    expr *node = new_expr(child->d1, child->d2, child->n_vars);
-    node->left = child;
-    expr_retain(child);
+    expr *node = new_elementwise(child);
     node->forward = sinh_forward;
-    node->jacobian_init = jacobian_init_elementwise;
-    node->eval_jacobian = eval_jacobian_elementwise;
-    node->eval_local_jacobian = sinh_eval_local_jacobian;
-    node->is_affine = is_affine_elementwise;
+    node->local_jacobian = sinh_local_jacobian;
+    node->local_wsum_hess = sinh_local_wsum_hess;
     return node;
 }
 
@@ -43,7 +49,7 @@ static void tanh_forward(expr *node, const double *u)
     }
 }
 
-static void tanh_eval_local_jacobian(expr *node, double *vals)
+static void tanh_local_jacobian(expr *node, double *vals)
 {
     expr *child = node->left;
     for (int j = 0; j < node->size; j++)
@@ -53,16 +59,22 @@ static void tanh_eval_local_jacobian(expr *node, double *vals)
     }
 }
 
+static void tanh_local_wsum_hess(expr *node, double *out, double *w)
+{
+    double *x = node->left->value;
+    for (int j = 0; j < node->size; j++)
+    {
+        double c = cosh(x[j]);
+        out[j] = w[j] * (-2.0 * tanh(x[j]) / (c * c));
+    }
+}
+
 expr *new_tanh(expr *child)
 {
-    expr *node = new_expr(child->d1, child->d2, child->n_vars);
-    node->left = child;
-    expr_retain(child);
+    expr *node = new_elementwise(child);
     node->forward = tanh_forward;
-    node->jacobian_init = jacobian_init_elementwise;
-    node->eval_jacobian = eval_jacobian_elementwise;
-    node->eval_local_jacobian = tanh_eval_local_jacobian;
-    node->is_affine = is_affine_elementwise;
+    node->local_jacobian = tanh_local_jacobian;
+    node->local_wsum_hess = tanh_local_wsum_hess;
     return node;
 }
 
@@ -76,7 +88,7 @@ static void asinh_forward(expr *node, const double *u)
     }
 }
 
-static void asinh_eval_local_jacobian(expr *node, double *vals)
+static void asinh_local_jacobian(expr *node, double *vals)
 {
     expr *child = node->left;
     for (int j = 0; j < node->size; j++)
@@ -85,16 +97,22 @@ static void asinh_eval_local_jacobian(expr *node, double *vals)
     }
 }
 
+static void asinh_local_wsum_hess(expr *node, double *out, double *w)
+{
+    double *x = node->left->value;
+    for (int j = 0; j < node->size; j++)
+    {
+        double c = 1.0 + x[j] * x[j];
+        out[j] = w[j] * (-x[j]) / pow(c, 1.5);
+    }
+}
+
 expr *new_asinh(expr *child)
 {
-    expr *node = new_expr(child->d1, child->d2, child->n_vars);
-    node->left = child;
-    expr_retain(child);
+    expr *node = new_elementwise(child);
     node->forward = asinh_forward;
-    node->jacobian_init = jacobian_init_elementwise;
-    node->eval_jacobian = eval_jacobian_elementwise;
-    node->eval_local_jacobian = asinh_eval_local_jacobian;
-    node->is_affine = is_affine_elementwise;
+    node->local_jacobian = asinh_local_jacobian;
+    node->local_wsum_hess = asinh_local_wsum_hess;
     return node;
 }
 
@@ -108,7 +126,7 @@ static void atanh_forward(expr *node, const double *u)
     }
 }
 
-static void atanh_eval_local_jacobian(expr *node, double *vals)
+static void atanh_local_jacobian(expr *node, double *vals)
 {
     expr *child = node->left;
     for (int j = 0; j < node->size; j++)
@@ -117,15 +135,21 @@ static void atanh_eval_local_jacobian(expr *node, double *vals)
     }
 }
 
+static void atanh_local_wsum_hess(expr *node, double *out, double *w)
+{
+    double *x = node->left->value;
+    for (int j = 0; j < node->size; j++)
+    {
+        double c = 1.0 - x[j] * x[j];
+        out[j] = w[j] * (2.0 * x[j]) / (c * c);
+    }
+}
+
 expr *new_atanh(expr *child)
 {
-    expr *node = new_expr(child->d1, child->d2, child->n_vars);
-    node->left = child;
-    expr_retain(child);
+    expr *node = new_elementwise(child);
     node->forward = atanh_forward;
-    node->jacobian_init = jacobian_init_elementwise;
-    node->eval_jacobian = eval_jacobian_elementwise;
-    node->eval_local_jacobian = atanh_eval_local_jacobian;
-    node->is_affine = is_affine_elementwise;
+    node->local_jacobian = atanh_local_jacobian;
+    node->local_wsum_hess = atanh_local_wsum_hess;
     return node;
 }

@@ -21,6 +21,14 @@
 #include "jacobian_tests/test_sum.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
+#include "wsum_hess/test_entr.h"
+#include "wsum_hess/test_exp.h"
+#include "wsum_hess/test_hyperbolic.h"
+#include "wsum_hess/test_log.h"
+#include "wsum_hess/test_logistic.h"
+#include "wsum_hess/test_power.h"
+#include "wsum_hess/test_trig.h"
+#include "wsum_hess/test_xexp.h"
 
 int main(void)
 {
@@ -66,6 +74,22 @@ int main(void)
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
+
+    printf("\n--- Weighted Sum of Hessian Tests ---\n");
+    mu_run_test(test_wsum_hess_log, tests_run);
+    mu_run_test(test_wsum_hess_log_composite, tests_run);
+    mu_run_test(test_wsum_hess_exp, tests_run);
+    mu_run_test(test_wsum_hess_entr, tests_run);
+    mu_run_test(test_wsum_hess_logistic, tests_run);
+    mu_run_test(test_wsum_hess_power, tests_run);
+    mu_run_test(test_wsum_hess_xexp, tests_run);
+    mu_run_test(test_wsum_hess_sin, tests_run);
+    mu_run_test(test_wsum_hess_cos, tests_run);
+    mu_run_test(test_wsum_hess_tan, tests_run);
+    mu_run_test(test_wsum_hess_sinh, tests_run);
+    mu_run_test(test_wsum_hess_tanh, tests_run);
+    mu_run_test(test_wsum_hess_asinh, tests_run);
+    mu_run_test(test_wsum_hess_atanh, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_diag_csr_mult, tests_run);
