@@ -2,6 +2,7 @@
 #define OTHER_H
 
 #include "expr.h"
+#include "subexpr.h"
 #include "utils/CSR_Matrix.h"
 
 /* Helper function to initialize a quad_form expr (can be used with derived types) */

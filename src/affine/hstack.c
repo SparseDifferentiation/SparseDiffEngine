@@ -108,7 +108,6 @@ void init_hstack(expr *node, int d1, int d2, int n_vars)
     node->value = (double *) calloc(node->size, sizeof(double));
     node->jacobian = NULL;
     node->wsum_hess = NULL;
-    node->CSR_work = NULL;
     node->jacobian_init = jacobian_init;
     node->wsum_hess_init = NULL;
     node->eval_jacobian = eval_jacobian;

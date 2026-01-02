@@ -2,6 +2,7 @@
 #define ELEMENTWISE_H
 
 #include "expr.h"
+#include "subexpr.h"
 
 /* Helper function to initialize an elementwise expr (can be used with derived types)
  */

@@ -1,4 +1,6 @@
 #include "bivariate.h"
+#include "subexpr.h"
+#include "utils/CSC_Matrix.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -58,14 +60,15 @@ static void jacobian_init(expr *node)
             }
         }
     }
-    else /* left node is not a variable */
+    else /* left node is not a variable (guaranteed to be a linear operator) */
     {
+        linear_op_expr *lin_x = (linear_op_expr *) x;
         node->dwork = (double *) malloc(x->d1 * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
-        int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
+        int nonzero_cols = count_nonzero_cols(lin_x->base.jacobian, col_nz);
         node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */
@@ -88,11 +91,8 @@ static void jacobian_init(expr *node)
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = node->jacobian->nnz;
 
-        /* store A^T of child's A to simplify chain rule computation */
-        node->iwork = (int *) malloc(x->jacobian->n * sizeof(int));
-        node->CSR_work = transpose(x->jacobian, node->iwork);
-
         /* find position where y should be inserted */
+        node->iwork = (int *) malloc(sizeof(int));
         for (int j = 0; j < node->jacobian->nnz; j++)
         {
             if (node->jacobian->i[j] == y->var_id)
@@ -132,14 +132,16 @@ static void eval_jacobian(expr *node)
     }
     else /* x is not a variable */
     {
+        CSC_Matrix *A_csc = ((linear_op_expr *) x)->A_csc;
+
         /* local jacobian */
         for (int j = 0; j < x->d1; j++)
         {
             node->dwork[j] = (2.0 * x->value[j]) / y->value[0];
         }
 
-        /* chain rule (no derivative wrt y) */
-        csr_matvec_fill_values(node->CSR_work, node->dwork, node->jacobian);
+        /* chain rule (no derivative wrt y) using CSC format */
+        csc_matvec_fill_values(A_csc, node->dwork, node->jacobian);
 
         /* insert derivative wrt y at right place (for correctness this assumes
            that y does not appear in the denominator, but this will always be

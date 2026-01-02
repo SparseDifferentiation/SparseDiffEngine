@@ -118,7 +118,6 @@ void init_elementwise(expr *node, expr *child)
     node->iwork = NULL;
     node->jacobian = NULL;
     node->wsum_hess = NULL;
-    node->CSR_work = NULL;
     node->jacobian_init = jacobian_init_elementwise;
     node->wsum_hess_init = wsum_hess_init_elementwise;
     node->eval_jacobian = eval_jacobian_elementwise;

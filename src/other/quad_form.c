@@ -1,4 +1,6 @@
 #include "other.h"
+#include "subexpr.h"
+#include "utils/CSC_Matrix.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -13,9 +15,8 @@ static void forward(expr *node, const double *u)
     x->forward(x, u);
 
     /* local forward pass  */
-    quad_form_expr *qnode = (quad_form_expr *) node;
-    csr_matvec(qnode->Q, x->value, node->dwork, 0);
-
+    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    csr_matvec(Q, x->value, node->dwork, 0);
     node->value[0] = 0.0;
 
     for (int i = 0; i < x->d1; i++)
@@ -65,17 +66,15 @@ static void jacobian_init(expr *node)
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = node->jacobian->nnz;
 
-        /* store A^T of child's A to simplify chain rule computation */
-        node->iwork = (int *) malloc(x->jacobian->n * sizeof(int));
-        node->CSR_work = transpose(x->jacobian, node->iwork);
+        /* Cast x to linear operator to use its A_csc in eval_jacobian */
+        node->iwork = (int *) malloc(sizeof(int));
     }
 }
 
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
-    quad_form_expr *qnode = (quad_form_expr *) node;
-    CSR_Matrix *Q = qnode->Q;
+    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
 
     /* if x is a variable */
     if (x->var_id != -1)
@@ -89,6 +88,8 @@ static void eval_jacobian(expr *node)
     }
     else /* x is not a variable */
     {
+        linear_op_expr *lin_x = (linear_op_expr *) x;
+
         /* local jacobian */
         csr_matvec(Q, x->value, node->dwork, 0);
 
@@ -97,8 +98,8 @@ static void eval_jacobian(expr *node)
             node->dwork[j] *= 2.0;
         }
 
-        /* chain rule */
-        csr_matvec_fill_values(node->CSR_work, node->dwork, node->jacobian);
+        /* chain rule using CSC format */
+        csc_matvec_fill_values(lin_x->A_csc, node->dwork, node->jacobian);
     }
 }
 
@@ -118,7 +119,6 @@ void init_quad_form(expr *node, expr *child)
     node->value = (double *) calloc(node->size, sizeof(double));
     node->jacobian = NULL;
     node->wsum_hess = NULL;
-    node->CSR_work = NULL;
     node->jacobian_init = jacobian_init;
     node->wsum_hess_init = NULL;
     node->eval_jacobian = eval_jacobian;
@@ -127,28 +127,16 @@ void init_quad_form(expr *node, expr *child)
     node->local_wsum_hess = NULL;
     node->is_affine = NULL;
     node->forward = forward;
-    node->free_type_data = NULL; /* Q is owned by caller */
+    node->free_type_data = NULL;
 
     expr_retain(child);
 }
 
 expr *new_quad_form(expr *left, CSR_Matrix *Q)
 {
-    /* Allocate the type-specific struct */
     quad_form_expr *qnode = (quad_form_expr *) malloc(sizeof(quad_form_expr));
-    if (!qnode) return NULL;
-
     expr *node = &qnode->base;
-
-    /* Initialize base quad_form fields */
     init_quad_form(node, left);
-
-    /* Check if allocation succeeded */
-    if (!node->value)
-    {
-        free(qnode);
-        return NULL;
-    }
 
     /* Set type-specific field */
     qnode->Q = Q;

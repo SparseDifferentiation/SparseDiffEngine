@@ -40,7 +40,6 @@ void free_expr(expr *node)
     free(node->value);
     free_csr_matrix(node->jacobian);
     free_csr_matrix(node->wsum_hess);
-    free_csr_matrix(node->CSR_work);
     free(node->dwork);
     free(node->iwork);
 

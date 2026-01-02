@@ -2,6 +2,7 @@
 #define AFFINE_H
 
 #include "expr.h"
+#include "subexpr.h"
 #include "utils/CSR_Matrix.h"
 
 /* Helper function to initialize a linear operator expr (can be used with derived

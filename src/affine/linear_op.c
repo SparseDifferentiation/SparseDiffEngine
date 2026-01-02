@@ -39,7 +39,6 @@ void init_linear_op(expr *node, expr *child, int d1, int d2)
     node->value = (double *) calloc(node->size, sizeof(double));
     node->jacobian = NULL;
     node->wsum_hess = NULL;
-    node->CSR_work = NULL;
     node->jacobian_init = NULL;
     node->wsum_hess_init = NULL;
     node->eval_jacobian = NULL;

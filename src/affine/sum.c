@@ -161,7 +161,6 @@ void init_sum(expr *node, expr *child, int d1)
     node->value = (double *) calloc(node->size, sizeof(double));
     node->jacobian = NULL;
     node->wsum_hess = NULL;
-    node->CSR_work = NULL;
     node->jacobian_init = jacobian_init;
     node->wsum_hess_init = wsum_hess_init;
     node->eval_jacobian = eval_jacobian;
