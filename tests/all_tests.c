@@ -44,7 +44,7 @@ int main(void)
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_jacobian_log, tests_run);
-    mu_run_test(test_jacobian_matrix_log, tests_run);
+    mu_run_test(test_jacobian_log_matrix, tests_run);
     mu_run_test(test_jacobian_composite_log, tests_run);
     mu_run_test(test_jacobian_composite_log_add, tests_run);
     mu_run_test(test_jacobian_rel_entr_vector_args_1, tests_run);
