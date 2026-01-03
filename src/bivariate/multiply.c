@@ -32,7 +32,7 @@ static void jacobian_init(expr *node)
         node->left->jacobian_init(node->left);
     }
 
-    if (node->right->var_id != -1)
+    if (node->right->var_id != NOT_A_VARIABLE)
     {
         node->right->jacobian_init(node->right);
     }

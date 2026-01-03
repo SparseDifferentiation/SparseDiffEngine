@@ -45,7 +45,7 @@ static void wsum_hess_init(expr *node)
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz_max);
 }
 
-static void eval_wsum_hess(expr *node, double *w)
+static void eval_wsum_hess(expr *node, const double *w)
 {
     /* evaluate children's wsum_hess */
     node->left->eval_wsum_hess(node->left, w);
@@ -55,20 +55,14 @@ static void eval_wsum_hess(expr *node, double *w)
     sum_csr_matrices(node->left->wsum_hess, node->right->wsum_hess, node->wsum_hess);
 }
 
-static bool is_affine(expr *node)
+static bool is_affine(const expr *node)
 {
     return node->left->is_affine(node->left) && node->right->is_affine(node->right);
 }
 
 expr *new_add(expr *left, expr *right)
 {
-    if (!left || !right) return NULL;
-    if (left->d1 != right->d1) return NULL;
-    if (left->d2 != right->d2) return NULL;
-
     expr *node = new_expr(left->d1, left->d2, left->n_vars);
-    if (!node) return NULL;
-
     node->left = left;
     node->right = right;
     expr_retain(left);

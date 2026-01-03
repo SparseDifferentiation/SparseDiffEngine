@@ -8,20 +8,16 @@ static void forward(expr *node, const double *u)
     (void) u;
 }
 
-static bool is_affine(expr *node)
+static bool is_affine(const expr *node)
 {
     (void) node;
-    return true; /* constant is affine */
+    return true;
 }
 
 expr *new_constant(int d1, int d2, int n_vars, const double *values)
 {
     expr *node = new_expr(d1, d2, n_vars);
-    if (!node) return NULL;
-
-    /* Copy constant values */
     memcpy(node->value, values, d1 * d2 * sizeof(double));
-
     node->forward = forward;
     node->is_affine = is_affine;
 

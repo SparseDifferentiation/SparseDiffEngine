@@ -20,7 +20,7 @@ static void jacobian_init(expr *node)
     node->jacobian->p[size] = size;
 }
 
-static bool is_affine(expr *node)
+static bool is_affine(const expr *node)
 {
     (void) node;
     return true;
@@ -29,13 +29,10 @@ static bool is_affine(expr *node)
 expr *new_variable(int d1, int d2, int var_id, int n_vars)
 {
     expr *node = new_expr(d1, d2, n_vars);
-    if (!node) return NULL;
-
     node->forward = forward;
     node->var_id = var_id;
     node->is_affine = is_affine;
     node->jacobian_init = jacobian_init;
-    // node->jacobian = NULL;
 
     return node;
 }

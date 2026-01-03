@@ -16,14 +16,14 @@ static void forward(expr *node, const double *u)
 
 static void local_jacobian(expr *node, double *vals)
 {
-    expr *child = node->left;
+    double *x = node->left->value;
     for (int j = 0; j < node->size; j++)
     {
-        vals[j] = (1.0 + child->value[j]) * exp(child->value[j]);
+        vals[j] = (1.0 + x[j]) * exp(x[j]);
     }
 }
 
-static void local_wsum_hess(expr *node, double *out, double *w)
+static void local_wsum_hess(expr *node, double *out, const double *w)
 {
     double *x = node->left->value;
 

@@ -13,20 +13,18 @@ static void sin_forward(expr *node, const double *u)
 
 static void sin_local_jacobian(expr *node, double *vals)
 {
-    expr *child = node->left;
+    double *x = node->left->value;
     for (int j = 0; j < node->size; j++)
     {
-        vals[j] = cos(child->value[j]);
+        vals[j] = cos(x[j]);
     }
 }
 
-static void sin_local_wsum_hess(expr *node, double *out, double *w)
+static void sin_local_wsum_hess(expr *node, double *out, const double *w)
 {
-    double *x = node->left->value;
-
     for (int j = 0; j < node->size; j++)
     {
-        out[j] = -w[j] * sin(x[j]);
+        out[j] = -w[j] * node->value[j];
     }
 }
 
@@ -51,20 +49,18 @@ static void cos_forward(expr *node, const double *u)
 
 static void cos_local_jacobian(expr *node, double *vals)
 {
-    expr *child = node->left;
+    double *x = node->left->value;
     for (int j = 0; j < node->size; j++)
     {
-        vals[j] = -sin(child->value[j]);
+        vals[j] = -sin(x[j]);
     }
 }
 
-static void cos_local_wsum_hess(expr *node, double *out, double *w)
+static void cos_local_wsum_hess(expr *node, double *out, const double *w)
 {
-    double *x = node->left->value;
-
     for (int j = 0; j < node->size; j++)
     {
-        out[j] = -w[j] * cos(x[j]);
+        out[j] = -w[j] * node->value[j];
     }
 }
 
@@ -97,14 +93,14 @@ static void tan_local_jacobian(expr *node, double *vals)
     }
 }
 
-static void tan_local_wsum_hess(expr *node, double *out, double *w)
+static void tan_local_wsum_hess(expr *node, double *out, const double *w)
 {
     double *x = node->left->value;
 
     for (int j = 0; j < node->size; j++)
     {
         double c = cos(x[j]);
-        out[j] = 2.0 * w[j] * tan(x[j]) / (c * c);
+        out[j] = 2.0 * w[j] * node->value[j] / (c * c);
     }
 }
 

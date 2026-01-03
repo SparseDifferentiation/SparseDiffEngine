@@ -39,4 +39,9 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A);
  */
 void ATDA_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
 
+/* C = z^T A where A is in CSC format and C is assumed to have one row.
+ * C must have column indices pre-computed. Fills in values of C only.
+ */
+void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C);
+
 #endif /* CSC_MATRIX_H */

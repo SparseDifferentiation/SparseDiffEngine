@@ -15,7 +15,7 @@ const char *test_wsum_hess_power()
     double w[3] = {1.0, 2.0, 3.0};
 
     expr *x = new_variable(3, 1, 0, 3);
-    expr *power_node = new_power(x, 3);
+    expr *power_node = new_power(x, 3.0);
     power_node->forward(power_node, u_vals);
     power_node->wsum_hess_init(power_node);
     power_node->eval_wsum_hess(power_node, w);

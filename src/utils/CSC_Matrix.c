@@ -196,3 +196,31 @@ CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
     free(count);
     return C;
 }
+void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C)
+{
+    /* Compute C = z^T * A where A is in CSC format
+     * C is a single-row CSR matrix with column indices pre-computed
+     * This fills in the values of C only
+     */
+
+    for (int col = 0; col < A->n; col++)
+    {
+        double val = 0;
+        for (int j = A->p[col]; j < A->p[col + 1]; j++)
+        {
+            val += z[A->i[j]] * A->x[j];
+        }
+
+        if (A->p[col + 1] - A->p[col] == 0) continue;
+
+        /* find position in C and fill value */
+        for (int k = 0; k < C->nnz; k++)
+        {
+            if (C->i[k] == col)
+            {
+                C->x[k] = val;
+                break;
+            }
+        }
+    }
+}
