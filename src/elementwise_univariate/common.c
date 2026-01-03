@@ -8,7 +8,7 @@ void jacobian_init_elementwise(expr *node)
     expr *child = node->left;
 
     /* if the variable is a child */
-    if (child->var_id != -1)
+    if (child->var_id != NOT_A_VARIABLE)
     {
         node->jacobian = new_csr_matrix(node->size, node->n_vars, node->size);
         for (int j = 0; j < node->size; j++)
@@ -18,7 +18,7 @@ void jacobian_init_elementwise(expr *node)
         }
         node->jacobian->p[node->size] = node->size;
     }
-    /* otherwise it should be a linear operator */
+    /* otherwise it will be a linear operator */
     else
     {
         node->jacobian = new_csr_matrix(child->jacobian->m, child->jacobian->n,
@@ -31,13 +31,13 @@ void eval_jacobian_elementwise(expr *node)
 {
     expr *child = node->left;
 
-    if (child->var_id != -1)
+    if (child->var_id != NOT_A_VARIABLE)
     {
         node->local_jacobian(node, node->jacobian->x);
     }
     else
     {
-        /* Child must be a linear operator */
+        /* Child will be a linear operator */
         linear_op_expr *lin_child = (linear_op_expr *) child;
         node->local_jacobian(node, node->dwork);
         diag_csr_mult(node->dwork, lin_child->A_csr, node->jacobian);
@@ -51,7 +51,7 @@ void wsum_hess_init_elementwise(expr *node)
     int i;
 
     /* if the variable is a child*/
-    if (id != -1)
+    if (id != NOT_A_VARIABLE)
     {
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
 
@@ -78,13 +78,13 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
 {
     expr *child = node->left;
 
-    if (child->var_id != -1)
+    if (child->var_id != NOT_A_VARIABLE)
     {
         node->local_wsum_hess(node, node->wsum_hess->x, w);
     }
     else
     {
-        /* Child must be a linear operator */
+        /* Child will be a linear operator */
         linear_op_expr *lin_child = (linear_op_expr *) child;
         node->local_wsum_hess(node, node->dwork, w);
         ATDA_values(lin_child->A_csc, node->dwork, node->wsum_hess);

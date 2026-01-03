@@ -45,10 +45,7 @@ expr *new_power(expr *child, int p)
     /* Allocate the type-specific struct */
     power_expr *pnode = (power_expr *) calloc(1, sizeof(power_expr));
     expr *node = &pnode->base;
-
-    /* Initialize base elementwise fields */
     init_elementwise(node, child);
-
     node->forward = forward;
     node->local_jacobian = local_jacobian;
     node->local_wsum_hess = local_wsum_hess;

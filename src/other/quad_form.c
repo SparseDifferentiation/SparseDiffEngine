@@ -31,7 +31,7 @@ static void jacobian_init(expr *node)
     node->dwork = (double *) malloc(x->d1 * sizeof(double));
 
     /* if x is a variable */
-    if (x->var_id != -1)
+    if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian = new_csr_matrix(1, node->n_vars, x->d1);
         node->jacobian->p[0] = 0;
@@ -77,7 +77,7 @@ static void eval_jacobian(expr *node)
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
 
     /* if x is a variable */
-    if (x->var_id != -1)
+    if (x->var_id != NOT_A_VARIABLE)
     {
         csr_matvec(Q, x->value, node->jacobian->x, 0);
 

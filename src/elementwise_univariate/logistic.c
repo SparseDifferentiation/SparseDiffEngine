@@ -42,10 +42,9 @@ static void local_jacobian(expr *node, double *vals)
 
 static void local_wsum_hess(expr *node, double *out, const double *w)
 {
-    double *x = node->left->value;
     double *sigmas;
 
-    if (node->left->var_id != -1)
+    if (node->left->var_id != NOT_A_VARIABLE)
     {
         sigmas = node->jacobian->x;
     }
@@ -54,23 +53,8 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
         sigmas = node->dwork;
     }
 
-    // double sigma;
-
     for (int j = 0; j < node->size; j++)
     {
-        /*
-        if (x[j] >= 0)
-        {
-            sigma = 1.0 / (1.0 + exp(-x[j]));
-        }
-        else
-        {
-            double exp_x = exp(x[j]);
-            sigma = exp_x / (1.0 + exp_x);
-        }
-
-        out[j] = w[j] * sigma * (1.0 - sigma);
-        */
         out[j] = sigmas[j] * (1.0 - sigmas[j]) * w[j];
     }
 }

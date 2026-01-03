@@ -13,7 +13,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->n_vars = n_vars;
     node->refcount = 1;
     node->value = (double *) calloc(d1 * d2, sizeof(double));
-    node->var_id = -1;
+    node->var_id = NOT_A_VARIABLE;
     node->forward = forward;
     node->jacobian_init = jacobian_init;
     node->eval_jacobian = eval_jacobian;

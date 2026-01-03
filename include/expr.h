@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 #define JAC_IDXS_NOT_SET -1
+#define NOT_A_VARIABLE -1
 
 /* Function pointer types */
 struct expr;

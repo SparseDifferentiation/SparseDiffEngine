@@ -21,10 +21,9 @@ static void local_jacobian(expr *node, double *vals)
 
 static void local_wsum_hess(expr *node, double *out, const double *w)
 {
-    double *x = node->left->value;
     for (int j = 0; j < node->size; j++)
     {
-        out[j] = w[j] * exp(x[j]);
+        out[j] = w[j] * node->value[j];
     }
 }
 

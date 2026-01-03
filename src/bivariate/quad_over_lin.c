@@ -36,7 +36,7 @@ static void jacobian_init(expr *node)
     expr *y = node->right;
 
     /* if left node is a variable */
-    if (x->var_id != -1)
+    if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian = new_csr_matrix(1, node->n_vars, x->d1 + 1);
         node->jacobian->p[0] = 0;
@@ -110,7 +110,7 @@ static void eval_jacobian(expr *node)
     expr *y = node->right;
 
     /* if x is a variable */
-    if (x->var_id != -1)
+    if (x->var_id != NOT_A_VARIABLE)
     {
         /* if x has lower idx than y*/
         if (x->var_id < y->var_id)
