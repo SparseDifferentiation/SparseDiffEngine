@@ -10,9 +10,13 @@
 // Capsule name for expr* pointers
 #define EXPR_CAPSULE_NAME "DNLP_EXPR"
 
+static int numpy_initialized = 0;
+
 static int ensure_numpy(void)
 {
-    import_array();
+    if (numpy_initialized) return 0;
+    import_array1(-1);
+    numpy_initialized = 1;
     return 0;
 }
 
@@ -65,6 +69,77 @@ static PyObject *py_make_log(PyObject *self, PyObject *args)
     return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
 }
 
+static PyObject *py_make_exp(PyObject *self, PyObject *args)
+{
+    PyObject *child_capsule;
+    if (!PyArg_ParseTuple(args, "O", &child_capsule))
+    {
+        return NULL;
+    }
+    expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+    if (!child)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid child capsule");
+        return NULL;
+    }
+
+    expr *node = new_exp(child);
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create exp node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
+static PyObject *py_make_add(PyObject *self, PyObject *args)
+{
+    PyObject *left_capsule, *right_capsule;
+    if (!PyArg_ParseTuple(args, "OO", &left_capsule, &right_capsule))
+    {
+        return NULL;
+    }
+    expr *left = (expr *) PyCapsule_GetPointer(left_capsule, EXPR_CAPSULE_NAME);
+    expr *right = (expr *) PyCapsule_GetPointer(right_capsule, EXPR_CAPSULE_NAME);
+    if (!left || !right)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid child capsule");
+        return NULL;
+    }
+
+    expr *node = new_add(left, right);
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create add node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
+static PyObject *py_make_sum(PyObject *self, PyObject *args)
+{
+    PyObject *child_capsule;
+    int axis;
+    if (!PyArg_ParseTuple(args, "Oi", &child_capsule, &axis))
+    {
+        return NULL;
+    }
+    expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+    if (!child)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid child capsule");
+        return NULL;
+    }
+
+    expr *node = new_sum(child, axis);
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create sum node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
 static PyObject *py_forward(PyObject *self, PyObject *args)
 {
     PyObject *node_capsule;
@@ -106,6 +181,9 @@ static PyObject *py_forward(PyObject *self, PyObject *args)
 static PyMethodDef DNLPMethods[] = {
     {"make_variable", py_make_variable, METH_VARARGS, "Create variable node"},
     {"make_log", py_make_log, METH_VARARGS, "Create log node"},
+    {"make_exp", py_make_exp, METH_VARARGS, "Create exp node"},
+    {"make_add", py_make_add, METH_VARARGS, "Create add node"},
+    {"make_sum", py_make_sum, METH_VARARGS, "Create sum node"},
     {"forward", py_forward, METH_VARARGS, "Run forward pass and return values"},
     {NULL, NULL, 0, NULL}};
 
