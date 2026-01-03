@@ -145,35 +145,6 @@ static void free_type_data(expr *node)
     free_int_double_pair_array(snode->int_double_pairs);
 }
 
-/* Helper function to initialize a sum expr */
-void init_sum(expr *node, expr *child, int d1)
-{
-    node->d1 = d1;
-    node->d2 = 1;
-    node->size = d1 * 1;
-    node->n_vars = child->n_vars;
-    node->var_id = -1;
-    node->refcount = 1;
-    node->left = child;
-    node->right = NULL;
-    node->dwork = NULL;
-    node->iwork = NULL;
-    node->value = (double *) calloc(node->size, sizeof(double));
-    node->jacobian = NULL;
-    node->wsum_hess = NULL;
-    node->jacobian_init = jacobian_init;
-    node->wsum_hess_init = wsum_hess_init;
-    node->eval_jacobian = eval_jacobian;
-    node->eval_wsum_hess = eval_wsum_hess;
-    node->local_jacobian = NULL;
-    node->local_wsum_hess = NULL;
-    node->is_affine = is_affine;
-    node->forward = forward;
-    node->free_type_data = free_type_data;
-
-    expr_retain(child);
-}
-
 expr *new_sum(expr *child, int axis)
 {
     int d1 = 0;
@@ -195,20 +166,16 @@ expr *new_sum(expr *child, int axis)
     }
 
     /* Allocate the type-specific struct */
-    sum_expr *snode = (sum_expr *) malloc(sizeof(sum_expr));
-    if (!snode) return NULL;
-
+    sum_expr *snode = (sum_expr *) calloc(1, sizeof(sum_expr));
     expr *node = &snode->base;
+    init_expr(node, d1, 1, child->n_vars, forward, jacobian_init, eval_jacobian,
+              is_affine, free_type_data);
+    node->left = child;
+    expr_retain(child);
 
-    /* Initialize base sum fields */
-    init_sum(node, child, d1);
-
-    /* Check if allocation succeeded */
-    if (!node->value)
-    {
-        free(snode);
-        return NULL;
-    }
+    /* hessian function pointers */
+    node->wsum_hess_init = wsum_hess_init;
+    node->eval_wsum_hess = eval_wsum_hess;
 
     /* Set type-specific fields */
     snode->axis = axis;

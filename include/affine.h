@@ -9,9 +9,6 @@ expr *new_linear(expr *u, const CSR_Matrix *A);
 
 expr *new_add(expr *left, expr *right);
 
-/* Helper function to initialize a sum expr (can be used with derived types) */
-void init_sum(expr *node, expr *child, int d1);
-
 expr *new_sum(expr *child, int axis);
 expr *new_hstack(expr **args, int n_args, int n_vars);
 

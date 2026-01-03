@@ -38,6 +38,8 @@ void free_expr(expr *node)
     /* recursively free children */
     free_expr(node->left);
     free_expr(node->right);
+    node->left = NULL;
+    node->right = NULL;
 
     /* free value array and jacobian */
     free(node->value);
@@ -45,6 +47,11 @@ void free_expr(expr *node)
     free_csr_matrix(node->wsum_hess);
     free(node->dwork);
     free(node->iwork);
+    node->value = NULL;
+    node->jacobian = NULL;
+    node->wsum_hess = NULL;
+    node->dwork = NULL;
+    node->iwork = NULL;
 
     /* free type-specific data */
     if (node->free_type_data)
