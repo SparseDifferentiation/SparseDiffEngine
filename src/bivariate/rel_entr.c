@@ -130,15 +130,13 @@ static void wsum_hess_init_vector_args(expr *node)
 
 static void eval_wsum_hess_vector_args(expr *node, const double *w)
 {
-
-    int i, x_id, y_id;
     double *x = node->left->value;
     double *y = node->right->value;
     double *hess = node->wsum_hess->x;
 
     if (node->left->var_id < node->right->var_id)
     {
-        for (i = 0; i < node->d1; i++)
+        for (int i = 0; i < node->d1; i++)
         {
             hess[2 * i] = w[i] / x[i];
             hess[2 * i + 1] = -w[i] / y[i];
@@ -146,7 +144,7 @@ static void eval_wsum_hess_vector_args(expr *node, const double *w)
 
         hess += 2 * node->d1;
 
-        for (i = 0; i < node->d1; i++)
+        for (int i = 0; i < node->d1; i++)
         {
             hess[2 * i] = -w[i] / y[i];
             hess[2 * i + 1] = w[i] * x[i] / (y[i] * y[i]);
@@ -154,7 +152,7 @@ static void eval_wsum_hess_vector_args(expr *node, const double *w)
     }
     else
     {
-        for (i = 0; i < node->d1; i++)
+        for (int i = 0; i < node->d1; i++)
         {
             hess[2 * i] = w[i] * x[i] / (y[i] * y[i]);
             hess[2 * i + 1] = -w[i] / y[i];
@@ -162,7 +160,7 @@ static void eval_wsum_hess_vector_args(expr *node, const double *w)
 
         hess += 2 * node->d1;
 
-        for (i = 0; i < node->d1; i++)
+        for (int i = 0; i < node->d1; i++)
         {
             hess[2 * i] = -w[i] / y[i];
             hess[2 * i + 1] = w[i] / x[i];
