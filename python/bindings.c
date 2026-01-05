@@ -244,7 +244,8 @@ static PyMethodDef DNLPMethods[] = {
     {"make_add", py_make_add, METH_VARARGS, "Create add node"},
     {"make_sum", py_make_sum, METH_VARARGS, "Create sum node"},
     {"forward", py_forward, METH_VARARGS, "Run forward pass and return values"},
-    {"jacobian", py_jacobian, METH_VARARGS, "Compute jacobian and return CSR components"},
+    {"jacobian", py_jacobian, METH_VARARGS,
+     "Compute jacobian and return CSR components"},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef dnlp_module = {PyModuleDef_HEAD_INIT, "DNLP_diff_engine",
