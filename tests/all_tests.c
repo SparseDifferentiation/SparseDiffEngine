@@ -32,6 +32,7 @@
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_rel_entr.h"
 #include "wsum_hess/test_sum.h"
+#include "problem/test_problem.h"
 
 int main(void)
 {
@@ -117,6 +118,12 @@ int main(void)
     mu_run_test(test_ATA_alloc_diagonal_like, tests_run);
     mu_run_test(test_ATA_alloc_random, tests_run);
     mu_run_test(test_ATA_alloc_random2, tests_run);
+
+    printf("\n--- Problem Struct Tests ---\n");
+    mu_run_test(test_problem_new_free, tests_run);
+    mu_run_test(test_problem_forward, tests_run);
+    mu_run_test(test_problem_gradient, tests_run);
+    mu_run_test(test_problem_jacobian, tests_run);
 
     printf("\n=== All %d tests passed ===\n", tests_run);
 

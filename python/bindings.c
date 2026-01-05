@@ -6,9 +6,11 @@
 #include "affine.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
+#include "problem.h"
 
 // Capsule name for expr* pointers
 #define EXPR_CAPSULE_NAME "DNLP_EXPR"
+#define PROBLEM_CAPSULE_NAME "DNLP_PROBLEM"
 
 static int numpy_initialized = 0;
 
@@ -237,6 +239,256 @@ static PyObject *py_jacobian(PyObject *self, PyObject *args)
     return Py_BuildValue("(OOO(ii))", data, indices, indptr, jac->m, jac->n);
 }
 
+/* ========== Problem bindings ========== */
+
+static void problem_capsule_destructor(PyObject *capsule)
+{
+    problem *prob = (problem *) PyCapsule_GetPointer(capsule, PROBLEM_CAPSULE_NAME);
+    if (prob)
+    {
+        free_problem(prob);
+    }
+}
+
+static PyObject *py_make_problem(PyObject *self, PyObject *args)
+{
+    PyObject *obj_capsule;
+    PyObject *constraints_list;
+    if (!PyArg_ParseTuple(args, "OO", &obj_capsule, &constraints_list))
+    {
+        return NULL;
+    }
+
+    expr *objective = (expr *) PyCapsule_GetPointer(obj_capsule, EXPR_CAPSULE_NAME);
+    if (!objective)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid objective capsule");
+        return NULL;
+    }
+
+    if (!PyList_Check(constraints_list))
+    {
+        PyErr_SetString(PyExc_TypeError, "constraints must be a list");
+        return NULL;
+    }
+
+    Py_ssize_t n_constraints = PyList_Size(constraints_list);
+    expr **constraints = NULL;
+    if (n_constraints > 0)
+    {
+        constraints = (expr **) malloc(n_constraints * sizeof(expr *));
+        if (!constraints)
+        {
+            PyErr_NoMemory();
+            return NULL;
+        }
+        for (Py_ssize_t i = 0; i < n_constraints; i++)
+        {
+            PyObject *c_capsule = PyList_GetItem(constraints_list, i);
+            constraints[i] =
+                (expr *) PyCapsule_GetPointer(c_capsule, EXPR_CAPSULE_NAME);
+            if (!constraints[i])
+            {
+                free(constraints);
+                PyErr_SetString(PyExc_ValueError, "invalid constraint capsule");
+                return NULL;
+            }
+        }
+    }
+
+    problem *prob = new_problem(objective, constraints, (int) n_constraints);
+    free(constraints);
+
+    if (!prob)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create problem");
+        return NULL;
+    }
+
+    return PyCapsule_New(prob, PROBLEM_CAPSULE_NAME, problem_capsule_destructor);
+}
+
+static PyObject *py_problem_allocate(PyObject *self, PyObject *args)
+{
+    PyObject *prob_capsule;
+    PyObject *u_obj;
+    if (!PyArg_ParseTuple(args, "OO", &prob_capsule, &u_obj))
+    {
+        return NULL;
+    }
+
+    problem *prob =
+        (problem *) PyCapsule_GetPointer(prob_capsule, PROBLEM_CAPSULE_NAME);
+    if (!prob)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid problem capsule");
+        return NULL;
+    }
+
+    PyArrayObject *u_array =
+        (PyArrayObject *) PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (!u_array)
+    {
+        return NULL;
+    }
+
+    problem_allocate(prob, (const double *) PyArray_DATA(u_array));
+
+    Py_DECREF(u_array);
+    Py_RETURN_NONE;
+}
+
+static PyObject *py_problem_forward(PyObject *self, PyObject *args)
+{
+    PyObject *prob_capsule;
+    PyObject *u_obj;
+    if (!PyArg_ParseTuple(args, "OO", &prob_capsule, &u_obj))
+    {
+        return NULL;
+    }
+
+    problem *prob =
+        (problem *) PyCapsule_GetPointer(prob_capsule, PROBLEM_CAPSULE_NAME);
+    if (!prob)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid problem capsule");
+        return NULL;
+    }
+
+    PyArrayObject *u_array =
+        (PyArrayObject *) PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (!u_array)
+    {
+        return NULL;
+    }
+
+    double obj_val = problem_forward(prob, (const double *) PyArray_DATA(u_array));
+
+    // Create constraint values array
+    PyObject *constraint_vals = NULL;
+    if (prob->total_constraint_size > 0)
+    {
+        npy_intp size = prob->total_constraint_size;
+        constraint_vals = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
+        if (!constraint_vals)
+        {
+            Py_DECREF(u_array);
+            return NULL;
+        }
+        memcpy(PyArray_DATA((PyArrayObject *) constraint_vals), prob->constraint_values,
+               size * sizeof(double));
+    }
+    else
+    {
+        npy_intp size = 0;
+        constraint_vals = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
+    }
+
+    Py_DECREF(u_array);
+    return Py_BuildValue("(dO)", obj_val, constraint_vals);
+}
+
+static PyObject *py_problem_gradient(PyObject *self, PyObject *args)
+{
+    PyObject *prob_capsule;
+    PyObject *u_obj;
+    if (!PyArg_ParseTuple(args, "OO", &prob_capsule, &u_obj))
+    {
+        return NULL;
+    }
+
+    problem *prob =
+        (problem *) PyCapsule_GetPointer(prob_capsule, PROBLEM_CAPSULE_NAME);
+    if (!prob)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid problem capsule");
+        return NULL;
+    }
+
+    PyArrayObject *u_array =
+        (PyArrayObject *) PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (!u_array)
+    {
+        return NULL;
+    }
+
+    double *grad = problem_gradient(prob, (const double *) PyArray_DATA(u_array));
+
+    npy_intp size = prob->n_vars;
+    PyObject *out = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
+    if (!out)
+    {
+        Py_DECREF(u_array);
+        return NULL;
+    }
+    memcpy(PyArray_DATA((PyArrayObject *) out), grad, size * sizeof(double));
+
+    Py_DECREF(u_array);
+    return out;
+}
+
+static PyObject *py_problem_jacobian(PyObject *self, PyObject *args)
+{
+    PyObject *prob_capsule;
+    PyObject *u_obj;
+    if (!PyArg_ParseTuple(args, "OO", &prob_capsule, &u_obj))
+    {
+        return NULL;
+    }
+
+    problem *prob =
+        (problem *) PyCapsule_GetPointer(prob_capsule, PROBLEM_CAPSULE_NAME);
+    if (!prob)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid problem capsule");
+        return NULL;
+    }
+
+    if (prob->n_constraints == 0)
+    {
+        // Return empty CSR components
+        npy_intp zero = 0;
+        npy_intp one = 1;
+        PyObject *data = PyArray_SimpleNew(1, &zero, NPY_DOUBLE);
+        PyObject *indices = PyArray_SimpleNew(1, &zero, NPY_INT32);
+        PyObject *indptr = PyArray_SimpleNew(1, &one, NPY_INT32);
+        ((int *) PyArray_DATA((PyArrayObject *) indptr))[0] = 0;
+        return Py_BuildValue("(OOO(ii))", data, indices, indptr, 0, prob->n_vars);
+    }
+
+    PyArrayObject *u_array =
+        (PyArrayObject *) PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (!u_array)
+    {
+        return NULL;
+    }
+
+    CSR_Matrix *jac = problem_jacobian(prob, (const double *) PyArray_DATA(u_array));
+
+    npy_intp nnz = jac->nnz;
+    npy_intp m_plus_1 = jac->m + 1;
+
+    PyObject *data = PyArray_SimpleNew(1, &nnz, NPY_DOUBLE);
+    PyObject *indices = PyArray_SimpleNew(1, &nnz, NPY_INT32);
+    PyObject *indptr = PyArray_SimpleNew(1, &m_plus_1, NPY_INT32);
+
+    if (!data || !indices || !indptr)
+    {
+        Py_XDECREF(data);
+        Py_XDECREF(indices);
+        Py_XDECREF(indptr);
+        Py_DECREF(u_array);
+        return NULL;
+    }
+
+    memcpy(PyArray_DATA((PyArrayObject *) data), jac->x, nnz * sizeof(double));
+    memcpy(PyArray_DATA((PyArrayObject *) indices), jac->i, nnz * sizeof(int));
+    memcpy(PyArray_DATA((PyArrayObject *) indptr), jac->p, m_plus_1 * sizeof(int));
+
+    Py_DECREF(u_array);
+    return Py_BuildValue("(OOO(ii))", data, indices, indptr, jac->m, jac->n);
+}
+
 static PyMethodDef DNLPMethods[] = {
     {"make_variable", py_make_variable, METH_VARARGS, "Create variable node"},
     {"make_log", py_make_log, METH_VARARGS, "Create log node"},
@@ -245,6 +497,11 @@ static PyMethodDef DNLPMethods[] = {
     {"make_sum", py_make_sum, METH_VARARGS, "Create sum node"},
     {"forward", py_forward, METH_VARARGS, "Run forward pass and return values"},
     {"jacobian", py_jacobian, METH_VARARGS, "Compute jacobian and return CSR components"},
+    {"make_problem", py_make_problem, METH_VARARGS, "Create problem from objective and constraints"},
+    {"problem_allocate", py_problem_allocate, METH_VARARGS, "Allocate problem resources"},
+    {"problem_forward", py_problem_forward, METH_VARARGS, "Evaluate objective and constraints"},
+    {"problem_gradient", py_problem_gradient, METH_VARARGS, "Compute objective gradient"},
+    {"problem_jacobian", py_problem_jacobian, METH_VARARGS, "Compute constraint jacobian"},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef dnlp_module = {PyModuleDef_HEAD_INIT, "DNLP_diff_engine",
