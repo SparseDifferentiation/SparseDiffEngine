@@ -105,6 +105,7 @@ int main(void)
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
     mu_run_test(test_wsum_hess_multiply_linear_ops, tests_run);
+    mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_diag_csr_mult, tests_run);
