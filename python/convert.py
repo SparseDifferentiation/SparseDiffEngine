@@ -5,12 +5,6 @@ from cvxpy.reductions.inverse_data import InverseData
 import DNLP_diff_engine as diffengine
 
 
-def get_jacobian(c_expr, values):
-    """Compute jacobian and return as scipy sparse CSR matrix."""
-    data, indices, indptr, shape = diffengine.jacobian(c_expr, values)
-    return sparse.csr_matrix((data, indices, indptr), shape=shape)
-
-
 def _chain_add(children):
     """Chain multiple children with binary adds: a + b + c -> add(add(a, b), c)."""
     result = children[0]

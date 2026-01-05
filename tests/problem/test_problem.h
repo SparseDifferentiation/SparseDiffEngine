@@ -37,12 +37,8 @@ const char *test_problem_new_free(void)
     mu_assert("n_constraints wrong", prob->n_constraints == 1);
     mu_assert("total_constraint_size wrong", prob->total_constraint_size == 3);
 
-    /* Free problem (also frees expressions via refcount) */
+    /* Free problem (owns and frees all expressions) */
     free_problem(prob);
-
-    /* Free original expression refs */
-    free_expr(objective);
-    free_expr(x_constraint);
 
     return 0;
 }
@@ -77,8 +73,6 @@ const char *test_problem_forward(void)
     mu_assert("constraint[2] wrong", fabs(prob->constraint_values[2] - 3.0) < 1e-10);
 
     free_problem(prob);
-    free_expr(objective);
-    free_expr(x_constraint);
 
     return 0;
 }
@@ -105,7 +99,6 @@ const char *test_problem_gradient(void)
     mu_assert("grad[2] wrong", fabs(grad[2] - 0.25) < 1e-10);
 
     free_problem(prob);
-    free_expr(objective);
 
     return 0;
 }
@@ -153,8 +146,6 @@ const char *test_problem_jacobian(void)
     mu_assert("jac->x[1] wrong", fabs(jac->x[1] - 0.25) < 1e-10);
 
     free_problem(prob);
-    free_expr(objective);
-    free_expr(log_c1);
 
     return 0;
 }

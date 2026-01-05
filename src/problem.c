@@ -7,10 +7,10 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
     problem *prob = (problem *) calloc(1, sizeof(problem));
     if (!prob) return NULL;
 
+    /* Take ownership of objective (no retain - caller transfers ownership) */
     prob->objective = objective;
-    expr_retain(objective);
 
-    /* Copy and retain constraints array */
+    /* Copy constraints array (take ownership, no retain) */
     prob->n_constraints = n_constraints;
     if (n_constraints > 0)
     {
@@ -18,7 +18,6 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
         for (int i = 0; i < n_constraints; i++)
         {
             prob->constraints[i] = constraints[i];
-            expr_retain(constraints[i]);
         }
     }
     else

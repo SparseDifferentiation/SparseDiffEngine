@@ -18,6 +18,7 @@ typedef struct problem
     CSR_Matrix *stacked_jac;
 } problem;
 
+/* Takes ownership of objective and constraints - caller should not free them */
 problem *new_problem(expr *objective, expr **constraints, int n_constraints);
 void problem_allocate(problem *prob, const double *u);
 void free_problem(problem *prob);
