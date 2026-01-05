@@ -84,6 +84,10 @@ void insert_idx(int idx, int *arr, int len);
 double csr_get_value(const CSR_Matrix *A, int row, int col);
 
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork);
+CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork);
+
+/* Fill values of A^T given sparsity pattern is already computed */
+void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork);
 
 /* Expand symmetric CSR matrix A to full matrix C. A is assumed to store
    only upper triangle. C must be pre-allocated with sufficient nnz */

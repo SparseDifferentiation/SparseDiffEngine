@@ -34,10 +34,15 @@ CSC_Matrix *csr_to_csc(const CSR_Matrix *A);
 /* Allocate sparsity pattern for C = A^T D A for diagonal D */
 CSR_Matrix *ATA_alloc(const CSC_Matrix *A);
 
-/* Compute values for C = A^T D A
- * C must have precomputed sparsity pattern
- */
-void ATDA_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
+/* Allocate sparsity pattern for C = B^T D A for diagonal D */
+CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B);
+
+/* Compute values for C = A^T D A. C must have precomputed sparsity pattern  */
+void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
+
+/* Compute values for C = B^T D A. C must have precomputed sparsity pattern  */
+void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
+                      CSR_Matrix *C);
 
 /* C = z^T A where A is in CSC format and C is assumed to have one row.
  * C must have column indices pre-computed. Fills in values of C only.

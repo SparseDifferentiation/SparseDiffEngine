@@ -122,7 +122,7 @@ static inline double sparse_wdot(const double *a_x, const int *a_i, int a_nnz,
     return sum;
 }
 
-void ATDA_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
+void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
 {
     int i, j, ii, jj;
     for (i = 0; i < C->m; i++)
@@ -196,6 +196,64 @@ CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
     free(count);
     return C;
 }
+CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
+{
+    /* A is m x n, B is m x p, C = B^T A is p x n */
+    int n = A->n;
+    int p = B->n;
+    int m = A->m;
+    int nnz = 0;
+    int i, j, ii, jj;
+
+    /* row ptr and column idxs for C = B^T A */
+    int *Cp = (int *) malloc((p + 1) * sizeof(int));
+    iVec *Ci = iVec_new(n);
+    Cp[0] = 0;
+
+    /* compute sparsity pattern */
+    for (i = 0; i < p; i++)
+    {
+        /* check if Cij != 0 for each column j of A */
+        for (j = 0; j < n; j++)
+        {
+            ii = B->p[i];
+            jj = A->p[j];
+
+            /* check if row i of B^T (column i of B) has common row with column j of
+             * A */
+            while (ii < B->p[i + 1] && jj < A->p[j + 1])
+            {
+                if (B->i[ii] == A->i[jj])
+                {
+                    nnz++;
+                    iVec_append(Ci, j);
+                    break;
+                }
+                else if (B->i[ii] < A->i[jj])
+                {
+                    ii++;
+                }
+                else
+                {
+                    jj++;
+                }
+            }
+        }
+        Cp[i + 1] = Ci->len;
+    }
+
+    /* Allocate C */
+    CSR_Matrix *C = new_csr_matrix(p, n, nnz);
+    memcpy(C->p, Cp, (p + 1) * sizeof(int));
+    memcpy(C->i, Ci->data, nnz * sizeof(int));
+
+    /* free workspace */
+    free(Cp);
+    iVec_free(Ci);
+
+    return C;
+}
+
 void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C)
 {
     /* Compute C = z^T * A where A is in CSC format
@@ -221,6 +279,28 @@ void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C)
                 C->x[k] = val;
                 break;
             }
+        }
+    }
+}
+
+void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
+                      CSR_Matrix *C)
+{
+    int i, j, jj;
+    for (i = 0; i < C->m; i++)
+    {
+        for (jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            j = C->i[jj];
+
+            int nnz_bi = B->p[i + 1] - B->p[i];
+            int nnz_aj = A->p[j + 1] - A->p[j];
+
+            /* compute Cij = weighted inner product of col i of B and col j of A */
+            double sum = sparse_wdot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
+                                     A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
+
+            C->x[jj] = sum;
         }
     }
 }

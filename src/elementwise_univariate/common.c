@@ -87,7 +87,7 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
         /* Child will be a linear operator */
         linear_op_expr *lin_child = (linear_op_expr *) child;
         node->local_wsum_hess(node, node->dwork, w);
-        ATDA_values(lin_child->A_csc, node->dwork, node->wsum_hess);
+        ATDA_fill_values(lin_child->A_csc, node->dwork, node->wsum_hess);
     }
 }
 

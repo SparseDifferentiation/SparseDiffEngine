@@ -24,6 +24,8 @@ static void forward_vector_args(expr *node, const double *u)
     }
 }
 
+/* TODO: this probably doesn't work for matrices because we use node->d1
+   instead of node->size */
 static void jacobian_init_vectors_args(expr *node)
 {
     node->jacobian = new_csr_matrix(node->d1, node->n_vars, 2 * node->d1);
@@ -80,6 +82,8 @@ static void eval_jacobian_vector_args(expr *node)
     }
 }
 
+/* TODO: this probably doesn't work for matrices because we use node->d1
+   instead of node->size */
 static void wsum_hess_init_vector_args(expr *node)
 {
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->d1);

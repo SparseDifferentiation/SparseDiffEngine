@@ -180,7 +180,7 @@ const char *test_ATA_alloc_random()
 
     double d[10] = {2, 8, 6, 2, 5, 1, 6, 9, 1, 3};
 
-    ATDA_values(A, d, C);
+    ATDA_fill_values(A, d, C);
 
     double Cx_correct[38] = {
         49.,  21.,  491., 56.,  240., 416., 144., 288., 56.,  98.,  56.,  21.,  9.,
@@ -218,7 +218,7 @@ const char *test_ATA_alloc_random2()
     double d[15] = {-0.6,  -0.23, -0.29, -1.36, 0.4,   0.36, 0.11, -0.13,
                     -1.32, -0.32, -0.24, -0.7,  -0.06, 0.5,  1.99};
 
-    ATDA_values(A, d, C);
+    ATDA_fill_values(A, d, C);
 
     double Cx_correct[17] = {-0.362232, -0.189896, 0.06656,   -0.228888, -0.025732,
                              -0.016146, 0.032857,  0.06656,   -1.004802, 0.1505,
@@ -228,6 +228,63 @@ const char *test_ATA_alloc_random2()
 
     free_csr_matrix(C);
     free_csc_matrix(A);
+
+    return 0;
+}
+const char *test_BTA_alloc_and_BTDA_fill()
+{
+    /* Create A: 4x3 CSC matrix
+     * [1.0  0.0  2.0]
+     * [0.0  3.0  0.0]
+     * [4.0  0.0  5.0]
+     * [0.0  6.0  0.0]
+     */
+    int m = 4;
+    int n = 3;
+    CSC_Matrix *A = new_csc_matrix(m, n, 6);
+    int Ap_A[4] = {0, 2, 4, 6};
+    int Ai_A[6] = {0, 2, 1, 3, 0, 2};
+    double Ax_A[6] = {1.0, 4.0, 3.0, 6.0, 2.0, 5.0};
+    memcpy(A->p, Ap_A, 4 * sizeof(int));
+    memcpy(A->i, Ai_A, 6 * sizeof(int));
+    memcpy(A->x, Ax_A, 6 * sizeof(double));
+
+    /* Create B: 4x2 CSC matrix
+     * [1.0  0.0]
+     * [0.0  2.0]
+     * [3.0  0.0]
+     * [0.0  4.0]
+     */
+    int p = 2;
+    CSC_Matrix *B = new_csc_matrix(m, p, 4);
+    int Bp[3] = {0, 2, 4};
+    int Bi[4] = {0, 2, 1, 3};
+    double Bx[4] = {1.0, 3.0, 2.0, 4.0};
+    memcpy(B->p, Bp, 3 * sizeof(int));
+    memcpy(B->i, Bi, 4 * sizeof(int));
+    memcpy(B->x, Bx, 4 * sizeof(double));
+
+    /* Allocate C = B^T A (should be 2x3) */
+    CSR_Matrix *C = BTA_alloc(A, B);
+
+    /* Sparsity pattern check before filling values */
+    int expected_p[3] = {0, 2, 3};
+    int expected_i[3] = {0, 2, 1};
+    mu_assert("C dimensions incorrect", C->m == 2 && C->n == 3);
+    mu_assert("C nnz incorrect", C->nnz == 3);
+    mu_assert("C->p incorrect", cmp_int_array(C->p, expected_p, 3));
+    mu_assert("C->i incorrect", cmp_int_array(C->i, expected_i, 3));
+
+    /* Fill values with diagonal weights d */
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+    BTDA_fill_values(A, B, d, C);
+
+    double expected_x[3] = {37.0, 47.0, 108.0};
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 3));
+
+    free_csr_matrix(C);
+    free_csc_matrix(A);
+    free_csc_matrix(B);
 
     return 0;
 }

@@ -442,6 +442,69 @@ CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
     return AT;
 }
 
+CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork)
+{
+    /* Allocate A^T and compute sparsity pattern without filling values */
+    CSR_Matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
+
+    int i, j;
+    int *count = iwork;
+    memset(count, 0, A->n * sizeof(int));
+
+    // -------------------------------------------------------------------
+    //              compute nnz in each column of A
+    // -------------------------------------------------------------------
+    for (i = 0; i < A->m; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; ++j)
+        {
+            count[A->i[j]]++;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    //                  compute row pointers
+    // ------------------------------------------------------------------
+    AT->p[0] = 0;
+    for (i = 0; i < A->n; i++)
+    {
+        AT->p[i + 1] = AT->p[i] + count[i];
+        count[i] = AT->p[i];
+    }
+
+    // ------------------------------------------------------------------
+    //                fill column indices
+    // ------------------------------------------------------------------
+    for (i = 0; i < A->m; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; j++)
+        {
+            AT->i[count[A->i[j]]] = i;
+            count[A->i[j]]++;
+        }
+    }
+
+    return AT;
+}
+
+void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
+{
+    /* Fill values of A^T given sparsity pattern is already computed */
+    int i, j;
+    int *count = iwork;
+    memcpy(count, AT->p, (A->n + 1) * sizeof(int));
+
+    /* Fill values by placing each element of A into its transposed position */
+    for (i = 0; i < A->m; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; j++)
+        {
+            AT->x[count[A->i[j]]] = A->x[j];
+            count[A->i[j]]++;
+        }
+    }
+}
+
 /**/
 void csr_matvec_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C)
 {
