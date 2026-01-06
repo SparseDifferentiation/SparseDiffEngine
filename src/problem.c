@@ -2,62 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Simple visited set for tracking freed nodes (handles up to 1024 unique nodes) */
-#define MAX_VISITED 1024
-
-typedef struct
-{
-    expr *nodes[MAX_VISITED];
-    int count;
-} VisitedSet;
-
-static void visited_init(VisitedSet *v)
-{
-    v->count = 0;
-}
-
-static int visited_contains(VisitedSet *v, expr *node)
-{
-    for (int i = 0; i < v->count; i++)
-    {
-        if (v->nodes[i] == node) return 1;
-    }
-    return 0;
-}
-
-static void visited_add(VisitedSet *v, expr *node)
-{
-    if (v->count < MAX_VISITED)
-    {
-        v->nodes[v->count++] = node;
-    }
-}
-
-/* Release refs and free nodes, tracking visited to handle sharing */
-static void free_expr_tree_visited(expr *node, VisitedSet *visited)
-{
-    if (node == NULL || visited_contains(visited, node)) return;
-    visited_add(visited, node);
-
-    /* Recursively process children first */
-    free_expr_tree_visited(node->left, visited);
-    free_expr_tree_visited(node->right, visited);
-
-    /* Free this node's resources */
-    free(node->value);
-    free_csr_matrix(node->jacobian);
-    free_csr_matrix(node->wsum_hess);
-    free(node->dwork);
-    free(node->iwork);
-
-    if (node->free_type_data)
-    {
-        node->free_type_data(node);
-    }
-
-    free(node);
-}
-
 problem *new_problem(expr *objective, expr **constraints, int n_constraints)
 {
     problem *prob = (problem *) calloc(1, sizeof(problem));
