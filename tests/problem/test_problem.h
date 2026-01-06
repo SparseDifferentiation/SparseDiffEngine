@@ -122,10 +122,14 @@ const char *test_problem_constraint_forward(void)
     /* Check constraint values:
      * [log(2), log(4), exp(2), exp(4)]
      */
-    mu_assert("constraint[0] wrong", fabs(prob->constraint_values[0] - log(2.0)) < 1e-10);
-    mu_assert("constraint[1] wrong", fabs(prob->constraint_values[1] - log(4.0)) < 1e-10);
-    mu_assert("constraint[2] wrong", fabs(prob->constraint_values[2] - exp(2.0)) < 1e-10);
-    mu_assert("constraint[3] wrong", fabs(prob->constraint_values[3] - exp(4.0)) < 1e-10);
+    mu_assert("constraint[0] wrong",
+              fabs(prob->constraint_values[0] - log(2.0)) < 1e-10);
+    mu_assert("constraint[1] wrong",
+              fabs(prob->constraint_values[1] - log(4.0)) < 1e-10);
+    mu_assert("constraint[2] wrong",
+              fabs(prob->constraint_values[2] - exp(2.0)) < 1e-10);
+    mu_assert("constraint[3] wrong",
+              fabs(prob->constraint_values[3] - exp(4.0)) < 1e-10);
 
     free_problem(prob);
     free_expr(objective);

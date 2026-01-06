@@ -21,6 +21,7 @@
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
 #include "jacobian_tests/test_sum.h"
+#include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
 #include "wsum_hess/elementwise/test_entr.h"
@@ -35,7 +36,6 @@
 #include "wsum_hess/test_multiply.h"
 #include "wsum_hess/test_rel_entr.h"
 #include "wsum_hess/test_sum.h"
-#include "problem/test_problem.h"
 
 int main(void)
 {

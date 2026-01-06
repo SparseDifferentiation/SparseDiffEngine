@@ -39,7 +39,8 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
     /* Allocate value arrays */
     if (prob->total_constraint_size > 0)
     {
-        prob->constraint_values = (double *) calloc(prob->total_constraint_size, sizeof(double));
+        prob->constraint_values =
+            (double *) calloc(prob->total_constraint_size, sizeof(double));
     }
     else
     {
@@ -70,7 +71,8 @@ void problem_init_derivatives(problem *prob)
     /* 3. Allocate stacked jacobian */
     if (prob->total_constraint_size > 0)
     {
-        prob->stacked_jac = new_csr_matrix(prob->total_constraint_size, prob->n_vars, total_nnz);
+        prob->stacked_jac =
+            new_csr_matrix(prob->total_constraint_size, prob->n_vars, total_nnz);
     }
 
     /* TODO: 4. Initialize objective wsum_hess */
