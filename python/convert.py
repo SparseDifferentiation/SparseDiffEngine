@@ -139,7 +139,7 @@ class C_problem:
         self._allocated = False
 
     def init_derivatives(self):
-        """Initialize derivative structures. Must be called before gradient/jacobian."""
+        """Initialize derivative structures. Must be called before forward/gradient/jacobian."""
         diffengine.problem_init_derivatives(self._capsule)
         self._allocated = True
 
