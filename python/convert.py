@@ -138,9 +138,9 @@ class C_problem:
         self._capsule = diffengine.make_problem(c_obj, c_constraints)
         self._allocated = False
 
-    def allocate(self, u: np.ndarray):
-        """Allocate internal buffers. Must be called before forward/gradient/jacobian."""
-        diffengine.problem_allocate(self._capsule, u)
+    def init_derivatives(self):
+        """Initialize derivative structures. Must be called before gradient/jacobian."""
+        diffengine.problem_init_derivatives(self._capsule)
         self._allocated = True
 
     def objective_forward(self, u: np.ndarray) -> float:

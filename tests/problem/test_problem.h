@@ -63,7 +63,7 @@ const char *test_problem_objective_forward(void)
     problem *prob = new_problem(objective, constraints, 1);
 
     double u[3] = {1.0, 2.0, 3.0};
-    problem_allocate(prob, u);
+    problem_init_derivatives(prob);
 
     double obj_val = problem_objective_forward(prob, u);
 
@@ -115,7 +115,7 @@ const char *test_problem_constraint_forward(void)
     problem *prob = new_problem(objective, constraints, 2);
 
     double u[2] = {2.0, 4.0};
-    problem_allocate(prob, u);
+    problem_init_derivatives(prob);
 
     double *constraint_vals = problem_constraint_forward(prob, u);
 
@@ -149,8 +149,9 @@ const char *test_problem_gradient(void)
     problem *prob = new_problem(objective, NULL, 0);
 
     double u[3] = {1.0, 2.0, 4.0};
-    problem_allocate(prob, u);
+    problem_init_derivatives(prob);
 
+    problem_objective_forward(prob, u);
     double *grad = problem_gradient(prob, u);
 
     /* Expected gradient: [1/1, 1/2, 1/4] = [1.0, 0.5, 0.25] */
@@ -187,8 +188,9 @@ const char *test_problem_jacobian(void)
     problem *prob = new_problem(objective, constraints, 1);
 
     double u[2] = {2.0, 4.0};
-    problem_allocate(prob, u);
+    problem_init_derivatives(prob);
 
+    problem_constraint_forward(prob, u);
     CSR_Matrix *jac = problem_jacobian(prob, u);
 
     /* Check dimensions */
@@ -254,8 +256,9 @@ const char *test_problem_jacobian_multi(void)
     problem *prob = new_problem(objective, constraints, 2);
 
     double u[2] = {2.0, 4.0};
-    problem_allocate(prob, u);
+    problem_init_derivatives(prob);
 
+    problem_constraint_forward(prob, u);
     CSR_Matrix *jac = problem_jacobian(prob, u);
 
     /* Check dimensions: 4 rows (2 + 2), 2 cols */

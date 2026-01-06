@@ -12,7 +12,7 @@ typedef struct problem
     int n_vars;
     int total_constraint_size;
 
-    /* Allocated by problem_allocate */
+    /* Allocated by problem_init_derivatives */
     double *constraint_values;
     double *gradient_values;
     CSR_Matrix *stacked_jac;
@@ -20,7 +20,7 @@ typedef struct problem
 
 /* Retains objective and constraints (shared ownership with caller) */
 problem *new_problem(expr *objective, expr **constraints, int n_constraints);
-void problem_allocate(problem *prob, const double *u);
+void problem_init_derivatives(problem *prob);
 void free_problem(problem *prob);
 
 double problem_objective_forward(problem *prob, const double *u);

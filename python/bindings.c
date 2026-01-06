@@ -437,11 +437,10 @@ static PyObject *py_make_problem(PyObject *self, PyObject *args)
     return PyCapsule_New(prob, PROBLEM_CAPSULE_NAME, problem_capsule_destructor);
 }
 
-static PyObject *py_problem_allocate(PyObject *self, PyObject *args)
+static PyObject *py_problem_init_derivatives(PyObject *self, PyObject *args)
 {
     PyObject *prob_capsule;
-    PyObject *u_obj;
-    if (!PyArg_ParseTuple(args, "OO", &prob_capsule, &u_obj))
+    if (!PyArg_ParseTuple(args, "O", &prob_capsule))
     {
         return NULL;
     }
@@ -454,16 +453,8 @@ static PyObject *py_problem_allocate(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    PyArrayObject *u_array =
-        (PyArrayObject *) PyArray_FROM_OTF(u_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    if (!u_array)
-    {
-        return NULL;
-    }
+    problem_init_derivatives(prob);
 
-    problem_allocate(prob, (const double *) PyArray_DATA(u_array));
-
-    Py_DECREF(u_array);
     Py_RETURN_NONE;
 }
 
@@ -662,7 +653,7 @@ static PyMethodDef DNLPMethods[] = {
     {"jacobian", py_jacobian, METH_VARARGS,
      "Compute jacobian and return CSR components"},
     {"make_problem", py_make_problem, METH_VARARGS, "Create problem from objective and constraints"},
-    {"problem_allocate", py_problem_allocate, METH_VARARGS, "Allocate problem resources"},
+    {"problem_init_derivatives", py_problem_init_derivatives, METH_VARARGS, "Initialize derivative structures"},
     {"problem_objective_forward", py_problem_objective_forward, METH_VARARGS, "Evaluate objective only"},
     {"problem_constraint_forward", py_problem_constraint_forward, METH_VARARGS, "Evaluate constraints only"},
     {"problem_gradient", py_problem_gradient, METH_VARARGS, "Compute objective gradient"},

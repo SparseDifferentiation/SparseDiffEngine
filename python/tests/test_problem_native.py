@@ -13,7 +13,7 @@ def test_problem_objective_forward():
 
     prob = diffengine.make_problem(objective, constraints)
     u = np.array([1.0, 2.0, 3.0])
-    diffengine.problem_allocate(prob, u)
+    diffengine.problem_init_derivatives(prob)
 
     obj_val = diffengine.problem_objective_forward(prob, u)
     constraint_vals = diffengine.problem_constraint_forward(prob, u)
@@ -37,7 +37,7 @@ def test_problem_constraint_forward():
 
     prob = diffengine.make_problem(objective, constraints)
     u = np.array([2.0, 4.0])
-    diffengine.problem_allocate(prob, u)
+    diffengine.problem_init_derivatives(prob)
 
     constraint_vals = diffengine.problem_constraint_forward(prob, u)
 
@@ -55,8 +55,9 @@ def test_problem_gradient():
 
     prob = diffengine.make_problem(objective, [])
     u = np.array([1.0, 2.0, 4.0])
-    diffengine.problem_allocate(prob, u)
+    diffengine.problem_init_derivatives(prob)
 
+    diffengine.problem_objective_forward(prob, u)
     grad = diffengine.problem_gradient(prob, u)
     expected_grad = 1.0 / u
     assert np.allclose(grad, expected_grad)
@@ -72,8 +73,9 @@ def test_problem_jacobian():
 
     prob = diffengine.make_problem(objective, constraints)
     u = np.array([2.0, 4.0])
-    diffengine.problem_allocate(prob, u)
+    diffengine.problem_init_derivatives(prob)
 
+    diffengine.problem_constraint_forward(prob, u)
     data, indices, indptr, shape = diffengine.problem_jacobian(prob, u)
     jac = sparse.csr_matrix((data, indices, indptr), shape=shape)
 
@@ -90,16 +92,18 @@ def test_problem_no_constraints():
 
     prob = diffengine.make_problem(objective, [])
     u = np.array([1.0, 2.0, 3.0])
-    diffengine.problem_allocate(prob, u)
+    diffengine.problem_init_derivatives(prob)
 
     obj_val = diffengine.problem_objective_forward(prob, u)
     constraint_vals = diffengine.problem_constraint_forward(prob, u)
     assert np.allclose(obj_val, np.sum(np.log(u)))
     assert len(constraint_vals) == 0
 
+    diffengine.problem_objective_forward(prob, u)
     grad = diffengine.problem_gradient(prob, u)
     assert np.allclose(grad, 1.0 / u)
 
+    diffengine.problem_constraint_forward(prob, u)
     data, indices, indptr, shape = diffengine.problem_jacobian(prob, u)
     jac = sparse.csr_matrix((data, indices, indptr), shape=shape)
     assert jac.shape == (0, 3)
@@ -122,7 +126,7 @@ def test_problem_multiple_constraints():
     
     prob = diffengine.make_problem(objective, constraints)
     u = np.array([1.0, 2.0, 3.0])
-    diffengine.problem_allocate(prob, u)
+    diffengine.problem_init_derivatives(prob)
     
     # Test forward pass
     obj_val = diffengine.problem_objective_forward(prob, u)
@@ -131,13 +135,15 @@ def test_problem_multiple_constraints():
     expected_constraints = np.concatenate([np.log(u), np.exp(u)])
     assert np.allclose(obj_val, expected_obj)
     assert np.allclose(constraint_vals, expected_constraints)
-    
+
     # Test gradient
+    diffengine.problem_objective_forward(prob, u)
     grad = diffengine.problem_gradient(prob, u)
     expected_grad = 1.0 / u
     assert np.allclose(grad, expected_grad)
-    
+
     # Test Jacobian
+    diffengine.problem_constraint_forward(prob, u)
     data, indices, indptr, shape = diffengine.problem_jacobian(prob, u)
     jac = sparse.csr_matrix((data, indices, indptr), shape=shape)
     

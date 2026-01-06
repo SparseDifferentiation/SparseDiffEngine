@@ -44,7 +44,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
     return prob;
 }
 
-void problem_allocate(problem *prob, const double *u)
+void problem_init_derivatives(problem *prob)
 {
     /* 1. Allocate constraint values array */
     if (prob->total_constraint_size > 0)
@@ -56,7 +56,6 @@ void problem_allocate(problem *prob, const double *u)
     prob->gradient_values = (double *) calloc(prob->n_vars, sizeof(double));
 
     /* 3. Initialize objective jacobian */
-    prob->objective->forward(prob->objective, u);
     prob->objective->jacobian_init(prob->objective);
 
     /* 4. Initialize constraint jacobians and count total nnz */
@@ -64,7 +63,6 @@ void problem_allocate(problem *prob, const double *u)
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-        c->forward(c, u);
         c->jacobian_init(c);
         total_nnz += c->jacobian->nnz;
     }
@@ -74,6 +72,10 @@ void problem_allocate(problem *prob, const double *u)
     {
         prob->stacked_jac = new_csr_matrix(prob->total_constraint_size, prob->n_vars, total_nnz);
     }
+
+    /* TODO: 6. Initialize objective wsum_hess */
+
+    /* TODO: 7. Initialize constraint wsum_hess */
 }
 
 void free_problem(problem *prob)
