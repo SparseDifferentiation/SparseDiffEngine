@@ -153,23 +153,11 @@ void free_problem(problem *prob)
     free(prob);
 }
 
-double problem_forward(problem *prob, const double *u)
+double problem_objective_forward(problem *prob, const double *u)
 {
-    /* Evaluate objective */
+    /* Evaluate objective only */
     prob->objective->forward(prob->objective, u);
-    double obj_val = prob->objective->value[0];
-
-    /* Evaluate constraints and copy values */
-    int offset = 0;
-    for (int i = 0; i < prob->n_constraints; i++)
-    {
-        expr *c = prob->constraints[i];
-        c->forward(c, u);
-        memcpy(prob->constraint_values + offset, c->value, c->size * sizeof(double));
-        offset += c->size;
-    }
-
-    return obj_val;
+    return prob->objective->value[0];
 }
 
 double *problem_constraint_forward(problem *prob, const double *u)

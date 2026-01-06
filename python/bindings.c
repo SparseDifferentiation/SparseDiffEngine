@@ -48,6 +48,88 @@ static PyObject *py_make_variable(PyObject *self, PyObject *args)
     return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
 }
 
+static PyObject *py_make_constant(PyObject *self, PyObject *args)
+{
+    int d1, d2, n_vars;
+    PyObject *values_obj;
+    if (!PyArg_ParseTuple(args, "iiiO", &d1, &d2, &n_vars, &values_obj))
+    {
+        return NULL;
+    }
+
+    PyArrayObject *values_array =
+        (PyArrayObject *) PyArray_FROM_OTF(values_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (!values_array)
+    {
+        return NULL;
+    }
+
+    expr *node =
+        new_constant(d1, d2, n_vars, (const double *) PyArray_DATA(values_array));
+    Py_DECREF(values_array);
+
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create constant node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
+static PyObject *py_make_linear(PyObject *self, PyObject *args)
+{
+    PyObject *child_capsule;
+    PyObject *data_obj, *indices_obj, *indptr_obj;
+    int m, n;
+    if (!PyArg_ParseTuple(args, "OOOOii", &child_capsule, &data_obj, &indices_obj,
+                          &indptr_obj, &m, &n))
+    {
+        return NULL;
+    }
+
+    expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+    if (!child)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid child capsule");
+        return NULL;
+    }
+
+    PyArrayObject *data_array =
+        (PyArrayObject *) PyArray_FROM_OTF(data_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *indices_array =
+        (PyArrayObject *) PyArray_FROM_OTF(indices_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *indptr_array =
+        (PyArrayObject *) PyArray_FROM_OTF(indptr_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+
+    if (!data_array || !indices_array || !indptr_array)
+    {
+        Py_XDECREF(data_array);
+        Py_XDECREF(indices_array);
+        Py_XDECREF(indptr_array);
+        return NULL;
+    }
+
+    int nnz = (int) PyArray_SIZE(data_array);
+    CSR_Matrix *A = new_csr_matrix(m, n, nnz);
+    memcpy(A->x, PyArray_DATA(data_array), nnz * sizeof(double));
+    memcpy(A->i, PyArray_DATA(indices_array), nnz * sizeof(int));
+    memcpy(A->p, PyArray_DATA(indptr_array), (m + 1) * sizeof(int));
+
+    Py_DECREF(data_array);
+    Py_DECREF(indices_array);
+    Py_DECREF(indptr_array);
+
+    expr *node = new_linear(child, A);
+    free_csr_matrix(A);
+
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create linear node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
 static PyObject *py_make_log(PyObject *self, PyObject *args)
 {
     PyObject *child_capsule;
@@ -137,6 +219,53 @@ static PyObject *py_make_sum(PyObject *self, PyObject *args)
     if (!node)
     {
         PyErr_SetString(PyExc_RuntimeError, "failed to create sum node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
+static PyObject *py_make_neg(PyObject *self, PyObject *args)
+{
+    PyObject *child_capsule;
+    if (!PyArg_ParseTuple(args, "O", &child_capsule))
+    {
+        return NULL;
+    }
+    expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+    if (!child)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid child capsule");
+        return NULL;
+    }
+
+    expr *node = new_neg(child);
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create neg node");
+        return NULL;
+    }
+    return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
+}
+
+static PyObject *py_make_promote(PyObject *self, PyObject *args)
+{
+    PyObject *child_capsule;
+    int d1, d2;
+    if (!PyArg_ParseTuple(args, "Oii", &child_capsule, &d1, &d2))
+    {
+        return NULL;
+    }
+    expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+    if (!child)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid child capsule");
+        return NULL;
+    }
+
+    expr *node = new_promote(child, d1, d2);
+    if (!node)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create promote node");
         return NULL;
     }
     return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
@@ -338,7 +467,7 @@ static PyObject *py_problem_allocate(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static PyObject *py_problem_forward(PyObject *self, PyObject *args)
+static PyObject *py_problem_objective_forward(PyObject *self, PyObject *args)
 {
     PyObject *prob_capsule;
     PyObject *u_obj;
@@ -362,30 +491,10 @@ static PyObject *py_problem_forward(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    double obj_val = problem_forward(prob, (const double *) PyArray_DATA(u_array));
-
-    // Create constraint values array
-    PyObject *constraint_vals = NULL;
-    if (prob->total_constraint_size > 0)
-    {
-        npy_intp size = prob->total_constraint_size;
-        constraint_vals = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
-        if (!constraint_vals)
-        {
-            Py_DECREF(u_array);
-            return NULL;
-        }
-        memcpy(PyArray_DATA((PyArrayObject *) constraint_vals), prob->constraint_values,
-               size * sizeof(double));
-    }
-    else
-    {
-        npy_intp size = 0;
-        constraint_vals = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
-    }
+    double obj_val = problem_objective_forward(prob, (const double *) PyArray_DATA(u_array));
 
     Py_DECREF(u_array);
-    return Py_BuildValue("(dO)", obj_val, constraint_vals);
+    return Py_BuildValue("d", obj_val);
 }
 
 static PyObject *py_problem_constraint_forward(PyObject *self, PyObject *args)
@@ -541,15 +650,19 @@ static PyObject *py_problem_jacobian(PyObject *self, PyObject *args)
 
 static PyMethodDef DNLPMethods[] = {
     {"make_variable", py_make_variable, METH_VARARGS, "Create variable node"},
+    {"make_constant", py_make_constant, METH_VARARGS, "Create constant node"},
+    {"make_linear", py_make_linear, METH_VARARGS, "Create linear op node"},
     {"make_log", py_make_log, METH_VARARGS, "Create log node"},
     {"make_exp", py_make_exp, METH_VARARGS, "Create exp node"},
     {"make_add", py_make_add, METH_VARARGS, "Create add node"},
     {"make_sum", py_make_sum, METH_VARARGS, "Create sum node"},
+    {"make_neg", py_make_neg, METH_VARARGS, "Create neg node"},
+    {"make_promote", py_make_promote, METH_VARARGS, "Create promote node"},
     {"forward", py_forward, METH_VARARGS, "Run forward pass and return values"},
     {"jacobian", py_jacobian, METH_VARARGS, "Compute jacobian and return CSR components"},
     {"make_problem", py_make_problem, METH_VARARGS, "Create problem from objective and constraints"},
     {"problem_allocate", py_problem_allocate, METH_VARARGS, "Allocate problem resources"},
-    {"problem_forward", py_problem_forward, METH_VARARGS, "Evaluate objective and constraints"},
+    {"problem_objective_forward", py_problem_objective_forward, METH_VARARGS, "Evaluate objective only"},
     {"problem_constraint_forward", py_problem_constraint_forward, METH_VARARGS, "Evaluate constraints only"},
     {"problem_gradient", py_problem_gradient, METH_VARARGS, "Compute objective gradient"},
     {"problem_jacobian", py_problem_jacobian, METH_VARARGS, "Compute constraint jacobian"},

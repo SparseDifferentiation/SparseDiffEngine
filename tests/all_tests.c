@@ -6,6 +6,8 @@
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_hstack.h"
 #include "forward_pass/affine/test_linear_op.h"
+#include "forward_pass/affine/test_neg.h"
+#include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
 #include "forward_pass/affine/test_variable_constant.h"
 #include "forward_pass/composite/test_composite.h"
@@ -45,6 +47,12 @@ int main(void)
     mu_run_test(test_constant, tests_run);
     mu_run_test(test_addition, tests_run);
     mu_run_test(test_linear_op, tests_run);
+    mu_run_test(test_neg_forward, tests_run);
+    mu_run_test(test_neg_jacobian, tests_run);
+    mu_run_test(test_neg_chain, tests_run);
+    mu_run_test(test_promote_scalar_to_vector, tests_run);
+    mu_run_test(test_promote_scalar_jacobian, tests_run);
+    mu_run_test(test_promote_vector_jacobian, tests_run);
     mu_run_test(test_exp, tests_run);
     mu_run_test(test_log, tests_run);
     mu_run_test(test_composite, tests_run);
@@ -121,7 +129,7 @@ int main(void)
 
     printf("\n--- Problem Struct Tests ---\n");
     mu_run_test(test_problem_new_free, tests_run);
-    mu_run_test(test_problem_forward, tests_run);
+    mu_run_test(test_problem_objective_forward, tests_run);
     mu_run_test(test_problem_gradient, tests_run);
     mu_run_test(test_problem_jacobian, tests_run);
     mu_run_test(test_problem_jacobian_multi, tests_run);

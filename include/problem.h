@@ -23,7 +23,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints);
 void problem_allocate(problem *prob, const double *u);
 void free_problem(problem *prob);
 
-double problem_forward(problem *prob, const double *u);
+double problem_objective_forward(problem *prob, const double *u);
 double *problem_constraint_forward(problem *prob, const double *u);
 double *problem_gradient(problem *prob, const double *u);
 CSR_Matrix *problem_jacobian(problem *prob, const double *u);

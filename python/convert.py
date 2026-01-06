@@ -53,19 +53,39 @@ def build_variable_dict(variables: list) -> tuple[dict, int]:
         c_var = diffengine.make_variable(d1, d2, offset, n_vars)
         var_dict[var.id] = c_var
 
-    return var_dict
+    return var_dict, n_vars
 
 
-def _convert_expr(expr, var_dict: dict):
+def _convert_expr(expr, var_dict: dict, n_vars: int):
     """Convert CVXPY expression using pre-built variable dictionary."""
     # Base case: variable lookup
     if isinstance(expr, cp.Variable):
         return var_dict[expr.id]
 
+    # Base case: constant
+    if isinstance(expr, cp.Constant):
+        value = np.asarray(expr.value, dtype=np.float64).flatten()
+        d1 = expr.shape[0] if len(expr.shape) >= 1 else 1
+        d2 = expr.shape[1] if len(expr.shape) >= 2 else 1
+        return diffengine.make_constant(d1, d2, n_vars, value)
+
     # Recursive case: atoms
     atom_name = type(expr).__name__
+
+    # Handle NegExpression using neg atom
+    if atom_name == "NegExpression":
+        child = _convert_expr(expr.args[0], var_dict, n_vars)
+        return diffengine.make_neg(child)
+
+    # Handle Promote (broadcasts scalar/vector to larger shape)
+    if atom_name == "Promote":
+        child = _convert_expr(expr.args[0], var_dict, n_vars)
+        d1 = expr.shape[0] if len(expr.shape) >= 1 else 1
+        d2 = expr.shape[1] if len(expr.shape) >= 2 else 1
+        return diffengine.make_promote(child, d1, d2)
+
     if atom_name in ATOM_CONVERTERS:
-        children = [_convert_expr(arg, var_dict) for arg in expr.args]
+        children = [_convert_expr(arg, var_dict, n_vars) for arg in expr.args]
         converter = ATOM_CONVERTERS[atom_name]
         # N-ary ops (like AddExpression) take list, unary ops take single arg
         if atom_name == "AddExpression":
@@ -86,21 +106,21 @@ def convert_expressions(problem: cp.Problem) -> tuple:
         c_objective: C expression for objective
         c_constraints: list of C expressions for constraints
     """
-    var_dict = build_variable_dict(problem.variables())
+    var_dict, n_vars = build_variable_dict(problem.variables())
 
     # Convert objective
-    c_objective = _convert_expr(problem.objective.expr, var_dict)
+    c_objective = _convert_expr(problem.objective.expr, var_dict, n_vars)
 
     # Convert constraints (expression part only for now)
     c_constraints = []
     for constr in problem.constraints:
-        c_expr = _convert_expr(constr.expr, var_dict)
+        c_expr = _convert_expr(constr.expr, var_dict, n_vars)
         c_constraints.append(c_expr)
 
     return c_objective, c_constraints
 
 
-def convert_problem(problem: cp.Problem) -> "Problem":
+def convert_problem(problem: cp.Problem) -> "C_problem":
     """
     Convert CVXPY Problem to C problem struct.
 
@@ -108,18 +128,20 @@ def convert_problem(problem: cp.Problem) -> "Problem":
         problem: CVXPY Problem object
 
     Returns:
-        Problem wrapper around C problem struct
+        C_Problem wrapper around C problem struct
     """
-    return Problem(problem)
+    return C_problem(problem)
 
 
-class Problem:
+class C_problem:
     """Wrapper around C problem struct for CVXPY problems."""
 
     def __init__(self, cvxpy_problem: cp.Problem):
-        var_dict = build_variable_dict(cvxpy_problem.variables())
-        c_obj = _convert_expr(cvxpy_problem.objective.expr, var_dict)
-        c_constraints = [_convert_expr(c.expr, var_dict) for c in cvxpy_problem.constraints]
+        var_dict, n_vars = build_variable_dict(cvxpy_problem.variables())
+        c_obj = _convert_expr(cvxpy_problem.objective.expr, var_dict, n_vars)
+        c_constraints = [
+            _convert_expr(c.expr, var_dict, n_vars) for c in cvxpy_problem.constraints
+        ]
         self._capsule = diffengine.make_problem(c_obj, c_constraints)
         self._allocated = False
 
@@ -128,9 +150,9 @@ class Problem:
         diffengine.problem_allocate(self._capsule, u)
         self._allocated = True
 
-    def forward(self, u: np.ndarray) -> tuple[float, np.ndarray]:
-        """Evaluate objective and constraints. Returns (obj_value, constraint_values)."""
-        return diffengine.problem_forward(self._capsule, u)
+    def objective_forward(self, u: np.ndarray) -> float:
+        """Evaluate objective. Returns obj_value float."""
+        return diffengine.problem_objective_forward(self._capsule, u)
 
     def constraint_forward(self, u: np.ndarray) -> np.ndarray:
         """Evaluate constraints only. Returns constraint_values array."""
