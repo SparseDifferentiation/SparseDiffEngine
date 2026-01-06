@@ -14,16 +14,25 @@ def _chain_add(children):
 
 
 # Mapping from CVXPY atom names to C diff engine functions
+# Converters receive (expr, children) where expr is the CVXPY expression
 ATOM_CONVERTERS = {
     # Elementwise unary
-    "log": lambda child: diffengine.make_log(child),
-    "exp": lambda child: diffengine.make_exp(child),
+    "log": lambda expr, children: diffengine.make_log(children[0]),
+    "exp": lambda expr, children: diffengine.make_exp(children[0]),
+
+    # Affine unary
+    "NegExpression": lambda expr, children: diffengine.make_neg(children[0]),
+    "Promote": lambda expr, children: diffengine.make_promote(
+        children[0],
+        expr.shape[0] if len(expr.shape) >= 1 else 1,
+        expr.shape[1] if len(expr.shape) >= 2 else 1,
+    ),
 
     # N-ary (handles 2+ args)
-    "AddExpression": _chain_add,
+    "AddExpression": lambda expr, children: _chain_add(children),
 
     # Reductions
-    "Sum": lambda child: diffengine.make_sum(child, -1),  # axis=-1 = sum all
+    "Sum": lambda expr, children: diffengine.make_sum(children[0], -1),
 }
 
 
@@ -72,25 +81,9 @@ def _convert_expr(expr, var_dict: dict, n_vars: int):
     # Recursive case: atoms
     atom_name = type(expr).__name__
 
-    # Handle NegExpression using neg atom
-    if atom_name == "NegExpression":
-        child = _convert_expr(expr.args[0], var_dict, n_vars)
-        return diffengine.make_neg(child)
-
-    # Handle Promote (broadcasts scalar/vector to larger shape)
-    if atom_name == "Promote":
-        child = _convert_expr(expr.args[0], var_dict, n_vars)
-        d1 = expr.shape[0] if len(expr.shape) >= 1 else 1
-        d2 = expr.shape[1] if len(expr.shape) >= 2 else 1
-        return diffengine.make_promote(child, d1, d2)
-
     if atom_name in ATOM_CONVERTERS:
         children = [_convert_expr(arg, var_dict, n_vars) for arg in expr.args]
-        converter = ATOM_CONVERTERS[atom_name]
-        # N-ary ops (like AddExpression) take list, unary ops take single arg
-        if atom_name == "AddExpression":
-            return converter(children)
-        return converter(*children) if len(children) > 1 else converter(children[0])
+        return ATOM_CONVERTERS[atom_name](expr, children)
 
     raise NotImplementedError(f"Atom '{atom_name}' not supported")
 
