@@ -34,8 +34,6 @@ const char *test_jacobian_rel_entr_vector_args_1()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, expected_Ap, 4));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, expected_Ai, 6));
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -67,7 +65,5 @@ const char *test_jacobian_rel_entr_vector_args_2()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, expected_Ap, 4));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, expected_Ai, 6));
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }

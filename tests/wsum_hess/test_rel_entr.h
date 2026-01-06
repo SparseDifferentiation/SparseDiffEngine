@@ -40,8 +40,6 @@ const char *test_wsum_hess_rel_entr_1()
     mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 12));
 
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -79,7 +77,5 @@ const char *test_wsum_hess_rel_entr_2()
     mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 12));
 
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }

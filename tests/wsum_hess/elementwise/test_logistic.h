@@ -48,7 +48,6 @@ const char *test_wsum_hess_logistic()
               cmp_int_array(logistic_node->wsum_hess->i, expected_i, 3));
 
     free_expr(logistic_node);
-    free_expr(x);
 
     return 0;
 }

@@ -46,10 +46,6 @@ const char *test_jacobian_hstack_vectors()
     mu_assert("rows fail", cmp_int_array(stack->jacobian->p, expected_Ap, 10));
 
     free_expr(stack);
-    free_expr(sin_x);
-    free_expr(exp_x);
-    free_expr(log_x);
-    free_expr(x);
     return 0;
 }
 
@@ -94,9 +90,5 @@ const char *test_jacobian_hstack_matrix()
     mu_assert("rows fail", cmp_int_array(stack->jacobian->p, expected_Ap, 19));
 
     free_expr(stack);
-    free_expr(sin_x);
-    free_expr(exp_x);
-    free_expr(log_x);
-    free_expr(x);
     return 0;
 }

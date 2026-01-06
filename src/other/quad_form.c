@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void forward(expr *node, const double *u)
 {
@@ -25,10 +26,78 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init(expr *node)
 {
+    assert(node->left->var_id != NOT_A_VARIABLE);
+    assert(node->left->d2 == 1);
+    expr *x = node->left;
+    node->dwork = (double *) malloc(x->d1 * sizeof(double));
+    node->jacobian = new_csr_matrix(1, node->n_vars, x->d1);
+    node->jacobian->p[0] = 0;
+    node->jacobian->p[1] = x->d1;
+
+    for (int j = 0; j < x->d1; j++)
+    {
+        node->jacobian->i[j] = x->var_id + j;
+    }
+}
+
+static void eval_jacobian(expr *node)
+{
+    expr *x = node->left;
+    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+
+    // jacobian = 2 * Q * x
+    csr_matvec(Q, x->value, node->jacobian->x, 0);
+
+    for (int j = 0; j < x->d1; j++)
+    {
+        node->jacobian->x[j] *= 2.0;
+    }
+}
+
+static void wsum_hess_init(expr *node)
+{
+    expr *x = node->left;
+    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
+
+    /* set global row pointers */
+    memcpy(H->p + x->var_id, Q->p, (x->d1 + 1) * sizeof(int));
+    for (int i = x->var_id + x->d1 + 1; i <= node->n_vars; i++)
+    {
+        H->p[i] = Q->nnz;
+    }
+
+    /* set global column indices */
+    for (int i = 0; i < Q->nnz; i++)
+    {
+        H->i[i] = Q->i[i] + x->var_id;
+    }
+
+    node->wsum_hess = H;
+}
+
+static void eval_wsum_hess(expr *node, const double *w)
+{
+    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    double *H = node->wsum_hess->x;
+    double two_w = 2.0 * w[0];
+    for (int i = 0; i < Q->nnz; i++)
+    {
+        H[i] = two_w * Q->x[i];
+    }
+}
+
+/*
+The following two functions are commented out. It supports the jacobian for
+quad_form(Ax, Q), but after reconsideration, I think we should treat this as
+quad_form(x, A.TQA) in the canonicalization so we don't need to support the chain
+rule here.
+static void jacobian_init(expr *node)
+{
     expr *x = node->left;
     node->dwork = (double *) malloc(x->d1 * sizeof(double));
 
-    /* if x is a variable */
+    // if x is a variable
     if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian = new_csr_matrix(1, node->n_vars, x->d1);
@@ -40,14 +109,14 @@ static void jacobian_init(expr *node)
             node->jacobian->i[j] = x->var_id + j;
         }
     }
-    else /* x is not a variable */
+    else // x is not a variable
     {
-        /* compute required allocation and allocate jacobian */
+        // compute required allocation and allocate jacobian
         bool *col_nz = (bool *) calloc(node->n_vars, sizeof(bool));
         int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
         node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
 
-        /* precompute column indices */
+        // precompute column indices
         node->jacobian->nnz = 0;
         for (int j = 0; j < node->n_vars; j++)
         {
@@ -65,12 +134,13 @@ static void jacobian_init(expr *node)
     }
 }
 
-static void eval_jacobian(expr *node)
+
+static void eval_jacobian_old(expr *node)
 {
     expr *x = node->left;
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
 
-    /* if x is a variable */
+    // if x is a variable
     if (x->var_id != NOT_A_VARIABLE)
     {
         csr_matvec(Q, x->value, node->jacobian->x, 0);
@@ -80,11 +150,11 @@ static void eval_jacobian(expr *node)
             node->jacobian->x[j] *= 2.0;
         }
     }
-    else /* x is not a variable */
+    else // x is not a variable
     {
         linear_op_expr *lin_x = (linear_op_expr *) x;
 
-        /* local jacobian */
+        // local jacobian
         csr_matvec(Q, x->value, node->dwork, 0);
 
         for (int j = 0; j < x->d1; j++)
@@ -92,10 +162,11 @@ static void eval_jacobian(expr *node)
             node->dwork[j] *= 2.0;
         }
 
-        /* chain rule using CSC format */
+        // chain rule using CSC format
         csc_matvec_fill_values(lin_x->A_csc, node->dwork, node->jacobian);
     }
 }
+*/
 
 expr *new_quad_form(expr *left, CSR_Matrix *Q)
 {
@@ -113,6 +184,7 @@ expr *new_quad_form(expr *left, CSR_Matrix *Q)
 
     /* Set type-specific field */
     qnode->Q = Q;
-
+    node->wsum_hess_init = wsum_hess_init;
+    node->eval_wsum_hess = eval_wsum_hess;
     return node;
 }

@@ -33,7 +33,6 @@ const char *test_wsum_hess_sin()
               cmp_int_array(sin_node->wsum_hess->i, expected_i, 3));
 
     free_expr(sin_node);
-    free_expr(x);
 
     return 0;
 }
@@ -62,7 +61,6 @@ const char *test_wsum_hess_cos()
               cmp_int_array(cos_node->wsum_hess->i, expected_i, 3));
 
     free_expr(cos_node);
-    free_expr(x);
 
     return 0;
 }
@@ -93,7 +91,6 @@ const char *test_wsum_hess_tan()
               cmp_int_array(tan_node->wsum_hess->i, expected_i, 3));
 
     free_expr(tan_node);
-    free_expr(x);
 
     return 0;
 }

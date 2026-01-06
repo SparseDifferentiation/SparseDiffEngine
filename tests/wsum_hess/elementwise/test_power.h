@@ -33,7 +33,6 @@ const char *test_wsum_hess_power()
               cmp_int_array(power_node->wsum_hess->i, expected_i, 3));
 
     free_expr(power_node);
-    free_expr(x);
 
     return 0;
 }

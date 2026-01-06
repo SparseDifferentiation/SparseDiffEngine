@@ -31,6 +31,8 @@
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_multiply.h"
+#include "wsum_hess/test_quad_form.h"
+#include "wsum_hess/test_quad_over_lin.h"
 #include "wsum_hess/test_rel_entr.h"
 #include "wsum_hess/test_sum.h"
 
@@ -71,7 +73,8 @@ int main(void)
     mu_run_test(test_quad_over_lin4, tests_run);
     mu_run_test(test_quad_over_lin5, tests_run);
     mu_run_test(test_quad_form, tests_run);
-    mu_run_test(test_quad_form2, tests_run);
+    /* commented out - see test_quad_form.h */
+    // mu_run_test(test_quad_form2, tests_run);
     mu_run_test(test_jacobian_sum_log, tests_run);
     mu_run_test(test_jacobian_sum_mult, tests_run);
     mu_run_test(test_jacobian_sum_log_axis_0, tests_run);
@@ -104,6 +107,9 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
+    mu_run_test(test_wsum_hess_quad_over_lin_xy, tests_run);
+    mu_run_test(test_wsum_hess_quad_over_lin_yx, tests_run);
+    mu_run_test(test_wsum_hess_quad_form, tests_run);
     mu_run_test(test_wsum_hess_multiply_linear_ops, tests_run);
     mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
 

@@ -31,7 +31,6 @@ const char *test_linear_op()
     double expected[3] = {8, 7, 26};
     mu_assert("fail", cmp_double_array(linear_node->value, expected, 3));
     free_expr(linear_node);
-    free_expr(var);
     free_csr_matrix(A);
     return 0;
 }

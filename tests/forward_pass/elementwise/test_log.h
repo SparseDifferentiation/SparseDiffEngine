@@ -17,6 +17,5 @@ const char *test_log()
     double correct[2] = {log(1.0), log(2.718281828)};
     mu_assert("fail", cmp_double_array(log_node->value, correct, 2));
     free_expr(log_node);
-    free_expr(var);
     return 0;
 }

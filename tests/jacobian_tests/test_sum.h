@@ -29,8 +29,6 @@ const char *test_jacobian_sum_log()
     mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 3));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(x);
     return 0;
 }
 
@@ -65,9 +63,6 @@ const char *test_jacobian_sum_mult()
     mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 6));
 
     free_expr(sum_node);
-    free_expr(mult_node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -108,8 +103,6 @@ const char *test_jacobian_sum_log_axis_0()
     mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 6));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(x);
     return 0;
 }
 const char *test_jacobian_sum_add_log_axis_0()
@@ -157,11 +150,6 @@ const char *test_jacobian_sum_add_log_axis_0()
     mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 12));
 
     free_expr(sum_node);
-    free_expr(add_node);
-    free_expr(log_x);
-    free_expr(log_y);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 const char *test_jacobian_sum_log_axis_1()
@@ -204,7 +192,5 @@ const char *test_jacobian_sum_log_axis_1()
     mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 6));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(x);
     return 0;
 }

@@ -30,10 +30,6 @@ const char *test_hstack_forward_vectors()
     mu_assert("hstack forward failed", cmp_double_array(stack->value, expected, 9));
 
     free_expr(stack);
-    free_expr(sin_x);
-    free_expr(exp_x);
-    free_expr(log_x);
-    free_expr(x);
     return 0;
 }
 
@@ -63,9 +59,5 @@ const char *test_hstack_forward_matrix()
               cmp_double_array(stack->value, expected, 18));
 
     free_expr(stack);
-    free_expr(sin_x);
-    free_expr(exp_x);
-    free_expr(log_x);
-    free_expr(x);
     return 0;
 }

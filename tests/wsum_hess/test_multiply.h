@@ -34,8 +34,6 @@ const char *test_wsum_hess_multiply_1()
     mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 6));
 
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -105,9 +103,6 @@ const char *test_wsum_hess_multiply_sparse_random()
 
     /* Cleanup */
     free_expr(mult_node);
-    free_expr(Ax_node);
-    free_expr(Bx_node);
-    free_expr(x);
     free_csr_matrix(A);
     free_csr_matrix(B);
 
@@ -190,9 +185,6 @@ const char *test_wsum_hess_multiply_linear_ops()
 
     /* Cleanup */
     free_expr(mult_node);
-    free_expr(Ax_node);
-    free_expr(Bx_node);
-    free_expr(x);
     free_csr_matrix(A);
     free_csr_matrix(B);
 
@@ -228,7 +220,5 @@ const char *test_wsum_hess_multiply_2()
     mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 6));
 
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }

@@ -33,7 +33,6 @@ const char *test_wsum_hess_exp()
               cmp_int_array(exp_node->wsum_hess->i, expected_i, 3));
 
     free_expr(exp_node);
-    free_expr(x);
 
     return 0;
 }

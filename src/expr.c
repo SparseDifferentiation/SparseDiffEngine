@@ -11,7 +11,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->d2 = d2;
     node->size = d1 * d2;
     node->n_vars = n_vars;
-    node->refcount = 1;
+    node->refcount = 0;
     node->value = (double *) calloc(d1 * d2, sizeof(double));
     node->var_id = NOT_A_VARIABLE;
     node->forward = forward;

@@ -45,10 +45,7 @@ const char *test_wsum_hess_sum_log_linear()
               cmp_int_array(sum_node->wsum_hess->i, expected_i, 4));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(Ax_node);
     free_csr_matrix(A);
-    free_expr(x);
 
     return 0;
 }
@@ -87,8 +84,6 @@ const char *test_wsum_hess_sum_log_axis0()
               cmp_int_array(sum_node->wsum_hess->i, expected_i, 6));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(x_node);
 
     return 0;
 }
@@ -127,8 +122,6 @@ const char *test_wsum_hess_sum_log_axis1()
               cmp_int_array(sum_node->wsum_hess->i, expected_i, 6));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(x_node);
 
     return 0;
 }

@@ -30,8 +30,6 @@ const char *test_sum_axis_neg1()
               fabs(sum_node->value[0] - expected) < 1e-10);
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(const_node);
     return 0;
 }
 
@@ -59,8 +57,6 @@ const char *test_sum_axis_0()
               cmp_double_array(sum_node->value, expected, 2));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(const_node);
     return 0;
 }
 
@@ -90,7 +86,5 @@ const char *test_sum_axis_1()
               cmp_double_array(sum_node->value, expected, 3));
 
     free_expr(sum_node);
-    free_expr(log_node);
-    free_expr(const_node);
     return 0;
 }

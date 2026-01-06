@@ -96,13 +96,7 @@ const char *test_wsum_hess_hstack()
               cmp_int_array(hstack_node->wsum_hess->i, expected_i, 9));
 
     free_expr(hstack_node);
-    free_expr(sin_y);
-    free_expr(exp_x);
-    free_expr(log_z);
-    free_expr(log_x);
-    free_expr(y);
-    free_expr(z);
-    free_expr(x);
+    return 0;
 
     return 0;
 }
@@ -213,13 +207,7 @@ const char *test_wsum_hess_hstack_matrix()
               cmp_int_array(hstack_node->wsum_hess->i, expected_i, 18));
 
     free_expr(hstack_node);
-    free_expr(sin_y);
-    free_expr(exp_x);
-    free_expr(log_z);
-    free_expr(log_x);
-    free_expr(y);
-    free_expr(z);
-    free_expr(x);
+    return 0;
 
     return 0;
 }

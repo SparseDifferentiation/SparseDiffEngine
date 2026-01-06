@@ -40,7 +40,6 @@ const char *test_wsum_hess_sinh()
               cmp_int_array(sinh_node->wsum_hess->i, expected_i, 3));
 
     free_expr(sinh_node);
-    free_expr(x);
 
     return 0;
 }
@@ -78,7 +77,6 @@ const char *test_wsum_hess_tanh()
               cmp_int_array(tanh_node->wsum_hess->i, expected_i, 3));
 
     free_expr(tanh_node);
-    free_expr(x);
 
     return 0;
 }
@@ -116,7 +114,6 @@ const char *test_wsum_hess_asinh()
               cmp_int_array(asinh_node->wsum_hess->i, expected_i, 3));
 
     free_expr(asinh_node);
-    free_expr(x);
 
     return 0;
 }
@@ -155,7 +152,6 @@ const char *test_wsum_hess_atanh()
               cmp_int_array(atanh_node->wsum_hess->i, expected_i, 3));
 
     free_expr(atanh_node);
-    free_expr(x);
 
     return 0;
 }

@@ -28,8 +28,6 @@ const char *test_jacobian_elementwise_mult_1()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, rows, 4));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, cols, 6));
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -55,8 +53,6 @@ const char *test_jacobian_elementwise_mult_2()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, rows, 4));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, cols, 6));
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -120,10 +116,6 @@ const char *test_jacobian_elementwise_mult_3()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, rows, 4));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, cols, 16));
     free_expr(node);
-    free_expr(Ax);
-    free_expr(By);
-    free_expr(x);
-    free_expr(y);
     free_csr_matrix(A);
     free_csr_matrix(B);
     return 0;
@@ -149,7 +141,6 @@ const char *test_jacobian_elementwise_mult_4()
 
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
-    expr *y = new_variable(3, 1, 7, 10);
     expr *Ax = new_linear(x, A);
     expr *node = new_elementwise_mult(Ax, Ax);
 
@@ -170,9 +161,6 @@ const char *test_jacobian_elementwise_mult_4()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, rows, 4));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, cols, 8));
     free_expr(node);
-    free_expr(Ax);
-    free_expr(x);
-    free_expr(y);
     free_csr_matrix(A);
     return 0;
 }

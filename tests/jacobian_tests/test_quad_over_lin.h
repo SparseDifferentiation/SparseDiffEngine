@@ -29,8 +29,6 @@ const char *test_quad_over_lin1()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, expected_Ai, 4));
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -55,8 +53,6 @@ const char *test_quad_over_lin2()
     mu_assert("rows fail", cmp_int_array(node->jacobian->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->i, expected_Ai, 4));
     free_expr(node);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -96,9 +92,6 @@ const char *test_quad_over_lin3()
 
     free_csr_matrix(A);
     free_expr(node);
-    free_expr(Ax_expr);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -139,9 +132,6 @@ const char *test_quad_over_lin4()
 
     free_csr_matrix(A);
     free_expr(node);
-    free_expr(Ax_expr);
-    free_expr(x);
-    free_expr(y);
     return 0;
 }
 
@@ -182,8 +172,5 @@ const char *test_quad_over_lin5()
 
     free_csr_matrix(A);
     free_expr(node);
-    free_expr(Ax_expr);
-    free_expr(u);
-    free_expr(y);
     return 0;
 }
