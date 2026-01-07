@@ -7,4 +7,7 @@
 
 expr *new_quad_form(expr *child, CSR_Matrix *Q);
 
+/* product of all entries, without axis argument */
+expr *new_prod(expr *child);
+
 #endif /* OTHER_H */

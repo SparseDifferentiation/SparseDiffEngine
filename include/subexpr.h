@@ -40,6 +40,15 @@ typedef struct sum_expr
     struct int_double_pair *int_double_pairs; /* for sorting jacobian entries */
 } sum_expr;
 
+/* Product of all entries */
+typedef struct prod_expr
+{
+    expr base;
+    int num_of_zeros;
+    int zero_index;      /* index of zero element when num_of_zeros == 1 */
+    double prod_nonzero; /* product of non-zero elements when num_of_zeros == 1 */
+} prod_expr;
+
 /* Horizontal stack (concatenate) */
 typedef struct hstack_expr
 {
