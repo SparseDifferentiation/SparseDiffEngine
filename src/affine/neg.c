@@ -1,4 +1,5 @@
 #include "affine.h"
+#include <string.h>
 
 static void forward(expr *node, const double *u)
 {
@@ -22,14 +23,8 @@ static void jacobian_init(expr *node)
     node->jacobian = new_csr_matrix(child_jac->m, child_jac->n, child_jac->nnz);
 
     /* copy row pointers and column indices (sparsity pattern is constant) */
-    for (int i = 0; i <= child_jac->m; i++)
-    {
-        node->jacobian->p[i] = child_jac->p[i];
-    }
-    for (int k = 0; k < child_jac->nnz; k++)
-    {
-        node->jacobian->i[k] = child_jac->i[k];
-    }
+    memcpy(node->jacobian->p, child_jac->p, (child_jac->m + 1) * sizeof(int));
+    memcpy(node->jacobian->i, child_jac->i, child_jac->nnz * sizeof(int));
     node->jacobian->nnz = child_jac->nnz;
 }
 
@@ -56,14 +51,8 @@ static void wsum_hess_init(expr *node)
     node->wsum_hess = new_csr_matrix(child_hess->m, child_hess->n, child_hess->nnz);
 
     /* copy row pointers and column indices (sparsity pattern is constant) */
-    for (int i = 0; i <= child_hess->m; i++)
-    {
-        node->wsum_hess->p[i] = child_hess->p[i];
-    }
-    for (int k = 0; k < child_hess->nnz; k++)
-    {
-        node->wsum_hess->i[k] = child_hess->i[k];
-    }
+    memcpy(node->wsum_hess->p, child_hess->p, (child_hess->m + 1) * sizeof(int));
+    memcpy(node->wsum_hess->i, child_hess->i, child_hess->nnz * sizeof(int));
     node->wsum_hess->nnz = child_hess->nnz;
 }
 

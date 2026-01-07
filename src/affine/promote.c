@@ -1,14 +1,12 @@
 #include "affine.h"
-#include "subexpr.h"
 #include <stdlib.h>
+#include <string.h>
 
 /* Promote broadcasts a child expression to a larger shape.
  * Typically used to broadcast a scalar to a vector. */
 
 static void forward(expr *node, const double *u)
 {
-    promote_expr *prom = (promote_expr *) node;
-
     /* child's forward pass */
     node->left->forward(node->left, u);
 
@@ -19,7 +17,6 @@ static void forward(expr *node, const double *u)
         /* replicate pattern: output[i] = child[i % child_size] */
         node->value[i] = node->left->value[i % child_size];
     }
-    (void) prom; /* unused for now, shape info stored in d1/d2 */
 }
 
 static void jacobian_init(expr *node)
@@ -85,22 +82,20 @@ static void wsum_hess_init(expr *node)
     node->wsum_hess = new_csr_matrix(child_hess->m, child_hess->n, child_hess->nnz);
 
     /* copy row pointers and column indices (sparsity pattern is constant) */
-    for (int i = 0; i <= child_hess->m; i++)
-    {
-        node->wsum_hess->p[i] = child_hess->p[i];
-    }
-    for (int k = 0; k < child_hess->nnz; k++)
-    {
-        node->wsum_hess->i[k] = child_hess->i[k];
-    }
+    memcpy(node->wsum_hess->p, child_hess->p, (child_hess->m + 1) * sizeof(int));
+    memcpy(node->wsum_hess->i, child_hess->i, child_hess->nnz * sizeof(int));
     node->wsum_hess->nnz = child_hess->nnz;
+
+    /* allocate workspace for summing weights */
+    node->dwork = (double *) malloc(node->left->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     /* Sum weights that correspond to the same child element */
     int child_size = node->left->size;
-    double *summed_w = (double *) calloc(child_size, sizeof(double));
+    double *summed_w = node->dwork;
+    memset(summed_w, 0, child_size * sizeof(double));
     for (int i = 0; i < node->size; i++)
     {
         summed_w[i % child_size] += w[i];
@@ -108,7 +103,6 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     /* evaluate child's wsum_hess with summed weights */
     node->left->eval_wsum_hess(node->left, summed_w);
-    free(summed_w);
 
     /* copy values only (sparsity pattern set in wsum_hess_init) */
     CSR_Matrix *child_hess = node->left->wsum_hess;
@@ -125,12 +119,11 @@ static bool is_affine(const expr *node)
 
 expr *new_promote(expr *child, int d1, int d2)
 {
-    /* Allocate the type-specific struct */
-    promote_expr *prom = (promote_expr *) calloc(1, sizeof(promote_expr));
-    expr *node = &prom->base;
-
-    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, NULL);
+    expr *node = new_expr(d1, d2, child->n_vars);
+    node->forward = forward;
+    node->jacobian_init = jacobian_init;
+    node->eval_jacobian = eval_jacobian;
+    node->is_affine = is_affine;
 
     node->left = child;
     expr_retain(child);

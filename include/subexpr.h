@@ -57,11 +57,4 @@ typedef struct elementwise_mult_expr
     CSR_Matrix *CSR_work2;
 } elementwise_mult_expr;
 
-/* Promote (broadcast) to larger shape */
-typedef struct promote_expr
-{
-    expr base;
-    /* target shape stored in base.d1, base.d2 */
-} promote_expr;
-
 #endif /* SUBEXPR_H */
