@@ -133,7 +133,7 @@ static void wsum_hess_init(expr *node)
     }
     else
     {
-        /* not implemented for non-variable case */
+        assert(false && "not implemented");
     }
 }
 
