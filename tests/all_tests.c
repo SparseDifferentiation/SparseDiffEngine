@@ -15,6 +15,7 @@
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
 #include "jacobian_tests/test_log.h"
+#include "jacobian_tests/test_prod.h"
 #include "jacobian_tests/test_quad_form.h"
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
@@ -31,6 +32,7 @@
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_multiply.h"
+#include "wsum_hess/test_prod.h"
 #include "wsum_hess/test_quad_form.h"
 #include "wsum_hess/test_quad_over_lin.h"
 #include "wsum_hess/test_rel_entr.h"
@@ -75,6 +77,9 @@ int main(void)
     mu_run_test(test_quad_form, tests_run);
     /* commented out - see test_quad_form.h */
     // mu_run_test(test_quad_form2, tests_run);
+    mu_run_test(test_jacobian_prod_no_zero, tests_run);
+    mu_run_test(test_jacobian_prod_one_zero, tests_run);
+    mu_run_test(test_jacobian_prod_two_zeros, tests_run);
     mu_run_test(test_jacobian_sum_log, tests_run);
     mu_run_test(test_jacobian_sum_mult, tests_run);
     mu_run_test(test_jacobian_sum_log_axis_0, tests_run);
@@ -103,6 +108,10 @@ int main(void)
     mu_run_test(test_wsum_hess_sum_log_linear, tests_run);
     mu_run_test(test_wsum_hess_sum_log_axis0, tests_run);
     mu_run_test(test_wsum_hess_sum_log_axis1, tests_run);
+    mu_run_test(test_wsum_hess_prod_no_zero, tests_run);
+    mu_run_test(test_wsum_hess_prod_one_zero, tests_run);
+    mu_run_test(test_wsum_hess_prod_two_zeros, tests_run);
+    mu_run_test(test_wsum_hess_prod_many_zeros, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_1, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
