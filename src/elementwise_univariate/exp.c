@@ -33,5 +33,8 @@ expr *new_exp(expr *child)
     node->forward = forward;
     node->local_jacobian = local_jacobian;
     node->local_wsum_hess = local_wsum_hess;
+
+    // just for debugging, should be removed
+    strcpy(node->name, "exp");
     return node;
 }

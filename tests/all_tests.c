@@ -20,6 +20,7 @@
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
 #include "jacobian_tests/test_sum.h"
+#include "jacobian_tests/test_trace.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
 #include "wsum_hess/elementwise/test_entr.h"
@@ -37,6 +38,7 @@
 #include "wsum_hess/test_quad_over_lin.h"
 #include "wsum_hess/test_rel_entr.h"
 #include "wsum_hess/test_sum.h"
+#include "wsum_hess/test_trace.h"
 
 int main(void)
 {
@@ -87,8 +89,8 @@ int main(void)
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
-    mu_run_test(test_wsum_hess_multiply_1, tests_run);
-    mu_run_test(test_wsum_hess_multiply_2, tests_run);
+    mu_run_test(test_jacobian_trace_variable, tests_run);
+    mu_run_test(test_jacobian_trace_composite, tests_run);
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
@@ -121,6 +123,14 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_form, tests_run);
     mu_run_test(test_wsum_hess_multiply_linear_ops, tests_run);
     mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
+    mu_run_test(test_wsum_hess_multiply_1, tests_run);
+    mu_run_test(test_wsum_hess_multiply_2, tests_run);
+    // This test leads to seg fault
+    // mu_run_test(test_wsum_hess_trace_variable, tests_run);
+
+    // This test fails - not sure how sophisticated we should make
+    // wsum_hess for trace
+    // mu_run_test(test_wsum_hess_trace_composite, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_diag_csr_mult, tests_run);

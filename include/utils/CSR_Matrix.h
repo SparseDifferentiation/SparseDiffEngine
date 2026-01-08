@@ -52,12 +52,23 @@ void csr_insert_value(CSR_Matrix *A, int col_idx, double value);
  * d must have length m
  * C must be pre-allocated with same dimensions as A */
 void diag_csr_mult(const double *d, const CSR_Matrix *A, CSR_Matrix *C);
+void diag_csr_mult_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C);
 
 /* Compute C = A + B where A, B, C are CSR matrices
  * A and B must have same dimensions
  * C must be pre-allocated with sufficient nnz capacity.
  * C must be different from A and B */
 void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
+/* Compute sparsity pattern of A + B where A, B, C are CSR matrices.
+ * Fills C->p, C->i, and C->nnz; does not touch C->x. */
+void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
+                                    CSR_Matrix *C);
+
+/* Fill only the values of C = A + B, assuming C's sparsity pattern (p and i)
+ * is already filled and matches the union of A and B per row. Does not modify
+ * C->p, C->i, or C->nnz. */
+void sum_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
+                                  CSR_Matrix *C);
 
 /* Compute C = diag(d1) * A + diag(d2) * B where A, B, C are CSR matrices */
 void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,
@@ -74,6 +85,11 @@ void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
 /* Sum evenly spaced rows of A into a matrix C */
 void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
                                 struct int_double_pair *pairs, int row_spacing);
+
+/* Sum evenly spaced rows of A starting at offset into a row matrix C */
+void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
+                                  struct int_double_pair *pairs, int offset,
+                                  int spacing);
 
 /* Count number of columns with nonzero entries */
 int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz);

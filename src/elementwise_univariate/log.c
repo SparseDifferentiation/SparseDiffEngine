@@ -38,5 +38,8 @@ expr *new_log(expr *child)
     node->forward = forward;
     node->local_jacobian = local_jacobian;
     node->local_wsum_hess = local_wsum_hess;
+
+    // just for debugging, should be removed
+    strcpy(node->name, "log");
     return node;
 }
