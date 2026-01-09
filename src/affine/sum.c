@@ -140,7 +140,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     x->eval_wsum_hess(x, node->dwork);
 
-    /* copy values (TODO: is this necessary or can we just change pointers?)*/
+    /* copy values */
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 

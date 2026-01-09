@@ -49,7 +49,7 @@ static void wsum_hess_init(expr *node)
     int nnz_max = node->left->wsum_hess->nnz + node->right->wsum_hess->nnz;
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz_max);
 
-    /* TODO: we should fill sparsity pattern here for consistency */
+    /* fill sparsity pattern of hessian */
     sum_csr_matrices_fill_sparsity(node->left->wsum_hess, node->right->wsum_hess,
                                    node->wsum_hess);
 }
