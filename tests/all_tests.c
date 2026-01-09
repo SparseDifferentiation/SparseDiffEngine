@@ -15,17 +15,17 @@
 #include "forward_pass/elementwise/test_log.h"
 #include "jacobian_tests/test_composite.h"
 #include "jacobian_tests/test_elementwise_mult.h"
-#include "jacobian_tests/test_neg.h"
 #include "jacobian_tests/test_hstack.h"
 #include "jacobian_tests/test_log.h"
-#include "jacobian_tests/test_promote.h"
+#include "jacobian_tests/test_neg.h"
 #include "jacobian_tests/test_prod.h"
+#include "jacobian_tests/test_promote.h"
 #include "jacobian_tests/test_quad_form.h"
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
 #include "jacobian_tests/test_sum.h"
-#include "problem/test_problem.h"
 #include "jacobian_tests/test_trace.h"
+#include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
 #include "wsum_hess/elementwise/test_entr.h"
@@ -76,6 +76,7 @@ int main(void)
     mu_run_test(test_jacobian_composite_log_add, tests_run);
     mu_run_test(test_jacobian_rel_entr_vector_args_1, tests_run);
     mu_run_test(test_jacobian_rel_entr_vector_args_2, tests_run);
+    mu_run_test(test_jacobian_rel_entr_matrix_args, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_1, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_2, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_3, tests_run);
@@ -129,6 +130,7 @@ int main(void)
     mu_run_test(test_wsum_hess_prod_many_zeros, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_1, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
+    mu_run_test(test_wsum_hess_rel_entr_matrix, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
     mu_run_test(test_wsum_hess_quad_over_lin_xy, tests_run);
