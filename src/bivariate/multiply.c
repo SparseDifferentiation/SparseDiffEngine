@@ -44,6 +44,10 @@ static void jacobian_init(expr *node)
     node->dwork = (double *) malloc(2 * node->size * sizeof(double));
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
+
+    /* fill sparsity pattern */
+    sum_csr_matrices_fill_sparsity(node->left->jacobian, node->right->jacobian,
+                                   node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -52,8 +56,8 @@ static void eval_jacobian(expr *node)
     expr *y = node->right;
 
     /* chain rule */
-    sum_scaled_csr_matrices(x->jacobian, y->jacobian, node->jacobian, y->value,
-                            x->value);
+    sum_scaled_csr_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
+                                        y->value, x->value);
 }
 
 static void wsum_hess_init(expr *node)

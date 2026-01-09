@@ -21,9 +21,14 @@ void jacobian_init_elementwise(expr *node)
     /* otherwise it will be a linear operator */
     else
     {
-        node->jacobian = new_csr_matrix(child->jacobian->m, child->jacobian->n,
-                                        child->jacobian->nnz);
+        CSR_Matrix *J = child->jacobian;
+        node->jacobian = new_csr_matrix(J->m, J->n, J->nnz);
+
         node->dwork = (double *) malloc(node->size * sizeof(double));
+
+        /* copy sparsity pattern of child */
+        memcpy(node->jacobian->p, J->p, sizeof(int) * (J->m + 1));
+        memcpy(node->jacobian->i, J->i, sizeof(int) * J->nnz);
     }
 }
 
@@ -40,7 +45,7 @@ void eval_jacobian_elementwise(expr *node)
         /* Child will be a linear operator */
         linear_op_expr *lin_child = (linear_op_expr *) child;
         node->local_jacobian(node, node->dwork);
-        diag_csr_mult(node->dwork, lin_child->A_csr, node->jacobian);
+        diag_csr_mult_fill_values(node->dwork, lin_child->A_csr, node->jacobian);
     }
 }
 

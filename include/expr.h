@@ -5,6 +5,7 @@
 #include "utils/CSR_Matrix.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 #define JAC_IDXS_NOT_SET -1
 #define NOT_A_VARIABLE -1
@@ -52,6 +53,9 @@ typedef struct expr
     local_jacobian_fn local_jacobian;   /* used by elementwise univariate atoms*/
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
+
+    // name of node just for debugging - should be removed later
+    char name[32];
 
 } expr;
 

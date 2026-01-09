@@ -37,8 +37,15 @@ typedef struct sum_expr
 {
     expr base;
     int axis;
-    struct int_double_pair *int_double_pairs; /* for sorting jacobian entries */
+    int *idx_map; /* maps child nnz to summed-row positions */
 } sum_expr;
+
+/* Trace-like reduction: sums entries spaced by child->d1 */
+typedef struct trace_expr
+{
+    expr base;
+    struct int_double_pair *int_double_pairs; /* for sorting jacobian entries */
+} trace_expr;
 
 /* Product of all entries */
 typedef struct prod_expr
