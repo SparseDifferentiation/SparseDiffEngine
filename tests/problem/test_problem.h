@@ -71,9 +71,9 @@ const char *test_problem_objective_forward(void)
     problem_constraint_forward(prob, u);
 
     /* Constraint values should be [1, 2, 3] */
-    mu_assert("constraint[0] wrong", fabs(prob->constraint_values[0] - 1.0) < 1e-10);
-    mu_assert("constraint[1] wrong", fabs(prob->constraint_values[1] - 2.0) < 1e-10);
-    mu_assert("constraint[2] wrong", fabs(prob->constraint_values[2] - 3.0) < 1e-10);
+    double expected_constraints[3] = {1.0, 2.0, 3.0};
+    mu_assert("constraint values wrong",
+              cmp_double_array(prob->constraint_values, expected_constraints, 3));
 
     free_problem(prob);
 
@@ -111,17 +111,10 @@ const char *test_problem_constraint_forward(void)
 
     problem_constraint_forward(prob, u);
 
-    /* Check constraint values:
-     * [log(2), log(4), exp(2), exp(4)]
-     */
-    mu_assert("constraint[0] wrong",
-              fabs(prob->constraint_values[0] - log(2.0)) < 1e-10);
-    mu_assert("constraint[1] wrong",
-              fabs(prob->constraint_values[1] - log(4.0)) < 1e-10);
-    mu_assert("constraint[2] wrong",
-              fabs(prob->constraint_values[2] - exp(2.0)) < 1e-10);
-    mu_assert("constraint[3] wrong",
-              fabs(prob->constraint_values[3] - exp(4.0)) < 1e-10);
+    /* Check constraint values: [log(2), log(4), exp(2), exp(4)] */
+    double expected_constraints[4] = {log(2.0), log(4.0), exp(2.0), exp(4.0)};
+    mu_assert("constraint values wrong",
+              cmp_double_array(prob->constraint_values, expected_constraints, 4));
 
     free_problem(prob);
 
@@ -146,9 +139,9 @@ const char *test_problem_gradient(void)
     problem_gradient(prob);
 
     /* Expected gradient: [1/1, 1/2, 1/4] = [1.0, 0.5, 0.25] */
-    mu_assert("grad[0] wrong", fabs(prob->gradient_values[0] - 1.0) < 1e-10);
-    mu_assert("grad[1] wrong", fabs(prob->gradient_values[1] - 0.5) < 1e-10);
-    mu_assert("grad[2] wrong", fabs(prob->gradient_values[2] - 0.25) < 1e-10);
+    double expected_grad[3] = {1.0, 0.5, 0.25};
+    mu_assert("gradient wrong",
+              cmp_double_array(prob->gradient_values, expected_grad, 3));
 
     free_problem(prob);
 
@@ -188,17 +181,16 @@ const char *test_problem_jacobian(void)
     mu_assert("jac cols wrong", jac->n == 2);
 
     /* Check row pointers: each row has 1 element */
-    mu_assert("jac->p[0] wrong", jac->p[0] == 0);
-    mu_assert("jac->p[1] wrong", jac->p[1] == 1);
-    mu_assert("jac->p[2] wrong", jac->p[2] == 2);
+    int expected_p[3] = {0, 1, 2};
+    mu_assert("jac->p wrong", cmp_int_array(jac->p, expected_p, 3));
 
     /* Check column indices */
-    mu_assert("jac->i[0] wrong", jac->i[0] == 0);
-    mu_assert("jac->i[1] wrong", jac->i[1] == 1);
+    int expected_i[2] = {0, 1};
+    mu_assert("jac->i wrong", cmp_int_array(jac->i, expected_i, 2));
 
     /* Check values: [1/2, 1/4] */
-    mu_assert("jac->x[0] wrong", fabs(jac->x[0] - 0.5) < 1e-10);
-    mu_assert("jac->x[1] wrong", fabs(jac->x[1] - 0.25) < 1e-10);
+    double expected_x[2] = {0.5, 0.25};
+    mu_assert("jac->x wrong", cmp_double_array(jac->x, expected_x, 2));
 
     free_problem(prob);
 
@@ -254,17 +246,12 @@ const char *test_problem_jacobian_multi(void)
     mu_assert("jac nnz wrong", jac->nnz == 4);
 
     /* Check row pointers: each row has 1 element */
-    mu_assert("jac->p[0] wrong", jac->p[0] == 0);
-    mu_assert("jac->p[1] wrong", jac->p[1] == 1);
-    mu_assert("jac->p[2] wrong", jac->p[2] == 2);
-    mu_assert("jac->p[3] wrong", jac->p[3] == 3);
-    mu_assert("jac->p[4] wrong", jac->p[4] == 4);
+    int expected_p[5] = {0, 1, 2, 3, 4};
+    mu_assert("jac->p wrong", cmp_int_array(jac->p, expected_p, 5));
 
     /* Check column indices: diagonal pattern */
-    mu_assert("jac->i[0] wrong", jac->i[0] == 0);
-    mu_assert("jac->i[1] wrong", jac->i[1] == 1);
-    mu_assert("jac->i[2] wrong", jac->i[2] == 0);
-    mu_assert("jac->i[3] wrong", jac->i[3] == 1);
+    int expected_i[4] = {0, 1, 0, 1};
+    mu_assert("jac->i wrong", cmp_int_array(jac->i, expected_i, 4));
 
     /* Check values:
      * Row 0: 1/2 = 0.5
@@ -272,10 +259,8 @@ const char *test_problem_jacobian_multi(void)
      * Row 2: exp(2) ≈ 7.389
      * Row 3: exp(4) ≈ 54.598
      */
-    mu_assert("jac->x[0] wrong", fabs(jac->x[0] - 0.5) < 1e-10);
-    mu_assert("jac->x[1] wrong", fabs(jac->x[1] - 0.25) < 1e-10);
-    mu_assert("jac->x[2] wrong", fabs(jac->x[2] - exp(2.0)) < 1e-10);
-    mu_assert("jac->x[3] wrong", fabs(jac->x[3] - exp(4.0)) < 1e-10);
+    double expected_x[4] = {0.5, 0.25, exp(2.0), exp(4.0)};
+    mu_assert("jac->x wrong", cmp_double_array(jac->x, expected_x, 4));
 
     free_problem(prob);
 
