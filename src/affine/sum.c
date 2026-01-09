@@ -100,6 +100,7 @@ static void eval_jacobian(expr *node)
 
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
+    memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
     idx_map_accumulator(x->jacobian, ((sum_expr *) node)->idx_map,
                         node->jacobian->x);
 }

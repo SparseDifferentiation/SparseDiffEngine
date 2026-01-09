@@ -37,7 +37,7 @@ typedef struct problem
     /* Pre-allocated storage */
     double *constraint_values;
     double *gradient_values;   /* Dense gradient array */
-    CSR_Matrix *stacked_jac;
+    CSR_Matrix *jacobian;
 } problem;
 
 problem *new_problem(expr *objective, expr **constraints, int n_constraints);
@@ -85,16 +85,16 @@ void problem_allocate(problem *prob, const double *u)
     }
 
     /* Allocate stacked jacobian with total_constraint_size rows */
-    prob->stacked_jac = alloc_csr(prob->total_constraint_size, prob->n_vars, total_nnz);
+    prob->jacobian = alloc_csr(prob->total_constraint_size, prob->n_vars, total_nnz);
 
     /* Note: The actual nnz may be smaller after evaluation due to
-     * cancellations. Update stacked_jac->nnz after problem_jacobian(). */
+     * cancellations. Update jacobian->nnz after problem_jacobian(). */
 }
 ```
 
 ### `free_problem`
 - Call `free_expr` on objective and all constraints (decrements refcount)
-- Free allocated arrays and stacked_jac
+- Free allocated arrays and jacobian
 
 ### `problem_forward`
 ```c
@@ -127,7 +127,7 @@ double problem_forward(problem *prob, const double *u)
 - Stack CSR matrices vertically:
   - Total rows = `total_constraint_size`
   - Copy row pointers with offset, copy col indices and values
-- Lazy allocate/reallocate `stacked_jac` based on total nnz
+- Lazy allocate/reallocate `jacobian` based on total nnz
 
 ---
 
@@ -236,6 +236,6 @@ class Problem:
 - **Two-phase init**: `new_problem` creates struct, `problem_allocate` allocates arrays
   - Constraint values array: size = `total_constraint_size`
   - Jacobian: initialize all constraint jacobians first, count total nnz, allocate CSR
-  - The allocated nnz may be a slight overestimate; update `stacked_jac->nnz` after evaluation
+  - The allocated nnz may be a slight overestimate; update `jacobian->nnz` after evaluation
 - **Hessian**: Deferred - not allocated in this design (to be added later)
 - **API**: Returns internal pointers (caller should NOT free)

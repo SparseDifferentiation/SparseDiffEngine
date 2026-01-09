@@ -675,7 +675,7 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
 void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
                          double *accumulator)
 {
-    memset(accumulator, 0, A->nnz * sizeof(double));
+    // memset(accumulator, 0, A->nnz * sizeof(double));
 
     for (int row = 0; row < A->m; row++)
     {

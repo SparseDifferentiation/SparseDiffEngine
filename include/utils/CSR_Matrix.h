@@ -93,7 +93,8 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
 // void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
 //                                  const int *idx_map);
 
-/* Fill accumulator for summing rows using precomputed idx_map for each nnz of A*/
+/* Fill accumulator for summing rows using precomputed idx_map for each nnz of A.
+   Must memset accumulator to zero before calling. */
 void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
                          double *accumulator);
 

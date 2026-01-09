@@ -25,6 +25,19 @@ static void eval_jacobian(expr *node)
     (void) node;
 }
 
+static void wsum_hess_init(expr *node)
+{
+    /* Variables have zero Hessian */
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
+}
+
+static void wsum_hess_eval(expr *node, const double *w)
+{
+    /* Variables have zero Hessian */
+    (void) node;
+    (void) w;
+}
+
 static bool is_affine(const expr *node)
 {
     (void) node;
@@ -39,6 +52,8 @@ expr *new_variable(int d1, int d2, int var_id, int n_vars)
     node->is_affine = is_affine;
     node->jacobian_init = jacobian_init;
     node->eval_jacobian = eval_jacobian;
+    node->wsum_hess_init = wsum_hess_init;
+    node->eval_wsum_hess = wsum_hess_eval;
 
     return node;
 }

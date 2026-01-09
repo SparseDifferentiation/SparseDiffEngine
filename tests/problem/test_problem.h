@@ -174,7 +174,7 @@ const char *test_problem_jacobian(void)
     problem_constraint_forward(prob, u);
     problem_jacobian(prob);
 
-    CSR_Matrix *jac = prob->stacked_jac;
+    CSR_Matrix *jac = prob->jacobian;
 
     /* Check dimensions */
     mu_assert("jac rows wrong", jac->m == 2);
@@ -238,7 +238,7 @@ const char *test_problem_jacobian_multi(void)
     problem_constraint_forward(prob, u);
     problem_jacobian(prob);
 
-    CSR_Matrix *jac = prob->stacked_jac;
+    CSR_Matrix *jac = prob->jacobian;
 
     /* Check dimensions: 4 rows (2 + 2), 2 cols */
     mu_assert("jac rows wrong", jac->m == 4);
@@ -261,6 +261,85 @@ const char *test_problem_jacobian_multi(void)
      */
     double expected_x[4] = {0.5, 0.25, exp(2.0), exp(4.0)};
     mu_assert("jac->x wrong", cmp_double_array(jac->x, expected_x, 4));
+
+    free_problem(prob);
+
+    return 0;
+}
+
+/*
+ * Test problem_hessian: Lagrange Hessian of:
+ *   Objective: sum(log(x)) where x is 3x1
+ *   Constraint 1: exp(x)
+ *   Constraint 2: sin(x)
+ *
+ * Evaluate at x = [1, 2, 3] with w = [1, 2, 3, 4, 5, 6], w_obj = 2
+ *
+ * Lagrange function:
+ *   L = 2*sum(log(x)) + w[0:3]^T exp(x) + w[3:6]^T sin(x)
+ *
+ * Hessian at x = [1, 2, 3]:
+ *   H_obj = diag([-1/1^2, -1/2^2, -1/3^2]) = diag([-1, -0.25, -0.111111])
+ *   H_c1 = diag([exp(1), exp(2), exp(3)]) (element i has weight w[i])
+ *   H_c2 = diag([-sin(1), -sin(2), -sin(3)]) (element i has weight w[i+3])
+ *
+ * Lagrange Hessian diagonal elements:
+ *   H[0,0] = 2*(-1) + 1*exp(1) + 4*(-sin(1))
+ *   H[1,1] = 2*(-0.25) + 2*exp(2) + 5*(-sin(2))
+ *   H[2,2] = 2*(-0.111111) + 3*exp(3) + 6*(-sin(3))
+ */
+const char *test_problem_hessian(void)
+{
+    int n_vars = 3;
+
+    /* Shared variable */
+    expr *x = new_variable(3, 1, 0, n_vars);
+
+    /* Objective: sum(log(x)) */
+    expr *log_obj = new_log(x);
+    expr *objective = new_sum(log_obj, -1);
+
+    /* Constraint 1: exp(x) */
+    expr *exp_c1 = new_exp(x);
+
+    /* Constraint 2: sin(x) */
+    expr *sin_c2 = new_sin(x);
+
+    expr *constraints[2] = {exp_c1, sin_c2};
+
+    problem *prob = new_problem(objective, constraints, 2);
+
+    double u[3] = {1.0, 2.0, 3.0};
+    problem_init_derivatives(prob);
+
+    /* Forward pass */
+    problem_objective_forward(prob, u);
+    problem_constraint_forward(prob, u);
+
+    /* Evaluate Lagrange Hessian */
+    double w[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double w_obj = 2.0;
+    problem_hessian(prob, w_obj, w);
+
+    CSR_Matrix *H = prob->lagrange_hessian;
+
+    /* Check dimensions: 3x3 symmetric */
+    mu_assert("H rows wrong", H->m == 3);
+    mu_assert("H cols wrong", H->n == 3);
+
+    /* Compute expected diagonal values */
+    double expected_H00 = 2.0 * (-1.0) + 1.0 * exp(1.0) + 4.0 * (-sin(1.0));
+    double expected_H11 = 2.0 * (-0.25) + 2.0 * exp(2.0) + 5.0 * (-sin(2.0));
+    double expected_H22 = 2.0 * (-1.0 / 9.0) + 3.0 * exp(3.0) + 6.0 * (-sin(3.0));
+
+    /* Since Hessian is diagonal, check the diagonal entries
+     * Row pointers should be [0, 1, 2, 3] */
+    int expected_p[4] = {0, 1, 2, 3};
+    int expected_i[3] = {0, 1, 2};
+    double expected_x[3] = {expected_H00, expected_H11, expected_H22};
+    mu_assert("H->p wrong", cmp_int_array(H->p, expected_p, 4));
+    mu_assert("H->i wrong", cmp_int_array(H->i, expected_i, 3));
+    mu_assert("H->x wrong", cmp_double_array(H->x, expected_x, 3));
 
     free_problem(prob);
 

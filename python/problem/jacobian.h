@@ -33,7 +33,7 @@ static PyObject *py_problem_jacobian(PyObject *self, PyObject *args)
 
     problem_jacobian(prob);
 
-    CSR_Matrix *jac = prob->stacked_jac;
+    CSR_Matrix *jac = prob->jacobian;
     npy_intp nnz = jac->nnz;
     npy_intp m_plus_1 = jac->m + 1;
 
