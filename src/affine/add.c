@@ -50,6 +50,8 @@ static void wsum_hess_init(expr *node)
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz_max);
 
     /* TODO: we should fill sparsity pattern here for consistency */
+    sum_csr_matrices_fill_sparsity(node->left->wsum_hess, node->right->wsum_hess,
+                                   node->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -59,7 +61,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->right->eval_wsum_hess(node->right, w);
 
     /* sum children's wsum_hess */
-    sum_csr_matrices(node->left->wsum_hess, node->right->wsum_hess, node->wsum_hess);
+    sum_csr_matrices_fill_values(node->left->wsum_hess, node->right->wsum_hess,
+                                 node->wsum_hess);
 }
 
 static bool is_affine(const expr *node)
