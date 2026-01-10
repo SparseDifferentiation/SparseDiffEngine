@@ -17,6 +17,7 @@ static PyObject *py_make_variable(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_RuntimeError, "failed to create variable node");
         return NULL;
     }
+    expr_retain(node); /* Capsule owns a reference */
     return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
 }
 
