@@ -68,7 +68,7 @@ static void jacobian_init(expr *node)
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
-        int nonzero_cols = count_nonzero_cols(lin_x->base.jacobian, col_nz);
+        int nonzero_cols = count_nonzero_cols(lin_x->A_csr, col_nz);
         node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */

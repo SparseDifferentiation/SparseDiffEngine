@@ -16,6 +16,7 @@
 #include "jacobian_tests/test_composite.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
+#include "jacobian_tests/test_left_matmul.h"
 #include "jacobian_tests/test_log.h"
 #include "jacobian_tests/test_neg.h"
 #include "jacobian_tests/test_prod.h"
@@ -37,6 +38,7 @@
 #include "wsum_hess/elementwise/test_trig.h"
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_hstack.h"
+#include "wsum_hess/test_left_matmul.h"
 #include "wsum_hess/test_multiply.h"
 #include "wsum_hess/test_prod.h"
 #include "wsum_hess/test_quad_form.h"
@@ -105,6 +107,8 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_jacobian_trace_variable, tests_run);
     mu_run_test(test_jacobian_trace_composite, tests_run);
+    mu_run_test(test_jacobian_left_matmul_log, tests_run);
+    mu_run_test(test_jacobian_left_matmul_log_composite, tests_run);
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
@@ -140,6 +144,8 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
+    mu_run_test(test_wsum_hess_left_matmul, tests_run);
+    mu_run_test(test_wsum_hess_left_matmul_composite, tests_run);
     // This test leads to seg fault
     // mu_run_test(test_wsum_hess_trace_variable, tests_run);
 

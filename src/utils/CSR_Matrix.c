@@ -52,6 +52,19 @@ void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset)
     }
 }
 
+void csr_matvec_wo_offset(const CSR_Matrix *A, const double *x, double *y)
+{
+    for (int row = 0; row < A->m; row++)
+    {
+        double sum = 0.0;
+        for (int j = A->p[row]; j < A->p[row + 1]; j++)
+        {
+            sum += A->x[j] * x[A->i[j]];
+        }
+        y[row] = sum;
+    }
+}
+
 int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz)
 {
     for (int row = 0; row < A->m; row++)

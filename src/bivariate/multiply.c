@@ -29,18 +29,8 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init(expr *node)
 {
-    /* if a child is a variable we initialize its jacobian for a
-       short chain rule implementation */
-    if (node->left->var_id != NOT_A_VARIABLE)
-    {
-        node->left->jacobian_init(node->left);
-    }
-
-    if (node->right->var_id != NOT_A_VARIABLE)
-    {
-        node->right->jacobian_init(node->right);
-    }
-
+    node->left->jacobian_init(node->left);
+    node->right->jacobian_init(node->right);
     node->dwork = (double *) malloc(2 * node->size * sizeof(double));
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
@@ -179,6 +169,9 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         /* Compute CT = C^T = A^T diag(w) B */
         AT_fill_values(C, CT, node->iwork);
+
+        /* TODO: should fill sparsity before. Maybe we can map values from C to
+         * hessian directly instead?*/
 
         /* Hessian = C + CT = B^T diag(w) A + A^T diag(w) B */
         sum_csr_matrices(C, CT, node->wsum_hess);

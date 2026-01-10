@@ -37,6 +37,7 @@ void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C);
 /* matvec y = Ax, where A indices minus col_offset gives x indices. Returns y as
  * dense. */
 void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset);
+void csr_matvec_wo_offset(const CSR_Matrix *A, const double *x, double *y);
 
 /* C = z^T A is assumed to have one row. C must have column indices pre-computed
 and transposed matrix AT must be provided. Fills in values of C only.
@@ -141,6 +142,7 @@ void insert_idx(int idx, int *arr, int len);
 
 double csr_get_value(const CSR_Matrix *A, int row, int col);
 
+/* iwork must be of size A->n*/
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork);
 CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork);
 
