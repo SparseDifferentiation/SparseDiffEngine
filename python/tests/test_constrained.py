@@ -186,6 +186,147 @@ def test_repeated_evaluations():
     assert np.allclose(jac2.toarray(), np.diag(-np.exp(u2)))
 
 
+def test_hessian_objective_only():
+    """Test Hessian of sum(log(x)) with no constraints.
+
+    For f(x) = sum(log(x)), Hessian is diagonal: d²f/dx_i² = -1/x_i²
+    """
+    x = cp.Variable(3)
+    obj = cp.sum(cp.log(x))
+    problem = cp.Problem(cp.Minimize(obj))
+    prob = C_problem(problem)
+
+    u = np.array([1.0, 2.0, 4.0])
+    prob.init_derivatives()
+
+    prob.objective_forward(u)
+    # No constraints, so pass empty lagrange array
+    H = prob.hessian(obj_factor=1.0, lagrange=np.array([]))
+
+    # Expected: diag([-1/1², -1/2², -1/4²]) = diag([-1, -0.25, -0.0625])
+    expected_H = np.diag([-1.0, -0.25, -0.0625])
+    assert np.allclose(H.toarray(), expected_H)
+
+
+def test_hessian_with_constraint():
+    """Test Lagrangian Hessian: sum(log(x)) + lagrange * (-exp(x)).
+
+    Objective Hessian: diag([-1/x²])
+    Constraint (-exp(x)) Hessian: diag([-exp(x)])
+
+    Lagrangian = obj + lagrange * constraint
+    """
+    x = cp.Variable(2)
+    obj = cp.sum(cp.log(x))
+    constraints = [cp.exp(x) >= 0]  # becomes -exp(x) <= 0
+
+    problem = cp.Problem(cp.Minimize(obj), constraints)
+    prob = C_problem(problem)
+
+    u = np.array([1.0, 2.0])
+    prob.init_derivatives()
+
+    prob.objective_forward(u)
+    prob.constraint_forward(u)
+
+    # Lagrange multipliers for the constraint (size 2)
+    lagrange = np.array([0.5, 0.5])
+    H = prob.hessian(obj_factor=1.0, lagrange=lagrange)
+
+    # Constraint expr is -exp(x), so its Hessian is -exp(x)
+    # H[0,0] = -1/1² + 0.5*(-exp(1))
+    # H[1,1] = -1/4 + 0.5*(-exp(2))
+    expected_00 = -1.0 + 0.5 * (-np.exp(1.0))
+    expected_11 = -0.25 + 0.5 * (-np.exp(2.0))
+    expected_H = np.diag([expected_00, expected_11])
+
+    assert np.allclose(H.toarray(), expected_H)
+
+
+def test_hessian_obj_factor_zero():
+    """Test Hessian with obj_factor=0 (constraint Hessian only)."""
+    x = cp.Variable(2)
+    obj = cp.sum(cp.log(x))
+    constraints = [cp.exp(x) >= 0]  # becomes -exp(x) <= 0
+
+    problem = cp.Problem(cp.Minimize(obj), constraints)
+    prob = C_problem(problem)
+
+    u = np.array([1.0, 2.0])
+    prob.init_derivatives()
+
+    prob.objective_forward(u)
+    prob.constraint_forward(u)
+
+    # With obj_factor=0, only constraint Hessian contributes
+    # Constraint is -exp(x), so Hessian is -exp(x)
+    lagrange = np.array([1.0, 1.0])
+    H = prob.hessian(obj_factor=0.0, lagrange=lagrange)
+
+    expected_H = np.diag([-np.exp(1.0), -np.exp(2.0)])
+    assert np.allclose(H.toarray(), expected_H)
+
+
+def test_hessian_two_constraints():
+    """Test Hessian with two constraints."""
+    x = cp.Variable(2)
+    obj = cp.sum(cp.log(x))
+    constraints = [
+        cp.log(x) >= 0,  # becomes -log(x) <= 0, Hessian: 1/x²
+        cp.exp(x) >= 0,  # becomes -exp(x) <= 0, Hessian: -exp(x)
+    ]
+
+    problem = cp.Problem(cp.Minimize(obj), constraints)
+    prob = C_problem(problem)
+
+    u = np.array([2.0, 3.0])
+    prob.init_derivatives()
+
+    prob.objective_forward(u)
+    prob.constraint_forward(u)
+
+    # Lagrange: [lambda1_1, lambda1_2, lambda2_1, lambda2_2]
+    # First constraint (-log): 2 elements, second constraint (-exp): 2 elements
+    lagrange = np.array([1.0, 1.0, 0.5, 0.5])
+    H = prob.hessian(obj_factor=1.0, lagrange=lagrange)
+
+    # Objective Hessian: diag([-1/x²])
+    # Constraint 1 (-log) Hessian: diag([1/x²]) (second derivative of -log is 1/x²)
+    # Constraint 2 (-exp) Hessian: diag([-exp(x)])
+    # Total: (-1/x²) + 1.0*(1/x²) + 0.5*(-exp(x)) = -0.5*exp(x)
+    expected_00 = -1.0/(2.0**2) + 1.0*(1.0/(2.0**2)) + 0.5*(-np.exp(2.0))
+    expected_11 = -1.0/(3.0**2) + 1.0*(1.0/(3.0**2)) + 0.5*(-np.exp(3.0))
+    expected_H = np.diag([expected_00, expected_11])
+
+    assert np.allclose(H.toarray(), expected_H)
+
+
+def test_hessian_repeated_evaluations():
+    """Test Hessian with repeated evaluations at different points."""
+    x = cp.Variable(2)
+    obj = cp.sum(cp.log(x))
+    problem = cp.Problem(cp.Minimize(obj))
+    prob = C_problem(problem)
+
+    prob.init_derivatives()
+
+    # First evaluation
+    u1 = np.array([1.0, 2.0])
+    prob.objective_forward(u1)
+    H1 = prob.hessian(obj_factor=1.0, lagrange=np.array([]))
+
+    # Second evaluation at different point
+    u2 = np.array([2.0, 4.0])
+    prob.objective_forward(u2)
+    H2 = prob.hessian(obj_factor=1.0, lagrange=np.array([]))
+
+    expected_H1 = np.diag([-1.0, -0.25])
+    expected_H2 = np.diag([-0.25, -0.0625])
+
+    assert np.allclose(H1.toarray(), expected_H1)
+    assert np.allclose(H2.toarray(), expected_H2)
+
+
 if __name__ == "__main__":
     test_single_constraint()
     print("test_single_constraint passed!")
@@ -199,4 +340,17 @@ if __name__ == "__main__":
     print("test_larger_scale passed!")
     test_repeated_evaluations()
     print("test_repeated_evaluations passed!")
+
+    # Hessian tests
+    test_hessian_objective_only()
+    print("test_hessian_objective_only passed!")
+    test_hessian_with_constraint()
+    print("test_hessian_with_constraint passed!")
+    test_hessian_obj_factor_zero()
+    print("test_hessian_obj_factor_zero passed!")
+    test_hessian_two_constraints()
+    print("test_hessian_two_constraints passed!")
+    test_hessian_repeated_evaluations()
+    print("test_hessian_repeated_evaluations passed!")
+
     print("\nAll constrained tests passed!")

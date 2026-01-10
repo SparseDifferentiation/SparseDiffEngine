@@ -159,3 +159,22 @@ class C_problem:
         """Compute jacobian of constraints. Call constraint_forward first. Returns scipy CSR matrix."""
         data, indices, indptr, shape = diffengine.problem_jacobian(self._capsule)
         return sparse.csr_matrix((data, indices, indptr), shape=shape)
+
+    def hessian(self, obj_factor: float, lagrange: np.ndarray) -> sparse.csr_matrix:
+        """Compute Lagrangian Hessian.
+
+        Computes: obj_factor * H_obj + sum(lagrange_i * H_constraint_i)
+
+        Call objective_forward and constraint_forward before this.
+
+        Args:
+            obj_factor: Weight for objective Hessian
+            lagrange: Array of Lagrange multipliers (length = total_constraint_size)
+
+        Returns:
+            scipy CSR matrix of shape (n_vars, n_vars)
+        """
+        data, indices, indptr, shape = diffengine.problem_hessian(
+            self._capsule, obj_factor, lagrange
+        )
+        return sparse.csr_matrix((data, indices, indptr), shape=shape)
