@@ -16,7 +16,6 @@
 /* Include problem bindings */
 #include "problem/constraint_forward.h"
 #include "problem/gradient.h"
-#include "problem/hessian.h"
 #include "problem/init_derivatives.h"
 #include "problem/jacobian.h"
 #include "problem/make_problem.h"
@@ -54,8 +53,6 @@ static PyMethodDef DNLPMethods[] = {
      "Compute objective gradient"},
     {"problem_jacobian", py_problem_jacobian, METH_VARARGS,
      "Compute constraint jacobian"},
-    {"problem_hessian", py_problem_hessian, METH_VARARGS,
-     "Compute Lagrangian Hessian"},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef dnlp_module = {PyModuleDef_HEAD_INIT, "DNLP_diff_engine",
