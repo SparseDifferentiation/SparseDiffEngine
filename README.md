@@ -27,12 +27,6 @@ pip install -e ".[test]"
 
 # Run all tests
 pytest
-
-# Run specific test file
-pytest tests/python/test_unconstrained.py
-
-# Run specific test
-pytest tests/python/test_unconstrained.py::test_sum_log
 ```
 
 ## Usage
