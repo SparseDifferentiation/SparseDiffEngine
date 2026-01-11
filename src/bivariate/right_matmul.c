@@ -56,7 +56,6 @@ static void jacobian_init(expr *node)
 
     /* initialize child's jacobian and precompute sparsity of its transpose */
     x->jacobian_init(x);
-    node->iwork = (int *) malloc(node->n_vars * sizeof(int));
     right_node->CSC_work = csr_to_csc_fill_sparsity(x->jacobian, node->iwork);
 
     /* precompute sparsity of this node's jacobian */
@@ -124,7 +123,7 @@ expr *new_right_matmul(expr *u, const CSR_Matrix *A)
     node->eval_wsum_hess = eval_wsum_hess;
 
     /* create B = A^T kron I_p and its transpose */
-    node->iwork = (int *) malloc(A->n * sizeof(int));
+    node->iwork = (int *) malloc(node->n_vars * sizeof(int));
     CSR_Matrix *AT = transpose(A, node->iwork);
     right_matmul_node->B = kron_identity_csr(AT, p);
     right_matmul_node->BT = kron_identity_csr(A, p);

@@ -26,6 +26,9 @@
 
 */
 
+// todo: put this in common somewhere
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 static void forward(expr *node, const double *u)
 {
     expr *x = node->left;
@@ -46,11 +49,13 @@ static void free_type_data(expr *node)
 {
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
     free_csr_matrix(lin_node->A);
+    free_csr_matrix(lin_node->AT);
     if (lin_node->CSC_work)
     {
         free_csc_matrix(lin_node->CSC_work);
     }
     lin_node->A = NULL;
+    lin_node->AT = NULL;
     lin_node->CSC_work = NULL;
 }
 
@@ -61,7 +66,6 @@ static void jacobian_init(expr *node)
 
     /* initialize child's jacobian and precompute sparsity of its transpose */
     x->jacobian_init(x);
-    node->iwork = (int *) malloc(node->n_vars * sizeof(int));
     lin_node->CSC_work = csr_to_csc_fill_sparsity(x->jacobian, node->iwork);
 
     /* precompute sparsity of this node's jacobian */
@@ -123,7 +127,8 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
 
     /* Initialize type-specific fields */
     lin_node->A = block_diag_repeat_csr(A, node->d2);
-    node->iwork = (int *) malloc(lin_node->A->n * sizeof(int));
+    int alloc = MAX(lin_node->A->n, node->n_vars);
+    node->iwork = (int *) malloc(alloc * sizeof(int));
     lin_node->AT = transpose(lin_node->A, node->iwork);
     lin_node->CSC_work = NULL;
 

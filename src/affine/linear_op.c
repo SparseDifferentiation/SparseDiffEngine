@@ -21,10 +21,14 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     linear_op_expr *lin_node = (linear_op_expr *) node;
-    /* memory pointing to by A_csr will already be freed when the
-       jacobian is freed, so free_csr_matrix(lin_node->A_csr) should
-       be commented out */
-    // free_csr_matrix(lin_node->A_csr);
+    /* memory pointing to by A_csr will be freed when the jacobian is freed,
+       so if the jacobian is not null we must not free A_csr. */
+
+    if (!node->jacobian)
+    {
+        free_csr_matrix(lin_node->A_csr);
+    }
+
     free_csc_matrix(lin_node->A_csc);
     lin_node->A_csr = NULL;
     lin_node->A_csc = NULL;
