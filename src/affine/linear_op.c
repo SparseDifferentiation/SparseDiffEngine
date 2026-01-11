@@ -1,4 +1,5 @@
 #include "affine.h"
+#include <assert.h>
 #include <stdlib.h>
 
 static void forward(expr *node, const double *u)
@@ -36,6 +37,7 @@ static void jacobian_init(expr *node)
 
 expr *new_linear(expr *u, const CSR_Matrix *A)
 {
+    assert(u->d2 == 1);
     /* Allocate the type-specific struct */
     linear_op_expr *lin_node = (linear_op_expr *) calloc(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;

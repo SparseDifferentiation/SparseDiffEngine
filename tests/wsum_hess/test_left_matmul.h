@@ -191,3 +191,73 @@ const char *test_wsum_hess_left_matmul_composite()
     free_expr(A_log_Bx);
     return 0;
 }
+
+const char *test_wsum_hess_left_matmul_matrix()
+{
+    /* Test weighted sum of Hessian of A @ log(x) where:
+     * x is 3x2 variable, vectorized column-wise: [1, 2, 3, 4, 5, 6]
+     * A is 4x3 sparse matrix [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0]
+     * Output: A @ log(x) is 4x2, vectorized to 8x1
+     * Weights w = [1, 2, 3, 4, 5, 6, 7, 8]
+     *
+     * The operation is block-diagonal:
+     * - Column 0 of x: [1, 2, 3] with weights w[0:4] = [1, 2, 3, 4]
+     * - Column 1 of x: [4, 5, 6] with weights w[4:8] = [5, 6, 7, 8]
+     *
+     * For column 0 (variables x[0:3]):
+     * A^T @ w[0:4] = [1*1 + 3*2 + 5*3 + 7*4, 0, 2*1 + 4*2 + 6*3]
+     *              = [50, 0, 28]
+     * wsum_hess[0,0] = -50 / 1² = -50
+     * wsum_hess[1,1] = 0
+     * wsum_hess[2,2] = -28 / 3² = -28/9
+     *
+     * For column 1 (variables x[3:6]):
+     * A^T @ w[4:8] = [1*5 + 3*6 + 5*7 + 7*8, 0, 2*5 + 4*6 + 6*7]
+     *              = [114, 0, 76]
+     * wsum_hess[3,3] = -114 / 4² = -114/16 = -57/8
+     * wsum_hess[4,4] = 0
+     * wsum_hess[5,5] = -76 / 6² = -76/36 = -19/9
+     */
+    double x_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double w[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+
+    expr *x = new_variable(3, 2, 0, 6);
+
+    /* Create sparse matrix A in CSR format */
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    int A_p[5] = {0, 2, 4, 6, 7};
+    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
+    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    memcpy(A->p, A_p, 5 * sizeof(int));
+    memcpy(A->i, A_i, 7 * sizeof(int));
+    memcpy(A->x, A_x, 7 * sizeof(double));
+
+    expr *log_x = new_log(x);
+    expr *A_log_x = new_left_matmul(log_x, A);
+
+    A_log_x->forward(A_log_x, x_vals);
+    A_log_x->jacobian_init(A_log_x);
+    A_log_x->wsum_hess_init(A_log_x);
+    A_log_x->eval_wsum_hess(A_log_x, w);
+
+    /* Expected wsum_hess: 6x6 diagonal matrix with all 6 entries */
+    double expected_x[6] = {
+        -50.0,       /* position [0,0]: column 0, variable 0 */
+        -0.0,        /* position [1,1]: column 0, variable 1 */
+        -28.0 / 9.0, /* position [2,2]: column 0, variable 2 */
+        -57.0 / 8.0, /* position [3,3]: column 1, variable 0 */
+        -0.0,        /* position [4,4]: column 1, variable 1 */
+        -19.0 / 9.0  /* position [5,5]: column 1, variable 2 */
+    };
+    int expected_i[6] = {0, 1, 2, 3, 4, 5};
+    int expected_p[7] = {0, 1, 2, 3, 4, 5, 6}; /* each row has 1 diagonal entry */
+
+    mu_assert("vals incorrect",
+              cmp_double_array(A_log_x->wsum_hess->x, expected_x, 6));
+    mu_assert("cols incorrect", cmp_int_array(A_log_x->wsum_hess->i, expected_i, 6));
+    mu_assert("rows incorrect", cmp_int_array(A_log_x->wsum_hess->p, expected_p, 7));
+
+    free_csr_matrix(A);
+    free_expr(A_log_x);
+    return 0;
+}

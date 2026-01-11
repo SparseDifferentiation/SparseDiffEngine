@@ -13,4 +13,7 @@ expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
 /* Left matrix multiplication: A @ f(x) where A is a constant matrix */
 expr *new_left_matmul(expr *u, const CSR_Matrix *A);
 
+/* Right matrix multiplication: f(x) @ A where A is a constant matrix */
+expr *new_right_matmul(expr *u, const CSR_Matrix *A);
+
 #endif /* BIVARIATE_H */

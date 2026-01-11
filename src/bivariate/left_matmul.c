@@ -2,6 +2,30 @@
 #include "subexpr.h"
 #include <stdlib.h>
 
+/* This file implement the atom 'left_matmul' corresponding to the operation y =
+   A @ f(x), where A is a given matrix and f(x) is an arbitrary expression.
+   Here, f(x) can be a vector-valued expression and a matrix-valued
+   expression. The dimensions are A - m x n, f(x) - n x p, y - m x p.
+   Note that here A does not have global column indices but it is a local matrix.
+   This is an important distinction compared to linear_op_expr.
+
+   * To compute the forward pass: vec(y) = A_kron @ vec(f(x)),
+     where A_kron = I_p kron A is a Kronecker product of size (m*p) x (n*p),
+     or more specificely, a block-diagonal matrix with p blocks of A along the
+     diagonal.
+
+   * To compute the Jacobian: J_y = A_kron @ J_f(x), where J_f(x) is the
+     Jacobian of f(x) of size (n*p) x n_vars.
+
+    * To compute the contribution to the Lagrange Hessian: we form
+    w = A_kron^T @ lambda and then evaluate the hessian of f(x).
+
+    Working in terms of A_kron unifies the implementation of f(x) being
+    vector-valued or matrix-valued.
+
+
+*/
+
 static void forward(expr *node, const double *u)
 {
     expr *x = node->left;
@@ -9,7 +33,7 @@ static void forward(expr *node, const double *u)
     /* child's forward pass */
     node->left->forward(node->left, u);
 
-    /* y = A * x */
+    /* y = A_kron @ vec(f(x)) */
     csr_matvec_wo_offset(((left_matmul_expr *) node)->A, x->value, node->value);
 }
 
@@ -49,7 +73,7 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
-    /* evaluate child's jacobian and convert to CSC*/
+    /* evaluate child's jacobian and convert to CSC */
     x->eval_jacobian(x);
     csr_to_csc_fill_values(x->jacobian, lin_node->CSC_work, node->iwork);
 
@@ -90,7 +114,7 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     left_matmul_expr *lin_node =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lin_node->base;
-    init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init, eval_jacobian,
+    init_expr(node, A->m, u->d2, u->n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, free_type_data);
     node->left = u;
     expr_retain(u);
@@ -98,10 +122,9 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     node->eval_wsum_hess = eval_wsum_hess;
 
     /* Initialize type-specific fields */
-    lin_node->A = new_csr_matrix(A->m, A->n, A->nnz);
-    node->iwork = (int *) malloc(A->n * sizeof(int));
-    lin_node->AT = transpose(A, node->iwork);
-    copy_csr_matrix(A, lin_node->A);
+    lin_node->A = block_diag_repeat_csr(A, node->d2);
+    node->iwork = (int *) malloc(lin_node->A->n * sizeof(int));
+    lin_node->AT = transpose(lin_node->A, node->iwork);
     lin_node->CSC_work = NULL;
 
     return node;

@@ -24,6 +24,7 @@
 #include "jacobian_tests/test_quad_form.h"
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
+#include "jacobian_tests/test_right_matmul.h"
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
 #include "problem/test_problem.h"
@@ -44,6 +45,7 @@
 #include "wsum_hess/test_quad_form.h"
 #include "wsum_hess/test_quad_over_lin.h"
 #include "wsum_hess/test_rel_entr.h"
+#include "wsum_hess/test_right_matmul.h"
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
 
@@ -108,7 +110,10 @@ int main(void)
     mu_run_test(test_jacobian_trace_variable, tests_run);
     mu_run_test(test_jacobian_trace_composite, tests_run);
     mu_run_test(test_jacobian_left_matmul_log, tests_run);
+    mu_run_test(test_jacobian_left_matmul_log_matrix, tests_run);
     mu_run_test(test_jacobian_left_matmul_log_composite, tests_run);
+    mu_run_test(test_jacobian_right_matmul_log, tests_run);
+    mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
@@ -145,7 +150,10 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_wsum_hess_left_matmul, tests_run);
+    mu_run_test(test_wsum_hess_left_matmul_matrix, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_composite, tests_run);
+    mu_run_test(test_wsum_hess_right_matmul, tests_run);
+    mu_run_test(test_wsum_hess_right_matmul_vector, tests_run);
     // This test leads to seg fault
     // mu_run_test(test_wsum_hess_trace_variable, tests_run);
 
@@ -159,6 +167,7 @@ int main(void)
     mu_run_test(test_csr_sum2, tests_run);
     mu_run_test(test_transpose, tests_run);
     mu_run_test(test_AT_alloc_and_fill, tests_run);
+    mu_run_test(test_kron_identity_csr, tests_run);
     mu_run_test(test_csr_to_csc1, tests_run);
     mu_run_test(test_csr_to_csc2, tests_run);
     mu_run_test(test_csr_vecmat_values_sparse, tests_run);

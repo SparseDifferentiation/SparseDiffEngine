@@ -68,6 +68,45 @@ const char *test_jacobian_left_matmul_log()
     return 0;
 }
 
+const char *test_jacobian_left_matmul_log_matrix()
+{
+    /* x is 3x2, vectorized column-wise: [1,2,3 | 4,5,6] */
+    double x_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    expr *x = new_variable(3, 2, 0, 6);
+
+    /* Create sparse matrix A in CSR format (4x3) */
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    int A_p[5] = {0, 2, 4, 6, 7};
+    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
+    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    memcpy(A->p, A_p, 5 * sizeof(int));
+    memcpy(A->i, A_i, 7 * sizeof(int));
+    memcpy(A->x, A_x, 7 * sizeof(double));
+
+    expr *log_x = new_log(x);
+    expr *A_log_x = new_left_matmul(log_x, A);
+
+    A_log_x->forward(A_log_x, x_vals);
+    A_log_x->jacobian_init(A_log_x);
+    A_log_x->eval_jacobian(A_log_x);
+
+    /* Expected Jacobian: block-diagonal repeat of A scaled by diag(1./x) */
+    double expected_Ax[14] = {/* first column block (x = [1, 2, 3]) */
+                              1.0, 2.0 / 3.0, 3.0, 4.0 / 3.0, 5.0, 2.0, 7.0,
+                              /* second column block (x = [4, 5, 6]) */
+                              0.25, 1.0 / 3.0, 0.75, 2.0 / 3.0, 1.25, 1.0, 1.75};
+    int expected_Ai[14] = {0, 2, 0, 2, 0, 2, 0, 3, 5, 3, 5, 3, 5, 3};
+    int expected_Ap[9] = {0, 2, 4, 6, 7, 9, 11, 13, 14};
+
+    mu_assert("vals fail", cmp_double_array(A_log_x->jacobian->x, expected_Ax, 14));
+    mu_assert("cols fail", cmp_int_array(A_log_x->jacobian->i, expected_Ai, 14));
+    mu_assert("rows fail", cmp_int_array(A_log_x->jacobian->p, expected_Ap, 9));
+
+    free_csr_matrix(A);
+    free_expr(A_log_x);
+    return 0;
+}
+
 const char *test_jacobian_left_matmul_log_composite()
 {
     /* Test Jacobian of A @ log(B @ x) where:

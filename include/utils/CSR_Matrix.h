@@ -34,6 +34,14 @@ void free_csr_matrix(CSR_Matrix *matrix);
 /* Copy CSR matrix A to C */
 void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C);
 
+/* Build block-diagonal repeat A_blk = I_p kron A. Returns newly allocated CSR
+ * matrix of size (p*A->m) x (p*A->n) with nnz = p*A->nnz. */
+CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p);
+
+/* Build left-repeated Kronecker A_kron = A kron I_p. Returns newly allocated CSR
+ * matrix of size (A->m * p) x (A->n * p) with nnz = A->nnz * p. */
+CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p);
+
 /* matvec y = Ax, where A indices minus col_offset gives x indices. Returns y as
  * dense. */
 void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset);
