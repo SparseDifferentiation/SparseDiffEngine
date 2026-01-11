@@ -1,6 +1,9 @@
+"""Tests for the low-level C problem interface."""
+
 import numpy as np
 from scipy import sparse
-import DNLP_diff_engine as diffengine
+
+from dnlp_diff_engine import _core as diffengine
 
 
 def test_problem_objective_forward():
@@ -113,21 +116,21 @@ def test_problem_multiple_constraints():
     """Test problem with multiple different constraints (low-level)."""
     n_vars = 3
     x = diffengine.make_variable(n_vars, 1, 0, n_vars)
-    
+
     # Objective: sum(log(x))
     log_x = diffengine.make_log(x)
     objective = diffengine.make_sum(log_x, -1)
-    
+
     # Multiple constraints using the same variable:
     # Constraint 1: log(x) - reused from objective
     # Constraint 2: exp(x)
     exp_x = diffengine.make_exp(x)
     constraints = [log_x, exp_x]
-    
+
     prob = diffengine.make_problem(objective, constraints)
     u = np.array([1.0, 2.0, 3.0])
     diffengine.problem_init_derivatives(prob)
-    
+
     # Test forward pass
     obj_val = diffengine.problem_objective_forward(prob, u)
     constraint_vals = diffengine.problem_constraint_forward(prob, u)
@@ -146,8 +149,8 @@ def test_problem_multiple_constraints():
     diffengine.problem_constraint_forward(prob, u)
     data, indices, indptr, shape = diffengine.problem_jacobian(prob)
     jac = sparse.csr_matrix((data, indices, indptr), shape=shape)
-    
-    # Expected Jacobian: 
+
+    # Expected Jacobian:
     # log(x): diag(1/u)
     # exp(x): diag(exp(u))
     expected_jac = np.vstack([
@@ -156,13 +159,3 @@ def test_problem_multiple_constraints():
     ])
     assert jac.shape == (6, 3)
     assert np.allclose(jac.toarray(), expected_jac)
-
-
-if __name__ == "__main__":
-    test_problem_objective_forward()
-    test_problem_constraint_forward()
-    test_problem_gradient()
-    test_problem_jacobian()
-    test_problem_no_constraints()
-    test_problem_multiple_constraints()
-    print("All native problem tests passed!")

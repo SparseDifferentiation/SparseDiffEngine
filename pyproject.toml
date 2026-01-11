@@ -1,0 +1,44 @@
+[build-system]
+requires = ["scikit-build-core>=0.5", "numpy"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "dnlp-diff-engine"
+version = "0.1.0"
+description = "Automatic differentiation engine for DNLP optimization problems"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "cvxpy",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+]
+dev = [
+    "pytest>=7.0",
+    "ruff",
+]
+
+[tool.scikit-build]
+cmake.source-dir = "."
+wheel.packages = ["src/dnlp_diff_engine"]
+build-dir = "build/{wheel_tag}"
+
+[tool.scikit-build.cmake.define]
+CMAKE_BUILD_TYPE = "Release"
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

@@ -1,14 +1,66 @@
-3. more tests for chain rule elementwise univariate hessian
-4. in the refactor, add consts
-5. multiply with one constant vector/scalar argument
-6. AX where X is a matrix. Can that happen? How is that canonicalized? Maybe it can't happen.
-7. Must be able to compute jacobian and hessian of A @ phi(x), so linear operator needs other code! This requires new infrastructure, I think.
-8. Shortcut hessians of affine stuff?
+# DNLP Diff Engine
 
-Going through all atoms to see that sparsity pattern is computed in initialization of jacobian:
-2. trace - not ok
+A C library with Python bindings for automatic differentiation of nonlinear optimization problems. Builds expression trees from CVXPY problems and computes gradients, Jacobians, and Hessians needed by NLP solvers like IPOPT.
 
-Going through all atoms to see that sparsity pattern is computed in initialization of hessian:
-2. hstack - not ok
-3. trace - not ok
+## Installation
 
+### Using uv (recommended)
+
+```bash
+uv venv .venv
+source .venv/bin/activate
+uv pip install -e ".[test]"
+```
+
+### Using pip
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[test]"
+```
+
+## Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/python/test_unconstrained.py
+
+# Run specific test
+pytest tests/python/test_unconstrained.py::test_sum_log
+```
+
+## Usage
+
+```python
+import cvxpy as cp
+import numpy as np
+from dnlp_diff_engine import C_problem
+
+# Define a CVXPY problem
+x = cp.Variable(3)
+problem = cp.Problem(cp.Minimize(cp.sum(cp.log(x))))
+
+# Convert to C problem struct
+prob = C_problem(problem)
+prob.init_derivatives()
+
+# Evaluate at a point
+u = np.array([1.0, 2.0, 3.0])
+obj_val = prob.objective_forward(u)
+gradient = prob.gradient()
+
+print(f"Objective: {obj_val}")
+print(f"Gradient: {gradient}")
+```
+
+## Building the C Library (standalone)
+
+```bash
+cmake -B build -S .
+cmake --build build
+./build/all_tests
+```

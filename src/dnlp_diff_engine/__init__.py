@@ -1,15 +1,25 @@
+"""
+DNLP Diff Engine - Automatic differentiation for nonlinear optimization.
+
+This package provides automatic differentiation capabilities for CVXPY problems,
+computing gradients, Jacobians, and Hessians needed by NLP solvers.
+"""
+
 import cvxpy as cp
 import numpy as np
-from scipy import sparse
 from cvxpy.reductions.inverse_data import InverseData
-import DNLP_diff_engine as diffengine
+from scipy import sparse
+
+from . import _core as _diffengine
+
+__all__ = ["C_problem", "convert_problem", "build_variable_dict"]
 
 
 def _chain_add(children):
     """Chain multiple children with binary adds: a + b + c -> add(add(a, b), c)."""
     result = children[0]
     for child in children[1:]:
-        result = diffengine.make_add(result, child)
+        result = _diffengine.make_add(result, child)
     return result
 
 
@@ -17,22 +27,22 @@ def _chain_add(children):
 # Converters receive (expr, children) where expr is the CVXPY expression
 ATOM_CONVERTERS = {
     # Elementwise unary
-    "log": lambda expr, children: diffengine.make_log(children[0]),
-    "exp": lambda expr, children: diffengine.make_exp(children[0]),
+    "log": lambda _expr, children: _diffengine.make_log(children[0]),
+    "exp": lambda _expr, children: _diffengine.make_exp(children[0]),
 
     # Affine unary
-    "NegExpression": lambda expr, children: diffengine.make_neg(children[0]),
-    "Promote": lambda expr, children: diffengine.make_promote(
+    "NegExpression": lambda _expr, children: _diffengine.make_neg(children[0]),
+    "Promote": lambda expr, children: _diffengine.make_promote(
         children[0],
         expr.shape[0] if len(expr.shape) >= 1 else 1,
         expr.shape[1] if len(expr.shape) >= 2 else 1,
     ),
 
     # N-ary (handles 2+ args)
-    "AddExpression": lambda expr, children: _chain_add(children),
+    "AddExpression": lambda _expr, children: _chain_add(children),
 
     # Reductions
-    "Sum": lambda expr, children: diffengine.make_sum(children[0], -1),
+    "Sum": lambda _expr, children: _diffengine.make_sum(children[0], -1),
 }
 
 
@@ -59,7 +69,7 @@ def build_variable_dict(variables: list) -> tuple[dict, int]:
             d1, d2 = shape[0], 1
         else:  # scalar
             d1, d2 = 1, 1
-        c_var = diffengine.make_variable(d1, d2, offset, n_vars)
+        c_var = _diffengine.make_variable(d1, d2, offset, n_vars)
         var_dict[var.id] = c_var
 
     return var_dict, n_vars
@@ -76,7 +86,7 @@ def _convert_expr(expr, var_dict: dict, n_vars: int):
         value = np.asarray(expr.value, dtype=np.float64).flatten()
         d1 = expr.shape[0] if len(expr.shape) >= 1 else 1
         d2 = expr.shape[1] if len(expr.shape) >= 2 else 1
-        return diffengine.make_constant(d1, d2, n_vars, value)
+        return _diffengine.make_constant(d1, d2, n_vars, value)
 
     # Recursive case: atoms
     atom_name = type(expr).__name__
@@ -135,29 +145,29 @@ class C_problem:
         c_constraints = [
             _convert_expr(c.expr, var_dict, n_vars) for c in cvxpy_problem.constraints
         ]
-        self._capsule = diffengine.make_problem(c_obj, c_constraints)
+        self._capsule = _diffengine.make_problem(c_obj, c_constraints)
         self._allocated = False
 
     def init_derivatives(self):
         """Initialize derivative structures. Must be called before forward/gradient/jacobian."""
-        diffengine.problem_init_derivatives(self._capsule)
+        _diffengine.problem_init_derivatives(self._capsule)
         self._allocated = True
 
     def objective_forward(self, u: np.ndarray) -> float:
         """Evaluate objective. Returns obj_value float."""
-        return diffengine.problem_objective_forward(self._capsule, u)
+        return _diffengine.problem_objective_forward(self._capsule, u)
 
     def constraint_forward(self, u: np.ndarray) -> np.ndarray:
         """Evaluate constraints only. Returns constraint_values array."""
-        return diffengine.problem_constraint_forward(self._capsule, u)
+        return _diffengine.problem_constraint_forward(self._capsule, u)
 
     def gradient(self) -> np.ndarray:
         """Compute gradient of objective. Call objective_forward first. Returns gradient array."""
-        return diffengine.problem_gradient(self._capsule)
+        return _diffengine.problem_gradient(self._capsule)
 
     def jacobian(self) -> sparse.csr_matrix:
-        """Compute jacobian of constraints. Call constraint_forward first. Returns scipy CSR matrix."""
-        data, indices, indptr, shape = diffengine.problem_jacobian(self._capsule)
+        """Compute constraint Jacobian. Call constraint_forward first."""
+        data, indices, indptr, shape = _diffengine.problem_jacobian(self._capsule)
         return sparse.csr_matrix((data, indices, indptr), shape=shape)
 
     def hessian(self, obj_factor: float, lagrange: np.ndarray) -> sparse.csr_matrix:
@@ -174,7 +184,7 @@ class C_problem:
         Returns:
             scipy CSR matrix of shape (n_vars, n_vars)
         """
-        data, indices, indptr, shape = diffengine.problem_hessian(
+        data, indices, indptr, shape = _diffengine.problem_hessian(
             self._capsule, obj_factor, lagrange
         )
         return sparse.csr_matrix((data, indices, indptr), shape=shape)

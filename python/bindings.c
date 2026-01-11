@@ -58,10 +58,10 @@ static PyMethodDef DNLPMethods[] = {
      "Compute Lagrangian Hessian"},
     {NULL, NULL, 0, NULL}};
 
-static struct PyModuleDef dnlp_module = {PyModuleDef_HEAD_INIT, "DNLP_diff_engine",
+static struct PyModuleDef dnlp_module = {PyModuleDef_HEAD_INIT, "dnlp_diff_engine._core",
                                          NULL, -1, DNLPMethods};
 
-PyMODINIT_FUNC PyInit_DNLP_diff_engine(void)
+PyMODINIT_FUNC PyInit__core(void)
 {
     if (ensure_numpy() < 0) return NULL;
     return PyModule_Create(&dnlp_module);

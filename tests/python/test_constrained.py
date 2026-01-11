@@ -1,6 +1,9 @@
+"""Tests for constrained optimization problems."""
+
 import cvxpy as cp
 import numpy as np
-from convert import C_problem
+
+from dnlp_diff_engine import C_problem
 
 # Note: CVXPY converts constraints A >= B to B - A <= 0
 # So constr.expr for "log(x) >= 0" is "0 - log(x)" = -log(x)
@@ -325,32 +328,3 @@ def test_hessian_repeated_evaluations():
 
     assert np.allclose(H1.toarray(), expected_H1)
     assert np.allclose(H2.toarray(), expected_H2)
-
-
-if __name__ == "__main__":
-    test_single_constraint()
-    print("test_single_constraint passed!")
-    test_two_constraints()
-    print("test_two_constraints passed!")
-    test_three_constraints_different_sizes()
-    print("test_three_constraints_different_sizes passed!")
-    test_multiple_variables()
-    print("test_multiple_variables passed!")
-    test_larger_scale()
-    print("test_larger_scale passed!")
-    test_repeated_evaluations()
-    print("test_repeated_evaluations passed!")
-
-    # Hessian tests
-    test_hessian_objective_only()
-    print("test_hessian_objective_only passed!")
-    test_hessian_with_constraint()
-    print("test_hessian_with_constraint passed!")
-    test_hessian_obj_factor_zero()
-    print("test_hessian_obj_factor_zero passed!")
-    test_hessian_two_constraints()
-    print("test_hessian_two_constraints passed!")
-    test_hessian_repeated_evaluations()
-    print("test_hessian_repeated_evaluations passed!")
-
-    print("\nAll constrained tests passed!")
