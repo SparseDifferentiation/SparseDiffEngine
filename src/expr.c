@@ -41,6 +41,12 @@ void free_expr(expr *node)
     node->left = NULL;
     node->right = NULL;
 
+    /* free type-specific data */
+    if (node->free_type_data)
+    {
+        node->free_type_data(node);
+    }
+
     /* free value array and jacobian */
     free(node->value);
     free_csr_matrix(node->jacobian);
@@ -52,12 +58,6 @@ void free_expr(expr *node)
     node->wsum_hess = NULL;
     node->dwork = NULL;
     node->iwork = NULL;
-
-    /* free type-specific data */
-    if (node->free_type_data)
-    {
-        node->free_type_data(node);
-    }
 
     /* free the node itself */
     free(node);

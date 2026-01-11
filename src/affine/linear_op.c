@@ -1,4 +1,5 @@
 #include "affine.h"
+#include <assert.h>
 #include <stdlib.h>
 
 static void forward(expr *node, const double *u)
@@ -9,7 +10,7 @@ static void forward(expr *node, const double *u)
     node->left->forward(node->left, u);
 
     /* y = A * x */
-    csr_matvec(node->jacobian, x->value, node->value, x->var_id);
+    csr_matvec(((linear_op_expr *) node)->A_csr, x->value, node->value, x->var_id);
 }
 
 static bool is_affine(const expr *node)
@@ -20,21 +21,31 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     linear_op_expr *lin_node = (linear_op_expr *) node;
-    /* memory pointing to by A_csr will already be freed when the
-       jacobian is freed, so free_csr_matrix(lin_node->A_csr) should
-       be commented out */
-    // free_csr_matrix(lin_node->A_csr);
+    /* memory pointing to by A_csr will be freed when the jacobian is freed,
+       so if the jacobian is not null we must not free A_csr. */
+
+    if (!node->jacobian)
+    {
+        free_csr_matrix(lin_node->A_csr);
+    }
+
     free_csc_matrix(lin_node->A_csc);
     lin_node->A_csr = NULL;
     lin_node->A_csc = NULL;
 }
 
+static void jacobian_init(expr *node)
+{
+    node->jacobian = ((linear_op_expr *) node)->A_csr;
+}
+
 expr *new_linear(expr *u, const CSR_Matrix *A)
 {
+    assert(u->d2 == 1);
     /* Allocate the type-specific struct */
     linear_op_expr *lin_node = (linear_op_expr *) calloc(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;
-    init_expr(node, A->m, 1, u->n_vars, forward, NULL, NULL, is_affine,
+    init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init, NULL, is_affine,
               free_type_data);
     node->left = u;
     expr_retain(u);
@@ -43,9 +54,6 @@ expr *new_linear(expr *u, const CSR_Matrix *A)
     lin_node->A_csr = new_csr_matrix(A->m, A->n, A->nnz);
     copy_csr_matrix(A, lin_node->A_csr);
     lin_node->A_csc = csr_to_csc(A);
-
-    /* what if we have A @ phi(x). Then I don't think this is correct. */
-    node->jacobian = lin_node->A_csr;
 
     return node;
 }

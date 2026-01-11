@@ -39,6 +39,76 @@ void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C)
     memcpy(C->x, A->x, A->nnz * sizeof(double));
 }
 
+CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p)
+{
+    assert(p > 0);
+
+    int m = A->m;
+    int n = A->n;
+    int nnz = A->nnz;
+
+    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+
+    int nnz_cursor = 0;
+    for (int block = 0; block < p; block++)
+    {
+        int row_offset = block * m;
+        int col_offset = block * n;
+
+        for (int row = 0; row < m; row++)
+        {
+            int dest_row = row_offset + row;
+            A_kron->p[dest_row] = nnz_cursor;
+
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                A_kron->i[nnz_cursor] = A->i[j] + col_offset;
+                A_kron->x[nnz_cursor] = A->x[j];
+                nnz_cursor++;
+            }
+
+            A_kron->p[dest_row + 1] = nnz_cursor;
+        }
+    }
+
+    return A_kron;
+}
+
+CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p)
+{
+    assert(p > 0);
+
+    int m = A->m;
+    int n = A->n;
+    int nnz = A->nnz;
+
+    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+
+    int nnz_cursor = 0;
+    for (int row_block = 0; row_block < m; row_block++)
+    {
+        for (int diag_idx = 0; diag_idx < p; diag_idx++)
+        {
+            int dest_row = row_block * p + diag_idx;
+            A_kron->p[dest_row] = nnz_cursor;
+
+            /* Copy entries from row_block of A, adjusting column indices */
+            for (int j = A->p[row_block]; j < A->p[row_block + 1]; j++)
+            {
+                int col_block = A->i[j];
+                /* Column in result: col_block * p + diag_idx */
+                A_kron->i[nnz_cursor] = col_block * p + diag_idx;
+                A_kron->x[nnz_cursor] = A->x[j];
+                nnz_cursor++;
+            }
+
+            A_kron->p[dest_row + 1] = nnz_cursor;
+        }
+    }
+
+    return A_kron;
+}
+
 void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset)
 {
     for (int row = 0; row < A->m; row++)
@@ -47,6 +117,19 @@ void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset)
         for (int j = A->p[row]; j < A->p[row + 1]; j++)
         {
             sum += A->x[j] * x[A->i[j] - col_offset];
+        }
+        y[row] = sum;
+    }
+}
+
+void csr_matvec_wo_offset(const CSR_Matrix *A, const double *x, double *y)
+{
+    for (int row = 0; row < A->m; row++)
+    {
+        double sum = 0.0;
+        for (int j = A->p[row]; j < A->p[row + 1]; j++)
+        {
+            sum += A->x[j] * x[A->i[j]];
         }
         y[row] = sum;
     }

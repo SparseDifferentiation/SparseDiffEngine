@@ -49,4 +49,18 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
  */
 void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C);
 
+CSC_Matrix *csr_to_csc_fill_sparsity(const CSR_Matrix *A, int *iwork);
+void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
+
+/* Allocate CSR matrix for C = A @ B where A is CSR, B is CSC
+ * Precomputes sparsity pattern. No workspace required.
+ */
+CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B);
+
+/* Fill values of C = A @ B where A is CSR, B is CSC
+ * C must have sparsity pattern already computed
+ */
+void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
+                                CSR_Matrix *C);
+
 #endif /* CSC_MATRIX_H */

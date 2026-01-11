@@ -435,3 +435,50 @@ const char *test_AT_alloc_and_fill()
 
     return 0;
 }
+
+const char *test_kron_identity_csr()
+{
+    /* Test A kron I_p where:
+     * A is 2x3:
+     * [1  0  2]
+     * [3  0  4]
+     *
+     * p = 2, so result should be 4x6 (2*2 rows, 3*2 cols)
+     * A kron I_2 =
+     * [1  0 | 0  0 | 2  0]
+     * [0  1 | 0  0 | 0  2]
+     * [-----|-----|-----]
+     * [3  0 | 0  0 | 4  0]
+     * [0  3 | 0  0 | 0  4]
+     */
+    CSR_Matrix *A = new_csr_matrix(2, 3, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 2, 0, 2};
+    int Ap[3] = {0, 2, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
+
+    CSR_Matrix *result = kron_identity_csr(A, 2);
+
+    /* Expected: 4x6 with 8 nonzeros
+     * Row 0: [1, 0, 0, 0, 2, 0] -> cols {0, 4}, vals {1, 2}
+     * Row 1: [0, 1, 0, 0, 0, 2] -> cols {1, 5}, vals {1, 2}
+     * Row 2: [3, 0, 0, 0, 4, 0] -> cols {0, 4}, vals {3, 4}
+     * Row 3: [0, 3, 0, 0, 0, 4] -> cols {1, 5}, vals {3, 4}
+     */
+    double expected_x[8] = {1.0, 2.0, 1.0, 2.0, 3.0, 4.0, 3.0, 4.0};
+    int expected_i[8] = {0, 4, 1, 5, 0, 4, 1, 5};
+    int expected_p[5] = {0, 2, 4, 6, 8};
+
+    mu_assert("dimensions incorrect", result->m == 4 && result->n == 6);
+    mu_assert("nnz incorrect", result->nnz == 8);
+    mu_assert("vals incorrect", cmp_double_array(result->x, expected_x, 8));
+    mu_assert("cols incorrect", cmp_int_array(result->i, expected_i, 8));
+    mu_assert("rows incorrect", cmp_int_array(result->p, expected_p, 5));
+
+    free_csr_matrix(A);
+    free_csr_matrix(result);
+
+    return 0;
+}

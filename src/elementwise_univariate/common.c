@@ -21,7 +21,7 @@ void jacobian_init_elementwise(expr *node)
     /* otherwise it will be a linear operator */
     else
     {
-        CSR_Matrix *J = child->jacobian;
+        CSR_Matrix *J = ((linear_op_expr *) child)->A_csr;
         node->jacobian = new_csr_matrix(J->m, J->n, J->nnz);
 
         node->dwork = (double *) malloc(node->size * sizeof(double));
