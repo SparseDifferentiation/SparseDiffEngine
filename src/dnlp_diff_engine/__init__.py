@@ -184,6 +184,9 @@ ATOM_CONVERTERS = {
     # Bivariate
     "multiply": _convert_multiply,
     "QuadForm": _convert_quad_form,
+    "quad_over_lin": lambda _expr, children: _diffengine.make_quad_over_lin(
+        children[0], children[1]
+    ),
     # Matrix multiplication
     "MulExpression": _convert_matmul,
     # Elementwise univariate with parameter
