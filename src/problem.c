@@ -252,6 +252,9 @@ void problem_constraint_forward(problem *prob, const double *u)
 
 void problem_gradient(problem *prob)
 {
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
     /* evaluate jacobian of objective */
     prob->objective->eval_jacobian(prob->objective);
 
@@ -262,6 +265,9 @@ void problem_gradient(problem *prob)
     {
         prob->gradient_values[jac->i[k]] = jac->x[k];
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_eval_gradient += GET_ELAPSED_SECONDS(timer);
 }
 
 void problem_jacobian(problem *prob)
