@@ -121,6 +121,24 @@ def _extract_flat_indices_from_special_index(expr):
     return np.reshape(expr._select_mat, expr._select_mat.size, order="F").astype(np.int32)
 
 
+def _convert_reshape(expr, children):
+    """Convert reshape - only Fortran order is supported.
+
+    For Fortran order, reshape is a no-op since the underlying data layout
+    is unchanged. We just pass through the child expression.
+
+    Note: Only order='F' (Fortran/column-major) is supported. This is the
+    default and most common case in CVXPY. C order would require permutation.
+    """
+    if expr.order != 'F':
+        raise NotImplementedError(
+            f"reshape with order='{expr.order}' not supported. "
+            "Only order='F' (Fortran) is currently supported."
+        )
+    # Pass through - data layout is unchanged with Fortran order
+    return children[0]
+
+
 def _convert_quad_form(expr, children):
     """Convert quadratic form x.T @ P @ x."""
 
@@ -190,6 +208,8 @@ ATOM_CONVERTERS = {
     "special_index": lambda expr, children: _diffengine.make_index(
         children[0], _extract_flat_indices_from_special_index(expr)
     ),
+    # Reshape (Fortran order only - pass-through since data layout unchanged)
+    "reshape": _convert_reshape,
 }
 
 
