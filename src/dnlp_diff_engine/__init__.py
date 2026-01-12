@@ -23,6 +23,46 @@ def _chain_add(children):
     return result
 
 
+def _convert_matmul(expr, children):
+    """Convert matrix multiplication A @ f(x) or f(x) @ A."""
+    # MulExpression has args: [left, right]
+    # One of them should be a Constant, the other a variable expression
+    left_arg, right_arg = expr.args
+
+    if isinstance(left_arg, cp.Constant):
+        # A @ f(x) -> left_matmul
+        A = np.asarray(left_arg.value, dtype=np.float64)
+        if A.ndim == 1:
+            A = A.reshape(1, -1)  # Convert 1D to row vector
+        A_csr = sparse.csr_matrix(A)
+        m, n = A_csr.shape
+        return _diffengine.make_left_matmul(
+            children[1],  # right child is the variable expression
+            A_csr.data.astype(np.float64),
+            A_csr.indices.astype(np.int32),
+            A_csr.indptr.astype(np.int32),
+            m,
+            n,
+        )
+    elif isinstance(right_arg, cp.Constant):
+        # f(x) @ A -> right_matmul
+        A = np.asarray(right_arg.value, dtype=np.float64)
+        if A.ndim == 1:
+            A = A.reshape(-1, 1)  # Convert 1D to column vector
+        A_csr = sparse.csr_matrix(A)
+        m, n = A_csr.shape
+        return _diffengine.make_right_matmul(
+            children[0],  # left child is the variable expression
+            A_csr.data.astype(np.float64),
+            A_csr.indices.astype(np.int32),
+            A_csr.indptr.astype(np.int32),
+            m,
+            n,
+        )
+    else:
+        raise NotImplementedError("MulExpression with two non-constant args not supported")
+
+
 # Mapping from CVXPY atom names to C diff engine functions
 # Converters receive (expr, children) where expr is the CVXPY expression
 ATOM_CONVERTERS = {
@@ -43,6 +83,31 @@ ATOM_CONVERTERS = {
 
     # Reductions
     "Sum": lambda _expr, children: _diffengine.make_sum(children[0], -1),
+
+    # Bivariate
+    "multiply": lambda _expr, children: _diffengine.make_multiply(children[0], children[1]),
+
+    # Matrix multiplication
+    "MulExpression": _convert_matmul,
+
+    # Elementwise univariate with parameter
+    "power": lambda expr, children: _diffengine.make_power(children[0], float(expr.p.value)),
+
+    # Trigonometric
+    "sin": lambda _expr, children: _diffengine.make_sin(children[0]),
+    "cos": lambda _expr, children: _diffengine.make_cos(children[0]),
+    "tan": lambda _expr, children: _diffengine.make_tan(children[0]),
+
+    # Hyperbolic
+    "sinh": lambda _expr, children: _diffengine.make_sinh(children[0]),
+    "tanh": lambda _expr, children: _diffengine.make_tanh(children[0]),
+    "asinh": lambda _expr, children: _diffengine.make_asinh(children[0]),
+    "atanh": lambda _expr, children: _diffengine.make_atanh(children[0]),
+
+    # Other elementwise
+    "entr": lambda _expr, children: _diffengine.make_entr(children[0]),
+    "logistic": lambda _expr, children: _diffengine.make_logistic(children[0]),
+    "xexp": lambda _expr, children: _diffengine.make_xexp(children[0]),
 }
 
 

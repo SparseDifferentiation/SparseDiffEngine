@@ -32,7 +32,7 @@ build-dir = "build/{wheel_tag}"
 CMAKE_BUILD_TYPE = "Release"
 
 [tool.pytest.ini_options]
-testpaths = ["tests/python"]
+testpaths = ["python/tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 

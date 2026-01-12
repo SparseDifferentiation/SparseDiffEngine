@@ -8,8 +8,22 @@
 #include "atoms/exp.h"
 #include "atoms/linear.h"
 #include "atoms/log.h"
+#include "atoms/multiply.h"
 #include "atoms/neg.h"
+#include "atoms/power.h"
 #include "atoms/promote.h"
+#include "atoms/sin.h"
+#include "atoms/cos.h"
+#include "atoms/tan.h"
+#include "atoms/sinh.h"
+#include "atoms/tanh.h"
+#include "atoms/asinh.h"
+#include "atoms/atanh.h"
+#include "atoms/entr.h"
+#include "atoms/logistic.h"
+#include "atoms/xexp.h"
+#include "atoms/left_matmul.h"
+#include "atoms/right_matmul.h"
 #include "atoms/sum.h"
 #include "atoms/variable.h"
 
@@ -42,6 +56,20 @@ static PyMethodDef DNLPMethods[] = {
     {"make_sum", py_make_sum, METH_VARARGS, "Create sum node"},
     {"make_neg", py_make_neg, METH_VARARGS, "Create neg node"},
     {"make_promote", py_make_promote, METH_VARARGS, "Create promote node"},
+    {"make_multiply", py_make_multiply, METH_VARARGS, "Create elementwise multiply node"},
+    {"make_power", py_make_power, METH_VARARGS, "Create power node"},
+    {"make_sin", py_make_sin, METH_VARARGS, "Create sin node"},
+    {"make_cos", py_make_cos, METH_VARARGS, "Create cos node"},
+    {"make_tan", py_make_tan, METH_VARARGS, "Create tan node"},
+    {"make_sinh", py_make_sinh, METH_VARARGS, "Create sinh node"},
+    {"make_tanh", py_make_tanh, METH_VARARGS, "Create tanh node"},
+    {"make_asinh", py_make_asinh, METH_VARARGS, "Create asinh node"},
+    {"make_atanh", py_make_atanh, METH_VARARGS, "Create atanh node"},
+    {"make_entr", py_make_entr, METH_VARARGS, "Create entr node"},
+    {"make_logistic", py_make_logistic, METH_VARARGS, "Create logistic node"},
+    {"make_xexp", py_make_xexp, METH_VARARGS, "Create xexp node"},
+    {"make_left_matmul", py_make_left_matmul, METH_VARARGS, "Create left matmul node (A @ f(x))"},
+    {"make_right_matmul", py_make_right_matmul, METH_VARARGS, "Create right matmul node (f(x) @ A)"},
     {"make_problem", py_make_problem, METH_VARARGS,
      "Create problem from objective and constraints"},
     {"problem_init_derivatives", py_problem_init_derivatives, METH_VARARGS,
