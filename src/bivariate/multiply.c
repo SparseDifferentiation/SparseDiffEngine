@@ -142,6 +142,9 @@ static void wsum_hess_init(expr *node)
          * 2 * nnz(C) */
         assert(C->m == node->n_vars && C->n == node->n_vars);
         node->wsum_hess = new_csr_matrix(C->m, C->n, 2 * C->nnz);
+
+        /* fill sparsity pattern Hessian = C + C^T */
+        sum_csr_matrices_fill_sparsity(C, CT, node->wsum_hess);
     }
 }
 
@@ -170,11 +173,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         /* Compute CT = C^T = A^T diag(w) B */
         AT_fill_values(C, CT, node->iwork);
 
-        /* TODO: should fill sparsity before. Maybe we can map values from C to
-         * hessian directly instead?*/
-
         /* Hessian = C + CT = B^T diag(w) A + A^T diag(w) B */
-        sum_csr_matrices(C, CT, node->wsum_hess);
+        sum_csr_matrices_fill_values(C, CT, node->wsum_hess);
     }
 }
 
