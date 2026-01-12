@@ -44,6 +44,11 @@ target_compile_options(dnlp_diff PRIVATE
   $<$<CONFIG:MinSizeRel>:-Os -DNDEBUG>
 )
 
+# This is needed for clock_gettime on Linux without compiler extensions
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_compile_definitions(_POSIX_C_SOURCE=200809L)
+endif()
+
 # Enable position-independent code for shared library compatibility
 set_property(TARGET dnlp_diff PROPERTY POSITION_INDEPENDENT_CODE ON)
 

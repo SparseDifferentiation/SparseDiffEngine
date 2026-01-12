@@ -37,11 +37,21 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
         (double *) calloc(prob->total_constraint_size, sizeof(double));
     prob->gradient_values = (double *) calloc(prob->n_vars, sizeof(double));
 
+    /* Initialize statistics */
+    prob->stats.time_init_derivatives = 0.0;
+    prob->stats.time_eval_jacobian = 0.0;
+    prob->stats.time_eval_hessian = 0.0;
+    prob->stats.time_forward_obj = 0.0;
+    prob->stats.time_forward_constraints = 0.0;
+
     return prob;
 }
 
 void problem_init_derivatives(problem *prob)
 {
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
     // -------------------------------------------------------------------------------
     //                           Jacobian structure
     // -------------------------------------------------------------------------------
@@ -93,6 +103,9 @@ void problem_init_derivatives(problem *prob)
     int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
     free(iwork);
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
 }
 
 static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
@@ -205,13 +218,25 @@ void free_problem(problem *prob)
 
 double problem_objective_forward(problem *prob, const double *u)
 {
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
     /* Evaluate objective only */
     prob->objective->forward(prob->objective, u);
-    return prob->objective->value[0];
+    double result = prob->objective->value[0];
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_forward_obj += GET_ELAPSED_SECONDS(timer);
+
+    return result;
 }
 
 void problem_constraint_forward(problem *prob, const double *u)
 {
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
+    /* Evaluate constraints only and copy values */
     int offset = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
@@ -220,6 +245,9 @@ void problem_constraint_forward(problem *prob, const double *u)
         memcpy(prob->constraint_values + offset, c->value, c->size * sizeof(double));
         offset += c->size;
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_forward_constraints += GET_ELAPSED_SECONDS(timer);
 }
 
 void problem_gradient(problem *prob)
@@ -238,6 +266,9 @@ void problem_gradient(problem *prob)
 
 void problem_jacobian(problem *prob)
 {
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
     CSR_Matrix *J = prob->jacobian;
     int nnz_offset = 0;
 
@@ -251,19 +282,24 @@ void problem_jacobian(problem *prob)
 
     /* update actual nnz (may be less than allocated) */
     J->nnz = nnz_offset;
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);
 }
 
 void problem_hessian(problem *prob, double obj_w, const double *w)
 {
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
     // ------------------------------------------------------------------------
     //             evaluate hessian of objective and constraints
     // ------------------------------------------------------------------------
     expr *obj = prob->objective;
-    expr **constrs = prob->constraints;
-
     obj->eval_wsum_hess(obj, &obj_w);
 
     int offset = 0;
+    expr **constrs = prob->constraints;
     for (int i = 0; i < prob->n_constraints; i++)
     {
         constrs[i]->eval_wsum_hess(constrs[i], w + offset);
@@ -289,4 +325,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
         idx_map_accumulator(constrs[i]->wsum_hess, idx_map + offset, H->x);
         offset += constrs[i]->wsum_hess->nnz;
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_eval_hessian += GET_ELAPSED_SECONDS(timer);
 }
