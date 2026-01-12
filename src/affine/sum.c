@@ -1,11 +1,10 @@
 #include "affine.h"
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
+#include "utils/utils.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 static void forward(expr *node, const double *u)
 {

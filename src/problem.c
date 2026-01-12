@@ -1,32 +1,25 @@
 #include "problem.h"
+#include "utils/utils.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// TODO: move this into common file
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 /* forward declaration */
 static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
-
-/* Helper function to compare integers for qsort */
-static int compare_int_asc(const void *a, const void *b)
-{
-    int ia = *((const int *) a);
-    int ib = *((const int *) b);
-    return (ia > ib) - (ia < ib);
-}
 
 problem *new_problem(expr *objective, expr **constraints, int n_constraints)
 {
     problem *prob = (problem *) calloc(1, sizeof(problem));
     if (!prob) return NULL;
 
-    /* Retain objective (shared ownership with caller) */
+    /* objective */
     prob->objective = objective;
     expr_retain(objective);
+    prob->n_vars = objective->n_vars;
 
-    /* Copy and retain constraints array */
+    /* constraints array */
+    prob->total_constraint_size = 0;
     prob->n_constraints = n_constraints;
     if (n_constraints > 0)
     {
@@ -34,37 +27,15 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
         for (int i = 0; i < n_constraints; i++)
         {
             prob->constraints[i] = constraints[i];
+            prob->total_constraint_size += constraints[i]->size;
             expr_retain(constraints[i]);
         }
     }
-    else
-    {
-        prob->constraints = NULL;
-    }
 
-    /* Compute total constraint size */
-    prob->total_constraint_size = 0;
-    for (int i = 0; i < n_constraints; i++)
-    {
-        prob->total_constraint_size += constraints[i]->size;
-    }
-
-    prob->n_vars = objective->n_vars;
-
-    /* Allocate value arrays */
-    if (prob->total_constraint_size > 0)
-    {
-        prob->constraint_values =
-            (double *) calloc(prob->total_constraint_size, sizeof(double));
-    }
-    else
-    {
-        prob->constraint_values = NULL;
-    }
+    /* allocation */
+    prob->constraint_values =
+        (double *) calloc(prob->total_constraint_size, sizeof(double));
     prob->gradient_values = (double *) calloc(prob->n_vars, sizeof(double));
-
-    /* Derivative structures allocated by problem_init_derivatives */
-    prob->jacobian = NULL;
 
     return prob;
 }
@@ -84,6 +55,26 @@ void problem_init_derivatives(problem *prob)
     }
 
     prob->jacobian = new_csr_matrix(prob->total_constraint_size, prob->n_vars, nnz);
+
+    /* set sparsity pattern of jacobian */
+    CSR_Matrix *H = prob->jacobian;
+    H->p[0] = 0;
+    int row_offset = 0;
+    int nnz_offset = 0;
+    for (int i = 0; i < prob->n_constraints; i++)
+    {
+        expr *c = prob->constraints[i];
+
+        for (int r = 1; r <= c->jacobian->m; r++)
+        {
+            H->p[row_offset + r] = nnz_offset + c->jacobian->p[r];
+        }
+
+        memcpy(H->i + nnz_offset, c->jacobian->i, c->jacobian->nnz * sizeof(int));
+        row_offset += c->jacobian->m;
+        nnz_offset += c->jacobian->nnz;
+    }
+    assert(nnz_offset == nnz);
 
     // -------------------------------------------------------------------------------
     //                        Lagrange Hessian structure
@@ -134,7 +125,7 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
         }
 
         /* find unique columns */
-        qsort(cols, count, sizeof(int), compare_int_asc);
+        sort_int_array(cols, count);
         int prev_col = -1;
         for (int j = 0; j < count; j++)
         {
@@ -221,7 +212,6 @@ double problem_objective_forward(problem *prob, const double *u)
 
 void problem_constraint_forward(problem *prob, const double *u)
 {
-    /* Evaluate constraints only and copy values */
     int offset = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
@@ -234,61 +224,33 @@ void problem_constraint_forward(problem *prob, const double *u)
 
 void problem_gradient(problem *prob)
 {
-    /* Jacobian on objective */
+    /* evaluate jacobian of objective */
     prob->objective->eval_jacobian(prob->objective);
 
-    /* Zero gradient array */
+    /* copy sparse jacobian to dense gradient */
     memset(prob->gradient_values, 0, prob->n_vars * sizeof(double));
-
-    /* Copy sparse jacobian row to dense gradient
-     * Objective jacobian is 1 x n_vars */
     CSR_Matrix *jac = prob->objective->jacobian;
     for (int k = jac->p[0]; k < jac->p[1]; k++)
     {
-        int col = jac->i[k];
-        prob->gradient_values[col] = jac->x[k];
+        prob->gradient_values[jac->i[k]] = jac->x[k];
     }
 }
 
 void problem_jacobian(problem *prob)
 {
-    CSR_Matrix *stacked = prob->jacobian;
-
-    /* Initialize row pointers */
-    stacked->p[0] = 0;
-
-    int row_offset = 0;
+    CSR_Matrix *J = prob->jacobian;
     int nnz_offset = 0;
 
-    /* TODO: here we eventually want to evaluate affine jacobians only once.
-    And we only need to copy the values. The sparsity pattern should have been set
-    before. */
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-
-        /* Evaluate jacobian */
         c->eval_jacobian(c);
-
-        CSR_Matrix *cjac = c->jacobian;
-
-        /* Copy row pointers with offset */
-        for (int r = 1; r <= cjac->m; r++)
-        {
-            stacked->p[row_offset + r] = nnz_offset + cjac->p[r];
-        }
-
-        /* Copy column indices and values */
-        int constraint_nnz = cjac->p[cjac->m];
-        memcpy(stacked->i + nnz_offset, cjac->i, constraint_nnz * sizeof(int));
-        memcpy(stacked->x + nnz_offset, cjac->x, constraint_nnz * sizeof(double));
-
-        row_offset += cjac->m;
-        nnz_offset += constraint_nnz;
+        memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
+        nnz_offset += c->jacobian->nnz;
     }
 
-    /* Update actual nnz (may be less than allocated) */
-    stacked->nnz = nnz_offset;
+    /* update actual nnz (may be less than allocated) */
+    J->nnz = nnz_offset;
 }
 
 void problem_hessian(problem *prob, double obj_w, const double *w)

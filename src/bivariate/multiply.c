@@ -29,7 +29,6 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init(expr *node)
 {
-    printf("jacobian_init elementwise_mult\n \n \n");
     node->left->jacobian_init(node->left);
     node->right->jacobian_init(node->right);
     node->dwork = (double *) malloc(2 * node->size * sizeof(double));

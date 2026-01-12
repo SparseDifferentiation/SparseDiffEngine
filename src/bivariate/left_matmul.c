@@ -26,8 +26,7 @@
 
 */
 
-// todo: put this in common somewhere
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#include "utils/utils.h"
 
 static void forward(expr *node, const double *u)
 {

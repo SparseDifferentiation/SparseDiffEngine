@@ -1,5 +1,6 @@
 #include "utils/CSR_Matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/utils.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -191,13 +192,6 @@ void diag_csr_mult_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix 
             C->x[j] *= d[row];
         }
     }
-}
-
-static int compare_int_asc(const void *a, const void *b)
-{
-    int ia = *((const int *) a);
-    int ib = *((const int *) b);
-    return (ia > ib) - (ia < ib);
 }
 
 void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
@@ -453,14 +447,6 @@ void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matri
     C->p[A->m] = C->nnz;
 }
 
-/* Helper function for qsort to compare column indices */
-static int compare_cols(const void *a, const void *b)
-{
-    int col_a = *((int *) a);
-    int col_b = *((int *) b);
-    return col_a - col_b;
-}
-
 void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C, int_double_pair *pairs)
 {
     assert(C->m == 1);
@@ -586,7 +572,7 @@ void sum_block_of_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
         }
 
         /* Sort columns and write unique pattern into C->i */
-        qsort(cols, count, sizeof(int), compare_int_asc);
+        sort_int_array(cols, count);
 
         int unique_nnz = 0;
         int prev_col = -1;
@@ -718,7 +704,7 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
         }
 
         /* Sort columns and write unique pattern into C->i */
-        qsort(cols, count, sizeof(int), compare_int_asc);
+        sort_int_array(cols, count);
 
         int unique_nnz = 0;
         int prev_col = -1;
@@ -758,8 +744,7 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
 void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
                          double *accumulator)
 {
-    // memset(accumulator, 0, A->nnz * sizeof(double));
-
+    /* don't forget to initialze accumulator to 0 before calling this */
     for (int row = 0; row < A->m; row++)
     {
         for (int j = A->p[row]; j < A->p[row + 1]; j++)
@@ -769,21 +754,6 @@ void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
     }
 }
 
-/*
-void sum_evenly_spaced_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
-                                            const int *idx_map)
-{
-    memset(C->x, 0, C->nnz * sizeof(double));
-
-    for (int row = 0; row < A->m; row++)
-    {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            C->x[idx_map[j]] += A->x[j];
-        }
-    }
-}
-*/
 void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
                                   struct int_double_pair *pairs, int offset,
                                   int spacing)
@@ -862,7 +832,7 @@ CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
 {
     CSR_Matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
 
-    int i, j, start;
+    int i, j;
     int *count = iwork;
     memset(count, 0, A->n * sizeof(int));
 
@@ -1069,7 +1039,7 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
     // -------------------------------------------------------------------
     int *cols = iwork;
     memcpy(cols, A->i, A->nnz * sizeof(int));
-    qsort(cols, A->nnz, sizeof(int), compare_int_asc);
+    sort_int_array(cols, A->nnz);
 
     int unique_nnz = 0;
     int prev_col = -1;
