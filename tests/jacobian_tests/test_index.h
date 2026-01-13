@@ -83,8 +83,10 @@ const char *test_index_jacobian_of_log(void)
     double expected_x[2] = {1.0, 0.25};
     int expected_i[2] = {0, 2};
 
-    mu_assert("index of log jac vals", cmp_double_array(idx->jacobian->x, expected_x, 2));
-    mu_assert("index of log jac cols", cmp_int_array(idx->jacobian->i, expected_i, 2));
+    mu_assert("index of log jac vals",
+              cmp_double_array(idx->jacobian->x, expected_x, 2));
+    mu_assert("index of log jac cols",
+              cmp_int_array(idx->jacobian->i, expected_i, 2));
 
     free_expr(idx);
     return 0;
@@ -106,8 +108,12 @@ const char *test_index_jacobian_repeated(void)
     int expected_p[3] = {0, 1, 2};
     int expected_i[2] = {0, 0}; /* Both reference col 0 */
 
-    mu_assert("index repeated jac vals", cmp_double_array(idx->jacobian->x, expected_x, 2));
-    mu_assert("index repeated jac i", cmp_int_array(idx->jacobian->i, expected_i, 2));
+    mu_assert("index repeated jac vals",
+              cmp_double_array(idx->jacobian->x, expected_x, 2));
+    mu_assert("index repeated row ptr",
+              cmp_int_array(idx->jacobian->p, expected_p, 4));
+    mu_assert("index repeated jac i",
+              cmp_int_array(idx->jacobian->i, expected_i, 2));
 
     free_expr(idx);
     return 0;

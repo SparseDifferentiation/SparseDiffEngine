@@ -27,7 +27,6 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init(expr *node)
 {
-    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
     assert(node->left->var_id != NOT_A_VARIABLE);
     assert(node->left->d2 == 1);
     expr *x = node->left;

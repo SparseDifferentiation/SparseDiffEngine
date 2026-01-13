@@ -109,14 +109,13 @@ typedef struct const_vector_mult_expr
     double *a; /* length equals node->size */
 } const_vector_mult_expr;
 
-/* Index/slicing: y = child[indices] where indices is a list of flattened positions */
+/* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr
 {
     expr base;
     int *indices;        /* Flattened indices to select (owned, copied) */
-    int n_selected;      /* Number of selected elements */
-    bool has_duplicates; /* True if indices contain duplicates (affects Hessian path) */
-    double *parent_w;    /* Scatter buffer for wsum_hess (size = child->size) */
+    int n_idxs;          /* Number of selected elements */
+    bool has_duplicates; /* True if indices have duplicates (affects Hessian path) */
 } index_expr;
 
 #endif /* SUBEXPR_H */

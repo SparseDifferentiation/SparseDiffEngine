@@ -6,7 +6,8 @@
 #include "affine.h"
 #include "common.h"
 
-/* Index/slicing: y = child[indices] where indices is a list of flattened positions */
+/* Index/slicing: y = child[indices] where indices is a list of flattened positions
+ */
 static PyObject *py_make_index(PyObject *self, PyObject *args)
 {
     PyObject *child_capsule;
@@ -17,7 +18,7 @@ static PyObject *py_make_index(PyObject *self, PyObject *args)
         return NULL;
     }
 
-    expr *child = (expr *)PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+    expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
     if (!child)
     {
         PyErr_SetString(PyExc_ValueError, "invalid child capsule");
@@ -25,18 +26,18 @@ static PyObject *py_make_index(PyObject *self, PyObject *args)
     }
 
     /* Convert indices array to int32 */
-    PyArrayObject *indices_array =
-        (PyArrayObject *)PyArray_FROM_OTF(indices_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *indices_array = (PyArrayObject *) PyArray_FROM_OTF(
+        indices_obj, NPY_INT32, NPY_ARRAY_IN_ARRAY);
 
     if (!indices_array)
     {
         return NULL;
     }
 
-    int n_selected = (int)PyArray_SIZE(indices_array);
-    int *indices_data = (int *)PyArray_DATA(indices_array);
+    int n_idxs = (int) PyArray_SIZE(indices_array);
+    int *indices_data = (int *) PyArray_DATA(indices_array);
 
-    expr *node = new_index(child, indices_data, n_selected);
+    expr *node = new_index(child, indices_data, n_idxs);
 
     Py_DECREF(indices_array);
 

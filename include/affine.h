@@ -18,6 +18,6 @@ expr *new_trace(expr *child);
 expr *new_constant(int d1, int d2, int n_vars, const double *values);
 expr *new_variable(int d1, int d2, int var_id, int n_vars);
 
-expr *new_index(expr *child, const int *indices, int n_selected);
+expr *new_index(expr *child, const int *indices, int n_idxs);
 
 #endif /* AFFINE_H */
