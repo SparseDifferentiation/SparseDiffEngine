@@ -153,24 +153,24 @@ static inline double sparse_dot(const double *a_x, const int *a_i, int a_nnz,
 
 void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
 {
-    int i, j, ii, jj;
-    for (i = 0; i < C->m; i++)
+    int j, ii, jj;
+    for (ii = 0; ii < C->m; ii++)
     {
-        for (jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        for (jj = C->p[ii]; jj < C->p[ii + 1]; jj++)
         {
             j = C->i[jj];
 
-            if (j < i)
+            if (j < ii)
             {
-                C->x[jj] = csr_get_value(C, j, i);
+                C->x[jj] = csr_get_value(C, j, ii);
             }
             else
             {
-                int nnz_ai = A->p[i + 1] - A->p[i];
+                int nnz_ai = A->p[ii + 1] - A->p[ii];
                 int nnz_aj = A->p[j + 1] - A->p[j];
 
                 /* compute Cij = weighted inner product of column i and column j */
-                double sum = sparse_wdot(A->x + A->p[i], A->i + A->p[i], nnz_ai,
+                double sum = sparse_wdot(A->x + A->p[ii], A->i + A->p[ii], nnz_ai,
                                          A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
 
                 C->x[jj] = sum;
@@ -183,7 +183,7 @@ CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
 {
     CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
 
-    int i, j, start;
+    int i, j;
     int *count = malloc(A->n * sizeof(int));
 
     memset(count, 0, A->n * sizeof(int));
@@ -230,7 +230,7 @@ CSC_Matrix *csr_to_csc_fill_sparsity(const CSR_Matrix *A, int *iwork)
 {
     CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
 
-    int i, j, start;
+    int i, j;
     int *count = iwork;
     memset(count, 0, A->n * sizeof(int));
 
@@ -294,7 +294,6 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     /* A is m x n, B is m x p, C = B^T A is p x n */
     int n = A->n;
     int p = B->n;
-    int m = A->m;
     int nnz = 0;
     int i, j, ii, jj;
 

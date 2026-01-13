@@ -3,6 +3,17 @@
 
 #include "expr.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/Timer.h"
+
+typedef struct
+{
+    double time_init_derivatives;
+    double time_eval_jacobian;
+    double time_eval_gradient;
+    double time_eval_hessian;
+    double time_forward_obj;
+    double time_forward_constraints;
+} stats;
 
 typedef struct problem
 {
@@ -21,6 +32,9 @@ typedef struct problem
     CSR_Matrix *lagrange_hessian;
     int *hess_idx_map; /* Maps all wsum_hess nnz to lagrange_hessian (obj +
                           constraints) */
+
+    /* Statistics for performance measurement */
+    stats stats;
 } problem;
 
 /* Retains objective and constraints (shared ownership with caller) */
