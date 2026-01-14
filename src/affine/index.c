@@ -168,6 +168,5 @@ expr *new_index(expr *child, const int *indices, int n_idxs)
 
     /* detect duplicates for Hessian optimization */
     idx->has_duplicates = check_for_duplicates(indices, n_idxs, child->size);
-
     return node;
 }

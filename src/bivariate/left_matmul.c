@@ -1,5 +1,6 @@
 #include "bivariate.h"
 #include "subexpr.h"
+#include <assert.h>
 #include <stdlib.h>
 
 /* This file implement the atom 'left_matmul' corresponding to the operation y =
@@ -113,6 +114,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 
 expr *new_left_matmul(expr *u, const CSR_Matrix *A)
 {
+    assert(u->d1 == A->n);
     /* Allocate the type-specific struct */
     left_matmul_expr *lin_node =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));

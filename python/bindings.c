@@ -12,6 +12,7 @@
 #include "atoms/cos.h"
 #include "atoms/entr.h"
 #include "atoms/exp.h"
+#include "atoms/getters.h"
 #include "atoms/index.h"
 #include "atoms/left_matmul.h"
 #include "atoms/linear.h"
@@ -24,6 +25,7 @@
 #include "atoms/quad_form.h"
 #include "atoms/quad_over_lin.h"
 #include "atoms/rel_entr.h"
+#include "atoms/reshape.h"
 #include "atoms/right_matmul.h"
 #include "atoms/sin.h"
 #include "atoms/sinh.h"
@@ -90,6 +92,11 @@ static PyMethodDef DNLPMethods[] = {
      "Create quad_over_lin node (sum(x^2) / y)"},
     {"make_rel_entr", py_make_rel_entr, METH_VARARGS,
      "Create rel_entr node: x * log(x/y) elementwise"},
+    {"get_expr_dimensions", py_get_expr_dimensions, METH_VARARGS,
+     "Get the dimensions (d1, d2) of an expression"},
+    {"get_expr_size", py_get_expr_size, METH_VARARGS,
+     "Get the total size of an expression"},
+    {"make_reshape", py_make_reshape, METH_VARARGS, "Create reshape atom"},
     {"make_problem", py_make_problem, METH_VARARGS,
      "Create problem from objective and constraints"},
     {"problem_init_derivatives", py_problem_init_derivatives, METH_VARARGS,
