@@ -226,6 +226,8 @@ ATOM_CONVERTERS = {
         children[0], _extract_flat_indices_from_special_index(expr)
     ),
     "reshape": _convert_reshape,
+    # Reductions returning scalar
+    "Prod": lambda _expr, children: _diffengine.make_prod(children[0]),
 }
 
 
