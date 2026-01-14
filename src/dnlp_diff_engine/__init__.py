@@ -29,8 +29,10 @@ def _convert_matmul(expr, children):
     # One of them should be a Constant, the other a variable expression
     left_arg, right_arg = expr.args
 
-    if isinstance(left_arg, cp.Constant):
+    if left_arg.is_constant():
         # A @ f(x) -> left_matmul
+        # TODO: why is this always dense? What's going on here?
+        # we later convert it to csr....
         A = np.asarray(left_arg.value, dtype=np.float64)
         if A.ndim == 1:
             A = A.reshape(1, -1)  # Convert 1D to row vector
@@ -44,8 +46,11 @@ def _convert_matmul(expr, children):
             m,
             n,
         )
-    elif isinstance(right_arg, cp.Constant):
+    elif right_arg.is_constant():
         # f(x) @ A -> right_matmul
+
+        # TODO: why is this always dense? What's going on here?
+        # we later convert it to csr....
         A = np.asarray(right_arg.value, dtype=np.float64)
         if A.ndim == 1:
             A = A.reshape(-1, 1)  # Convert 1D to column vector
@@ -69,7 +74,7 @@ def _convert_multiply(expr, children):
     left_arg, right_arg = expr.args
 
     # Check if left is a constant
-    if isinstance(left_arg, cp.Constant):
+    if left_arg.is_constant():
         value = np.asarray(left_arg.value, dtype=np.float64)
 
         # Scalar constant
@@ -83,7 +88,7 @@ def _convert_multiply(expr, children):
             return _diffengine.make_const_vector_mult(children[1], vector)
 
     # Check if right is a constant
-    elif isinstance(right_arg, cp.Constant):
+    elif right_arg.is_constant():
         value = np.asarray(right_arg.value, dtype=np.float64)
 
         # Scalar constant
@@ -109,9 +114,11 @@ def _extract_flat_indices_from_index(expr):
         return indices_per_dim[0].astype(np.int32)
     elif len(indices_per_dim) == 2:
         # Fortran order: idx = row + col * n_rows
-        return np.add.outer(
-            indices_per_dim[0], indices_per_dim[1] * parent_shape[0]
-        ).flatten(order="F").astype(np.int32)
+        return (
+            np.add.outer(indices_per_dim[0], indices_per_dim[1] * parent_shape[0])
+            .flatten(order="F")
+            .astype(np.int32)
+        )
     else:
         raise NotImplementedError("index with >2 dimensions not supported")
 
@@ -119,24 +126,6 @@ def _extract_flat_indices_from_index(expr):
 def _extract_flat_indices_from_special_index(expr):
     """Extract flattened indices from CVXPY special_index expression."""
     return np.reshape(expr._select_mat, expr._select_mat.size, order="F").astype(np.int32)
-
-
-def _convert_reshape(expr, children):
-    """Convert reshape - only Fortran order is supported.
-
-    For Fortran order, reshape is a no-op since the underlying data layout
-    is unchanged. We just pass through the child expression.
-
-    Note: Only order='F' (Fortran/column-major) is supported. This is the
-    default and most common case in CVXPY. C order would require permutation.
-    """
-    if expr.order != 'F':
-        raise NotImplementedError(
-            f"reshape with order='{expr.order}' not supported. "
-            "Only order='F' (Fortran) is currently supported."
-        )
-    # Pass through - data layout is unchanged with Fortran order
-    return children[0]
 
 
 def _convert_rel_entr(_expr, children):
@@ -167,6 +156,25 @@ def _convert_quad_form(expr, children):
         m,
         n,
     )
+
+
+def _convert_reshape(expr, children):
+    """Convert reshape - only Fortran order is supported.
+
+    For Fortran order, reshape is a no-op since the underlying data layout
+    is unchanged. We create a reshape node that updates dimension metadata.
+
+    Note: Only order='F' (Fortran/column-major) is supported. This is the
+    default and most common case in CVXPY. C order would require permutation.
+    """
+    if expr.order != "F":
+        raise NotImplementedError(
+            f"reshape with order='{expr.order}' not supported. "
+            "Only order='F' (Fortran) is currently supported."
+        )
+
+    d1, d2 = expr.shape
+    return _diffengine.make_reshape(children[0], d1, d2)
 
 
 # Mapping from CVXPY atom names to C diff engine functions
@@ -217,7 +225,6 @@ ATOM_CONVERTERS = {
     "special_index": lambda expr, children: _diffengine.make_index(
         children[0], _extract_flat_indices_from_special_index(expr)
     ),
-    # Reshape (Fortran order only - pass-through since data layout unchanged)
     "reshape": _convert_reshape,
 }
 

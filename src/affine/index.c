@@ -93,21 +93,21 @@ static void wsum_hess_init(expr *node)
        many numerical zeros in child->wsum_hess that are actually
        structural zeros, but we do not try to exploit that sparsity
        right now. */
-    CSR_Matrix *H_child = x->wsum_hess;
-    node->wsum_hess = new_csr_matrix(H_child->m, H_child->n, H_child->nnz);
-    memcpy(node->wsum_hess->p, H_child->p, (H_child->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, H_child->i, H_child->nnz * sizeof(int));
+    CSR_Matrix *Hx = x->wsum_hess;
+    node->wsum_hess = new_csr_matrix(Hx->m, Hx->n, Hx->nnz);
+    memcpy(node->wsum_hess->p, Hx->p, (Hx->m + 1) * sizeof(int));
+    memcpy(node->wsum_hess->i, Hx->i, Hx->nnz * sizeof(int));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    expr *child = node->left;
+    expr *x = node->left;
     index_expr *idx = (index_expr *) node;
 
     if (idx->has_duplicates)
     {
         /* zero and accumulate for repeated indices */
-        memset(node->dwork, 0, child->size * sizeof(double));
+        memset(node->dwork, 0, x->size * sizeof(double));
         for (int i = 0; i < idx->n_idxs; i++)
         {
             node->dwork[idx->indices[i]] += w[i];
@@ -122,12 +122,9 @@ static void eval_wsum_hess(expr *node, const double *w)
         }
     }
 
-    /* delegate to child */
-    child->eval_wsum_hess(child, node->dwork);
-
-    /* copy values from child */
-    memcpy(node->wsum_hess->x, child->wsum_hess->x,
-           child->wsum_hess->nnz * sizeof(double));
+    /* evalute hessian of child */
+    x->eval_wsum_hess(x, node->dwork);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)
@@ -168,6 +165,5 @@ expr *new_index(expr *child, const int *indices, int n_idxs)
 
     /* detect duplicates for Hessian optimization */
     idx->has_duplicates = check_for_duplicates(indices, n_idxs, child->size);
-
     return node;
 }

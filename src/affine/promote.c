@@ -1,4 +1,5 @@
 #include "affine.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,35 +11,32 @@ static void forward(expr *node, const double *u)
     node->left->forward(node->left, u);
 
     /* broadcast scalar value to all output elements */
-    double val = node->left->value[0];
     for (int i = 0; i < node->size; i++)
     {
-        node->value[i] = val;
+        node->value[i] = node->left->value[0];
     }
 }
 
 static void jacobian_init(expr *node)
 {
-    node->left->jacobian_init(node->left);
+    expr *x = node->left;
+    x->jacobian_init(x);
 
-    /* Each output row copies the single row from child's jacobian */
-    CSR_Matrix *child_jac = node->left->jacobian;
-    int nnz = node->size * child_jac->nnz;
-
+    /* each output row copies the single row from child's jacobian */
+    int nnz = node->size * x->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
-    CSR_Matrix *jac = node->jacobian;
 
-    /* Build sparsity pattern by replicating child's single row */
-    int child_nnz = child_jac->p[1] - child_jac->p[0];
-    jac->nnz = 0;
+    /* fill sparsity pattern */
+    CSR_Matrix *J = node->jacobian;
+    J->nnz = 0;
     for (int row = 0; row < node->size; row++)
     {
-        jac->p[row] = jac->nnz;
-        memcpy(jac->i + jac->nnz, child_jac->i + child_jac->p[0],
-               child_nnz * sizeof(int));
-        jac->nnz += child_nnz;
+        J->p[row] = J->nnz;
+        memcpy(J->i + J->nnz, x->jacobian->i, x->jacobian->nnz * sizeof(int));
+        J->nnz += x->jacobian->nnz;
     }
-    jac->p[node->size] = jac->nnz;
+    assert(J->nnz == nnz);
+    J->p[node->size] = J->nnz;
 }
 
 static void eval_jacobian(expr *node)
@@ -95,6 +93,7 @@ static bool is_affine(const expr *node)
 
 expr *new_promote(expr *child, int d1, int d2)
 {
+    assert(child->size == 1);
     expr *node = new_expr(d1, d2, child->n_vars);
     node->forward = forward;
     node->jacobian_init = jacobian_init;

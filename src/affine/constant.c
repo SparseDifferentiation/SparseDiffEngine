@@ -43,7 +43,7 @@ static bool is_affine(const expr *node)
 expr *new_constant(int d1, int d2, int n_vars, const double *values)
 {
     expr *node = new_expr(d1, d2, n_vars);
-    memcpy(node->value, values, d1 * d2 * sizeof(double));
+    memcpy(node->value, values, node->size * sizeof(double));
     node->forward = forward;
     node->is_affine = is_affine;
     node->jacobian_init = jacobian_init;
