@@ -12,6 +12,7 @@
 #include "atoms/cos.h"
 #include "atoms/entr.h"
 #include "atoms/exp.h"
+#include "atoms/index.h"
 #include "atoms/left_matmul.h"
 #include "atoms/linear.h"
 #include "atoms/log.h"
@@ -21,6 +22,8 @@
 #include "atoms/power.h"
 #include "atoms/promote.h"
 #include "atoms/quad_form.h"
+#include "atoms/quad_over_lin.h"
+#include "atoms/rel_entr.h"
 #include "atoms/right_matmul.h"
 #include "atoms/sin.h"
 #include "atoms/sinh.h"
@@ -55,6 +58,7 @@ static PyMethodDef DNLPMethods[] = {
     {"make_linear", py_make_linear, METH_VARARGS, "Create linear op node"},
     {"make_log", py_make_log, METH_VARARGS, "Create log node"},
     {"make_exp", py_make_exp, METH_VARARGS, "Create exp node"},
+    {"make_index", py_make_index, METH_VARARGS, "Create index node"},
     {"make_add", py_make_add, METH_VARARGS, "Create add node"},
     {"make_sum", py_make_sum, METH_VARARGS, "Create sum node"},
     {"make_neg", py_make_neg, METH_VARARGS, "Create neg node"},
@@ -82,6 +86,10 @@ static PyMethodDef DNLPMethods[] = {
      "Create right matmul node (f(x) @ A)"},
     {"make_quad_form", py_make_quad_form, METH_VARARGS,
      "Create quadratic form node (x' * Q * x)"},
+    {"make_quad_over_lin", py_make_quad_over_lin, METH_VARARGS,
+     "Create quad_over_lin node (sum(x^2) / y)"},
+    {"make_rel_entr", py_make_rel_entr, METH_VARARGS,
+     "Create rel_entr node: x * log(x/y) elementwise"},
     {"make_problem", py_make_problem, METH_VARARGS,
      "Create problem from objective and constraints"},
     {"problem_init_derivatives", py_problem_init_derivatives, METH_VARARGS,

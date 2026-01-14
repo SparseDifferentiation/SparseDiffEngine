@@ -11,17 +11,26 @@ DNLP-diff-engine is a C library with Python bindings that provides automatic dif
 ### Python Package (Recommended)
 
 ```bash
-# Install in development mode (builds C library + Python bindings)
-pip install -e .
+# Install in development mode with uv (recommended)
+uv pip install -e ".[test]"
 
-# Run all Python tests
+# Or with pip
+pip install -e ".[test]"
+
+# Run all Python tests (tests are in python/tests/)
 pytest
 
 # Run specific test file
-pytest tests/python/test_unconstrained.py
+pytest python/tests/test_unconstrained.py
 
 # Run specific test
-pytest tests/python/test_unconstrained.py::test_sum_log
+pytest python/tests/test_unconstrained.py::test_sum_log
+
+# Lint with ruff
+ruff check src/
+
+# Auto-fix lint issues
+ruff check --fix src/
 ```
 
 ### Standalone C Library
@@ -33,16 +42,6 @@ cmake --build build
 
 # Run C tests
 ./build/all_tests
-```
-
-### Legacy Python Build (without pip)
-
-```bash
-# Build Python bindings manually (from project root)
-cd python && cmake -B build -S . && cmake --build build && cd ..
-
-# Run tests from python/ directory
-cd python && python tests/test_problem_native.py
 ```
 
 ## Architecture
@@ -59,10 +58,10 @@ The core abstraction is the `expr` struct (in `include/expr.h`) representing a n
 
 Atoms are organized by mathematical properties in `src/`:
 
-- **`affine/`** - Linear operations: `variable`, `constant`, `add`, `neg`, `sum`, `promote`, `hstack`, `trace`, `linear_op`
-- **`elementwise_univariate/`** - Scalar functions applied elementwise: `log`, `exp`, `entr`, `power`, `logistic`, trigonometric, hyperbolic
-- **`bivariate/`** - Two-argument operations: `multiply`, `quad_over_lin`, `rel_entr`
-- **`other/`** - Special atoms not fitting above categories
+- **`affine/`** - Linear operations: `variable`, `constant`, `add`, `neg`, `sum`, `promote`, `hstack`, `trace`, `linear_op`, `index`
+- **`elementwise_univariate/`** - Scalar functions applied elementwise: `log`, `exp`, `entr`, `power`, `logistic`, `xexp`, trigonometric (`sin`, `cos`, `tan`), hyperbolic (`sinh`, `tanh`, `asinh`, `atanh`)
+- **`bivariate/`** - Two-argument operations: `multiply`, `quad_over_lin`, `rel_entr`, `const_scalar_mult`, `const_vector_mult`, `left_matmul`, `right_matmul`
+- **`other/`** - Special atoms: `quad_form`, `prod`
 
 Each atom implements its own `forward`, `jacobian_init`, `eval_jacobian`, and `eval_wsum_hess` functions following a consistent pattern.
 
@@ -87,7 +86,8 @@ The Python package `dnlp_diff_engine` (in `src/dnlp_diff_engine/`) provides:
 **High-level API** (`__init__.py`):
 - `C_problem` class wraps the C problem struct
 - `convert_problem()` builds expression trees from CVXPY Problem objects
-- Atoms are mapped via `ATOM_CONVERTERS` dictionary
+- Atoms are mapped via `ATOM_CONVERTERS` dictionary (maps CVXPY atom names → converter functions)
+- Special converters handle: matrix multiplication (`_convert_matmul`), multiply with constants (`_convert_multiply`), indexing, reshape (Fortran order only)
 
 **Low-level C extension** (`_core` module, built from `python/bindings.c`):
 - Atom constructors: `make_variable`, `make_constant`, `make_log`, `make_exp`, `make_add`, etc.
@@ -108,14 +108,15 @@ Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`
 
 ## Key Directories
 
-- `include/` - Header files defining public API
-- `src/` - C implementation files
-- `src/dnlp_diff_engine/` - Python package (installed via pip)
-- `python/` - Python bindings C code and binding headers
+- `include/` - Header files defining public API (`expr.h`, `problem.h`, atom headers)
+- `src/` - C implementation files organized by atom category
+- `src/dnlp_diff_engine/` - Python package with high-level API
+- `python/` - Python bindings C code (`bindings.c`)
 - `python/atoms/` - Python binding headers for each atom type
 - `python/problem/` - Python binding headers for problem interface
+- `python/tests/` - Python integration tests (run via pytest)
 - `tests/` - C tests using minunit framework
-- `tests/python/` - Python tests (run via pytest)
+- `tests/forward_pass/` - Forward evaluation tests (C)
 - `tests/jacobian_tests/` - Jacobian correctness tests (C)
 - `tests/wsum_hess/` - Hessian correctness tests (C)
 

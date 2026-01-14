@@ -109,4 +109,13 @@ typedef struct const_vector_mult_expr
     double *a; /* length equals node->size */
 } const_vector_mult_expr;
 
+/* Index/slicing: y = child[indices] where indices is a list of flat positions */
+typedef struct index_expr
+{
+    expr base;
+    int *indices;        /* Flattened indices to select (owned, copied) */
+    int n_idxs;          /* Number of selected elements */
+    bool has_duplicates; /* True if indices have duplicates (affects Hessian path) */
+} index_expr;
+
 #endif /* SUBEXPR_H */

@@ -100,6 +100,50 @@ def _convert_multiply(expr, children):
     return _diffengine.make_multiply(children[0], children[1])
 
 
+def _extract_flat_indices_from_index(expr):
+    """Extract flattened indices from CVXPY index expression."""
+    parent_shape = expr.args[0].shape
+    indices_per_dim = [np.arange(s.start, s.stop, s.step) for s in expr.key]
+
+    if len(indices_per_dim) == 1:
+        return indices_per_dim[0].astype(np.int32)
+    elif len(indices_per_dim) == 2:
+        # Fortran order: idx = row + col * n_rows
+        return np.add.outer(
+            indices_per_dim[0], indices_per_dim[1] * parent_shape[0]
+        ).flatten(order="F").astype(np.int32)
+    else:
+        raise NotImplementedError("index with >2 dimensions not supported")
+
+
+def _extract_flat_indices_from_special_index(expr):
+    """Extract flattened indices from CVXPY special_index expression."""
+    return np.reshape(expr._select_mat, expr._select_mat.size, order="F").astype(np.int32)
+
+
+def _convert_reshape(expr, children):
+    """Convert reshape - only Fortran order is supported.
+
+    For Fortran order, reshape is a no-op since the underlying data layout
+    is unchanged. We just pass through the child expression.
+
+    Note: Only order='F' (Fortran/column-major) is supported. This is the
+    default and most common case in CVXPY. C order would require permutation.
+    """
+    if expr.order != 'F':
+        raise NotImplementedError(
+            f"reshape with order='{expr.order}' not supported. "
+            "Only order='F' (Fortran) is currently supported."
+        )
+    # Pass through - data layout is unchanged with Fortran order
+    return children[0]
+
+
+def _convert_rel_entr(_expr, children):
+    """Convert rel_entr(x, y) = x * log(x/y) elementwise."""
+    return _diffengine.make_rel_entr(children[0], children[1])
+
+
 def _convert_quad_form(expr, children):
     """Convert quadratic form x.T @ P @ x."""
 
@@ -145,6 +189,10 @@ ATOM_CONVERTERS = {
     # Bivariate
     "multiply": _convert_multiply,
     "QuadForm": _convert_quad_form,
+    "quad_over_lin": lambda _expr, children: _diffengine.make_quad_over_lin(
+        children[0], children[1]
+    ),
+    "rel_entr": _convert_rel_entr,
     # Matrix multiplication
     "MulExpression": _convert_matmul,
     # Elementwise univariate with parameter
@@ -162,6 +210,15 @@ ATOM_CONVERTERS = {
     "entr": lambda _expr, children: _diffengine.make_entr(children[0]),
     "logistic": lambda _expr, children: _diffengine.make_logistic(children[0]),
     "xexp": lambda _expr, children: _diffengine.make_xexp(children[0]),
+    # Indexing/slicing
+    "index": lambda expr, children: _diffengine.make_index(
+        children[0], _extract_flat_indices_from_index(expr)
+    ),
+    "special_index": lambda expr, children: _diffengine.make_index(
+        children[0], _extract_flat_indices_from_special_index(expr)
+    ),
+    # Reshape (Fortran order only - pass-through since data layout unchanged)
+    "reshape": _convert_reshape,
 }
 
 

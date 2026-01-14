@@ -18,6 +18,7 @@
 #include "jacobian_tests/test_const_vector_mult.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
+#include "jacobian_tests/test_index.h"
 #include "jacobian_tests/test_left_matmul.h"
 #include "jacobian_tests/test_log.h"
 #include "jacobian_tests/test_neg.h"
@@ -43,6 +44,7 @@
 #include "wsum_hess/test_const_scalar_mult.h"
 #include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
+#include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
 #include "wsum_hess/test_multiply.h"
 #include "wsum_hess/test_prod.h"
@@ -111,6 +113,12 @@ int main(void)
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
+    mu_run_test(test_index_forward_simple, tests_run);
+    mu_run_test(test_index_forward_repeated, tests_run);
+    mu_run_test(test_index_jacobian_of_variable, tests_run);
+    mu_run_test(test_index_jacobian_of_log, tests_run);
+    mu_run_test(test_index_jacobian_repeated, tests_run);
+    mu_run_test(test_sum_of_index, tests_run);
     mu_run_test(test_promote_scalar_jacobian, tests_run);
     mu_run_test(test_promote_scalar_to_matrix_jacobian, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
@@ -150,6 +158,9 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_matrix, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
+    mu_run_test(test_wsum_hess_index_log, tests_run);
+    mu_run_test(test_wsum_hess_index_repeated, tests_run);
+    mu_run_test(test_wsum_hess_sum_index_log, tests_run);
     mu_run_test(test_wsum_hess_quad_over_lin_xy, tests_run);
     mu_run_test(test_wsum_hess_quad_over_lin_yx, tests_run);
     mu_run_test(test_wsum_hess_quad_form, tests_run);
