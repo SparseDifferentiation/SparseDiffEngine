@@ -29,7 +29,7 @@ def _convert_matmul(expr, children):
     # One of them should be a Constant, the other a variable expression
     left_arg, right_arg = expr.args
 
-    if isinstance(left_arg, cp.Constant):
+    if left_arg.is_constant():
         # A @ f(x) -> left_matmul
         # TODO: why is this always dense? What's going on here?
         # we later convert it to csr....
@@ -46,7 +46,7 @@ def _convert_matmul(expr, children):
             m,
             n,
         )
-    elif isinstance(right_arg, cp.Constant):
+    elif right_arg.is_constant():
         # f(x) @ A -> right_matmul
 
         # TODO: why is this always dense? What's going on here?
@@ -74,7 +74,7 @@ def _convert_multiply(expr, children):
     left_arg, right_arg = expr.args
 
     # Check if left is a constant
-    if isinstance(left_arg, cp.Constant):
+    if left_arg.is_constant():
         value = np.asarray(left_arg.value, dtype=np.float64)
 
         # Scalar constant
@@ -88,7 +88,7 @@ def _convert_multiply(expr, children):
             return _diffengine.make_const_vector_mult(children[1], vector)
 
     # Check if right is a constant
-    elif isinstance(right_arg, cp.Constant):
+    elif right_arg.is_constant():
         value = np.asarray(right_arg.value, dtype=np.float64)
 
         # Scalar constant

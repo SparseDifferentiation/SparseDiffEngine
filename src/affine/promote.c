@@ -22,11 +22,11 @@ static void jacobian_init(expr *node)
     expr *x = node->left;
     x->jacobian_init(x);
 
-    // each output row copies the single row from child's jacobian
+    /* each output row copies the single row from child's jacobian */
     int nnz = node->size * x->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
 
-    // fill sparsity pattern
+    /* fill sparsity pattern */
     CSR_Matrix *J = node->jacobian;
     J->nnz = 0;
     for (int row = 0; row < node->size; row++)
