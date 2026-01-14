@@ -4,6 +4,7 @@
 
 /* Include all test headers */
 #include "forward_pass/affine/test_add.h"
+#include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_hstack.h"
 #include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
@@ -13,6 +14,7 @@
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
+#include "jacobian_tests/test_broadcast.h"
 #include "jacobian_tests/test_composite.h"
 #include "jacobian_tests/test_const_scalar_mult.h"
 #include "jacobian_tests/test_const_vector_mult.h"
@@ -41,6 +43,7 @@
 #include "wsum_hess/elementwise/test_power.h"
 #include "wsum_hess/elementwise/test_trig.h"
 #include "wsum_hess/elementwise/test_xexp.h"
+#include "wsum_hess/test_broadcast.h"
 #include "wsum_hess/test_const_scalar_mult.h"
 #include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
@@ -76,6 +79,9 @@ int main(void)
     mu_run_test(test_sum_axis_1, tests_run);
     mu_run_test(test_hstack_forward_vectors, tests_run);
     mu_run_test(test_hstack_forward_matrix, tests_run);
+    mu_run_test(test_broadcast_row, tests_run);
+    mu_run_test(test_broadcast_col, tests_run);
+    mu_run_test(test_broadcast_matrix, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);
@@ -121,6 +127,9 @@ int main(void)
     mu_run_test(test_sum_of_index, tests_run);
     mu_run_test(test_promote_scalar_jacobian, tests_run);
     mu_run_test(test_promote_scalar_to_matrix_jacobian, tests_run);
+    mu_run_test(test_broadcast_row_jacobian, tests_run);
+    mu_run_test(test_broadcast_col_jacobian, tests_run);
+    mu_run_test(test_broadcast_scalar_to_matrix_jacobian, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_jacobian_trace_variable, tests_run);
@@ -177,6 +186,9 @@ int main(void)
     mu_run_test(test_wsum_hess_left_matmul_composite, tests_run);
     mu_run_test(test_wsum_hess_right_matmul, tests_run);
     mu_run_test(test_wsum_hess_right_matmul_vector, tests_run);
+    mu_run_test(test_wsum_hess_broadcast_row, tests_run);
+    mu_run_test(test_wsum_hess_broadcast_col, tests_run);
+    mu_run_test(test_wsum_hess_broadcast_scalar_to_matrix, tests_run);
     // This test leads to seg fault
     // mu_run_test(test_wsum_hess_trace_variable, tests_run);
 

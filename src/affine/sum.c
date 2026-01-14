@@ -135,7 +135,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
     else if (axis == 1)
     {
-        tile(node->dwork, w, x->d1, x->d2);
+        tile_double(node->dwork, w, x->d1, x->d2);
     }
 
     x->eval_wsum_hess(x, node->dwork);

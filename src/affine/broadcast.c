@@ -1,6 +1,6 @@
 #include "affine.h"
-#include "mini_numpy.h"
 #include "subexpr.h"
+#include "utils/mini_numpy.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +91,7 @@ static void jacobian_init(expr *node)
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
 
             /* copy columns indices */
-            tile(J->i + J->nnz, Jx->i + Jx->p[i], nnz_in_row, bcast->m);
+            tile_int(J->i + J->nnz, Jx->i + Jx->p[i], nnz_in_row, bcast->m);
 
             /* set row pointers */
             for (int rep = 0; rep < bcast->m; rep++)
@@ -105,7 +105,7 @@ static void jacobian_init(expr *node)
     {
 
         /* copy column indices */
-        tile(J->i, Jx->i, Jx->nnz, bcast->n);
+        tile_int(J->i, Jx->i, Jx->nnz, bcast->n);
 
         /* set row pointers */
         int offset = 0;
@@ -117,11 +117,24 @@ static void jacobian_init(expr *node)
                 offset += Jx->p[1] - Jx->p[0];
             }
         }
-        assert(offset == total_nnz) J->p[node->size] = total_nnz;
+        assert(offset == total_nnz);
+        J->p[node->size] = total_nnz;
     }
     else
     {
-        assert(false);
+        /* copy column indices */
+        tile_int(J->i, Jx->i, Jx->nnz, bcast->m * bcast->n);
+
+        /* set row pointers */
+        int offset = 0;
+        int nnz = Jx->p[1] - Jx->p[0];
+        for (int i = 0; i < bcast->m * bcast->n; i++)
+        {
+            J->p[i] = offset;
+            offset += nnz;
+        }
+        assert(offset == total_nnz);
+        J->p[node->size] = total_nnz;
     }
 }
 
@@ -139,17 +152,17 @@ static void eval_jacobian(expr *node)
         for (int i = 0; i < bcast->n; i++)
         {
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
-            tile(J->x + J->nnz, Jx->x + Jx->p[i], nnz_in_row, bcast->m);
+            tile_double(J->x + J->nnz, Jx->x + Jx->p[i], nnz_in_row, bcast->m);
             J->nnz += nnz_in_row * bcast->m;
         }
     }
     else if (bcast->type == BROADCAST_COL)
     {
-        tile(J->x, Jx->x, Jx->nnz, bcast->n);
+        tile_double(J->x, Jx->x, Jx->nnz, bcast->n);
     }
     else
     {
-        assert(false);
+        tile_double(J->x, Jx->x, Jx->nnz, bcast->m * bcast->n);
     }
 }
 
@@ -162,12 +175,53 @@ static void wsum_hess_init(expr *node)
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
     memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->wsum_hess->m + 1) * sizeof(int));
     memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
+
+    /* allocate space for weight vector */
+    node->dwork = malloc(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     broadcast_expr *bcast = (broadcast_expr *) node;
-    expr *child = node->left;
+    expr *x = node->left;
+
+    /* Zero out the work array first */
+    memset(node->dwork, 0, x->size * sizeof(double));
+
+    if (bcast->type == BROADCAST_ROW)
+    {
+        /* (1, n) -> (m, n): each input element has m weights to sum */
+        for (int j = 0; j < bcast->n; j++)
+        {
+            for (int i = 0; i < bcast->m; i++)
+            {
+                node->dwork[j] += w[i + j * bcast->m];
+            }
+        }
+    }
+    else if (bcast->type == BROADCAST_COL)
+    {
+        /* (m, 1) -> (m, n): each input element has n weights to sum */
+        for (int j = 0; j < bcast->n; j++)
+        {
+            for (int i = 0; i < bcast->m; i++)
+            {
+                node->dwork[i] += w[i + j * bcast->m];
+            }
+        }
+    }
+    else
+    {
+        /* (1, 1) -> (m, n): scalar has m*n weights to sum */
+        node->dwork[0] = 0.0;
+        for (int k = 0; k < bcast->m * bcast->n; k++)
+        {
+            node->dwork[0] += w[k];
+        }
+    }
+
+    x->eval_wsum_hess(x, node->dwork);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)
@@ -201,7 +255,7 @@ expr *new_broadcast(expr *child, int target_d1, int target_d2)
         assert(false);
     }
 
-    broadcast_expr *bcast = (broadcast_expr *) malloc(sizeof(broadcast_expr));
+    broadcast_expr *bcast = (broadcast_expr *) calloc(1, sizeof(broadcast_expr));
     expr *node = (expr *) bcast;
 
     // --------------------------------------------------------------------------
