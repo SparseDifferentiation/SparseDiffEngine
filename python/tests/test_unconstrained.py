@@ -3,7 +3,7 @@
 import cvxpy as cp
 import numpy as np
 
-from dnlp_diff_engine import C_problem
+from cvxpy.reductions.solvers.nlp_solvers.diff_engine import C_problem
 
 
 def test_sum_log():
