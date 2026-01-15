@@ -250,16 +250,6 @@ expr *new_broadcast(expr *child, int target_d1, int target_d2)
     {
         type = BROADCAST_SCALAR;
     }
-    else if (child->d1 == n && child->d2 == 1)
-    {
-        /* cvxpy convention requires this sometimes */
-        type = BROADCAST_ROW;
-    }
-    else if (child->d1 == 1 && child->d2 == m)
-    {
-        /* cvxpy convention requires this sometimes */
-        type = BROADCAST_COL;
-    }
     else
     {
         fprintf(

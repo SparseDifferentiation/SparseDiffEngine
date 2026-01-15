@@ -170,25 +170,28 @@ static void eval_jacobian_old(expr *node)
 }
 */
 
+static void free_type_data(expr *node)
+{
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    free_csr_matrix(qnode->Q);
+    qnode->Q = NULL;
+}
+
 expr *new_quad_form(expr *left, CSR_Matrix *Q)
 {
+    assert(left->d2 == 1);
     quad_form_expr *qnode = (quad_form_expr *) calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    /* Initialize base fields */
-    assert(left->d2 == 1);
-    init_expr(node, left->d1, 1, left->n_vars, forward, jacobian_init, eval_jacobian,
-              NULL, NULL);
-
-    /* Set left child */
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init, eval_jacobian, NULL,
+              free_type_data);
     node->left = left;
     expr_retain(left);
+    node->wsum_hess_init = wsum_hess_init;
+    node->eval_wsum_hess = eval_wsum_hess;
 
     /* Set type-specific field */
     qnode->Q = new_csr_matrix(Q->m, Q->n, Q->nnz);
     copy_csr_matrix(Q, qnode->Q);
-
-    node->wsum_hess_init = wsum_hess_init;
-    node->eval_wsum_hess = eval_wsum_hess;
     return node;
 }

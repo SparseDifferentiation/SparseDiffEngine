@@ -22,7 +22,7 @@ static void forward(expr *node, const double *u)
     /* local forward pass */
     node->value[0] = 0.0;
 
-    for (int i = 0; i < x->d1; i++)
+    for (int i = 0; i < x->size; i++)
     {
         node->value[0] += x->value[i] * x->value[i];
     }
@@ -291,9 +291,13 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
+/* TODO: the above implementations probably assumes that the first argument is a
+ vector but cvxpy supports a matrix for the first argument*/
+
 expr *new_quad_over_lin(expr *left, expr *right)
 {
-    expr *node = new_expr(left->d1, 1, left->n_vars);
+    assert((left->d2 == 1 && right->d2 == 1)); /* right must be scalar*/
+    expr *node = new_expr(1, 1, left->n_vars);
     node->left = left;
     node->right = right;
     expr_retain(left);

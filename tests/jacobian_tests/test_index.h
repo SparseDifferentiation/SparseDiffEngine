@@ -111,7 +111,7 @@ const char *test_index_jacobian_repeated(void)
     mu_assert("index repeated jac vals",
               cmp_double_array(idx->jacobian->x, expected_x, 2));
     mu_assert("index repeated row ptr",
-              cmp_int_array(idx->jacobian->p, expected_p, 4));
+              cmp_int_array(idx->jacobian->p, expected_p, 3));
     mu_assert("index repeated jac i",
               cmp_int_array(idx->jacobian->i, expected_i, 2));
 
