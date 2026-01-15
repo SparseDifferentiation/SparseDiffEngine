@@ -20,5 +20,6 @@ expr *new_variable(int d1, int d2, int var_id, int n_vars);
 
 expr *new_index(expr *child, const int *indices, int n_idxs);
 expr *new_reshape(expr *child, int d1, int d2);
+expr *new_broadcast(expr *child, int target_d1, int target_d2);
 
 #endif /* AFFINE_H */

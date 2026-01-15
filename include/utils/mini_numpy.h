@@ -11,7 +11,8 @@ void repeat(double *result, const double *a, int len, int repeats);
  * Example: a = [1, 2], len = 2, tiles = 3
  *          result = [1, 2, 1, 2, 1, 2]
  */
-void tile(double *result, const double *a, int len, int tiles);
+void tile_double(double *result, const double *a, int len, int tiles);
+void tile_int(int *result, const int *a, int len, int tiles);
 
 /* Fill array with 'size' copies of 'value'
  * Example: size = 5, value = 3.0
