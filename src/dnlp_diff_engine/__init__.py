@@ -14,6 +14,7 @@ __all__ = [
     "make_variable",
     "make_constant",
     "make_add",
+    "make_broadcast",
     "make_neg",
     "make_sum",
     "make_promote",

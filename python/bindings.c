@@ -6,6 +6,7 @@
 #include "atoms/add.h"
 #include "atoms/asinh.h"
 #include "atoms/atanh.h"
+#include "atoms/broadcast.h"
 #include "atoms/const_scalar_mult.h"
 #include "atoms/const_vector_mult.h"
 #include "atoms/constant.h"
@@ -81,6 +82,7 @@ static PyMethodDef DNLPMethods[] = {
     {"make_tanh", py_make_tanh, METH_VARARGS, "Create tanh node"},
     {"make_asinh", py_make_asinh, METH_VARARGS, "Create asinh node"},
     {"make_atanh", py_make_atanh, METH_VARARGS, "Create atanh node"},
+    {"make_broadcast", py_make_broadcast, METH_VARARGS, "Create broadcast node"},
     {"make_entr", py_make_entr, METH_VARARGS, "Create entr node"},
     {"make_logistic", py_make_logistic, METH_VARARGS, "Create logistic node"},
     {"make_xexp", py_make_xexp, METH_VARARGS, "Create xexp node"},

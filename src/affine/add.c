@@ -1,4 +1,5 @@
 #include "affine.h"
+#include <assert.h>
 
 static void forward(expr *node, const double *u)
 {
@@ -72,6 +73,7 @@ static bool is_affine(const expr *node)
 
 expr *new_add(expr *left, expr *right)
 {
+    assert(left->d1 == right->d1 && left->d2 == right->d2);
     expr *node = new_expr(left->d1, left->d2, left->n_vars);
     node->left = left;
     node->right = right;
