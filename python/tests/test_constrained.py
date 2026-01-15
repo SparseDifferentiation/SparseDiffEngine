@@ -3,7 +3,7 @@
 import cvxpy as cp
 import numpy as np
 
-from dnlp_diff_engine import C_problem
+from cvxpy.reductions.solvers.nlp_solvers.diff_engine import C_problem
 
 # Note: CVXPY converts constraints A >= B to B - A <= 0
 # So constr.expr for "log(x) >= 0" is "0 - log(x)" = -log(x)

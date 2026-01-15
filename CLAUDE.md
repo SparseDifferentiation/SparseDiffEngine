@@ -58,12 +58,12 @@ The core abstraction is the `expr` struct (in `include/expr.h`) representing a n
 
 Atoms are organized by mathematical properties in `src/`:
 
-- **`affine/`** - Linear operations: `variable`, `constant`, `add`, `neg`, `sum`, `promote`, `hstack`, `trace`, `linear_op`, `index`
-- **`elementwise_univariate/`** - Scalar functions applied elementwise: `log`, `exp`, `entr`, `power`, `logistic`, `xexp`, trigonometric (`sin`, `cos`, `tan`), hyperbolic (`sinh`, `tanh`, `asinh`, `atanh`)
-- **`bivariate/`** - Two-argument operations: `multiply`, `quad_over_lin`, `rel_entr`, `const_scalar_mult`, `const_vector_mult`, `left_matmul`, `right_matmul`
-- **`other/`** - Special atoms: `quad_form`, `prod`
+- **`affine/`** - Linear operations: `variable`, `constant`, `add`, `neg`, `sum`, `promote`, `hstack`, `trace`, `linear_op`, `index`, `reshape`
+- **`elementwise_univariate/`** - Scalar functions applied elementwise: `log`, `exp`, `entr`, `power`, `logistic`, `xexp`, trigonometric (`sin`, `cos`, `tan`), hyperbolic (`sinh`, `tanh`, `asinh`, `atanh`). Uses `common.c` for shared chain-rule patterns.
+- **`bivariate/`** - Two-argument operations: `multiply`, `quad_over_lin`, `rel_entr`, `const_scalar_mult`, `const_vector_mult`, `left_matmul` (A @ f(x)), `right_matmul` (f(x) @ A)
+- **`other/`** - Special atoms: `quad_form` (x'Px), `prod` (product of elements)
 
-Each atom implements its own `forward`, `jacobian_init`, `eval_jacobian`, and `eval_wsum_hess` functions following a consistent pattern.
+Each atom implements: `forward`, `jacobian_init`, `eval_jacobian`, and optionally `eval_wsum_hess` (defaults to zero for affine atoms).
 
 ### Problem Struct
 
@@ -95,12 +95,14 @@ The Python package `dnlp_diff_engine` (in `src/dnlp_diff_engine/`) provides:
 
 ### Derivative Computation Flow
 
-1. Call `problem_init_derivatives()` to allocate Jacobian/Hessian storage and compute sparsity patterns
-2. Call forward pass (`objective_forward` / `constraint_forward`) to propagate values through tree
-3. Call derivative functions (`gradient`, `jacobian`, `hessian`) which traverse tree computing derivatives
+1. **Initialization**: `problem_init_derivatives()` allocates storage and computes sparsity patterns for all Jacobians and Hessians. This is done once per problem.
+2. **Forward pass**: `objective_forward(u)` / `constraint_forward(u)` propagate values through expression tree, storing results in each node's `value` field.
+3. **Derivative computation**: `gradient()`, `jacobian()`, `hessian()` traverse tree computing derivatives via chain rule.
 
-Jacobian uses chain rule: each node computes local Jacobian, combined via sparse matrix operations.
-Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`
+**Key invariant**: Forward pass must be called before corresponding derivative functions. The derivatives are computed using values cached during forward pass.
+
+Jacobian uses chain rule: `J_composite = J_outer * J_inner` via sparse matrix operations.
+Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`, returning lower triangular.
 
 ### Sparse Matrix Utilities
 
@@ -110,11 +112,11 @@ Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`
 
 - `include/` - Header files defining public API (`expr.h`, `problem.h`, atom headers)
 - `src/` - C implementation files organized by atom category
-- `src/dnlp_diff_engine/` - Python package with high-level API
+- `src/dnlp_diff_engine/` - Python package with high-level API (`__init__.py` contains `C_problem` class and `ATOM_CONVERTERS`)
 - `python/` - Python bindings C code (`bindings.c`)
 - `python/atoms/` - Python binding headers for each atom type
 - `python/problem/` - Python binding headers for problem interface
-- `python/tests/` - Python integration tests (run via pytest)
+- `python/tests/` - Python integration tests (run via pytest): `test_unconstrained.py`, `test_constrained.py`, `test_problem_native.py`
 - `tests/` - C tests using minunit framework
 - `tests/forward_pass/` - Forward evaluation tests (C)
 - `tests/jacobian_tests/` - Jacobian correctness tests (C)
@@ -130,6 +132,12 @@ Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`
 6. Add converter entry in `src/dnlp_diff_engine/__init__.py` `ATOM_CONVERTERS` dict
 7. Rebuild: `pip install -e .`
 8. Add tests in `tests/` (C) and `tests/python/` (Python)
+
+## Known Limitations
+
+- **Bivariate matmul not supported**: `f(x) @ g(x)` where both sides depend on variables is not implemented. Only `A @ f(x)` and `f(x) @ A` with constant A work.
+- **Reshape order**: Only Fortran order (`order='F'`) is supported. C order would require permutation logic.
+- **Hessian sparsity**: Some atoms (`hstack`, `trace`) don't compute hessian sparsity patterns during initialization (see TODO.md).
 
 ## License Header
 

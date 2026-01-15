@@ -5,18 +5,18 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "dnlp-diff-engine"
 version = "0.1.0"
-description = "Automatic differentiation engine for DNLP optimization problems"
+description = "Low-level C autodiff engine for nonlinear optimization"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "numpy",
-    "scipy",
-    "cvxpy",
 ]
 
 [project.optional-dependencies]
 test = [
     "pytest>=7.0",
+    "cvxpy",  # For integration tests
+    "scipy",  # Required by cvxpy integration
 ]
 dev = [
     "pytest>=7.0",
