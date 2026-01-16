@@ -183,7 +183,3 @@ expr *new_rel_entr_vector_args(expr *left, expr *right)
     node->eval_wsum_hess = eval_wsum_hess_vector_args;
     return node;
 }
-
-// --------------------------------------------------------------------
-// Implementation of relative entropy when one argument is a vector
-// --------------------------------------------------------------------
