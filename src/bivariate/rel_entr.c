@@ -169,6 +169,12 @@ static void eval_wsum_hess_vector_args(expr *node, const double *w)
     }
 }
 
+static bool is_affine(const expr *node)
+{
+    (void) node;
+    return false;
+}
+
 expr *new_rel_entr_vector_args(expr *left, expr *right)
 {
     expr *node = new_expr(left->d1, left->d2, left->n_vars);
@@ -181,5 +187,6 @@ expr *new_rel_entr_vector_args(expr *left, expr *right)
     node->eval_jacobian = eval_jacobian_vector_args;
     node->wsum_hess_init = wsum_hess_init_vector_args;
     node->eval_wsum_hess = eval_wsum_hess_vector_args;
+    node->is_affine = is_affine;
     return node;
 }

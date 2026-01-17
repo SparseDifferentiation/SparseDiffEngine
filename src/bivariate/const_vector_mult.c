@@ -90,6 +90,12 @@ static void free_type_data(expr *node)
     free(vnode->a);
 }
 
+static bool is_affine(const expr *node)
+{
+    /* Affine iff the child is affine */
+    return node->left->is_affine(node->left);
+}
+
 expr *new_const_vector_mult(const double *a, expr *child)
 {
     const_vector_mult_expr *vnode =
@@ -97,7 +103,7 @@ expr *new_const_vector_mult(const double *a, expr *child)
     expr *node = &vnode->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, NULL, free_type_data);
+              eval_jacobian, is_affine, free_type_data);
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     node->left = child;
