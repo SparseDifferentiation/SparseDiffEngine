@@ -177,14 +177,20 @@ static void free_type_data(expr *node)
     qnode->Q = NULL;
 }
 
+static bool is_affine(const expr *node)
+{
+    (void) node;
+    return false;
+}
+
 expr *new_quad_form(expr *left, CSR_Matrix *Q)
 {
     assert(left->d1 == 1 || left->d2 == 1); /* left must be a vector */
     quad_form_expr *qnode = (quad_form_expr *) calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init, eval_jacobian, NULL,
-              free_type_data);
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init, eval_jacobian,
+              is_affine, free_type_data);
     node->left = left;
     expr_retain(left);
     node->wsum_hess_init = wsum_hess_init;

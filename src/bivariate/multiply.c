@@ -184,6 +184,12 @@ static void free_type_data(expr *node)
     free_csr_matrix(((elementwise_mult_expr *) node)->CSR_work2);
 }
 
+static bool is_affine(const expr *node)
+{
+    (void) node;
+    return false;
+}
+
 expr *new_elementwise_mult(expr *left, expr *right)
 {
     elementwise_mult_expr *mul_node =
@@ -191,7 +197,7 @@ expr *new_elementwise_mult(expr *left, expr *right)
     expr *node = &mul_node->base;
 
     init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init,
-              eval_jacobian, NULL, free_type_data);
+              eval_jacobian, is_affine, free_type_data);
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     node->left = left;

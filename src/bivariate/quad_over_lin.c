@@ -292,6 +292,12 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
+static bool is_affine(const expr *node)
+{
+    (void) node;
+    return false;
+}
+
 expr *new_quad_over_lin(expr *left, expr *right)
 {
     assert((right->d2 == 1 && right->d2 == 1)); /* right must be scalar*/
@@ -305,5 +311,6 @@ expr *new_quad_over_lin(expr *left, expr *right)
     node->eval_jacobian = eval_jacobian;
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
+    node->is_affine = is_affine;
     return node;
 }

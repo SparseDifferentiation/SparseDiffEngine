@@ -17,6 +17,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints)
     prob->objective = objective;
     expr_retain(objective);
     prob->n_vars = objective->n_vars;
+    prob->jacobian_called = false;
 
     /* constraints array */
     prob->total_constraint_size = 0;
@@ -99,6 +100,7 @@ void problem_init_derivatives(problem *prob)
     }
 
     prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
+    memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
     prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
     int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
@@ -274,6 +276,7 @@ void problem_jacobian(problem *prob)
 {
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    bool first_call = !prob->jacobian_called;
 
     CSR_Matrix *J = prob->jacobian;
     int nnz_offset = 0;
@@ -281,6 +284,14 @@ void problem_jacobian(problem *prob)
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
+
+        if (!first_call && c->is_affine(c))
+        {
+            /* skip evaluation for affine constraints after first call */
+            nnz_offset += c->jacobian->nnz;
+            continue;
+        }
+
         c->eval_jacobian(c);
         memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
         nnz_offset += c->jacobian->nnz;
@@ -289,6 +300,7 @@ void problem_jacobian(problem *prob)
     /* update actual nnz (may be less than allocated) */
     J->nnz = nnz_offset;
 
+    prob->jacobian_called = true;
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);
 }
@@ -308,6 +320,12 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     expr **constrs = prob->constraints;
     for (int i = 0; i < prob->n_constraints; i++)
     {
+        if (constrs[i]->is_affine(constrs[i]))
+        {
+            /* skip evaluation for affine constraints */
+            offset += constrs[i]->size;
+            continue;
+        }
         constrs[i]->eval_wsum_hess(constrs[i], w + offset);
         offset += constrs[i]->size;
     }

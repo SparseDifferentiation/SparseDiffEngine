@@ -192,6 +192,14 @@ static void eval_wsum_hess_vector_scalar(expr *node, const double *w)
     }
 }
 
+static bool is_affine(const expr *node)
+{
+    (void) node;
+    return false;
+}
+
+/* TODO: modify relative entropy atoms to use init_expr initialization? Also make
+ * init_expr take in the hessian functions?*/
 expr *new_rel_entr_second_arg_scalar(expr *left, expr *right)
 {
     assert(right->d1 == 1 && right->d2 == 1);
@@ -205,5 +213,6 @@ expr *new_rel_entr_second_arg_scalar(expr *left, expr *right)
     node->eval_jacobian = eval_jacobian_vector_scalar;
     node->wsum_hess_init = wsum_hess_init_vector_scalar;
     node->eval_wsum_hess = eval_wsum_hess_vector_scalar;
+    node->is_affine = is_affine;
     return node;
 }

@@ -75,6 +75,12 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
+static bool is_affine(const expr *node)
+{
+    /* Affine iff the child is affine */
+    return node->left->is_affine(node->left);
+}
+
 expr *new_const_scalar_mult(double a, expr *child)
 {
     const_scalar_mult_expr *mult_node =
@@ -82,7 +88,7 @@ expr *new_const_scalar_mult(double a, expr *child)
     expr *node = &mult_node->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, NULL, NULL);
+              eval_jacobian, is_affine, NULL);
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     node->left = child;

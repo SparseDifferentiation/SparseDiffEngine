@@ -33,6 +33,10 @@ typedef struct problem
     int *hess_idx_map; /* Maps all wsum_hess nnz to lagrange_hessian (obj +
                           constraints) */
 
+    /* for the affine shortcut we keep track of the first time the jacobian and
+     * hessian are called */
+    bool jacobian_called;
+
     /* Statistics for performance measurement */
     stats stats;
 } problem;
