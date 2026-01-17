@@ -1,6 +1,7 @@
 #include "bivariate.h"
 #include "subexpr.h"
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /* This file implement the atom 'left_matmul' corresponding to the operation y =
@@ -114,12 +115,37 @@ static void eval_wsum_hess(expr *node, const double *w)
 
 expr *new_left_matmul(expr *u, const CSR_Matrix *A)
 {
-    assert(u->d1 == A->n);
+    /* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users to do
+       A @ u where u is (n, ) which in C is actually (1, n). In that case the result
+       of A @ u is (m, ), which is (1, m) according to broadcasting rules. We
+       therefore check if this is the case. */
+    int d1, d2, n_blocks;
+    if (u->d1 == A->n)
+    {
+        d1 = A->m;
+        d2 = u->d2;
+        n_blocks = u->d2;
+        printf("d2: %d\n", d2);
+    }
+    else if (u->d2 == A->n && u->d1 == 1)
+    {
+        d1 = 1;
+        d2 = A->m;
+        n_blocks = 1;
+        printf("d2: %d\n", d2);
+    }
+    else
+    {
+        fprintf(stderr, "Error in new_left_matmul: dimension mismatch \n");
+        exit(1);
+    }
+
+    // assert(u->d1 == A->n);
     /* Allocate the type-specific struct */
     left_matmul_expr *lin_node =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lin_node->base;
-    init_expr(node, A->m, u->d2, u->n_vars, forward, jacobian_init, eval_jacobian,
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, free_type_data);
     node->left = u;
     expr_retain(u);
@@ -127,7 +153,7 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     node->eval_wsum_hess = eval_wsum_hess;
 
     /* Initialize type-specific fields */
-    lin_node->A = block_diag_repeat_csr(A, node->d2);
+    lin_node->A = block_diag_repeat_csr(A, n_blocks);
     int alloc = MAX(lin_node->A->n, node->n_vars);
     node->iwork = (int *) malloc(alloc * sizeof(int));
     lin_node->AT = transpose(lin_node->A, node->iwork);
