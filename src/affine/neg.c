@@ -1,4 +1,5 @@
 #include "affine.h"
+#include <stdio.h>
 #include <string.h>
 
 static void forward(expr *node, const double *u)
@@ -15,17 +16,16 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init(expr *node)
 {
+    expr *x = node->left;
     /* initialize child's jacobian */
-    node->left->jacobian_init(node->left);
+    x->jacobian_init(x);
 
     /* same sparsity pattern as child */
-    CSR_Matrix *child_jac = node->left->jacobian;
-    node->jacobian = new_csr_matrix(child_jac->m, child_jac->n, child_jac->nnz);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
 
     /* copy row pointers and column indices (sparsity pattern is constant) */
-    memcpy(node->jacobian->p, child_jac->p, (child_jac->m + 1) * sizeof(int));
-    memcpy(node->jacobian->i, child_jac->i, child_jac->nnz * sizeof(int));
-    node->jacobian->nnz = child_jac->nnz;
+    memcpy(node->jacobian->p, x->jacobian->p, (x->jacobian->m + 1) * sizeof(int));
+    memcpy(node->jacobian->i, x->jacobian->i, x->jacobian->nnz * sizeof(int));
 }
 
 static void eval_jacobian(expr *node)
@@ -43,17 +43,18 @@ static void eval_jacobian(expr *node)
 
 static void wsum_hess_init(expr *node)
 {
+    expr *x = node->left;
+
     /* initialize child's wsum_hess */
-    node->left->wsum_hess_init(node->left);
+    x->wsum_hess_init(x);
 
     /* same sparsity pattern as child */
-    CSR_Matrix *child_hess = node->left->wsum_hess;
-    node->wsum_hess = new_csr_matrix(child_hess->m, child_hess->n, child_hess->nnz);
+    CSR_Matrix *child_hess = x->wsum_hess;
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, child_hess->nnz);
 
     /* copy row pointers and column indices (sparsity pattern is constant) */
     memcpy(node->wsum_hess->p, child_hess->p, (child_hess->m + 1) * sizeof(int));
     memcpy(node->wsum_hess->i, child_hess->i, child_hess->nnz * sizeof(int));
-    node->wsum_hess->nnz = child_hess->nnz;
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

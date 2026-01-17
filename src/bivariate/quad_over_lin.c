@@ -22,7 +22,7 @@ static void forward(expr *node, const double *u)
     /* local forward pass */
     node->value[0] = 0.0;
 
-    for (int i = 0; i < x->d1; i++)
+    for (int i = 0; i < x->size; i++)
     {
         node->value[0] += x->value[i] * x->value[i];
     }
@@ -38,23 +38,23 @@ static void jacobian_init(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->d1 + 1);
+        node->jacobian = new_csr_matrix(1, node->n_vars, x->size + 1);
         node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = x->d1 + 1;
+        node->jacobian->p[1] = x->size + 1;
 
         /* if x has lower idx than y*/
         if (x->var_id < y->var_id)
         {
-            for (int j = 0; j < x->d1; j++)
+            for (int j = 0; j < x->size; j++)
             {
                 node->jacobian->i[j] = x->var_id + j;
             }
-            node->jacobian->i[x->d1] = y->var_id;
+            node->jacobian->i[x->size] = y->var_id;
         }
         else /* y has lower idx than x */
         {
             node->jacobian->i[0] = y->var_id;
-            for (int j = 0; j < x->d1; j++)
+            for (int j = 0; j < x->size; j++)
             {
                 node->jacobian->i[j + 1] = x->var_id + j;
             }
@@ -63,7 +63,7 @@ static void jacobian_init(expr *node)
     else /* left node is not a variable (guaranteed to be a linear operator) */
     {
         linear_op_expr *lin_x = (linear_op_expr *) x;
-        node->dwork = (double *) malloc(x->d1 * sizeof(double));
+        node->dwork = (double *) malloc(x->size * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
@@ -115,16 +115,16 @@ static void eval_jacobian(expr *node)
         /* if x has lower idx than y*/
         if (x->var_id < y->var_id)
         {
-            for (int j = 0; j < x->d1; j++)
+            for (int j = 0; j < x->size; j++)
             {
                 node->jacobian->x[j] = (2.0 * x->value[j]) / y->value[0];
             }
-            node->jacobian->x[x->d1] = -node->value[0] / y->value[0];
+            node->jacobian->x[x->size] = -node->value[0] / y->value[0];
         }
         else /* y has lower idx than x */
         {
             node->jacobian->x[0] = -node->value[0] / y->value[0];
-            for (int j = 0; j < x->d1; j++)
+            for (int j = 0; j < x->size; j++)
             {
                 node->jacobian->x[j + 1] = (2.0 * x->value[j]) / y->value[0];
             }
@@ -135,7 +135,7 @@ static void eval_jacobian(expr *node)
         CSC_Matrix *A_csc = ((linear_op_expr *) x)->A_csc;
 
         /* local jacobian */
-        for (int j = 0; j < x->d1; j++)
+        for (int j = 0; j < x->size; j++)
         {
             node->dwork[j] = (2.0 * x->value[j]) / y->value[0];
         }
@@ -160,14 +160,15 @@ static void wsum_hess_init(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->d1 + 1);
+        node->wsum_hess =
+            new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
         CSR_Matrix *H = node->wsum_hess;
 
         /* if x has lower idx than y*/
         if (var_id_x < var_id_y)
         {
             /* x rows: each row has 2 entries (diagonal element + element for y) */
-            for (int i = 0; i < x->d1; i++)
+            for (int i = 0; i < x->size; i++)
             {
                 H->p[var_id_x + i] = 2 * i;
                 H->i[2 * i] = var_id_x + i;
@@ -175,45 +176,45 @@ static void wsum_hess_init(expr *node)
             }
 
             /* rows between x and y are empty, all point to same offset */
-            int offset = 2 * x->d1;
-            for (int i = var_id_x + x->d1; i <= var_id_y; i++)
+            int offset = 2 * x->size;
+            for (int i = var_id_x + x->size; i <= var_id_y; i++)
             {
                 H->p[i] = offset;
             }
 
             /* y row has d1 + 1 entries */
-            H->p[var_id_y + 1] = offset + x->d1 + 1;
-            for (int i = 0; i < x->d1; i++)
+            H->p[var_id_y + 1] = offset + x->size + 1;
+            for (int i = 0; i < x->size; i++)
             {
                 H->i[offset + i] = var_id_x + i;
             }
-            H->i[offset + x->d1] = var_id_y;
+            H->i[offset + x->size] = var_id_y;
 
             /* remaining rows are empty */
             for (int i = var_id_y + 1; i <= node->n_vars; i++)
             {
-                H->p[i] = 3 * x->d1 + 1;
+                H->p[i] = 3 * x->size + 1;
             }
         }
         else /* y has lower idx than x */
         {
             /* y row has d1 + 1 entries */
-            H->p[var_id_y + 1] = x->d1 + 1;
+            H->p[var_id_y + 1] = x->size + 1;
             H->i[0] = var_id_y;
-            for (int i = 0; i < x->d1; i++)
+            for (int i = 0; i < x->size; i++)
             {
                 H->i[i + 1] = var_id_x + i;
             }
 
             /* rows between y and x are empty, all point to same offset */
-            int offset = x->d1 + 1;
+            int offset = x->size + 1;
             for (int i = var_id_y + 1; i <= var_id_x; i++)
             {
                 H->p[i] = offset;
             }
 
             /* x rows: each row has 2 entries */
-            for (int i = 0; i < x->d1; i++)
+            for (int i = 0; i < x->size; i++)
             {
                 H->p[var_id_x + i] = offset + 2 * i;
                 H->i[offset + 2 * i] = var_id_y;
@@ -221,9 +222,9 @@ static void wsum_hess_init(expr *node)
             }
 
             /* remaining rows are empty */
-            for (int i = var_id_x + x->d1; i <= node->n_vars; i++)
+            for (int i = var_id_x + x->size; i <= node->n_vars; i++)
             {
-                H->p[i] = 3 * x->d1 + 1;
+                H->p[i] = 3 * x->size + 1;
             }
         }
     }
@@ -241,7 +242,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     double *H = node->wsum_hess->x;
     int var_id_x = node->left->var_id;
     int var_id_y = node->right->var_id;
-    int x_d1 = node->left->d1;
+    int x_size = node->left->size;
     double a = (2.0 * w[0]) / y;
     double b = -(2.0 * w[0]) / (y * y);
 
@@ -252,32 +253,32 @@ static void eval_wsum_hess(expr *node, const double *w)
         if (var_id_x < var_id_y)
         {
             /* x rows*/
-            for (int i = 0; i < x_d1; i++)
+            for (int i = 0; i < x_size; i++)
             {
                 H[2 * i] = a;
                 H[2 * i + 1] = b * x[i];
             }
 
             /* y row */
-            int offset = 2 * x_d1;
-            for (int i = 0; i < x_d1; i++)
+            int offset = 2 * x_size;
+            for (int i = 0; i < x_size; i++)
             {
                 H[offset + i] = b * x[i];
             }
-            H[offset + x_d1] = -b * node->value[0];
+            H[offset + x_size] = -b * node->value[0];
         }
         else /* y has lower idx than x */
         {
             /* y row */
             H[0] = -b * node->value[0];
-            for (int i = 0; i < x_d1; i++)
+            for (int i = 0; i < x_size; i++)
             {
                 H[i + 1] = b * x[i];
             }
 
             /* x rows*/
-            int offset = x_d1 + 1;
-            for (int i = 0; i < x_d1; i++)
+            int offset = x_size + 1;
+            for (int i = 0; i < x_size; i++)
             {
                 H[offset + 2 * i] = b * x[i];
                 H[offset + 2 * i + 1] = a;
@@ -293,7 +294,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 
 expr *new_quad_over_lin(expr *left, expr *right)
 {
-    expr *node = new_expr(left->d1, 1, left->n_vars);
+    assert((right->d2 == 1 && right->d2 == 1)); /* right must be scalar*/
+    expr *node = new_expr(1, 1, left->n_vars);
     node->left = left;
     node->right = right;
     expr_retain(left);

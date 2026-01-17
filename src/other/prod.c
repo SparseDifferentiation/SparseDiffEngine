@@ -179,6 +179,8 @@ static void free_type_data(expr *node)
     (void) node;
 }
 
+/* when we implement axis-support, check convention of numpy and cvxpy.
+I think they return row vectors.*/
 expr *new_prod(expr *child)
 {
     /* Output is scalar: 1 x 1 */

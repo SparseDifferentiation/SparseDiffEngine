@@ -27,6 +27,8 @@
 #include "atoms/quad_form.h"
 #include "atoms/quad_over_lin.h"
 #include "atoms/rel_entr.h"
+#include "atoms/rel_entr_scalar_vector.h"
+#include "atoms/rel_entr_vector_scalar.h"
 #include "atoms/reshape.h"
 #include "atoms/right_matmul.h"
 #include "atoms/sin.h"
@@ -96,6 +98,10 @@ static PyMethodDef DNLPMethods[] = {
      "Create quad_over_lin node (sum(x^2) / y)"},
     {"make_rel_entr", py_make_rel_entr, METH_VARARGS,
      "Create rel_entr node: x * log(x/y) elementwise"},
+    {"make_rel_entr_vector_scalar", py_make_rel_entr_vector_scalar, METH_VARARGS,
+     "Create rel_entr node with vector first arg, scalar second arg"},
+    {"make_rel_entr_scalar_vector", py_make_rel_entr_scalar_vector, METH_VARARGS,
+     "Create rel_entr node with scalar first arg, vector second arg"},
     {"get_expr_dimensions", py_get_expr_dimensions, METH_VARARGS,
      "Get the dimensions (d1, d2) of an expression"},
     {"get_expr_size", py_get_expr_size, METH_VARARGS,
@@ -113,8 +119,12 @@ static PyMethodDef DNLPMethods[] = {
      "Compute objective gradient"},
     {"problem_jacobian", py_problem_jacobian, METH_VARARGS,
      "Compute constraint jacobian"},
+    {"get_jacobian", py_get_jacobian, METH_VARARGS,
+     "Get constraint jacobian without recomputing"},
     {"problem_hessian", py_problem_hessian, METH_VARARGS,
      "Compute Lagrangian Hessian"},
+    {"get_hessian", py_get_hessian, METH_VARARGS,
+     "Get Lagrangian Hessian without recomputing"},
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef dnlp_module = {

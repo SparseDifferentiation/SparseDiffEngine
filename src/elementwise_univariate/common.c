@@ -1,7 +1,9 @@
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "subexpr.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void jacobian_init_elementwise(expr *node)
 {

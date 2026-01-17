@@ -14,7 +14,7 @@ const char *test_index_forward_simple(void)
     double u[3] = {1.0, 2.0, 3.0};
     int indices[2] = {0, 2};
     expr *var = new_variable(3, 1, 0, 3);
-    expr *idx = new_index(var, indices, 2);
+    expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
 
     double expected[2] = {1.0, 3.0};
@@ -30,7 +30,7 @@ const char *test_index_forward_repeated(void)
     double u[3] = {1.0, 2.0, 3.0};
     int indices[3] = {0, 0, 2};
     expr *var = new_variable(3, 1, 0, 3);
-    expr *idx = new_index(var, indices, 3);
+    expr *idx = new_index(var, 1, 3, indices, 3);
     idx->forward(idx, u);
 
     double expected[3] = {1.0, 1.0, 3.0};
@@ -47,7 +47,7 @@ const char *test_index_jacobian_of_variable(void)
     double u[3] = {1.0, 2.0, 3.0};
     int indices[2] = {0, 2};
     expr *var = new_variable(3, 1, 0, 3);
-    expr *idx = new_index(var, indices, 2);
+    expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
     idx->jacobian_init(idx);
     idx->eval_jacobian(idx);
@@ -72,7 +72,7 @@ const char *test_index_jacobian_of_log(void)
     int indices[2] = {0, 2};
     expr *var = new_variable(3, 1, 0, 3);
     expr *log_node = new_log(var);
-    expr *idx = new_index(log_node, indices, 2);
+    expr *idx = new_index(log_node, 1, 2, indices, 2);
     idx->forward(idx, u);
     idx->jacobian_init(idx);
     idx->eval_jacobian(idx);
@@ -98,7 +98,7 @@ const char *test_index_jacobian_repeated(void)
     double u[3] = {1.0, 2.0, 3.0};
     int indices[2] = {0, 0};
     expr *var = new_variable(3, 1, 0, 3);
-    expr *idx = new_index(var, indices, 2);
+    expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
     idx->jacobian_init(idx);
     idx->eval_jacobian(idx);
@@ -111,7 +111,7 @@ const char *test_index_jacobian_repeated(void)
     mu_assert("index repeated jac vals",
               cmp_double_array(idx->jacobian->x, expected_x, 2));
     mu_assert("index repeated row ptr",
-              cmp_int_array(idx->jacobian->p, expected_p, 4));
+              cmp_int_array(idx->jacobian->p, expected_p, 3));
     mu_assert("index repeated jac i",
               cmp_int_array(idx->jacobian->i, expected_i, 2));
 
@@ -127,7 +127,7 @@ const char *test_sum_of_index(void)
     int indices[2] = {0, 2};
 
     expr *var = new_variable(3, 1, 0, 3);
-    expr *idx = new_index(var, indices, 2);
+    expr *idx = new_index(var, 1, 2, indices, 2);
     expr *s = new_sum(idx, -1); /* sum all */
 
     s->forward(s, u);

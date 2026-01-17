@@ -45,7 +45,7 @@ static void forward(expr *node, const double *u)
     }
     else if (axis == 1)
     {
-        memset(node->value, 0, node->d1 * sizeof(double));
+        memset(node->value, 0, node->size * sizeof(double));
 
         /* sum columns together */
         for (j = 0; j < x->d2; j++)
@@ -69,7 +69,7 @@ static void jacobian_init(expr *node)
     x->jacobian_init(x);
 
     /* we never have to store more than the child's nnz */
-    node->jacobian = new_csr_matrix(node->d1, node->n_vars, x->jacobian->nnz);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
     node->iwork = malloc(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
     snode->idx_map = malloc(x->jacobian->nnz * sizeof(int));
 
@@ -86,7 +86,7 @@ static void jacobian_init(expr *node)
     else if (axis == 1)
     {
         sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, node->d1, node->iwork, snode->idx_map);
+            x->jacobian, node->jacobian, node->size, node->iwork, snode->idx_map);
     }
 }
 
@@ -157,33 +157,34 @@ static void free_type_data(expr *node)
 
 expr *new_sum(expr *child, int axis)
 {
-    int d1 = 0;
+    int d2 = 0;
 
     switch (axis)
     {
         case -1:
             /* no axis specified */
-            d1 = 1;
+            d2 = 1;
             break;
         case 0:
             /* sum rows together */
-            d1 = child->d2;
+            d2 = child->d2;
             break;
         case 1:
             /* sum columns together */
-            d1 = child->d1;
+            d2 = child->d1;
             break;
     }
 
     /* Allocate the type-specific struct */
     sum_expr *snode = (sum_expr *) calloc(1, sizeof(sum_expr));
     expr *node = &snode->base;
-    init_expr(node, d1, 1, child->n_vars, forward, jacobian_init, eval_jacobian,
+
+    /* to be consistent with CVXPY and NumPy we treat the result from
+       sum with an axis argument as a row vector */
+    init_expr(node, 1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, free_type_data);
     node->left = child;
     expr_retain(child);
-
-    /* hessian function pointers */
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
 

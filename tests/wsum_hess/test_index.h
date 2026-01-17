@@ -23,7 +23,7 @@ const char *test_wsum_hess_index_log(void)
 
     expr *var = new_variable(3, 1, 0, 3);
     expr *log_node = new_log(var);
-    expr *idx = new_index(log_node, indices, 2);
+    expr *idx = new_index(log_node, 1, 2, indices, 2);
 
     idx->forward(idx, u);
     idx->jacobian_init(idx);
@@ -38,7 +38,8 @@ const char *test_wsum_hess_index_log(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("index log hess vals", cmp_double_array(idx->wsum_hess->x, expected_x, 3));
+    mu_assert("index log hess vals",
+              cmp_double_array(idx->wsum_hess->x, expected_x, 3));
     mu_assert("index log hess p", cmp_int_array(idx->wsum_hess->p, expected_p, 4));
     mu_assert("index log hess i", cmp_int_array(idx->wsum_hess->i, expected_i, 3));
 
@@ -56,7 +57,7 @@ const char *test_wsum_hess_index_repeated(void)
 
     expr *var = new_variable(3, 1, 0, 3);
     expr *log_node = new_log(var);
-    expr *idx = new_index(log_node, indices, 2);
+    expr *idx = new_index(log_node, 1, 2, indices, 2);
 
     idx->forward(idx, u);
     idx->jacobian_init(idx);
@@ -70,9 +71,12 @@ const char *test_wsum_hess_index_repeated(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("index repeated hess vals", cmp_double_array(idx->wsum_hess->x, expected_x, 3));
-    mu_assert("index repeated hess p", cmp_int_array(idx->wsum_hess->p, expected_p, 4));
-    mu_assert("index repeated hess i", cmp_int_array(idx->wsum_hess->i, expected_i, 3));
+    mu_assert("index repeated hess vals",
+              cmp_double_array(idx->wsum_hess->x, expected_x, 3));
+    mu_assert("index repeated hess p",
+              cmp_int_array(idx->wsum_hess->p, expected_p, 4));
+    mu_assert("index repeated hess i",
+              cmp_int_array(idx->wsum_hess->i, expected_i, 3));
 
     free_expr(idx);
     return 0;
@@ -90,7 +94,7 @@ const char *test_wsum_hess_sum_index_log(void)
 
     expr *var = new_variable(3, 1, 0, 3);
     expr *log_node = new_log(var);
-    expr *idx = new_index(log_node, indices, 2);
+    expr *idx = new_index(log_node, 1, 2, indices, 2);
     expr *sum_node = new_sum(idx, -1);
 
     sum_node->forward(sum_node, u);
@@ -108,8 +112,10 @@ const char *test_wsum_hess_sum_index_log(void)
 
     mu_assert("sum index log hess vals",
               cmp_double_array(sum_node->wsum_hess->x, expected_x, 3));
-    mu_assert("sum index log hess p", cmp_int_array(sum_node->wsum_hess->p, expected_p, 4));
-    mu_assert("sum index log hess i", cmp_int_array(sum_node->wsum_hess->i, expected_i, 3));
+    mu_assert("sum index log hess p",
+              cmp_int_array(sum_node->wsum_hess->p, expected_p, 4));
+    mu_assert("sum index log hess i",
+              cmp_int_array(sum_node->wsum_hess->i, expected_i, 3));
 
     free_expr(sum_node);
     return 0;

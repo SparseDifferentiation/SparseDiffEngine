@@ -1,5 +1,7 @@
 #include "affine.h"
 #include "subexpr.h"
+#include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -57,6 +59,7 @@ static void jacobian_init(expr *node)
         J->p[i + 1] = J->p[i] + len;
     }
 
+    J->nnz = J->p[idx->n_idxs];
     node->jacobian = J;
 }
 
@@ -71,9 +74,8 @@ static void eval_jacobian(expr *node)
 
     for (int i = 0; i < idx->n_idxs; i++)
     {
-        int row = idx->indices[i];
         int len = J->p[i + 1] - J->p[i];
-        memcpy(J->x + J->p[i], Jx->x + Jx->p[row], len * sizeof(double));
+        memcpy(J->x + J->p[i], Jx->x + Jx->p[idx->indices[i]], len * sizeof(double));
     }
 }
 
@@ -142,14 +144,14 @@ static void free_type_data(expr *node)
     }
 }
 
-expr *new_index(expr *child, const int *indices, int n_idxs)
+expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)
 {
+    assert(d1 * d2 == n_idxs);
     /* allocate type-specific struct */
     index_expr *idx = (index_expr *) calloc(1, sizeof(index_expr));
     expr *node = &idx->base;
 
-    /* output shape is (n_idxs, 1) - flattened */
-    init_expr(node, n_idxs, 1, child->n_vars, forward, jacobian_init, eval_jacobian,
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, free_type_data);
 
     node->left = child;

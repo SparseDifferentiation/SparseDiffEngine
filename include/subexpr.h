@@ -130,8 +130,6 @@ typedef struct broadcast_expr
 {
     expr base;
     broadcast_type type;
-    int m; /* target rows */
-    int n; /* target cols */
 } broadcast_expr;
 
 #endif /* SUBEXPR_H */

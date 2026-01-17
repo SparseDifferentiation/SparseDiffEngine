@@ -29,6 +29,8 @@
 #include "jacobian_tests/test_quad_form.h"
 #include "jacobian_tests/test_quad_over_lin.h"
 #include "jacobian_tests/test_rel_entr.h"
+#include "jacobian_tests/test_rel_entr_scalar_vector.h"
+#include "jacobian_tests/test_rel_entr_vector_scalar.h"
 #include "jacobian_tests/test_right_matmul.h"
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
@@ -54,6 +56,8 @@
 #include "wsum_hess/test_quad_form.h"
 #include "wsum_hess/test_quad_over_lin.h"
 #include "wsum_hess/test_rel_entr.h"
+#include "wsum_hess/test_rel_entr_scalar_vector.h"
+#include "wsum_hess/test_rel_entr_vector_scalar.h"
 #include "wsum_hess/test_right_matmul.h"
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
@@ -97,6 +101,8 @@ int main(void)
     mu_run_test(test_jacobian_rel_entr_vector_args_1, tests_run);
     mu_run_test(test_jacobian_rel_entr_vector_args_2, tests_run);
     mu_run_test(test_jacobian_rel_entr_matrix_args, tests_run);
+    mu_run_test(test_jacobian_rel_entr_vector_scalar, tests_run);
+    mu_run_test(test_jacobian_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_1, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_2, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_3, tests_run);
@@ -165,6 +171,8 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_1, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_matrix, tests_run);
+    mu_run_test(test_wsum_hess_rel_entr_vector_scalar, tests_run);
+    mu_run_test(test_wsum_hess_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
     mu_run_test(test_wsum_hess_index_log, tests_run);

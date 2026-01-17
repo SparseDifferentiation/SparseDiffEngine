@@ -11,9 +11,10 @@
 static PyObject *py_make_index(PyObject *self, PyObject *args)
 {
     PyObject *child_capsule;
+    int d1, d2;
     PyObject *indices_obj;
 
-    if (!PyArg_ParseTuple(args, "OO", &child_capsule, &indices_obj))
+    if (!PyArg_ParseTuple(args, "OiiO", &child_capsule, &d1, &d2, &indices_obj))
     {
         return NULL;
     }
@@ -37,7 +38,7 @@ static PyObject *py_make_index(PyObject *self, PyObject *args)
     int n_idxs = (int) PyArray_SIZE(indices_array);
     int *indices_data = (int *) PyArray_DATA(indices_array);
 
-    expr *node = new_index(child, indices_data, n_idxs);
+    expr *node = new_index(child, d1, d2, indices_data, n_idxs);
 
     Py_DECREF(indices_array);
 

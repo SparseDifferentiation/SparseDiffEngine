@@ -89,5 +89,8 @@ expr *new_const_scalar_mult(double a, expr *child)
     mult_node->a = a;
     expr_retain(child);
 
+    // just for debugging, should be removed
+    strcpy(node->name, "const_scalar_mult");
+
     return node;
 }

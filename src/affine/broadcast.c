@@ -23,20 +23,20 @@ static void forward(expr *node, const double *u)
     if (bcast->type == BROADCAST_ROW)
     {
         /* (1, n) -> (m, n): replicate row m times */
-        for (int j = 0; j < bcast->n; j++)
+        for (int j = 0; j < node->d2; j++)
         {
-            for (int i = 0; i < bcast->m; i++)
+            for (int i = 0; i < node->d1; i++)
             {
-                node->value[i + j * bcast->m] = x->value[j];
+                node->value[i + j * node->d1] = x->value[j];
             }
         }
     }
     else if (bcast->type == BROADCAST_COL)
     {
         /* (m, 1) -> (m, n): replicate column n times */
-        for (int j = 0; j < bcast->n; j++)
+        for (int j = 0; j < node->d2; j++)
         {
-            memcpy(node->value + j * bcast->m, x->value, bcast->m * sizeof(double));
+            memcpy(node->value + j * node->d1, x->value, node->d1 * sizeof(double));
         }
     }
     else
@@ -62,17 +62,17 @@ static void jacobian_init(expr *node)
     if (bcast->type == BROADCAST_ROW)
     {
         /* Row broadcast: (1, n) -> (m, n) */
-        total_nnz = x->jacobian->nnz * bcast->m;
+        total_nnz = x->jacobian->nnz * node->d1;
     }
     else if (bcast->type == BROADCAST_COL)
     {
         /* Column broadcast: (m, 1) -> (m, n) */
-        total_nnz = x->jacobian->nnz * bcast->n;
+        total_nnz = x->jacobian->nnz * node->d2;
     }
     else
     {
         /* Scalar broadcast: (1, 1) -> (m, n) */
-        total_nnz = x->jacobian->nnz * bcast->m * bcast->n;
+        total_nnz = x->jacobian->nnz * node->d1 * node->d2;
     }
 
     node->jacobian = new_csr_matrix(node->size, node->n_vars, total_nnz);
@@ -86,34 +86,35 @@ static void jacobian_init(expr *node)
 
     if (bcast->type == BROADCAST_ROW)
     {
-        for (int i = 0; i < bcast->n; i++)
+        for (int i = 0; i < node->d2; i++)
         {
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
 
             /* copy columns indices */
-            tile_int(J->i + J->nnz, Jx->i + Jx->p[i], nnz_in_row, bcast->m);
+            tile_int(J->i + J->nnz, Jx->i + Jx->p[i], nnz_in_row, node->d1);
 
             /* set row pointers */
-            for (int rep = 0; rep < bcast->m; rep++)
+            for (int rep = 0; rep < node->d1; rep++)
             {
-                J->p[i * bcast->m + rep] = J->nnz;
+                J->p[i * node->d1 + rep] = J->nnz;
                 J->nnz += nnz_in_row;
             }
         }
+        J->p[node->size] = total_nnz;
     }
     else if (bcast->type == BROADCAST_COL)
     {
 
         /* copy column indices */
-        tile_int(J->i, Jx->i, Jx->nnz, bcast->n);
+        tile_int(J->i, Jx->i, Jx->nnz, node->d2);
 
         /* set row pointers */
         int offset = 0;
-        for (int i = 0; i < bcast->n; i++)
+        for (int i = 0; i < node->d2; i++)
         {
-            for (int j = 0; j < bcast->m; j++)
+            for (int j = 0; j < node->d1; j++)
             {
-                J->p[i * bcast->m + j] = offset;
+                J->p[i * node->d1 + j] = offset;
                 offset += Jx->p[1] - Jx->p[0];
             }
         }
@@ -123,12 +124,12 @@ static void jacobian_init(expr *node)
     else
     {
         /* copy column indices */
-        tile_int(J->i, Jx->i, Jx->nnz, bcast->m * bcast->n);
+        tile_int(J->i, Jx->i, Jx->nnz, node->d1 * node->d2);
 
         /* set row pointers */
         int offset = 0;
         int nnz = Jx->p[1] - Jx->p[0];
-        for (int i = 0; i < bcast->m * bcast->n; i++)
+        for (int i = 0; i < node->d1 * node->d2; i++)
         {
             J->p[i] = offset;
             offset += nnz;
@@ -149,20 +150,20 @@ static void eval_jacobian(expr *node)
 
     if (bcast->type == BROADCAST_ROW)
     {
-        for (int i = 0; i < bcast->n; i++)
+        for (int i = 0; i < node->d2; i++)
         {
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
-            tile_double(J->x + J->nnz, Jx->x + Jx->p[i], nnz_in_row, bcast->m);
-            J->nnz += nnz_in_row * bcast->m;
+            tile_double(J->x + J->nnz, Jx->x + Jx->p[i], nnz_in_row, node->d1);
+            J->nnz += nnz_in_row * node->d1;
         }
     }
     else if (bcast->type == BROADCAST_COL)
     {
-        tile_double(J->x, Jx->x, Jx->nnz, bcast->n);
+        tile_double(J->x, Jx->x, Jx->nnz, node->d2);
     }
     else
     {
-        tile_double(J->x, Jx->x, Jx->nnz, bcast->m * bcast->n);
+        tile_double(J->x, Jx->x, Jx->nnz, node->d1 * node->d2);
     }
 }
 
@@ -191,22 +192,22 @@ static void eval_wsum_hess(expr *node, const double *w)
     if (bcast->type == BROADCAST_ROW)
     {
         /* (1, n) -> (m, n): each input element has m weights to sum */
-        for (int j = 0; j < bcast->n; j++)
+        for (int j = 0; j < node->d2; j++)
         {
-            for (int i = 0; i < bcast->m; i++)
+            for (int i = 0; i < node->d1; i++)
             {
-                node->dwork[j] += w[i + j * bcast->m];
+                node->dwork[j] += w[i + j * node->d1];
             }
         }
     }
     else if (bcast->type == BROADCAST_COL)
     {
         /* (m, 1) -> (m, n): each input element has n weights to sum */
-        for (int j = 0; j < bcast->n; j++)
+        for (int j = 0; j < node->d2; j++)
         {
-            for (int i = 0; i < bcast->m; i++)
+            for (int i = 0; i < node->d1; i++)
             {
-                node->dwork[i] += w[i + j * bcast->m];
+                node->dwork[i] += w[i + j * node->d1];
             }
         }
     }
@@ -214,7 +215,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     {
         /* (1, 1) -> (m, n): scalar has m*n weights to sum */
         node->dwork[0] = 0.0;
-        for (int k = 0; k < bcast->m * bcast->n; k++)
+        for (int k = 0; k < node->size; k++)
         {
             node->dwork[0] += w[k];
         }
@@ -229,36 +230,24 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
-expr *new_broadcast(expr *child, int target_d1, int target_d2)
+expr *new_broadcast(expr *child, int d1, int d2)
 {
     // ---------------------------------------------------------------------------
     //                       determine broadcast type
     // ---------------------------------------------------------------------------
     broadcast_type type;
-    int m = target_d1;
-    int n = target_d2;
 
-    if (child->d1 == 1 && child->d2 == n)
+    if (child->d1 == 1 && child->d2 == d2)
     {
         type = BROADCAST_ROW;
     }
-    else if (child->d1 == m && child->d2 == 1)
+    else if (child->d1 == d1 && child->d2 == 1)
     {
         type = BROADCAST_COL;
     }
     else if (child->d1 == 1 && child->d2 == 1)
     {
         type = BROADCAST_SCALAR;
-    }
-    else if (child->d1 == n && child->d2 == 1)
-    {
-        /* cvxpy convention requires this sometimes */
-        type = BROADCAST_ROW;
-    }
-    else if (child->d1 == 1 && child->d2 == m)
-    {
-        /* cvxpy convention requires this sometimes */
-        type = BROADCAST_COL;
     }
     else
     {
@@ -274,15 +263,13 @@ expr *new_broadcast(expr *child, int target_d1, int target_d2)
     // --------------------------------------------------------------------------
     //                  initialize the rest of the expression
     // --------------------------------------------------------------------------
-    init_expr(node, target_d1, target_d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, NULL);
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
+              is_affine, NULL);
     node->left = child;
     expr_retain(child);
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     bcast->type = type;
-    bcast->m = m;
-    bcast->n = n;
 
     return node;
 }

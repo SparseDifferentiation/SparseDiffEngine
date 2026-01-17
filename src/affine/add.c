@@ -1,5 +1,6 @@
 #include "affine.h"
 #include <assert.h>
+#include <stdio.h>
 
 static void forward(expr *node, const double *u)
 {

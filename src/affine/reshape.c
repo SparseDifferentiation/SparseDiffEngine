@@ -32,20 +32,19 @@ static void eval_jacobian(expr *node)
 
 static void wsum_hess_init(expr *node)
 {
-    node->left->wsum_hess_init(node->left);
-    CSR_Matrix *child_hess = node->left->wsum_hess;
-    node->wsum_hess = new_csr_matrix(child_hess->m, child_hess->n, child_hess->nnz);
-    memcpy(node->wsum_hess->p, child_hess->p, (child_hess->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, child_hess->i, child_hess->nnz * sizeof(int));
-    node->wsum_hess->nnz = child_hess->nnz;
+    expr *x = node->left;
+    x->wsum_hess_init(x);
+    node->wsum_hess =
+        new_csr_matrix(x->wsum_hess->m, x->wsum_hess->n, x->wsum_hess->nnz);
+    memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->wsum_hess->m + 1) * sizeof(int));
+    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    node->left->eval_wsum_hess(node->left, w);
-    CSR_Matrix *child_hess = node->left->wsum_hess;
-    CSR_Matrix *hess = node->wsum_hess;
-    memcpy(hess->x, child_hess->x, child_hess->nnz * sizeof(double));
+    expr *x = node->left;
+    x->eval_wsum_hess(x, w);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)
