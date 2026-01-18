@@ -14,6 +14,7 @@
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
+#include "forward_pass/test_prod_axis_zero.h"
 #include "jacobian_tests/test_broadcast.h"
 #include "jacobian_tests/test_composite.h"
 #include "jacobian_tests/test_const_scalar_mult.h"
@@ -25,6 +26,7 @@
 #include "jacobian_tests/test_log.h"
 #include "jacobian_tests/test_neg.h"
 #include "jacobian_tests/test_prod.h"
+#include "jacobian_tests/test_prod_axis_zero.h"
 #include "jacobian_tests/test_promote.h"
 #include "jacobian_tests/test_quad_form.h"
 #include "jacobian_tests/test_quad_over_lin.h"
@@ -53,6 +55,7 @@
 #include "wsum_hess/test_left_matmul.h"
 #include "wsum_hess/test_multiply.h"
 #include "wsum_hess/test_prod.h"
+#include "wsum_hess/test_prod_axis_zero.h"
 #include "wsum_hess/test_quad_form.h"
 #include "wsum_hess/test_quad_over_lin.h"
 #include "wsum_hess/test_rel_entr.h"
@@ -86,6 +89,7 @@ int main(void)
     mu_run_test(test_broadcast_row, tests_run);
     mu_run_test(test_broadcast_col, tests_run);
     mu_run_test(test_broadcast_matrix, tests_run);
+    mu_run_test(test_forward_prod_axis_zero, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);
@@ -118,6 +122,7 @@ int main(void)
     mu_run_test(test_jacobian_prod_no_zero, tests_run);
     mu_run_test(test_jacobian_prod_one_zero, tests_run);
     mu_run_test(test_jacobian_prod_two_zeros, tests_run);
+    mu_run_test(test_jacobian_prod_axis_zero, tests_run);
     mu_run_test(test_jacobian_sum_log, tests_run);
     mu_run_test(test_jacobian_sum_mult, tests_run);
     mu_run_test(test_jacobian_sum_log_axis_0, tests_run);
@@ -168,6 +173,9 @@ int main(void)
     mu_run_test(test_wsum_hess_prod_one_zero, tests_run);
     mu_run_test(test_wsum_hess_prod_two_zeros, tests_run);
     mu_run_test(test_wsum_hess_prod_many_zeros, tests_run);
+    mu_run_test(test_wsum_hess_prod_axis_zero_no_zeros, tests_run);
+    mu_run_test(test_wsum_hess_prod_axis_zero_one_zero, tests_run);
+    mu_run_test(test_wsum_hess_prod_axis_zero_mixed_zeros, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_1, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_matrix, tests_run);
