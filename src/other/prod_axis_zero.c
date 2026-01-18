@@ -12,7 +12,7 @@ static void forward(expr *node, const double *u)
     expr *x = node->left;
     x->forward(x, u);
 
-    prod_axis_zero_expr *pnode = (prod_axis_zero_expr *) node;
+    prod_axis *pnode = (prod_axis *) node;
     int d1 = x->d1;
     int d2 = x->d2;
 
@@ -85,7 +85,7 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
-    prod_axis_zero_expr *pnode = (prod_axis_zero_expr *) node;
+    prod_axis *pnode = (prod_axis *) node;
 
     double *J_vals = node->jacobian->x;
 
@@ -175,8 +175,7 @@ static inline void wsum_hess_column_no_zeros(expr *node, const double *w, int co
     double *H = node->wsum_hess->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
-    double w_col = w[col];
-    double f_col = node->value[col];
+    double scale = w[col] * node->value[col];
 
     for (int i = 0; i < d1; i++)
     {
@@ -191,7 +190,7 @@ static inline void wsum_hess_column_no_zeros(expr *node, const double *w, int co
                 int idx_i = col_start + i;
                 int idx_j = col_start + j;
                 H[block_start + i * d1 + j] =
-                    w_col * f_col / (x->value[idx_i] * x->value[idx_j]);
+                    scale / (x->value[idx_i] * x->value[idx_j]);
             }
         }
     }
@@ -201,7 +200,7 @@ static inline void wsum_hess_column_one_zero(expr *node, const double *w, int co
                                              int d1)
 {
     expr *x = node->left;
-    prod_axis_zero_expr *pnode = (prod_axis_zero_expr *) node;
+    prod_axis *pnode = (prod_axis *) node;
     double *H = node->wsum_hess->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
@@ -229,7 +228,7 @@ static inline void wsum_hess_column_two_zeros(expr *node, const double *w, int c
                                               int d1)
 {
     expr *x = node->left;
-    prod_axis_zero_expr *pnode = (prod_axis_zero_expr *) node;
+    prod_axis *pnode = (prod_axis *) node;
     double *H = node->wsum_hess->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
@@ -275,7 +274,7 @@ static inline void wsum_hess_column_many_zeros(expr *node, const double *w, int 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
-    prod_axis_zero_expr *pnode = (prod_axis_zero_expr *) node;
+    prod_axis *pnode = (prod_axis *) node;
     int d1 = x->d1;
     int d2 = x->d2;
 
@@ -319,16 +318,16 @@ static bool is_affine(const expr *node)
 
 static void free_type_data(expr *node)
 {
-    prod_axis_zero_expr *pnode = (prod_axis_zero_expr *) node;
+    prod_axis *pnode = (prod_axis *) node;
     free(pnode->num_of_zeros);
     free(pnode->zero_index);
     free(pnode->prod_nonzero);
 }
 
+/* TODO: refactor to remove diagonal entry as nonzero since it's always zero */
 expr *new_prod_axis_zero(expr *child)
 {
-    prod_axis_zero_expr *pnode =
-        (prod_axis_zero_expr *) calloc(1, sizeof(prod_axis_zero_expr));
+    prod_axis *pnode = (prod_axis *) calloc(1, sizeof(prod_axis));
     expr *node = &pnode->base;
 
     /* output is always a row vector 1 x d2 - TODO: is that correct? */

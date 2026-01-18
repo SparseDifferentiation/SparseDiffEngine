@@ -13,4 +13,7 @@ expr *new_prod(expr *child);
 /* product of entries along axis=0 (columnwise products) */
 expr *new_prod_axis_zero(expr *child);
 
+/* product of entries along axis=1 (rowwise products) */
+expr *new_prod_axis_one(expr *child);
+
 #endif /* OTHER_H */
