@@ -129,9 +129,9 @@ Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`,
 3. Implement: `forward`, `jacobian_init`, `eval_jacobian`, `eval_wsum_hess` (optional), `free_type_data` (if needed)
 4. Add Python binding header in `python/atoms/`
 5. Register in `python/bindings.c` (both include and method table)
-6. Add converter entry in `src/dnlp_diff_engine/__init__.py` `ATOM_CONVERTERS` dict
-7. Rebuild: `pip install -e .`
-8. Add tests in `tests/` (C) and `tests/python/` (Python)
+6. Export in `src/dnlp_diff_engine/__init__.py` `__all__` list
+7. Rebuild: `uv pip install -e .`
+8. Add tests in `tests/` (C, register in `tests/all_tests.c`) and `python/tests/` (Python)
 
 ## Known Limitations
 

@@ -75,4 +75,5 @@ out/
 .DS_Store
 
 .venv/
-__pycache__/uv.lock
+__pycache__/
+uv.lock
