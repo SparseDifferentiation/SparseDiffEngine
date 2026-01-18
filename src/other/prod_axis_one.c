@@ -1,6 +1,7 @@
 #include "other.h"
 #include <assert.h>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -135,17 +136,31 @@ static void wsum_hess_init(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        /* Hessian has block diagonal structure: d1 blocks of size d2 x d2 */
+        /* Hessian structure: for each row i of the input matrix,
+         * the Hessian of the product (w[i] * prod(row i)) has entries
+         * at the column indices corresponding to the columns in that row.
+         * Each row i has d2 non-zero columns, and we have d2 x d2 interactions.
+         * Total nnz = d1 * d2 * d2
+         */
         int nnz = x->d1 * x->d2 * x->d2;
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
         CSR_Matrix *H = node->wsum_hess;
 
-        /* fill row pointers for the variable's rows (block diagonal) */
+        /* Fill row pointers and column indices */
+        int nnz_per_row = x->d2;
         for (int i = 0; i < x->size; i++)
         {
-            int block_idx = i % x->d1;    /* row of the matrix */
-            int row_in_block = i / x->d1; /* column index within that row-block */
-            H->p[x->var_id + i] = block_idx * x->d2 * x->d2 + row_in_block * x->d2;
+            int matrix_row = i % x->d1;
+            H->p[x->var_id + i] = i * nnz_per_row;
+
+            /* For this variable (at matrix position [matrix_row, ...]),
+             * the Hessian has entries with all columns in the same matrix_row */
+            for (int j = 0; j < x->d2; j++)
+            {
+                /* Global column index for column j of this row */
+                int global_col = x->var_id + matrix_row + j * x->d1;
+                H->i[i * nnz_per_row + j] = global_col;
+            }
         }
 
         /* fill row pointers for rows after the variable */
@@ -153,29 +168,25 @@ static void wsum_hess_init(expr *node)
         {
             H->p[i] = nnz;
         }
-
-        /* set column indices for each block */
-        for (int block = 0; block < x->d1; block++)
-        {
-            int block_start = block * x->d2 * x->d2;
-            int col_start = block; /* global column offset for this row-block */
-            for (int row = 0; row < x->d2; row++)
-            {
-                for (int col = 0; col < x->d2; col++)
-                {
-                    /* variable indices: row-block fixed, column-major layout */
-                    int var_col =
-                        col * x->d1 +
-                        block; /* global variable index offset from var_id */
-                    H->i[block_start + row * x->d2 + col] = x->var_id + var_col;
-                }
-            }
-        }
     }
     else
     {
         assert(false && "child must be a variable");
     }
+
+    /* print row pointers */
+    // for (int i = 0; i <= node->n_vars; i++)
+    //{
+    //     printf("H->p[%d] = %d\n", i, node->wsum_hess->p[i]);
+    // }
+    //
+    ///* print column indices */
+    // for (int i = 0; i < node->wsum_hess->nnz; i++)
+    //{
+    //     printf("H->i[%d] = %d\n", i, node->wsum_hess->i[i]);
+    // }
+
+    printf("done wsum_hess_init prod_axis_one\n");
 }
 
 static inline void wsum_hess_row_no_zeros(expr *node, const double *w, int row,
@@ -183,21 +194,33 @@ static inline void wsum_hess_row_no_zeros(expr *node, const double *w, int row,
 {
     expr *x = node->left;
     prod_axis_one_expr *pnode = (prod_axis_one_expr *) node;
-    double *H = node->wsum_hess->x;
+    CSR_Matrix *H = node->wsum_hess;
+    double *H_vals = H->x;
 
-    int block_start = row * d2 * d2;
     double scale = w[row] * node->value[row];
+    int idx_i = row; /* Start with the row offset */
 
-    /* fill block for this row */
-    for (int r = 0; r < d2; r++)
+    /* For each variable in this row, fill in Hessian entries */
+    for (int i = 0; i < d2; i++)
     {
-        int idx_r = r * node->left->d1 + row; /* column-major index into x */
-        for (int c = 0; c < d2; c++)
+        int var_i = x->var_id + row + i * x->d1;
+        int row_start = H->p[var_i];
+        idx_i = i * x->d1 + row; /* Element at matrix [row, i] */
+
+        /* Row var_i has nnz entries with columns from the same matrix row */
+        for (int j = 0; j < d2; j++)
         {
-            int idx_c = c * node->left->d1 + row;
-            double val =
-                (r == c) ? 0.0 : scale / (x->value[idx_r] * x->value[idx_c]);
-            H[block_start + r * d2 + c] = val;
+            if (i == j)
+            {
+                /* Diagonal entries are 0 */
+                H_vals[row_start + j] = 0.0;
+            }
+            else
+            {
+                /* Off-diagonal: scale / (x[i] * x[j]) */
+                int idx_j = j * x->d1 + row; /* Element at matrix [row, j] */
+                H_vals[row_start + j] = scale / (x->value[idx_i] * x->value[idx_j]);
+            }
         }
     }
     (void) pnode; /* suppress unused warning */
@@ -208,26 +231,40 @@ static inline void wsum_hess_row_one_zero(expr *node, const double *w, int row,
 {
     expr *x = node->left;
     prod_axis_one_expr *pnode = (prod_axis_one_expr *) node;
-    double *H = node->wsum_hess->x;
+    CSR_Matrix *H = node->wsum_hess;
+    double *H_vals = H->x;
 
-    int block_start = row * d2 * d2;
-    int p = pnode->zero_index[row]; /* zero column */
+    int p = pnode->zero_index[row]; /* zero column index */
     double w_prod = w[row] * pnode->prod_nonzero[row];
 
-    /* clear block */
-    memset(&H[block_start], 0, sizeof(double) * d2 * d2);
-
-    /* fill row p and column p */
-    int col_offset = p * node->left->d1 + row;
-    for (int c = 0; c < d2; c++)
+    /* For each variable in this row */
+    for (int i = 0; i < d2; i++)
     {
-        if (c == p) continue;
-        int idx_c = c * node->left->d1 + row;
-        double hess_val = w_prod / x->value[idx_c];
-        H[block_start + p * d2 + c] = hess_val;
-        H[block_start + c * d2 + p] = hess_val;
+        int var_i = x->var_id + row + i * x->d1;
+        int row_start = H->p[var_i];
+
+        /* Row var_i has nnz entries with columns from the same matrix row */
+        for (int j = 0; j < d2; j++)
+        {
+            if (i == p && j != p)
+            {
+                /* Row p (zero row), column j (nonzero) */
+                int idx_j = j * x->d1 + row;
+                H_vals[row_start + j] = w_prod / x->value[idx_j];
+            }
+            else if (j == p && i != p)
+            {
+                /* Row i (nonzero), column p (zero) */
+                int idx_i = i * x->d1 + row;
+                H_vals[row_start + j] = w_prod / x->value[idx_i];
+            }
+            else
+            {
+                /* All other entries are zero */
+                H_vals[row_start + j] = 0.0;
+            }
+        }
     }
-    (void) col_offset; /* suppress unused */
 }
 
 static inline void wsum_hess_row_two_zeros(expr *node, const double *w, int row,
@@ -235,12 +272,8 @@ static inline void wsum_hess_row_two_zeros(expr *node, const double *w, int row,
 {
     expr *x = node->left;
     prod_axis_one_expr *pnode = (prod_axis_one_expr *) node;
-    double *H = node->wsum_hess->x;
-
-    int block_start = row * d2 * d2;
-
-    /* clear block */
-    memset(&H[block_start], 0, sizeof(double) * d2 * d2);
+    CSR_Matrix *H = node->wsum_hess;
+    double *H_vals = H->x;
 
     /* find indices p and q where row has zeros */
     int p = -1, q = -1;
@@ -263,15 +296,47 @@ static inline void wsum_hess_row_two_zeros(expr *node, const double *w, int row,
     assert(p != -1 && q != -1);
 
     double hess_val = w[row] * pnode->prod_nonzero[row];
-    H[block_start + p * d2 + q] = hess_val;
-    H[block_start + q * d2 + p] = hess_val;
+
+    /* For each variable in this row */
+    for (int i = 0; i < d2; i++)
+    {
+        int var_i = x->var_id + row + i * x->d1;
+        int row_start = H->p[var_i];
+
+        /* Row var_i has nnz entries with columns from the same matrix row */
+        for (int j = 0; j < d2; j++)
+        {
+            /* Only (p,q) and (q,p) are nonzero */
+            if ((i == p && j == q) || (i == q && j == p))
+            {
+                H_vals[row_start + j] = hess_val;
+            }
+            else
+            {
+                H_vals[row_start + j] = 0.0;
+            }
+        }
+    }
 }
 
 static inline void wsum_hess_row_many_zeros(expr *node, int row, int d2)
 {
-    double *H = node->wsum_hess->x;
-    int block_start = row * d2 * d2;
-    memset(&H[block_start], 0, sizeof(double) * d2 * d2);
+    CSR_Matrix *H = node->wsum_hess;
+    double *H_vals = H->x;
+    expr *x = node->left;
+
+    /* For each variable in this row, zero out all entries */
+    for (int i = 0; i < d2; i++)
+    {
+        int var_i = x->var_id + row + i * x->d1;
+        int row_start = H->p[var_i];
+
+        /* Each variable has d2 entries */
+        for (int j = 0; j < d2; j++)
+        {
+            H_vals[row_start + j] = 0.0;
+        }
+    }
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

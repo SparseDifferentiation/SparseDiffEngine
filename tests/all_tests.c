@@ -185,6 +185,7 @@ int main(void)
     mu_run_test(test_wsum_hess_prod_axis_one_no_zeros, tests_run);
     mu_run_test(test_wsum_hess_prod_axis_one_one_zero, tests_run);
     mu_run_test(test_wsum_hess_prod_axis_one_mixed_zeros, tests_run);
+    mu_run_test(test_wsum_hess_prod_axis_one_2x2, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_1, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_matrix, tests_run);

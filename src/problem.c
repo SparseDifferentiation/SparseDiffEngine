@@ -56,6 +56,7 @@ void problem_init_derivatives(problem *prob)
     // -------------------------------------------------------------------------------
     //                           Jacobian structure
     // -------------------------------------------------------------------------------
+    printf("Initializing Jacobian structure...\n");
     prob->objective->jacobian_init(prob->objective);
     int nnz = 0;
     for (int i = 0; i < prob->n_constraints; i++)
@@ -66,6 +67,7 @@ void problem_init_derivatives(problem *prob)
     }
 
     prob->jacobian = new_csr_matrix(prob->total_constraint_size, prob->n_vars, nnz);
+    printf("jacobian structure initialized\n");
 
     /* set sparsity pattern of jacobian */
     CSR_Matrix *H = prob->jacobian;
@@ -90,6 +92,7 @@ void problem_init_derivatives(problem *prob)
     // -------------------------------------------------------------------------------
     //                        Lagrange Hessian structure
     // -------------------------------------------------------------------------------
+    printf("Initializing Lagrange Hessian structure...\n");
     prob->objective->wsum_hess_init(prob->objective);
     nnz = prob->objective->wsum_hess->nnz;
 
@@ -103,11 +106,14 @@ void problem_init_derivatives(problem *prob)
     memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
     prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
     int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
+    printf("Lagrange Hessian structure initialized\n");
     problem_lagrange_hess_fill_sparsity(prob, iwork);
+    printf("Lagrange Hessian sparsity filled\n");
     free(iwork);
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
+    printf("Derivative initialization complete.\n");
 }
 
 static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)

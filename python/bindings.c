@@ -23,6 +23,7 @@
 #include "atoms/neg.h"
 #include "atoms/power.h"
 #include "atoms/prod.h"
+#include "atoms/prod_axis_one.h"
 #include "atoms/prod_axis_zero.h"
 #include "atoms/promote.h"
 #include "atoms/quad_form.h"
@@ -80,6 +81,8 @@ static PyMethodDef DNLPMethods[] = {
     {"make_prod", py_make_prod, METH_VARARGS, "Create prod node"},
     {"make_prod_axis_zero", py_make_prod_axis_zero, METH_VARARGS,
      "Create prod_axis_zero node"},
+    {"make_prod_axis_one", py_make_prod_axis_one, METH_VARARGS,
+     "Create prod_axis_one node"},
     {"make_sin", py_make_sin, METH_VARARGS, "Create sin node"},
     {"make_cos", py_make_cos, METH_VARARGS, "Create cos node"},
     {"make_tan", py_make_tan, METH_VARARGS, "Create tan node"},
