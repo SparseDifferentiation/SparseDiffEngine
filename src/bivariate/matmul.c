@@ -64,7 +64,7 @@ static void jacobian_init(expr *node)
         /* X has lower var_id */
         if (x->var_id < y->var_id)
         {
-            /* sparsity pattern of kron(Y^T, I) for this row */
+            /* sparsity pattern of kron(YT, I) for this row */
             for (int j = 0; j < k; j++)
             {
                 node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
@@ -84,7 +84,7 @@ static void jacobian_init(expr *node)
                 node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
             }
 
-            /* sparsity pattern of kron(Y^T, I) for this row */
+            /* sparsity pattern of kron(YT, I) for this row */
             for (int j = 0; j < k; j++)
             {
                 node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
@@ -114,7 +114,7 @@ static void eval_jacobian(expr *node)
 
         if (x->var_id < y->var_id)
         {
-            /* contribution to this row from Y^T */
+            /* contribution to this row from YT */
             memcpy(Jx + pos, y->value + col * k, k * sizeof(double));
 
             /* contribution to this row from X */
@@ -131,7 +131,7 @@ static void eval_jacobian(expr *node)
                 Jx[pos + j] = x->value[row + j * m];
             }
 
-            /* contribution to this row from Y^T */
+            /* contribution to this row from YT */
             memcpy(Jx + pos + k, y->value + col * k, k * sizeof(double));
         }
     }

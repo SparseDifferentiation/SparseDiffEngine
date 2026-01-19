@@ -9,7 +9,7 @@ description = "Low-level C autodiff engine for nonlinear optimization"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy"
+    "numpy",
 ]
 
 [project.optional-dependencies]
