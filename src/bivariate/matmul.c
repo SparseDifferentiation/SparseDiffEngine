@@ -21,16 +21,8 @@ static void forward(expr *node, const double *u)
     x->forward(x, u);
     y->forward(y, u);
 
-    /* local forward pass: Z = X @ Y
-     * X is m x k (d1 x d2)
-     * Y is k x n (d1 x d2)
-     * Z is m x n (d1 x d2)
-     */
-    int m = x->d1;
-    int k = x->d2;
-    int n = y->d2;
-
-    mat_mat_mult(x->value, y->value, node->value, m, k, n);
+    /* local forward pass */
+    mat_mat_mult(x->value, y->value, node->value, x->d1, x->d2, y->d2);
 }
 
 static bool is_affine(const expr *node)
