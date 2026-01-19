@@ -114,10 +114,10 @@ static void eval_jacobian(expr *node)
 
         if (x->var_id < y->var_id)
         {
-            /* Y^T contribution: contiguous column of Y at 'col' */
+            /* contribution to this row from Y^T */
             memcpy(Jx + pos, y->value + col * k, k * sizeof(double));
 
-            /* X row contribution: stride m across columns */
+            /* contribution to this row from X */
             for (int j = 0; j < k; j++)
             {
                 Jx[pos + k + j] = x->value[row + j * m];
@@ -125,13 +125,13 @@ static void eval_jacobian(expr *node)
         }
         else
         {
-            /* X row contribution: stride m across columns */
+            /* contribution to this row from X */
             for (int j = 0; j < k; j++)
             {
                 Jx[pos + j] = x->value[row + j * m];
             }
 
-            /* Y^T contribution: contiguous column of Y at 'col' */
+            /* contribution to this row from Y^T */
             memcpy(Jx + pos + k, y->value + col * k, k * sizeof(double));
         }
     }
@@ -242,6 +242,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     int offset = 0;
 
     double *Hx = node->wsum_hess->x;
+    const double *w_temp;
 
     if (x->var_id < y->var_id)
     {
@@ -260,9 +261,10 @@ static void eval_wsum_hess(expr *node, const double *w)
         /* rows corresponding to y */
         for (int col = 0; col < n; col++)
         {
+            w_temp = w + col * m;
             for (int k_idx = 0; k_idx < k; k_idx++)
             {
-                memcpy(Hx + offset, w + col * m, m * sizeof(double));
+                memcpy(Hx + offset, w_temp, m * sizeof(double));
                 offset += m;
             }
         }
@@ -272,9 +274,10 @@ static void eval_wsum_hess(expr *node, const double *w)
         /* rows corresponding to y */
         for (int col = 0; col < n; col++)
         {
+            w_temp = w + col * m;
             for (int k_idx = 0; k_idx < k; k_idx++)
             {
-                memcpy(Hx + offset, w + col * m, m * sizeof(double));
+                memcpy(Hx + offset, w_temp, m * sizeof(double));
                 offset += m;
             }
         }

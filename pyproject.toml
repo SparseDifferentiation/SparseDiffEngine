@@ -29,7 +29,7 @@ wheel.packages = ["src/dnlp_diff_engine"]
 build-dir = "build/{wheel_tag}"
 
 [tool.scikit-build.cmake.define]
-CMAKE_BUILD_TYPE = "Release"
+CMAKE_BUILD_TYPE = "Debug"
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
