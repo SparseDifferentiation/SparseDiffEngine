@@ -14,6 +14,7 @@
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
+#include "forward_pass/test_matmul.h"
 #include "forward_pass/test_prod_axis_one.h"
 #include "forward_pass/test_prod_axis_zero.h"
 #include "jacobian_tests/test_broadcast.h"
@@ -25,6 +26,7 @@
 #include "jacobian_tests/test_index.h"
 #include "jacobian_tests/test_left_matmul.h"
 #include "jacobian_tests/test_log.h"
+#include "jacobian_tests/test_matmul.h"
 #include "jacobian_tests/test_neg.h"
 #include "jacobian_tests/test_prod.h"
 #include "jacobian_tests/test_prod_axis_one.h"
@@ -55,6 +57,7 @@
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
+#include "wsum_hess/test_matmul.h"
 #include "wsum_hess/test_multiply.h"
 #include "wsum_hess/test_prod.h"
 #include "wsum_hess/test_prod_axis_one.h"
@@ -94,6 +97,7 @@ int main(void)
     mu_run_test(test_broadcast_matrix, tests_run);
     mu_run_test(test_forward_prod_axis_zero, tests_run);
     mu_run_test(test_forward_prod_axis_one, tests_run);
+    mu_run_test(test_matmul, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);
@@ -156,6 +160,7 @@ int main(void)
     mu_run_test(test_jacobian_left_matmul_log_composite, tests_run);
     mu_run_test(test_jacobian_right_matmul_log, tests_run);
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
+    mu_run_test(test_jacobian_matmul, tests_run);
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
@@ -210,6 +215,8 @@ int main(void)
     mu_run_test(test_wsum_hess_left_matmul, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_matrix, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_composite, tests_run);
+    mu_run_test(test_wsum_hess_matmul, tests_run);
+    mu_run_test(test_wsum_hess_matmul_yx, tests_run);
     mu_run_test(test_wsum_hess_right_matmul, tests_run);
     mu_run_test(test_wsum_hess_right_matmul_vector, tests_run);
     mu_run_test(test_wsum_hess_broadcast_row, tests_run);
@@ -250,7 +257,7 @@ int main(void)
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
 
-    printf("\n=== All %d tests passed ===\n", tests_run);
+      printf("\n=== All %d tests passed ===\n", tests_run);
 
     return 0;
 }

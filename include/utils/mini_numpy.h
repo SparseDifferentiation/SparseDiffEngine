@@ -20,4 +20,7 @@ void tile_int(int *result, const int *a, int len, int tiles);
  */
 void scaled_ones(double *result, int size, double value);
 
+/* Naive implementation of Z = X @ Y, X is m x k, Y is k x n, Z is m x n */
+void mat_mat_mult(const double *X, const double *Y, double *Z, int m, int k, int n);
+
 #endif /* MINI_NUMPY_H */

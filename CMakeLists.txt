@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
 project(DNLP_Diff_Engine C)
-
 set(CMAKE_C_STANDARD 99)
 
 #Set default build type to Release if not specified
@@ -31,6 +30,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Source files - automatically gather all .c files from src/
 file(GLOB_RECURSE SOURCES "src/*.c")
+
 
 # Create core library
 add_library(dnlp_diff ${SOURCES})

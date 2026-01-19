@@ -19,6 +19,7 @@
 #include "atoms/linear.h"
 #include "atoms/log.h"
 #include "atoms/logistic.h"
+#include "atoms/matmul.h"
 #include "atoms/multiply.h"
 #include "atoms/neg.h"
 #include "atoms/power.h"
@@ -73,6 +74,8 @@ static PyMethodDef DNLPMethods[] = {
     {"make_promote", py_make_promote, METH_VARARGS, "Create promote node"},
     {"make_multiply", py_make_multiply, METH_VARARGS,
      "Create elementwise multiply node"},
+    {"make_matmul", py_make_matmul, METH_VARARGS,
+     "Create matrix multiplication node (Z = X @ Y)"},
     {"make_const_scalar_mult", py_make_const_scalar_mult, METH_VARARGS,
      "Create constant scalar multiplication node (a * f(x))"},
     {"make_const_vector_mult", py_make_const_vector_mult, METH_VARARGS,
