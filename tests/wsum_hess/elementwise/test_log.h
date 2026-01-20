@@ -61,7 +61,7 @@ const char *test_wsum_hess_log_composite()
     memcpy(A_csr->p, Ap, 4 * sizeof(int));
 
     expr *x = new_variable(5, 1, 0, 5);
-    expr *Ax_node = new_linear(x, A_csr);
+    expr *Ax_node = new_linear(x, A_csr, NULL, 0);
     expr *log_node = new_log(Ax_node);
     log_node->forward(log_node, u_vals);
     log_node->jacobian_init(log_node);

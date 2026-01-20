@@ -67,7 +67,7 @@ int Ap[4] = {0, 4, 7, 10};
 memcpy(A->x, Ax, 10 * sizeof(double));
 memcpy(A->i, Ai, 10 * sizeof(int));
 memcpy(A->p, Ap, 4 * sizeof(int));
-expr *Au = new_linear(u, A);
+expr *Au = new_linear(u, A, NULL, 0);
 expr *node = new_quad_form(Au, Q);
 
 node->jacobian_init(node);

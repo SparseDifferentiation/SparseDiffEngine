@@ -7,9 +7,12 @@ static PyObject *py_make_linear(PyObject *self, PyObject *args)
 {
     PyObject *child_capsule;
     PyObject *data_obj, *indices_obj, *indptr_obj;
+    PyObject *b_obj = Py_None;  /* Optional offset vector */
     int m, n;
-    if (!PyArg_ParseTuple(args, "OOOOii", &child_capsule, &data_obj, &indices_obj,
-                          &indptr_obj, &m, &n))
+
+    /* Accept optional b array: (child, data, indices, indptr, m, n[, b]) */
+    if (!PyArg_ParseTuple(args, "OOOOii|O", &child_capsule, &data_obj, &indices_obj,
+                          &indptr_obj, &m, &n, &b_obj))
     {
         return NULL;
     }
@@ -46,8 +49,28 @@ static PyObject *py_make_linear(PyObject *self, PyObject *args)
     Py_DECREF(indices_array);
     Py_DECREF(indptr_array);
 
-    expr *node = new_linear(child, A);
+    /* Parse optional b offset vector */
+    double *b_data = NULL;
+    int has_offset = 0;
+    PyArrayObject *b_array = NULL;
+
+    if (b_obj != Py_None)
+    {
+        b_array = (PyArrayObject *) PyArray_FROM_OTF(b_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+        if (!b_array)
+        {
+            free_csr_matrix(A);
+            return NULL;
+        }
+        has_offset = 1;
+        b_data = (double *) PyArray_DATA(b_array);
+    }
+
+    expr *node = new_linear(child, A, b_data, has_offset);
+
+    /* Clean up */
     free_csr_matrix(A);
+    Py_XDECREF(b_array);
 
     if (!node)
     {

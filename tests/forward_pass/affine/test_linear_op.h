@@ -24,7 +24,7 @@ const char *test_linear_op()
     memcpy(A->p, Ap, 4 * sizeof(int));
 
     expr *var = new_variable(3, 1, 2, 6);
-    expr *linear_node = new_linear(var, A);
+    expr *linear_node = new_linear(var, A, NULL, 0);
     double x[6] = {0, 0, 1, 2, 3, 0};
     linear_node->forward(linear_node, x);
 

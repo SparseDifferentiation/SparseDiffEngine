@@ -91,8 +91,8 @@ const char *test_jacobian_elementwise_mult_3()
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
     expr *y = new_variable(3, 1, 7, 10);
-    expr *Ax = new_linear(x, A);
-    expr *By = new_linear(y, B);
+    expr *Ax = new_linear(x, A, NULL, 0);
+    expr *By = new_linear(y, B, NULL, 0);
     expr *node = new_elementwise_mult(Ax, By);
 
     node->forward(node, u_vals);
@@ -141,7 +141,7 @@ const char *test_jacobian_elementwise_mult_4()
 
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
-    expr *Ax = new_linear(x, A);
+    expr *Ax = new_linear(x, A, NULL, 0);
     expr *node = new_elementwise_mult(Ax, Ax);
 
     node->forward(node, u_vals);

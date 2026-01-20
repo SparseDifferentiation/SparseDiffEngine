@@ -74,7 +74,7 @@ const char *test_quad_over_lin3()
     // Create variables with global indices
     expr *x = new_variable(3, 1, 2, 8);
     expr *y = new_variable(1, 1, 7, 8);
-    expr *Ax_expr = new_linear(x, A);
+    expr *Ax_expr = new_linear(x, A, NULL, 0);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0};
 
@@ -114,7 +114,7 @@ const char *test_quad_over_lin4()
     // Create variables with global indices
     expr *x = new_variable(3, 1, 5, 8);
     expr *y = new_variable(1, 1, 2, 8);
-    expr *Ax_expr = new_linear(x, A);
+    expr *Ax_expr = new_linear(x, A, NULL, 0);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {0, 0, 4, 0, 0, 1.0, 2.0, 3.0};
 
@@ -154,7 +154,7 @@ const char *test_quad_over_lin5()
     // Create variables with global indices
     expr *u = new_variable(8, 1, 0, 8);
     expr *y = new_variable(1, 1, 2, 8);
-    expr *Ax_expr = new_linear(u, A);
+    expr *Ax_expr = new_linear(u, A, NULL, 0);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {1, 2, 4, 3, 2, 1.0, 2.0, 3.0};
 

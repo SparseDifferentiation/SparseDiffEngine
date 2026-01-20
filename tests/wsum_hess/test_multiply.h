@@ -68,8 +68,8 @@ const char *test_wsum_hess_multiply_sparse_random()
 
     /* Create variable and linear operators */
     expr *x = new_variable(10, 1, 0, 10);
-    expr *Ax_node = new_linear(x, A);
-    expr *Bx_node = new_linear(x, B);
+    expr *Ax_node = new_linear(x, A, NULL, 0);
+    expr *Bx_node = new_linear(x, B, NULL, 0);
 
     /* Create multiply node */
     expr *mult_node = new_elementwise_mult(Ax_node, Bx_node);
@@ -149,8 +149,8 @@ const char *test_wsum_hess_multiply_linear_ops()
 
     /* Create linear operator expressions */
     expr *x = new_variable(3, 1, 0, 3);
-    expr *Ax_node = new_linear(x, A);
-    expr *Bx_node = new_linear(x, B);
+    expr *Ax_node = new_linear(x, A, NULL, 0);
+    expr *Bx_node = new_linear(x, B, NULL, 0);
 
     /* Create elementwise multiply node */
     expr *mult_node = new_elementwise_mult(Ax_node, Bx_node);

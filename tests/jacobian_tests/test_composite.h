@@ -18,7 +18,7 @@ const char *test_jacobian_composite_log()
     memcpy(A->p, Ap, 3 * sizeof(int));
 
     expr *u = new_variable(3, 1, 2, 6);
-    expr *Au = new_linear(u, A);
+    expr *Au = new_linear(u, A, NULL, 0);
     expr *log_node = new_log(Au);
     log_node->forward(log_node, u_vals);
     log_node->jacobian_init(log_node);
@@ -69,8 +69,8 @@ const char *test_jacobian_composite_log_add()
 
     expr *x = new_variable(3, 1, 2, 7);
     expr *y = new_variable(2, 1, 5, 7);
-    expr *Ax_expr = new_linear(x, A);
-    expr *By_expr = new_linear(y, B);
+    expr *Ax_expr = new_linear(x, A, NULL, 0);
+    expr *By_expr = new_linear(y, B, NULL, 0);
     expr *log_Ax = new_log(Ax_expr);
     expr *log_By = new_log(By_expr);
     expr *sum = new_add(log_Ax, log_By);

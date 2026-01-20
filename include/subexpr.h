@@ -10,12 +10,14 @@ struct int_double_pair;
 
 /* Type-specific expression structures that "inherit" from expr */
 
-/* Linear operator: y = A * x */
+/* Linear operator: y = A * x + b */
 typedef struct linear_op_expr
 {
     expr base;
     CSC_Matrix *A_csc;
     CSR_Matrix *A_csr;
+    double *b;      /* constant offset vector (can be NULL) */
+    int has_offset; /* flag for whether b is set */
 } linear_op_expr;
 
 /* Power: y = x^p */

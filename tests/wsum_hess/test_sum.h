@@ -22,7 +22,7 @@ const char *test_wsum_hess_sum_log_linear()
     double w = 1.5;
 
     expr *x = new_variable(2, 1, 0, 2);
-    expr *Ax_node = new_linear(x, A);
+    expr *Ax_node = new_linear(x, A, NULL, 0);
     expr *log_node = new_log(Ax_node);
     expr *sum_node = new_sum(log_node, -1);
 

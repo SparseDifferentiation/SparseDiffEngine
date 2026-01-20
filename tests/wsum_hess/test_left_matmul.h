@@ -159,7 +159,7 @@ const char *test_wsum_hess_left_matmul_composite()
     memcpy(A->i, A_i, 7 * sizeof(int));
     memcpy(A->x, A_x, 7 * sizeof(double));
 
-    expr *Bx = new_linear(x, B);
+    expr *Bx = new_linear(x, B, NULL, 0);
     expr *log_Bx = new_log(Bx);
     expr *A_log_Bx = new_left_matmul(log_Bx, A);
 
