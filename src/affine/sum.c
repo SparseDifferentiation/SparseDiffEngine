@@ -73,6 +73,11 @@ static void jacobian_init(expr *node)
     node->iwork = malloc(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
     snode->idx_map = malloc(x->jacobian->nnz * sizeof(int));
 
+    /* the idx_map array maps each nonzero entry j in x->jacobian
+       to the corresponding index in the output row matrix C. Specifically, for
+       each nonzero entry j in A, idx_map[j] gives the position in C->x where
+       the value from x->jacobian->x[j] should be accumulated. */
+
     if (axis == -1)
     {
         sum_all_rows_csr_fill_sparsity_and_idx_map(x->jacobian, node->jacobian,

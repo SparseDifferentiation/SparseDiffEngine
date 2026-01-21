@@ -106,6 +106,8 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
    Must memset accumulator to zero before calling. */
 void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
                          double *accumulator);
+void idx_map_accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map,
+                                      double *accumulator, int spacing);
 
 /* Sum blocks of rows of A into a matrix C */
 void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
@@ -141,6 +143,11 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
 void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
                                   struct int_double_pair *pairs, int offset,
                                   int spacing);
+/* Fills the sparsity and index map for summing spaced rows into a row matrix */
+void sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
+                                                            CSR_Matrix *C,
+                                                            int spacing, int *iwork,
+                                                            int *idx_map);
 
 /* Count number of columns with nonzero entries */
 int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz);

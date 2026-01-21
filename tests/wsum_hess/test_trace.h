@@ -43,6 +43,42 @@ const char *test_wsum_hess_trace_variable()
     return 0;
 }
 
+const char *test_wsum_hess_trace_log_variable()
+{
+    /* Test weighted sum of Hessian of trace(log(x)) where x is 3x3 variable
+     * x has global variable index 1
+     * Total 13 variables
+     * trace(log(x)) = log(x[0,0]) + log(x[1,1]) + log(x[2,2])
+     * Hessian is diagonal,  BUT NOTE THAT THIS STORES STRUCTURAL ZEROS FOR ALL
+     * NON-DIAGONAL ENTRIES
+     */
+    double u_vals[13] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+                         7.0, 8.0, 9.0, 0.0, 0.0, 0.0};
+    double w = 2.0;
+
+    expr *x = new_variable(3, 3, 1, 13);
+    expr *log_node = new_log(x);
+    expr *trace_node = new_trace(log_node);
+
+    trace_node->forward(trace_node, u_vals);
+    trace_node->jacobian_init(trace_node);
+    trace_node->wsum_hess_init(trace_node);
+    trace_node->eval_wsum_hess(trace_node, &w);
+
+    double expected_Ax[9] = {-2.0, 0, 0, 0, -0.08, 0, 0, 0, -0.024691358024691357};
+    int expected_Ap[14] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9};
+    int expected_Ai[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+    CSR_Matrix *H = trace_node->wsum_hess;
+    mu_assert("nnz wrong", H->nnz == 9);
+    mu_assert("vals match", cmp_double_array(H->x, expected_Ax, 9));
+    mu_assert("cols match", cmp_int_array(H->i, expected_Ai, 9));
+    mu_assert("rows fail", cmp_int_array(H->p, expected_Ap, 14));
+
+    free_expr(trace_node);
+    return 0;
+}
+
 const char *test_wsum_hess_trace_composite()
 {
     /* Test weighted sum of Hessian of trace(log(x) + exp(x)) where x is 3x3 variable
@@ -94,16 +130,15 @@ const char *test_wsum_hess_trace_composite()
     double d2_5 = -0.04 + exp_5;
     double d2_9 = -1.0 / 81.0 + exp_9;
 
-    double expected_Ax[3] = {w * d2_1, w * d2_5, w * d2_9};
-    int expected_Ap[14] = {0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3};
-    int expected_Ai[3] = {1, 5, 9};
+    double expected_Ax[9] = {w * d2_1, 0, 0, 0, w * d2_5, 0, 0, 0, w * d2_9};
+    int expected_Ap[14] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9};
+    int expected_Ai[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    mu_assert("nnz wrong", trace_node->wsum_hess->nnz == 3);
+    mu_assert("nnz wrong", trace_node->wsum_hess->nnz == 9);
     mu_assert("rows fail", cmp_int_array(trace_node->wsum_hess->p, expected_Ap, 14));
     mu_assert("vals match",
-              cmp_double_array(trace_node->wsum_hess->x, expected_Ax, 3));
-    mu_assert("cols match", cmp_int_array(trace_node->wsum_hess->i, expected_Ai, 3));
-
+              cmp_double_array(trace_node->wsum_hess->x, expected_Ax, 9));
+    mu_assert("cols match", cmp_int_array(trace_node->wsum_hess->i, expected_Ai, 9));
     free_expr(trace_node);
     return 0;
 }

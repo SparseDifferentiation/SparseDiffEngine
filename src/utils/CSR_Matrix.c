@@ -754,6 +754,19 @@ void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
     }
 }
 
+void idx_map_accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map,
+                                      double *accumulator, int spacing)
+{
+    /* don't forget to initialze accumulator to 0 before calling this */
+    for (int row = 0; row < A->m; row += spacing)
+    {
+        for (int j = A->p[row]; j < A->p[row + 1]; j++)
+        {
+            accumulator[idx_map[j]] += A->x[j];
+        }
+    }
+}
+
 void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
                                   struct int_double_pair *pairs, int offset,
                                   int spacing)
@@ -1058,7 +1071,8 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
     C->nnz = unique_nnz;
 
     // -------------------------------------------------------------------
-    //         Map child values to summed-row positions
+    //  Map child values to summed-row positions. col_to_pos maps
+    //  column indices to positions in C's row.
     // -------------------------------------------------------------------
     int *col_to_pos = iwork;
     for (int idx = 0; idx < unique_nnz; idx++)
@@ -1090,3 +1104,61 @@ void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
     }
 }
 */
+
+/*
+ * Sums evenly spaced rows from A into a single row in C and fills an index map.
+ * A: input CSR matrix
+ * C: output CSR matrix (must have m=1)
+ * spacing: row spacing
+ * iwork: workspace of size at least max(A->n, A->nnz)
+ * idx_map: output index map, size at least A->nnz
+ */
+void sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
+                                                            CSR_Matrix *C,
+                                                            int spacing, int *iwork,
+                                                            int *idx_map)
+{
+    assert(C->m == 1);
+    C->n = A->n;
+
+    /* gather all column indices from the spaced rows */
+    int count = 0;
+    for (int row = 0; row < A->m; row += spacing)
+    {
+        int len = A->p[row + 1] - A->p[row];
+        memcpy(iwork + count, A->i + A->p[row], len * sizeof(int));
+        count += len;
+    }
+
+    /* fill sparsity pattern */
+    sort_int_array(iwork, count);
+    int unique_nnz = 0;
+    int prev_col = -1;
+    for (int i = 0; i < count; i++)
+    {
+        int col = iwork[i];
+        if (col != prev_col)
+        {
+            C->i[unique_nnz++] = col;
+            prev_col = col;
+        }
+    }
+    C->nnz = unique_nnz;
+    C->p[0] = 0;
+    C->p[1] = C->nnz;
+
+    /* fill idx_map */
+    int *col_to_pos = iwork;
+    for (int idx = 0; idx < unique_nnz; idx++)
+    {
+        col_to_pos[C->i[idx]] = idx;
+    }
+
+    for (int row = 0; row < A->m; row += spacing)
+    {
+        for (int j = A->p[row]; j < A->p[row + 1]; j++)
+        {
+            idx_map[j] = col_to_pos[A->i[j]];
+        }
+    }
+}
