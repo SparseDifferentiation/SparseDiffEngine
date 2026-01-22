@@ -34,31 +34,25 @@ static void jacobian_init(expr *node)
     x->jacobian_init(x);
 
     CSR_Matrix *Jx = x->jacobian;
-
-    /* Output Jacobian has n² rows, but only n rows (diagonal positions) are non-zero.
-     * We allocate space for the same nnz as child, but with n² rows. */
     CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
 
-    /* Build row pointers: rows at diagonal positions copy from child,
-     * all other rows are empty */
-    J->p[0] = 0;
-    int child_row = 0;
-    for (int out_row = 0; out_row < node->size; out_row++)
+    /* Output has n² rows but only n diagonal positions are non-empty.
+     * Diagonal position i is at row i*(n+1) in Fortran order. */
+    int nnz = 0;
+    int next_diag = 0;
+    for (int row = 0; row < node->size; row++)
     {
-        if (out_row == child_row * (n + 1) && child_row < n)
+        J->p[row] = nnz;
+        if (row == next_diag)
         {
-            /* This is a diagonal position - copy sparsity from child row */
+            int child_row = row / (n + 1);
             int len = Jx->p[child_row + 1] - Jx->p[child_row];
-            memcpy(J->i + J->p[out_row], Jx->i + Jx->p[child_row], len * sizeof(int));
-            J->p[out_row + 1] = J->p[out_row] + len;
-            child_row++;
-        }
-        else
-        {
-            /* Non-diagonal row - empty */
-            J->p[out_row + 1] = J->p[out_row];
+            memcpy(J->i + nnz, Jx->i + Jx->p[child_row], len * sizeof(int));
+            nnz += len;
+            next_diag += n + 1;
         }
     }
+    J->p[node->size] = nnz;
 
     node->jacobian = J;
 }
@@ -72,16 +66,12 @@ static void eval_jacobian(expr *node)
     CSR_Matrix *J = node->jacobian;
     CSR_Matrix *Jx = x->jacobian;
 
-    /* Copy values from child Jacobian to diagonal positions */
-    int child_row = 0;
-    for (int out_row = 0; out_row < node->size && child_row < n; out_row++)
+    /* Copy values from child row i to output diagonal row i*(n+1) */
+    for (int i = 0; i < n; i++)
     {
-        if (out_row == child_row * (n + 1))
-        {
-            int len = J->p[out_row + 1] - J->p[out_row];
-            memcpy(J->x + J->p[out_row], Jx->x + Jx->p[child_row], len * sizeof(double));
-            child_row++;
-        }
+        int out_row = i * (n + 1);
+        int len = J->p[out_row + 1] - J->p[out_row];
+        memcpy(J->x + J->p[out_row], Jx->x + Jx->p[i], len * sizeof(double));
     }
 }
 
