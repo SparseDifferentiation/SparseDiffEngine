@@ -41,6 +41,7 @@
 #include "atoms/tan.h"
 #include "atoms/tanh.h"
 #include "atoms/trace.h"
+#include "atoms/transpose.h"
 #include "atoms/variable.h"
 #include "atoms/xexp.h"
 
@@ -71,8 +72,8 @@ static PyMethodDef DNLPMethods[] = {
     {"make_exp", py_make_exp, METH_VARARGS, "Create exp node"},
     {"make_index", py_make_index, METH_VARARGS, "Create index node"},
     {"make_add", py_make_add, METH_VARARGS, "Create add node"},
-    {"make_trace", py_make_trace, METH_VARARGS,
-     "Create trace node from an expr capsule (make_trace(child))"},
+    {"make_trace", py_make_trace, METH_VARARGS, "Create trace node"},
+    {"make_transpose", py_make_transpose, METH_VARARGS, "Create transpose node"},
     {"make_hstack", py_make_hstack, METH_VARARGS,
      "Create hstack node from list of expr capsules and n_vars (make_hstack([e1, "
      "e2, ...], n_vars))"},
