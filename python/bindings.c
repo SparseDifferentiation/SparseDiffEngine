@@ -145,9 +145,9 @@ static PyMethodDef DNLPMethods[] = {
     {NULL, NULL, 0, NULL}};
 
 static struct PyModuleDef dnlp_module = {
-    PyModuleDef_HEAD_INIT, "dnlp_diff_engine._core", NULL, -1, DNLPMethods};
+    PyModuleDef_HEAD_INIT, "_diffengine", NULL, -1, DNLPMethods};
 
-PyMODINIT_FUNC PyInit__core(void)
+PyMODINIT_FUNC PyInit__diffengine(void)
 {
     if (ensure_numpy() < 0) return NULL;
     return PyModule_Create(&dnlp_module);
