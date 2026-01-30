@@ -40,6 +40,7 @@
 #include "jacobian_tests/test_right_matmul.h"
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
+#include "jacobian_tests/test_transpose.h"
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
@@ -70,6 +71,7 @@
 #include "wsum_hess/test_right_matmul.h"
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
+#include "wsum_hess/test_transpose.h"
 
 int main(void)
 {
@@ -161,6 +163,7 @@ int main(void)
     mu_run_test(test_jacobian_right_matmul_log, tests_run);
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
     mu_run_test(test_jacobian_matmul, tests_run);
+    mu_run_test(test_jacobian_transpose, tests_run);
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
@@ -225,6 +228,7 @@ int main(void)
     mu_run_test(test_wsum_hess_trace_variable, tests_run);
     mu_run_test(test_wsum_hess_trace_log_variable, tests_run);
     mu_run_test(test_wsum_hess_trace_composite, tests_run);
+    mu_run_test(test_wsum_hess_transpose, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_diag_csr_mult, tests_run);

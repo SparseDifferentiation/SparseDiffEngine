@@ -1,9 +1,10 @@
-#ifndef ATOM_TRACE_H
-#define ATOM_TRACE_H
+#ifndef PYTHON_ATOMS_TRANSPOSE_H
+#define PYTHON_ATOMS_TRANSPOSE_H
 
 #include "common.h"
 
-static PyObject *py_make_trace(PyObject *self, PyObject *args)
+// Python binding for the transpose atom
+static PyObject *py_make_transpose(PyObject *self, PyObject *args)
 {
     PyObject *child_capsule;
     if (!PyArg_ParseTuple(args, "O", &child_capsule))
@@ -11,12 +12,14 @@ static PyObject *py_make_trace(PyObject *self, PyObject *args)
         return NULL;
     }
     expr *child = (expr *) PyCapsule_GetPointer(child_capsule, EXPR_CAPSULE_NAME);
+
     if (!child)
     {
         PyErr_SetString(PyExc_ValueError, "invalid child capsule");
         return NULL;
     }
-    expr *node = new_trace(child);
+
+    expr *node = new_transpose(child);
     if (!node)
     {
         PyErr_SetString(PyExc_RuntimeError, "failed to create trace node");
@@ -26,4 +29,4 @@ static PyObject *py_make_trace(PyObject *self, PyObject *args)
     return PyCapsule_New(node, EXPR_CAPSULE_NAME, expr_capsule_destructor);
 }
 
-#endif // ATOM_TRACE_H
+#endif // PYTHON_ATOMS_TRANSPOSE_H
