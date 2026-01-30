@@ -39,7 +39,7 @@ const char *test_jacobian_transpose()
               cmp_int_array(transpose_AX->jacobian->p, expected_p, 5));
     mu_assert("jacobian col idx fail",
               cmp_int_array(transpose_AX->jacobian->i, expected_i, 8));
-    free_expr(AX);
+    free_expr(transpose_AX);
     free_csr_matrix(A);
     return 0;
 }
