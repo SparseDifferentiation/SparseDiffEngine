@@ -20,6 +20,7 @@ __all__ = [
     "make_promote",
     "make_index",
     "make_reshape",
+    "make_diag_vec",
     "make_log",
     "make_exp",
     "make_power",

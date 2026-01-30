@@ -11,6 +11,7 @@
 #include "atoms/const_vector_mult.h"
 #include "atoms/constant.h"
 #include "atoms/cos.h"
+#include "atoms/diag_vec.h"
 #include "atoms/entr.h"
 #include "atoms/exp.h"
 #include "atoms/getters.h"
@@ -96,6 +97,7 @@ static PyMethodDef DNLPMethods[] = {
      "Create prod_axis_one node"},
     {"make_sin", py_make_sin, METH_VARARGS, "Create sin node"},
     {"make_cos", py_make_cos, METH_VARARGS, "Create cos node"},
+    {"make_diag_vec", py_make_diag_vec, METH_VARARGS, "Create diag_vec node"},
     {"make_tan", py_make_tan, METH_VARARGS, "Create tan node"},
     {"make_sinh", py_make_sinh, METH_VARARGS, "Create sinh node"},
     {"make_tanh", py_make_tanh, METH_VARARGS, "Create tanh node"},
