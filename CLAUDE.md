@@ -4,36 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-DNLP-diff-engine is a C library with Python bindings that provides automatic differentiation for nonlinear optimization problems. It builds expression trees (ASTs) from CVXPY problems and computes first and second derivatives (gradients, Jacobians, Hessians) needed by NLP solvers like IPOPT.
+DNLP-diff-engine is a pure C library that provides automatic differentiation for nonlinear optimization problems. It builds expression trees (ASTs) from CVXPY problems and computes first and second derivatives (gradients, Jacobians, Hessians) needed by NLP solvers like IPOPT.
+
+**Note:** This library is designed to be used as a git submodule in CVXPY. Python packaging is handled by the CVXPY build system, not this repository.
 
 ## Build Commands
 
-### Python Package (Recommended)
-
-```bash
-# Install in development mode with uv (recommended)
-uv pip install -e ".[test]"
-
-# Or with pip
-pip install -e ".[test]"
-
-# Run all Python tests (tests are in python/tests/)
-pytest
-
-# Run specific test file
-pytest python/tests/test_unconstrained.py
-
-# Run specific test
-pytest python/tests/test_unconstrained.py::test_sum_log
-
-# Lint with ruff
-ruff check src/
-
-# Auto-fix lint issues
-ruff check --fix src/
-```
-
-### Standalone C Library
+### Standalone C Library (for testing/development)
 
 ```bash
 # Build core C library and tests
@@ -42,6 +19,17 @@ cmake --build build
 
 # Run C tests
 ./build/all_tests
+```
+
+### Building with CVXPY
+
+This library is included as a git submodule in CVXPY. To build:
+
+```bash
+# From the CVXPY repository root
+pip install -e .  # or: uv pip install -e .
+
+# The _diffengine Python extension is built automatically
 ```
 
 ## Architecture
@@ -81,17 +69,11 @@ Key oracle methods:
 
 ### Python Bindings
 
-The Python package `dnlp_diff_engine` (in `src/dnlp_diff_engine/`) provides:
-
-**High-level API** (`__init__.py`):
-- `C_problem` class wraps the C problem struct
-- `convert_problem()` builds expression trees from CVXPY Problem objects
-- Atoms are mapped via `ATOM_CONVERTERS` dictionary (maps CVXPY atom names → converter functions)
-- Special converters handle: matrix multiplication (`_convert_matmul`), multiply with constants (`_convert_multiply`), indexing, reshape (Fortran order only)
-
-**Low-level C extension** (`_core` module, built from `python/bindings.c`):
+The Python C extension (`_diffengine` module, built from `python/bindings.c`) provides:
 - Atom constructors: `make_variable`, `make_constant`, `make_log`, `make_exp`, `make_add`, etc.
 - Problem interface: `make_problem`, `problem_init_derivatives`, `problem_objective_forward`, `problem_gradient`, `problem_jacobian`, `problem_hessian`
+
+The high-level Python API (converters, C_problem class) is in CVXPY at `cvxpy/reductions/solvers/nlp_solvers/diff_engine/`.
 
 ### Derivative Computation Flow
 
@@ -112,11 +94,10 @@ Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`,
 
 - `include/` - Header files defining public API (`expr.h`, `problem.h`, atom headers)
 - `src/` - C implementation files organized by atom category
-- `src/dnlp_diff_engine/` - Python package with high-level API (`__init__.py` contains `C_problem` class and `ATOM_CONVERTERS`)
 - `python/` - Python bindings C code (`bindings.c`)
 - `python/atoms/` - Python binding headers for each atom type
 - `python/problem/` - Python binding headers for problem interface
-- `python/tests/` - Python integration tests (run via pytest): `test_unconstrained.py`, `test_constrained.py`, `test_problem_native.py`
+- `python/tests/` - Python integration tests (run via pytest from CVXPY)
 - `tests/` - C tests using minunit framework
 - `tests/forward_pass/` - Forward evaluation tests (C)
 - `tests/jacobian_tests/` - Jacobian correctness tests (C)
@@ -129,9 +110,9 @@ Hessian computes weighted sum: `obj_w * H_obj + sum(lambda_i * H_constraint_i)`,
 3. Implement: `forward`, `jacobian_init`, `eval_jacobian`, `eval_wsum_hess` (optional), `free_type_data` (if needed)
 4. Add Python binding header in `python/atoms/`
 5. Register in `python/bindings.c` (both include and method table)
-6. Export in `src/dnlp_diff_engine/__init__.py` `__all__` list
-7. Rebuild: `uv pip install -e .`
-8. Add tests in `tests/` (C, register in `tests/all_tests.c`) and `python/tests/` (Python)
+6. Add converter in CVXPY: `cvxpy/reductions/solvers/nlp_solvers/diff_engine/converters.py`
+7. Rebuild CVXPY: `pip install -e .`
+8. Add tests in `tests/` (C, register in `tests/all_tests.c`) and CVXPY `cvxpy/tests/nlp_tests/`
 
 ## Known Limitations
 
