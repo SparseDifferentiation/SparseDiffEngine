@@ -62,25 +62,6 @@ endif()
 set_property(TARGET dnlp_diff PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # =============================================================================
-# Python bindings (built when using scikit-build-core)
-# =============================================================================
-#if(SKBUILD)
-#    find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module NumPy)
-#
-#    # Create Python extension module
-#    Python3_add_library(_core MODULE python/bindings.c)
-#    target_include_directories(_core PRIVATE
-#        ${PROJECT_SOURCE_DIR}/include
-#        ${PROJECT_SOURCE_DIR}/python
-#        ${Python3_NumPy_INCLUDE_DIRS}
-#    )
-#    target_link_libraries(_core PRIVATE dnlp_diff)
-#
-#    # Install to the package directory
-#    install(TARGETS _core LIBRARY DESTINATION dnlp_diff_engine)
-#endif()
-
-# =============================================================================
 # C tests (only for standalone builds)
 # =============================================================================
 if(NOT SKBUILD)
