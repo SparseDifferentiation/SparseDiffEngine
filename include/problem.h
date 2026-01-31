@@ -67,6 +67,8 @@ typedef struct problem
 /* Retains objective and constraints (shared ownership with caller) */
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose);
+void problem_init_jacobian(problem *prob);
+void problem_init_hessian(problem *prob);
 void problem_init_derivatives(problem *prob);
 void free_problem(problem *prob);
 

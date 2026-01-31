@@ -70,78 +70,6 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     return prob;
 }
 
-void problem_init_derivatives(problem *prob)
-{
-    Timer timer;
-    clock_gettime(CLOCK_MONOTONIC, &timer.start);
-
-    // -------------------------------------------------------------------------------
-    //                           Jacobian structure
-    // -------------------------------------------------------------------------------
-    prob->objective->jacobian_init(prob->objective);
-    int nnz = 0;
-    for (int i = 0; i < prob->n_constraints; i++)
-    {
-        expr *c = prob->constraints[i];
-        c->jacobian_init(c);
-        nnz += c->jacobian->nnz;
-
-        if (c->is_affine(c))
-        {
-            prob->stats.nnz_affine += c->jacobian->nnz;
-        }
-        else
-        {
-            prob->stats.nnz_nonlinear += c->jacobian->nnz;
-        }
-    }
-
-    prob->jacobian = new_csr_matrix(prob->total_constraint_size, prob->n_vars, nnz);
-
-    /* set sparsity pattern of jacobian */
-    CSR_Matrix *H = prob->jacobian;
-    H->p[0] = 0;
-    int row_offset = 0;
-    int nnz_offset = 0;
-    for (int i = 0; i < prob->n_constraints; i++)
-    {
-        expr *c = prob->constraints[i];
-
-        for (int r = 1; r <= c->jacobian->m; r++)
-        {
-            H->p[row_offset + r] = nnz_offset + c->jacobian->p[r];
-        }
-
-        memcpy(H->i + nnz_offset, c->jacobian->i, c->jacobian->nnz * sizeof(int));
-        row_offset += c->jacobian->m;
-        nnz_offset += c->jacobian->nnz;
-    }
-    assert(nnz_offset == nnz);
-
-    // -------------------------------------------------------------------------------
-    //                        Lagrange Hessian structure
-    // -------------------------------------------------------------------------------
-    prob->objective->wsum_hess_init(prob->objective);
-    nnz = prob->objective->wsum_hess->nnz;
-
-    for (int i = 0; i < prob->n_constraints; i++)
-    {
-        prob->constraints[i]->wsum_hess_init(prob->constraints[i]);
-        nnz += prob->constraints[i]->wsum_hess->nnz;
-    }
-
-    prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
-    memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
-    prob->stats.nnz_hessian = nnz;
-    prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
-    int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
-    problem_lagrange_hess_fill_sparsity(prob, iwork);
-    free(iwork);
-
-    clock_gettime(CLOCK_MONOTONIC, &timer.end);
-    prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
-}
-
 static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
 {
     expr **constrs = prob->constraints;
@@ -227,6 +155,93 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
     }
 }
 
+void problem_init_jacobian(problem *prob)
+{
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
+    // -------------------------------------------------------------------------------
+    //                           Jacobian structure
+    // -------------------------------------------------------------------------------
+    prob->objective->jacobian_init(prob->objective);
+    int nnz = 0;
+    for (int i = 0; i < prob->n_constraints; i++)
+    {
+        expr *c = prob->constraints[i];
+        c->jacobian_init(c);
+        nnz += c->jacobian->nnz;
+
+        if (c->is_affine(c))
+        {
+            prob->stats.nnz_affine += c->jacobian->nnz;
+        }
+        else
+        {
+            prob->stats.nnz_nonlinear += c->jacobian->nnz;
+        }
+    }
+
+    prob->jacobian = new_csr_matrix(prob->total_constraint_size, prob->n_vars, nnz);
+
+    /* set sparsity pattern of jacobian */
+    CSR_Matrix *H = prob->jacobian;
+    H->p[0] = 0;
+    int row_offset = 0;
+    int nnz_offset = 0;
+    for (int i = 0; i < prob->n_constraints; i++)
+    {
+        expr *c = prob->constraints[i];
+
+        for (int r = 1; r <= c->jacobian->m; r++)
+        {
+            H->p[row_offset + r] = nnz_offset + c->jacobian->p[r];
+        }
+
+        memcpy(H->i + nnz_offset, c->jacobian->i, c->jacobian->nnz * sizeof(int));
+        row_offset += c->jacobian->m;
+        nnz_offset += c->jacobian->nnz;
+    }
+    assert(nnz_offset == nnz);
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
+}
+
+void problem_init_hessian(problem *prob)
+{
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+
+    // -------------------------------------------------------------------------------
+    //                        Lagrange Hessian structure
+    // -------------------------------------------------------------------------------
+    prob->objective->wsum_hess_init(prob->objective);
+    int nnz = prob->objective->wsum_hess->nnz;
+
+    for (int i = 0; i < prob->n_constraints; i++)
+    {
+        prob->constraints[i]->wsum_hess_init(prob->constraints[i]);
+        nnz += prob->constraints[i]->wsum_hess->nnz;
+    }
+
+    prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
+    memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
+    prob->stats.nnz_hessian = nnz;
+    prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
+    int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
+    problem_lagrange_hess_fill_sparsity(prob, iwork);
+    free(iwork);
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
+}
+
+void problem_init_derivatives(problem *prob)
+{
+    problem_init_jacobian(prob);
+    problem_init_hessian(prob);
+}
+
 static inline void print_end_message(const Diff_engine_stats *stats)
 {
     printf("\n"
@@ -237,10 +252,9 @@ static inline void print_end_message(const Diff_engine_stats *stats)
            DIFF_ENGINE_VERSION);
 
     printf("\nProblem statistics:\n");
-    printf("  Nonzeros in affine constraints:            %d\n", stats->nnz_affine);
-    printf("  Nonzeros Jacobian nonlinear constraints:   %d\n",
-           stats->nnz_nonlinear);
-    printf("  Nonzeros in Lagrange Hessian:              %d\n", stats->nnz_hessian);
+    printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
+    printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
+    printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
