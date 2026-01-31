@@ -33,7 +33,8 @@ typedef struct
     double time_forward_constraints;
 
     int nnz_affine;
-    int nnz_nonlinear;
+    int nnz_nonlinear; /* jacobian of nonlinear constraints */
+    int nnz_hessian;
 } Diff_engine_stats;
 
 typedef struct problem
@@ -66,6 +67,8 @@ typedef struct problem
 /* Retains objective and constraints (shared ownership with caller) */
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose);
+void problem_init_jacobian(problem *prob);
+void problem_init_hessian(problem *prob);
 void problem_init_derivatives(problem *prob);
 void free_problem(problem *prob);
 
