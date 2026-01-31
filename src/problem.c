@@ -132,6 +132,7 @@ void problem_init_derivatives(problem *prob)
 
     prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
     memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
+    prob->stats.nnz_hessian = nnz;
     prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
     int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
@@ -236,8 +237,10 @@ static inline void print_end_message(const Diff_engine_stats *stats)
            DIFF_ENGINE_VERSION);
 
     printf("\nProblem statistics:\n");
-    printf("  Nonzeros in affine constraints:      %d\n", stats->nnz_affine);
-    printf("  Nonzeros in nonlinear constraints:   %d\n", stats->nnz_nonlinear);
+    printf("  Nonzeros in affine constraints:            %d\n", stats->nnz_affine);
+    printf("  Nonzeros Jacobian nonlinear constraints:   %d\n",
+           stats->nnz_nonlinear);
+    printf("  Nonzeros in Lagrange Hessian:              %d\n", stats->nnz_hessian);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",

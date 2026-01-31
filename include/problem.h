@@ -33,7 +33,8 @@ typedef struct
     double time_forward_constraints;
 
     int nnz_affine;
-    int nnz_nonlinear;
+    int nnz_nonlinear; /* jacobian of nonlinear constraints */
+    int nnz_hessian;
 } Diff_engine_stats;
 
 typedef struct problem
