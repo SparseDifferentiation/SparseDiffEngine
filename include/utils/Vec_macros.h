@@ -24,17 +24,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Portable UNUSED macro
+#if defined(_MSC_VER)
+#define PSLP_UNUSED
+#else
+#define PSLP_UNUSED __attribute__((unused))
+#endif
+
 // Macro to define a generic vector class
 #define DEFINE_VECTOR(TYPE, TYPE_NAME)                                              \
     typedef struct TYPE_NAME##Vec                                                   \
     {                                                                               \
         TYPE *data;                                                                 \
-        size_t len;                                                                 \
-        size_t capacity;                                                            \
+        int len;                                                                    \
+        int capacity;                                                               \
     } TYPE_NAME##Vec;                                                               \
                                                                                     \
-    __attribute__((unused)) static TYPE_NAME##Vec *TYPE_NAME##Vec_new(              \
-        size_t capacity)                                                            \
+    PSLP_UNUSED static TYPE_NAME##Vec *TYPE_NAME##Vec_new(size_t capacity)          \
     {                                                                               \
         assert(capacity > 0);                                                       \
         TYPE_NAME##Vec *vec = (TYPE_NAME##Vec *) malloc(sizeof(TYPE_NAME##Vec));    \
@@ -83,11 +89,11 @@
     }                                                                               \
                                                                                     \
     static inline void TYPE_NAME##Vec_append_array(TYPE_NAME##Vec *vec,             \
-                                                   const TYPE *values, size_t n)    \
+                                                   const TYPE *values, int n)       \
     {                                                                               \
         if (vec->len + n > vec->capacity)                                           \
         {                                                                           \
-            size_t new_capacity = vec->capacity > 0 ? vec->capacity : 1;            \
+            int new_capacity = vec->capacity > 0 ? vec->capacity : 1;               \
             while (vec->len + n > new_capacity)                                     \
             {                                                                       \
                 new_capacity *= 2;                                                  \
@@ -108,10 +114,10 @@
         memcpy(vec->data + vec->len, values, n * sizeof(TYPE));                     \
         vec->len += n;                                                              \
     }                                                                               \
-    __attribute__((unused)) static int TYPE_NAME##Vec_contains(                     \
-        const TYPE_NAME##Vec *vec, TYPE value)                                      \
+    PSLP_UNUSED static int TYPE_NAME##Vec_contains(const TYPE_NAME##Vec *vec,       \
+                                                   TYPE value)                      \
     {                                                                               \
-        for (size_t i = 0; i < vec->len; ++i)                                       \
+        for (int i = 0; i < vec->len; ++i)                                          \
         {                                                                           \
             if (vec->data[i] == value)                                              \
             {                                                                       \

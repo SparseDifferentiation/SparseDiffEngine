@@ -101,8 +101,5 @@ expr *new_add(expr *left, expr *right)
     expr_retain(left);
     expr_retain(right);
 
-    // just for debugging, should be removed
-    strcpy(node->name, "add");
-
     return node;
 }
