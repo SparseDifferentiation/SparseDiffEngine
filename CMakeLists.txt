@@ -33,7 +33,7 @@ else()
         -Wcast-qual            # Warn about cast that removes qualifiers
         -Wcast-align           # Warn about pointer cast alignment issues
         -Wunused               # Warn about unused variables/functions
-        -Wdouble-promotion     # Warn about float->double promotion
+        -Wdouble-promotion     # Warn about float to double promotion
         -Wnull-dereference     # Warn about null pointer dereference
     )
 endif()
