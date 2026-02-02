@@ -98,8 +98,6 @@ const char *test_wsum_hess_hstack()
 
     free_expr(hstack_node);
     return 0;
-
-    return 0;
 }
 
 const char *test_wsum_hess_hstack_matrix()
@@ -208,7 +206,5 @@ const char *test_wsum_hess_hstack_matrix()
               cmp_int_array(hstack_node->wsum_hess->i, expected_i, 18));
 
     free_expr(hstack_node);
-    return 0;
-
     return 0;
 }
