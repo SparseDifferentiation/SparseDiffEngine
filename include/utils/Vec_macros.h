@@ -40,7 +40,7 @@
         int capacity;                                                               \
     } TYPE_NAME##Vec;                                                               \
                                                                                     \
-    PSLP_UNUSED static TYPE_NAME##Vec *TYPE_NAME##Vec_new(size_t capacity)          \
+    PSLP_UNUSED static TYPE_NAME##Vec *TYPE_NAME##Vec_new(int capacity)             \
     {                                                                               \
         assert(capacity > 0);                                                       \
         TYPE_NAME##Vec *vec = (TYPE_NAME##Vec *) malloc(sizeof(TYPE_NAME##Vec));    \
@@ -74,7 +74,8 @@
         {                                                                           \
             vec->capacity *= 2;                                                     \
             assert(vec->capacity > 0);                                              \
-            TYPE *temp = (TYPE *) realloc(vec->data, vec->capacity * sizeof(TYPE)); \
+            TYPE *temp =                                                            \
+                (TYPE *) realloc(vec->data, (size_t) vec->capacity * sizeof(TYPE)); \
             if (temp == NULL)                                                       \
             {                                                                       \
                 TYPE_NAME##Vec_free(vec);                                           \
@@ -99,7 +100,8 @@
                 new_capacity *= 2;                                                  \
             }                                                                       \
                                                                                     \
-            TYPE *temp = (TYPE *) realloc(vec->data, new_capacity * sizeof(TYPE));  \
+            TYPE *temp =                                                            \
+                (TYPE *) realloc(vec->data, (size_t) new_capacity * sizeof(TYPE));  \
             if (temp == NULL)                                                       \
             {                                                                       \
                 TYPE_NAME##Vec_free(vec);                                           \
@@ -111,7 +113,7 @@
             vec->capacity = new_capacity;                                           \
         }                                                                           \
                                                                                     \
-        memcpy(vec->data + vec->len, values, n * sizeof(TYPE));                     \
+        memcpy(vec->data + vec->len, values, (size_t) n * sizeof(TYPE));            \
         vec->len += n;                                                              \
     }                                                                               \
     PSLP_UNUSED static int TYPE_NAME##Vec_contains(const TYPE_NAME##Vec *vec,       \
