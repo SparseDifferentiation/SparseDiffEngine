@@ -25,6 +25,13 @@
 /* Forward declaration */
 struct int_double_pair;
 
+/* Parameter node: like constant but with updatable values via problem_update_params */
+typedef struct parameter_expr
+{
+    expr base;
+    int param_id; /* offset into global theta vector */
+} parameter_expr;
+
 /* Type-specific expression structures that "inherit" from expr */
 
 /* Linear operator: y = A * x + b */
@@ -110,6 +117,8 @@ typedef struct left_matmul_expr
     CSR_Matrix *A;
     CSR_Matrix *AT;
     CSC_Matrix *CSC_work;
+    expr *param_source; /* if non-NULL, refresh A/AT values from param_source->value */
+    int src_m, src_n;   /* original (non-block-diag) matrix dimensions */
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.
@@ -128,13 +137,15 @@ typedef struct const_scalar_mult_expr
 {
     expr base;
     double a;
+    expr *param_source; /* if non-NULL, read a from param_source->value[0] */
 } const_scalar_mult_expr;
 
 /* Constant vector elementwise multiplication: y = a \circ child for constant a */
 typedef struct const_vector_mult_expr
 {
     expr base;
-    double *a; /* length equals node->size */
+    double *a;          /* length equals node->size */
+    expr *param_source; /* if non-NULL, use param_source->value instead of a */
 } const_vector_mult_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */

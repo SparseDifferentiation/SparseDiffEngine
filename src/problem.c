@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "problem.h"
+#include "subexpr.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdio.h>
@@ -64,6 +65,10 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->stats.time_forward_constraints = 0.0;
     prob->stats.nnz_affine = 0;
     prob->stats.nnz_nonlinear = 0;
+
+    prob->param_nodes = NULL;
+    prob->n_param_nodes = 0;
+    prob->n_params = 0;
 
     prob->verbose = verbose;
 
@@ -287,6 +292,9 @@ void free_problem(problem *prob)
     free_csr_matrix(prob->lagrange_hessian);
     free(prob->hess_idx_map);
 
+    /* Free parameter node array (weak references, not owned) */
+    free(prob->param_nodes);
+
     /* Release expression references (decrements refcount) */
     free_expr(prob->objective);
     for (int i = 0; i < prob->n_constraints; i++)
@@ -438,4 +446,25 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_hessian += GET_ELAPSED_SECONDS(timer);
+}
+
+void problem_register_params(problem *prob, expr **param_nodes,
+                             int n_param_nodes, int n_params)
+{
+    prob->n_param_nodes = n_param_nodes;
+    prob->n_params = n_params;
+    prob->param_nodes = (expr **)malloc(n_param_nodes * sizeof(expr *));
+    memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
+}
+
+void problem_update_params(problem *prob, const double *theta)
+{
+    for (int i = 0; i < prob->n_param_nodes; i++)
+    {
+        parameter_expr *p = (parameter_expr *)prob->param_nodes[i];
+        memcpy(p->base.value, theta + p->param_id,
+               p->base.size * sizeof(double));
+    }
+    /* Force re-evaluation of affine Jacobians on next call */
+    prob->jacobian_called = false;
 }

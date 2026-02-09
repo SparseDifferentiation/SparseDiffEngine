@@ -34,6 +34,7 @@ expr *new_trace(expr *child);
 
 expr *new_constant(int d1, int d2, int n_vars, const double *values);
 expr *new_variable(int d1, int d2, int var_id, int n_vars);
+expr *new_parameter(int d1, int d2, int param_id, int n_vars);
 
 expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs);
 expr *new_reshape(expr *child, int d1, int d2);
