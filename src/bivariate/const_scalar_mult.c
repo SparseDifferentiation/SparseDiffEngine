@@ -117,6 +117,15 @@ expr *new_const_scalar_mult(double a, expr *child)
     return node;
 }
 
+static void free_param_type_data(expr *node)
+{
+    const_scalar_mult_expr *sn = (const_scalar_mult_expr *) node;
+    if (sn->param_source)
+    {
+        free_expr(sn->param_source);
+    }
+}
+
 expr *new_param_scalar_mult(expr *param_node, expr *child)
 {
     const_scalar_mult_expr *mult_node =
@@ -124,7 +133,8 @@ expr *new_param_scalar_mult(expr *param_node, expr *child)
     expr *node = &mult_node->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess,
+              free_param_type_data);
     node->left = child;
     mult_node->a = param_node->value[0]; /* initial value */
     mult_node->param_source = param_node;
