@@ -41,6 +41,7 @@
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
 #include "jacobian_tests/test_transpose.h"
+#include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
@@ -257,6 +258,9 @@ int main(void)
     mu_run_test(test_problem_jacobian_multi, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
+    mu_run_test(test_param_scalar_mult_problem, tests_run);
+    mu_run_test(test_param_vector_mult_problem, tests_run);
+    mu_run_test(test_param_left_matmul_problem, tests_run);
 
     printf("\n=== All %d tests passed ===\n", tests_run);
 
