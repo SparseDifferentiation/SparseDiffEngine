@@ -24,11 +24,6 @@
 
 /* Constant scalar multiplication: y = a * child where a is a constant double */
 
-static inline double get_scalar(const const_scalar_mult_expr *sn)
-{
-    return sn->param_source ? sn->param_source->value[0] : sn->a;
-}
-
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
@@ -37,7 +32,8 @@ static void forward(expr *node, const double *u)
     child->forward(child, u);
 
     /* local forward pass: multiply each element by scalar a */
-    double a = get_scalar((const_scalar_mult_expr *) node);
+    const_scalar_mult_expr *sn = (const_scalar_mult_expr *) node;
+    double a = sn->param_source ? sn->param_source->value[0] : sn->a;
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = a * child->value[i];
@@ -60,7 +56,8 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *child = node->left;
-    double a = get_scalar((const_scalar_mult_expr *) node);
+    const_scalar_mult_expr *sn = (const_scalar_mult_expr *) node;
+    double a = sn->param_source ? sn->param_source->value[0] : sn->a;
 
     /* evaluate child */
     child->eval_jacobian(child);
@@ -90,7 +87,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     expr *x = node->left;
     x->eval_wsum_hess(x, w);
 
-    double a = get_scalar((const_scalar_mult_expr *) node);
+    const_scalar_mult_expr *sn = (const_scalar_mult_expr *) node;
+    double a = sn->param_source ? sn->param_source->value[0] : sn->a;
     for (int j = 0; j < x->wsum_hess->nnz; j++)
     {
         node->wsum_hess->x[j] = a * x->wsum_hess->x[j];
