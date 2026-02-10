@@ -253,17 +253,20 @@ static void free_param_matmul_type_data(expr *node)
     lin_node->param_source = NULL;
 }
 
-expr *new_left_param_matmul(expr *param_node, expr *u, int A_m, int A_n)
+expr *new_left_param_matmul(expr *param_node, expr *child)
 {
+    int A_m = param_node->d1;
+    int A_n = param_node->d2;
+
     /* Same dimension logic as new_left_matmul */
     int d1, d2, n_blocks;
-    if (u->d1 == A_n)
+    if (child->d1 == A_n)
     {
         d1 = A_m;
-        d2 = u->d2;
-        n_blocks = u->d2;
+        d2 = child->d2;
+        n_blocks = child->d2;
     }
-    else if (u->d2 == A_n && u->d1 == 1)
+    else if (child->d2 == A_n && child->d1 == 1)
     {
         d1 = 1;
         d2 = A_m;
@@ -296,10 +299,10 @@ expr *new_left_param_matmul(expr *param_node, expr *u, int A_m, int A_n)
     left_matmul_expr *lin_node =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lin_node->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init, eval_jacobian,
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, wsum_hess_init, eval_wsum_hess, free_param_matmul_type_data);
-    node->left = u;
-    expr_retain(u);
+    node->left = child;
+    expr_retain(child);
 
     /* Initialize type-specific fields */
     lin_node->A = block_diag_repeat_csr(A_tmp, n_blocks);

@@ -43,7 +43,7 @@ expr *new_const_scalar_mult(double a, expr *child);
 expr *new_const_vector_mult(const double *a, expr *child);
 
 /* Left matrix multiplication with parameter source: P @ f(x) where P is a parameter */
-expr *new_left_param_matmul(expr *param_node, expr *u, int A_m, int A_n);
+expr *new_left_param_matmul(expr *param_node, expr *child);
 
 /* Parameter scalar multiplication: p * f(x) where p is a parameter */
 expr *new_param_scalar_mult(expr *param_node, expr *child);
