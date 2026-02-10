@@ -29,8 +29,8 @@
 static void forward(expr *node, const double *u)
 {
     /* Values are set by problem_update_params, not by forward pass */
-    (void)node;
-    (void)u;
+    (void) node;
+    (void) u;
 }
 
 static void jacobian_init(expr *node)
@@ -42,7 +42,7 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     /* Parameter jacobian never changes */
-    (void)node;
+    (void) node;
 }
 
 static void wsum_hess_init(expr *node)
@@ -53,19 +53,19 @@ static void wsum_hess_init(expr *node)
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    (void)node;
-    (void)w;
+    (void) node;
+    (void) w;
 }
 
 static bool is_affine(const expr *node)
 {
-    (void)node;
+    (void) node;
     return true;
 }
 
 expr *new_parameter(int d1, int d2, int param_id, int n_vars)
 {
-    parameter_expr *pnode = (parameter_expr *)calloc(1, sizeof(parameter_expr));
+    parameter_expr *pnode = (parameter_expr *) calloc(1, sizeof(parameter_expr));
     init_expr(&pnode->base, d1, d2, n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, wsum_hess_init, eval_wsum_hess, NULL);
     pnode->param_id = param_id;

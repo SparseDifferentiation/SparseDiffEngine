@@ -447,11 +447,10 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     prob->stats.time_eval_hessian += GET_ELAPSED_SECONDS(timer);
 }
 
-void problem_register_params(problem *prob, expr **param_nodes,
-                             int n_param_nodes)
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)
 {
     prob->n_param_nodes = n_param_nodes;
-    prob->param_nodes = (expr **)malloc(n_param_nodes * sizeof(expr *));
+    prob->param_nodes = (expr **) malloc(n_param_nodes * sizeof(expr *));
     memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
 
     prob->total_parameter_size = 0;
@@ -463,9 +462,8 @@ void problem_update_params(problem *prob, const double *theta)
 {
     for (int i = 0; i < prob->n_param_nodes; i++)
     {
-        parameter_expr *p = (parameter_expr *)prob->param_nodes[i];
-        memcpy(p->base.value, theta + p->param_id,
-               p->base.size * sizeof(double));
+        parameter_expr *p = (parameter_expr *) prob->param_nodes[i];
+        memcpy(p->base.value, theta + p->param_id, p->base.size * sizeof(double));
     }
     /* Force re-evaluation of affine Jacobians on next call */
     prob->jacobian_called = false;

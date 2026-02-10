@@ -76,7 +76,6 @@ static void refresh_param_values(left_matmul_expr *lin_node)
     {
         memcpy(A->x + block * src_nnz, A->x, src_nnz * sizeof(double));
     }
-
 }
 
 static void forward(expr *node, const double *u)
@@ -292,7 +291,8 @@ expr *new_left_param_matmul(expr *param_node, expr *child)
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lin_node->base;
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, free_param_matmul_type_data);
+              is_affine, wsum_hess_init, eval_wsum_hess,
+              free_param_matmul_type_data);
     node->left = child;
     expr_retain(child);
 

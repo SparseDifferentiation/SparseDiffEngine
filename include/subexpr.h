@@ -25,7 +25,8 @@
 /* Forward declaration */
 struct int_double_pair;
 
-/* Parameter node: like constant but with updatable values via problem_update_params */
+/* Parameter node: like constant but with updatable values via problem_update_params
+ */
 typedef struct parameter_expr
 {
     expr base;
@@ -117,8 +118,9 @@ typedef struct left_matmul_expr
     CSR_Matrix *A;
     CSR_Matrix *AT;
     CSC_Matrix *CSC_work;
-    expr *param_source; /* if non-NULL, refresh A/AT values from param_source->value */
-    int src_m, src_n;   /* original (non-block-diag) matrix dimensions */
+    expr *
+        param_source; /* if non-NULL, refresh A/AT values from param_source->value */
+    int src_m, src_n; /* original (non-block-diag) matrix dimensions */
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

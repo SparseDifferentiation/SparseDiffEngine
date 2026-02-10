@@ -60,7 +60,7 @@ typedef struct problem
     bool jacobian_called;
 
     /* Parameter tracking for fast parameter updates */
-    expr **param_nodes;     /* weak references to parameter nodes in tree */
+    expr **param_nodes; /* weak references to parameter nodes in tree */
     int n_param_nodes;
     int total_parameter_size;
 
@@ -84,8 +84,7 @@ void problem_jacobian(problem *prob);
 void problem_hessian(problem *prob, double obj_w, const double *w);
 
 /* Parameter support */
-void problem_register_params(problem *prob, expr **param_nodes,
-                             int n_param_nodes);
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes);
 void problem_update_params(problem *prob, const double *theta);
 
 #endif
