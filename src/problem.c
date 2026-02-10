@@ -68,7 +68,6 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
 
     prob->param_nodes = NULL;
     prob->n_param_nodes = 0;
-    prob->n_params = 0;
 
     prob->verbose = verbose;
 
@@ -449,10 +448,9 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
 }
 
 void problem_register_params(problem *prob, expr **param_nodes,
-                             int n_param_nodes, int n_params)
+                             int n_param_nodes)
 {
     prob->n_param_nodes = n_param_nodes;
-    prob->n_params = n_params;
     prob->param_nodes = (expr **)malloc(n_param_nodes * sizeof(expr *));
     memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
 }
