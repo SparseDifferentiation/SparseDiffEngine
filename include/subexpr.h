@@ -118,8 +118,7 @@ typedef struct left_matmul_expr
     CSR_Matrix *A;
     CSR_Matrix *AT;
     CSC_Matrix *CSC_work;
-    expr *
-        param_source; /* if non-NULL, refresh A/AT values from param_source->value */
+    expr *param_source;
     int src_m, src_n; /* original (non-block-diag) matrix dimensions */
 } left_matmul_expr;
 

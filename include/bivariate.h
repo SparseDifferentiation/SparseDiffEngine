@@ -42,8 +42,7 @@ expr *new_const_scalar_mult(double a, expr *child);
 /* Constant vector elementwise multiplication: a ∘ f(x) where a is constant */
 expr *new_const_vector_mult(const double *a, expr *child);
 
-/* Left matrix multiplication with parameter source: P @ f(x) where P is a parameter
- */
+/* Left matrix multiplication: P @ f(x) where P is a parameter */
 expr *new_left_param_matmul(expr *param_node, expr *child);
 
 /* Parameter scalar multiplication: p * f(x) where p is a parameter */
