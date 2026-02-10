@@ -49,35 +49,30 @@
 #include <string.h>
 
 /* Refresh block-diagonal A values from param_source and recompute AT values.
-   The block-diagonal has n_blocks copies of the src_m x src_n source matrix.
-   block_diag_repeat_csr lays out values as: for each block, copy the entire
-   source nnz array in order. So A->x is [src_nnz | src_nnz | ... | src_nnz]. */
+   The block-diagonal has n_blocks copies of the dense src_m x src_n source matrix.
+   A->x is laid out as [src_nnz | src_nnz | ... | src_nnz]. */
 static void refresh_param_values(left_matmul_expr *lin_node)
 {
     const double *src = lin_node->param_source->value;
     CSR_Matrix *A = lin_node->A;
     int src_m = lin_node->src_m;
     int src_n = lin_node->src_n;
-    int total_rows = A->m;
-    int n_blocks = total_rows / src_m;
+    int src_nnz = src_m * src_n;
+    int n_blocks = A->m / src_m;
 
-    /* Rebuild A values from column-major source matrix.
-       For each block, iterate rows of the source matrix and fill CSR values. */
-    int nnz_cursor = 0;
-    for (int block = 0; block < n_blocks; block++)
+    /* Build first block: column-major source -> row-major CSR values */
+    for (int row = 0; row < src_m; row++)
     {
-        for (int row = 0; row < src_m; row++)
+        for (int col = 0; col < src_n; col++)
         {
-            int dest_row = block * src_m + row;
-            for (int j = A->p[dest_row]; j < A->p[dest_row + 1]; j++)
-            {
-                /* column index in local block coordinates */
-                int col = A->i[j] - block * src_n;
-                /* source is column-major: src[row + col * src_m] */
-                A->x[nnz_cursor] = src[row + col * src_m];
-                nnz_cursor++;
-            }
+            A->x[row * src_n + col] = src[row + col * src_m];
         }
+    }
+
+    /* Copy first block to remaining blocks */
+    for (int block = 1; block < n_blocks; block++)
+    {
+        memcpy(A->x + block * src_nnz, A->x, src_nnz * sizeof(double));
     }
 
     /* Recompute AT values from updated A */
