@@ -62,6 +62,7 @@ typedef struct problem
     /* Parameter tracking for fast parameter updates */
     expr **param_nodes;     /* weak references to parameter nodes in tree */
     int n_param_nodes;
+    int total_parameter_size;
 
     /* Statistics for performance measurement */
     Diff_engine_stats stats;
