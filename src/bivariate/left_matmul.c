@@ -48,9 +48,11 @@
 #include "utils/utils.h"
 #include <string.h>
 
-/* Refresh block-diagonal A values from param_source and recompute AT values.
+/* Refresh block-diagonal A values from param_source.
    The block-diagonal has n_blocks copies of the dense src_m x src_n source matrix.
-   A->x is laid out as [src_nnz | src_nnz | ... | src_nnz]. */
+   A->x is laid out as [src_nnz | src_nnz | ... | src_nnz].
+   Note: AT is not refreshed because param matmul is always affine, so the
+   weighted Hessian is always zero regardless of AT values. */
 static void refresh_param_values(left_matmul_expr *lin_node)
 {
     const double *src = lin_node->param_source->value;
@@ -75,8 +77,6 @@ static void refresh_param_values(left_matmul_expr *lin_node)
         memcpy(A->x + block * src_nnz, A->x, src_nnz * sizeof(double));
     }
 
-    /* Recompute AT values from updated A */
-    AT_fill_values(A, lin_node->AT, lin_node->base.iwork);
 }
 
 static void forward(expr *node, const double *u)
@@ -168,11 +168,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
-    /* refresh AT if parameter-sourced */
-    if (lin_node->param_source)
-    {
-        refresh_param_values(lin_node);
-    }
+    /* No need to refresh AT for param-sourced nodes: param matmul is always
+       affine, so the child's weighted Hessian is zero regardless of AT values. */
 
     /* compute A^T w*/
     csr_matvec_wo_offset(lin_node->AT, w, node->dwork);
