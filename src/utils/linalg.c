@@ -43,6 +43,66 @@ static inline bool has_overlap(const int *a_idx, int a_len, const int *b_idx,
     return false;
 }
 
+/* Unweighted sparse dot product of two sorted index arrays */
+static inline double sparse_dot(const double *a_x, const int *a_i, int a_nnz,
+                                const double *b_x, const int *b_i, int b_nnz,
+                                int b_offset)
+{
+    int ii = 0;
+    int jj = 0;
+    double sum = 0.0;
+
+    while (ii < a_nnz && jj < b_nnz)
+    {
+        if (a_i[ii] == b_i[jj] - b_offset)
+        {
+            sum += a_x[ii] * b_x[jj];
+            ii++;
+            jj++;
+        }
+        else if (a_i[ii] < b_i[jj] - b_offset)
+        {
+            ii++;
+        }
+        else
+        {
+            jj++;
+        }
+    }
+
+    return sum;
+}
+
+static inline double sparse_dot_offset(const double *a_x, const int *a_idx,
+                                       int a_nnz, const double *b_x,
+                                       const int *b_idx, int b_nnz, int b_offset)
+{
+    int ii = 0, jj = 0;
+    double sum = 0.0;
+
+    while (ii < a_nnz && jj < b_nnz)
+    {
+        int b_col = b_idx[jj] - b_offset;
+
+        if (a_idx[ii] == b_col)
+        {
+            sum += a_x[ii] * b_x[jj];
+            ii++;
+            jj++;
+        }
+        else if (a_idx[ii] < b_col)
+        {
+            ii++;
+        }
+        else
+        {
+            jj++;
+        }
+    }
+
+    return sum;
+}
+
 CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
                                               const CSC_Matrix *J, int p)
 {
@@ -50,7 +110,6 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
     int m = A->m;
     int n = A->n;
     int k = J->n;
-    assert(J->m == n * p);
     int j, jj, block, block_start, block_end, block_jj_start, block_jj_end,
         row_offset;
 
@@ -97,7 +156,6 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
             {
                 continue;
             }
-            
 
             // -----------------------------------------------------------------
             // check which rows of A overlap with the column indices of J in this
@@ -107,8 +165,8 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
             for (int i = 0; i < A->m; i++)
             {
                 int a_len = A->p[i + 1] - A->p[i];
-                if (has_overlap(A->i + A->p[i], a_len, J->i + block_jj_start, nnz_in_block,
-                                block_start))
+                if (has_overlap(A->i + A->p[i], a_len, J->i + block_jj_start,
+                                nnz_in_block, block_start))
                 {
                     iVec_append(Ci, row_offset + i);
                 }
@@ -129,6 +187,90 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
     iVec_free(Ci);
 
     return C;
+}
+
+void block_left_multiply_fill_values(const CSR_Matrix *A, const CSC_Matrix *J,
+                                     CSC_Matrix *C)
+{
+    /* A is m x n, J is (n*p) x k, C is (m*p) x k */
+    int m = A->m;
+    int n = A->n;
+    int k = J->n;
+ 
+    int i, j, row_a, block, block_start, block_end, start, end;
+    
+    /* to get rid of unitialized warnings */
+    block = 0;
+    block_start = 0;
+    block_end = 0;
+    start = 0;
+    end = 0;
+
+    /* for each column of J (and C) */
+    for (j = 0; j < k; j++)
+    {
+        int previous_block = -1;
+
+        for (i = C->p[j]; i < C->p[j + 1]; i++)
+        {
+            /* choose row of A and block of column of J */
+            row_a = C->i[i] % m;
+            block = C->i[i] / m;
+
+            // -------------------------------------------------------------------------
+            //          find the part of the column of J in the current block
+            // -------------------------------------------------------------------------
+            if (block != previous_block)
+            {
+                previous_block = block;
+                block_start = block * n;
+                block_end = block_start + n;
+                start = J->p[j];
+                end = J->p[j + 1];
+
+                while (start < J->p[j + 1] && J->i[start] < block_start)
+                {
+                    start++;
+                }
+
+                while (end > start && J->i[end - 1] >= block_end)
+                {
+                    end--;
+                }
+            }
+
+            // ------------------------------------------------------------------------------
+            // compute value as sparse dot product of row of A and column of J in
+            // this block
+            // ------------------------------------------------------------------------------
+            int a_len = A->p[row_a + 1] - A->p[row_a];
+            C->x[i] =
+                sparse_dot(A->x + A->p[row_a], A->i + A->p[row_a], a_len,
+                           J->x + start, J->i + start, end - start, block_start);
+        }
+    }
+}
+
+/* Fill values of C = A @ B where A is CSR, B is CSC. */
+void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
+                                CSR_Matrix *C)
+{
+    for (int i = 0; i < A->m; i++)
+    {
+        for (int jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            int j = C->i[jj];
+
+            int a_nnz = A->p[i + 1] - A->p[i];
+            int b_nnz = B->p[j + 1] - B->p[j];
+
+            /* Compute dot product of row i of A and column j of B */
+            double sum = sparse_dot(A->x + A->p[i], A->i + A->p[i], a_nnz,
+                                    B->x + B->p[j], B->i + B->p[j], b_nnz, 0);
+
+            C->x[jj] = sum;
+        }
+    }
 }
 
 /* C = A @ B where A is CSR (m x n), B is CSC (n x p). Result C is CSR (m x p)

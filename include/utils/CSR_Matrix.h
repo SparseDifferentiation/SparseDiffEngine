@@ -27,6 +27,7 @@ typedef struct CSR_Matrix
 
 /* Allocate a new CSR matrix with given dimensions and nnz */
 CSR_Matrix *new_csr_matrix(int m, int n, int nnz);
+CSR_Matrix *new_csr(const CSR_Matrix *A);
 
 /* Free a CSR matrix */
 void free_csr_matrix(CSR_Matrix *matrix);

@@ -36,6 +36,15 @@ CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
     return matrix;
 }
 
+CSR_Matrix *new_csr(const CSR_Matrix *A)
+{
+    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
+    memcpy(copy->i, A->i, A->nnz * sizeof(int));
+    memcpy(copy->x, A->x, A->nnz * sizeof(double));
+    return copy;
+}
+
 void free_csr_matrix(CSR_Matrix *matrix)
 {
     if (matrix)

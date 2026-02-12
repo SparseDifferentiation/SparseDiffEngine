@@ -14,7 +14,7 @@
 const char *profile_left_matmul()
 {
     /* A @ X where A is 50 x 50 dense stored in CSR and X is 50 x 50 variable */
-    int n = 100;
+    int n = 50;
     expr *X = new_variable(n, n, 0, n * n);
     CSR_Matrix *A = new_csr_matrix(n, n, n * n);
     for (int i = 0; i < n * n; i++)

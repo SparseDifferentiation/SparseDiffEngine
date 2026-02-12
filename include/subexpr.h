@@ -108,10 +108,10 @@ typedef struct left_matmul_expr
 {
     expr base;
     CSR_Matrix *A;
-    CSR_Matrix *AT;
-    CSC_Matrix *CSC_work;
-    CSR_Matrix *A_temp; // will be replaced by A
-    int *csr_to_csc_temp;
+    CSR_Matrix *A_kron_T;
+    CSC_Matrix *Jchild_CSC;
+    CSC_Matrix *J_CSC; 
+    int *iwork2; /* workspace for csc to csr */
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

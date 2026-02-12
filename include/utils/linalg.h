@@ -14,6 +14,20 @@ struct CSC_Matrix *block_left_multiply_fill_sparsity(const struct CSR_Matrix *A,
                                                      const struct CSC_Matrix *J,
                                                      int p);
 
+/* Fill values for block left multiplication.
+ * C must have sparsity pattern already computed for [A @ J1; ...; A @ Jp].
+ */
+void block_left_multiply_fill_values(const struct CSR_Matrix *A,
+                                     const struct CSC_Matrix *J,
+                                     struct CSC_Matrix *C);
+
+/* Fill values of C = A @ B where A is CSR, B is CSC.
+ * C must have sparsity pattern already computed.
+ */
+void csr_csc_matmul_fill_values(const struct CSR_Matrix *A,
+                                const struct CSC_Matrix *B,
+                                struct CSR_Matrix *C);
+
 /* C = A @ B where A is CSR, B is CSC. Result C is CSR.
  * Allocates and precomputes sparsity pattern. No workspace required.
  */

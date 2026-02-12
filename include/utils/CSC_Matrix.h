@@ -55,10 +55,4 @@ void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
 CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork);
 void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
 
-/* Fill values of C = A @ B where A is CSR, B is CSC
- * C must have sparsity pattern already computed
- */
-void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
-                                CSR_Matrix *C);
-
 #endif /* CSC_MATRIX_H */

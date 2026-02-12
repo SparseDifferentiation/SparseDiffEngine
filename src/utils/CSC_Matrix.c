@@ -139,35 +139,6 @@ static inline double sparse_wdot(const double *a_x, const int *a_i, int a_nnz,
     return sum;
 }
 
-/* Unweighted sparse dot product of two sorted index arrays */
-static inline double sparse_dot(const double *a_x, const int *a_i, int a_nnz,
-                                const double *b_x, const int *b_i, int b_nnz)
-{
-    int ii = 0;
-    int jj = 0;
-    double sum = 0.0;
-
-    while (ii < a_nnz && jj < b_nnz)
-    {
-        if (a_i[ii] == b_i[jj])
-        {
-            sum += a_x[ii] * b_x[jj];
-            ii++;
-            jj++;
-        }
-        else if (a_i[ii] < b_i[jj])
-        {
-            ii++;
-        }
-        else
-        {
-            jj++;
-        }
-    }
-
-    return sum;
-}
-
 void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
 {
     int j, ii, jj;
@@ -315,7 +286,7 @@ CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork)
     memset(count, 0, A->m * sizeof(int));
 
     // -------------------------------------------------------------------
-    //              compute nnz in each row of A
+    //              compute nnz in each row of A, store in count
     // -------------------------------------------------------------------
     for (i = 0; i < A->n; ++i)
     {
@@ -477,25 +448,4 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
     }
 }
 
-/* Fill values of C = A @ B where A is CSR, B is CSC. */
-void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
-                                CSR_Matrix *C)
-{
-    for (int i = 0; i < A->m; i++)
-    {
-        for (int jj = C->p[i]; jj < C->p[i + 1]; jj++)
-        {
-            int j = C->i[jj];
-
-            int a_nnz = A->p[i + 1] - A->p[i];
-            int b_nnz = B->p[j + 1] - B->p[j];
-
-            /* Compute dot product of row i of A and column j of B */
-            double sum = sparse_dot(A->x + A->p[i], A->i + A->p[i], a_nnz,
-                                    B->x + B->p[j], B->i + B->p[j], b_nnz);
-
-            C->x[jj] = sum;
-        }
-    }
-}
 

@@ -46,19 +46,12 @@ const char *test_block_left_multiply_single_block()
      * C[0,1] = A[0,:] @ J[:,1] = 0.0 (row 0 has column 0, J col 1 has row 2)
      * C[1,1] = A[1,:] @ J[:,1] = 1.0*1.0 = 1.0 (row 1 has columns 1,2, J col 1 has row 2)
      */
-    mu_assert("C->m should be 2", C->m == 2);
-    mu_assert("C->n should be 2", C->n == 2);
-    mu_assert("C->nnz should be 3", C->nnz == 3);  /* nnz at (0,0), (1,0), (1,1) */
+    int expected_p[3] = {0, 2, 3};
+    int expected_i[3] = {0, 1, 1};
 
-    /* Check column pointers */
-    mu_assert("C->p[0] should be 0", C->p[0] == 0);
-    mu_assert("C->p[1] should be 2", C->p[1] == 2);  /* column 0: rows 0,1 */
-    mu_assert("C->p[2] should be 3", C->p[2] == 3);  /* column 1: row 1 */
-
-    /* Check row indices */
-    mu_assert("C->i[0] should be 0", C->i[0] == 0);  /* (0,0) */
-    mu_assert("C->i[1] should be 1", C->i[1] == 1);  /* (1,0) */
-    mu_assert("C->i[2] should be 1", C->i[2] == 1);  /* (1,1) */
+    mu_assert("C dims incorrect", C->m == 2 && C->n == 2 && C->nnz == 3);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p, 3));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i, 3));
 
     free_csc_matrix(C);
     free_csr_matrix(A);
@@ -116,21 +109,16 @@ const char *test_block_left_multiply_two_blocks()
      * [0.0  1.0  1.0]
      */
     CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 2);
+    block_left_multiply_fill_values(A, J, C);
 
-    mu_assert("C->m should be 4", C->m == 4);
-    mu_assert("C->n should be 3", C->n == 3);
-    mu_assert("C->nnz should be 3", C->nnz == 3);
+    int expected_p2[4] = {0, 1, 2, 3};
+    int expected_i2[3] = {0, 2, 3};
+    double expected_x2[3] = {1.0, 1.0, 1.0};
 
-    /* Check column pointers */
-    mu_assert("C->p[0] should be 0", C->p[0] == 0);
-    mu_assert("C->p[1] should be 1", C->p[1] == 1);
-    mu_assert("C->p[2] should be 2", C->p[2] == 2);
-    mu_assert("C->p[3] should be 3", C->p[3] == 3);
-
-    /* Check row indices */
-    mu_assert("C->i[0] should be 0", C->i[0] == 0);
-    mu_assert("C->i[1] should be 2", C->i[1] == 2);
-    mu_assert("C->i[2] should be 3", C->i[2] == 3);
+    mu_assert("C dims incorrect", C->m == 4 && C->n == 3 && C->nnz == 3);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p2, 4));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i2, 3));
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_x2, 3));
 
     free_csc_matrix(C);
     free_csr_matrix(A);
@@ -164,15 +152,12 @@ const char *test_block_left_multiply_zero_column()
 
     CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
 
-    mu_assert("C->m should be 2", C->m == 2);
-    mu_assert("C->n should be 2", C->n == 2);
-    mu_assert("C->nnz should be 1", C->nnz == 1);
+    int expected_p3[3] = {0, 1, 1};
+    int expected_i3[1] = {0};
 
-    mu_assert("C->p[0] should be 0", C->p[0] == 0);
-    mu_assert("C->p[1] should be 1", C->p[1] == 1);
-    mu_assert("C->p[2] should be 1", C->p[2] == 1);
-
-    mu_assert("C->i[0] should be 0", C->i[0] == 0);
+    mu_assert("C dims incorrect", C->m == 2 && C->n == 2 && C->nnz == 1);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p3, 3));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i3, 1));
 
     free_csc_matrix(C);
     free_csr_matrix(A);
@@ -215,28 +200,12 @@ const char *test_csr_csc_matmul_alloc_basic()
      */
     CSR_Matrix *C = csr_csc_matmul_alloc(A, B);
 
-    mu_assert("C->m should be 3", C->m == 3);
-    mu_assert("C->n should be 3", C->n == 3);
-    mu_assert("C->nnz should be 7", C->nnz == 7);
+    int expected_p4[4] = {0, 2, 4, 7};
+    int expected_i4[7] = {0, 2, 1, 2, 0, 1, 2};
 
-    /* Check row pointers */
-    mu_assert("C->p[0] should be 0", C->p[0] == 0);
-    mu_assert("C->p[1] should be 2", C->p[1] == 2);
-    mu_assert("C->p[2] should be 4", C->p[2] == 4);
-    mu_assert("C->p[3] should be 7", C->p[3] == 7);
-
-    /* Check column indices for row 0: columns 0, 2 */
-    mu_assert("C->i[0] should be 0", C->i[0] == 0);
-    mu_assert("C->i[1] should be 2", C->i[1] == 2);
-
-    /* Check column indices for row 1: columns 1, 2 */
-    mu_assert("C->i[2] should be 1", C->i[2] == 1);
-    mu_assert("C->i[3] should be 2", C->i[3] == 2);
-
-    /* Check column indices for row 2: columns 0, 1, 2 */
-    mu_assert("C->i[4] should be 0", C->i[4] == 0);
-    mu_assert("C->i[5] should be 1", C->i[5] == 1);
-    mu_assert("C->i[6] should be 2", C->i[6] == 2);
+    mu_assert("C dims incorrect", C->m == 3 && C->n == 3 && C->nnz == 7);
+    mu_assert("C row pointers incorrect", cmp_int_array(C->p, expected_p4, 4));
+    mu_assert("C col indices incorrect", cmp_int_array(C->i, expected_i4, 7));
 
     free_csr_matrix(C);
     free_csr_matrix(A);
@@ -278,16 +247,12 @@ const char *test_csr_csc_matmul_alloc_sparse()
      */
     CSR_Matrix *C = csr_csc_matmul_alloc(A, B);
 
-    mu_assert("C->m should be 2", C->m == 2);
-    mu_assert("C->n should be 2", C->n == 2);
-    mu_assert("C->nnz should be 2", C->nnz == 2);
+    int expected_p5[3] = {0, 1, 2};
+    int expected_i5[2] = {0, 1};
 
-    mu_assert("C->p[0] should be 0", C->p[0] == 0);
-    mu_assert("C->p[1] should be 1", C->p[1] == 1);
-    mu_assert("C->p[2] should be 2", C->p[2] == 2);
-
-    mu_assert("C->i[0] should be 0", C->i[0] == 0);
-    mu_assert("C->i[1] should be 1", C->i[1] == 1);
+    mu_assert("C dims incorrect", C->m == 2 && C->n == 2 && C->nnz == 2);
+    mu_assert("C row pointers incorrect", cmp_int_array(C->p, expected_p5, 3));
+    mu_assert("C col indices incorrect", cmp_int_array(C->i, expected_i5, 2));
 
     free_csr_matrix(C);
     free_csr_matrix(A);
