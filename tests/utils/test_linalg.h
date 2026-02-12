@@ -259,3 +259,136 @@ const char *test_csr_csc_matmul_alloc_sparse()
     free_csc_matrix(B);
     return NULL;
 }
+
+/* Test block_left_multiply_vec with single block: y = A @ x */
+const char *test_block_left_multiply_vec_single_block()
+{
+    /* A is 2x3 CSR:
+     * [1.0  0.0  2.0]
+     * [0.0  3.0  0.0]
+     */
+    CSR_Matrix *A = new_csr_matrix(2, 3, 3);
+    double Ax[3] = {1.0, 3.0, 2.0};
+    int Ai[3] = {0, 1, 2};
+    int Ap[3] = {0, 2, 3};
+    memcpy(A->x, Ax, 3 * sizeof(double));
+    memcpy(A->i, Ai, 3 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
+
+    /* x is (3*1)-length vector = [1.0, 2.0, 3.0] */
+    double x[3] = {1.0, 2.0, 3.0};
+    double y[2] = {0.0, 0.0};
+
+    block_left_multiply_vec(A, x, y, 1);
+
+    /* Expected: y = [1.0*1.0 + 0.0*2.0 + 2.0*3.0, 0.0*1.0 + 3.0*2.0 + 0.0*3.0]
+     *             = [1.0 + 6.0, 6.0]
+     *             = [7.0, 6.0]
+     */
+    double expected_y[2] = {7.0, 6.0};
+    mu_assert("y values incorrect", cmp_double_array(y, expected_y, 2));
+
+    free_csr_matrix(A);
+    return NULL;
+}
+
+/* Test block_left_multiply_vec with two blocks: y = [A @ x1; A @ x2] */
+const char *test_block_left_multiply_vec_two_blocks()
+{
+    /* A is 2x3 CSR:
+     * [1.0  2.0  0.0]
+     * [0.0  3.0  4.0]
+     */
+    CSR_Matrix *A = new_csr_matrix(2, 3, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 1, 1, 2};
+    int Ap[3] = {0, 2, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
+
+    /* x is (3*2)-length vector = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+     * x1 = [1.0, 2.0, 3.0], x2 = [4.0, 5.0, 6.0]
+     */
+    double x[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double y[4] = {0.0, 0.0, 0.0, 0.0};
+
+    block_left_multiply_vec(A, x, y, 2);
+
+    /* Expected block 1: y[0:2] = A @ x1 = [1.0*1.0 + 2.0*2.0, 3.0*2.0 + 4.0*3.0] = [5.0, 18.0]
+     * Expected block 2: y[2:4] = A @ x2 = [1.0*4.0 + 2.0*5.0, 3.0*5.0 + 4.0*6.0] = [14.0, 39.0]
+     */
+    double expected_y[4] = {5.0, 18.0, 14.0, 39.0};
+    mu_assert("y values incorrect", cmp_double_array(y, expected_y, 4));
+
+    free_csr_matrix(A);
+    return NULL;
+}
+
+/* Test block_left_multiply_vec with sparse matrix and multiple blocks */
+const char *test_block_left_multiply_vec_sparse()
+{
+    /* A is 3x4 CSR (very sparse):
+     * [2.0  0.0  0.0  0.0]
+     * [0.0  0.0  3.0  0.0]
+     * [0.0  0.0  0.0  4.0]
+     */
+    CSR_Matrix *A = new_csr_matrix(3, 4, 3);
+    double Ax[3] = {2.0, 3.0, 4.0};
+    int Ai[3] = {0, 2, 3};
+    int Ap[4] = {0, 1, 2, 3};
+    memcpy(A->x, Ax, 3 * sizeof(double));
+    memcpy(A->i, Ai, 3 * sizeof(int));
+    memcpy(A->p, Ap, 4 * sizeof(int));
+
+    /* x is (4*2)-length = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+     * x1 = [1.0, 2.0, 3.0, 4.0], x2 = [5.0, 6.0, 7.0, 8.0]
+     */
+    double x[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    double y[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+    block_left_multiply_vec(A, x, y, 2);
+
+    /* Expected block 1: y[0:3] = A @ x1 = [2.0*1.0, 3.0*3.0, 4.0*4.0] = [2.0, 9.0, 16.0]
+     * Expected block 2: y[3:6] = A @ x2 = [2.0*5.0, 3.0*7.0, 4.0*8.0] = [10.0, 21.0, 32.0]
+     */
+    double expected_y[6] = {2.0, 9.0, 16.0, 10.0, 21.0, 32.0};
+    mu_assert("y values incorrect", cmp_double_array(y, expected_y, 6));
+
+    free_csr_matrix(A);
+    return NULL;
+}
+
+/* Test block_left_multiply_vec with three blocks */
+const char *test_block_left_multiply_vec_three_blocks()
+{
+    /* A is 2x2 CSR:
+     * [1.0  2.0]
+     * [3.0  4.0]
+     */
+    CSR_Matrix *A = new_csr_matrix(2, 2, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 1, 0, 1};
+    int Ap[3] = {0, 2, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
+
+    /* x is (2*3)-length = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+     * x1 = [1.0, 2.0], x2 = [3.0, 4.0], x3 = [5.0, 6.0]
+     */
+    double x[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double y[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+    block_left_multiply_vec(A, x, y, 3);
+
+    /* Expected block 1: y[0:2] = A @ x1 = [1.0*1.0 + 2.0*2.0, 3.0*1.0 + 4.0*2.0] = [5.0, 11.0]
+     * Expected block 2: y[2:4] = A @ x2 = [1.0*3.0 + 2.0*4.0, 3.0*3.0 + 4.0*4.0] = [11.0, 25.0]
+     * Expected block 3: y[4:6] = A @ x3 = [1.0*5.0 + 2.0*6.0, 3.0*5.0 + 4.0*6.0] = [17.0, 39.0]
+     */
+    double expected_y[6] = {5.0, 11.0, 11.0, 25.0, 17.0, 39.0};
+    mu_assert("y values incorrect", cmp_double_array(y, expected_y, 6));
+
+    free_csr_matrix(A);
+    return NULL;
+}

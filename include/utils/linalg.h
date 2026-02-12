@@ -34,4 +34,11 @@ void csr_csc_matmul_fill_values(const struct CSR_Matrix *A,
 struct CSR_Matrix *csr_csc_matmul_alloc(const struct CSR_Matrix *A,
                                        const struct CSC_Matrix *B);
 
+/* Compute block-wise matrix-vector products.
+ * y = [A @ x1; A @ x2; ...; A @ xp] where A is m x n and x is divided into p blocks of n elements.
+ * A is provided in CSR format. x is (n*p)-length vector, y is (m*p)-length output.
+ */
+void block_left_multiply_vec(const struct CSR_Matrix *A, const double *x,
+                             double *y, int p);
+
 #endif /* LINALG_H */

@@ -34,7 +34,7 @@
      where A_kron = I_p kron A is a Kronecker product of size (m*p) x (n*p),
      or more specificely, a block-diagonal matrix with p blocks of A along the
      diagonal. In the refactored implementation we don't form A_kron explicitly,
-     only conceptually. This led to a 100x speedup in the initialization of the 
+     only conceptually. This led to a 100x speedup in the initialization of the
      Jacobian sparsity pattern.
 
    * To compute the Jacobian: J_y = A_kron @ J_f(x), where J_f(x) is the
@@ -59,8 +59,9 @@ static void forward(expr *node, const double *u)
     /* child's forward pass */
     node->left->forward(node->left, u);
 
-    /* y = A_kron @ vec(f(x)). TODO: this forward pass is wrong */
-    csr_matvec_wo_offset(((left_matmul_expr *) node)->A, x->value, node->value);
+    /* y = A_kron @ vec(f(x)) */
+    CSR_Matrix *A = ((left_matmul_expr *) node)->A;
+    block_left_multiply_vec(A, x->value, node->value, x->d2);
 }
 
 static bool is_affine(const expr *node)

@@ -257,6 +257,10 @@ int main(void)
     mu_run_test(test_block_left_multiply_zero_column, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_basic, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_sparse, tests_run);
+    mu_run_test(test_block_left_multiply_vec_single_block, tests_run);
+    mu_run_test(test_block_left_multiply_vec_two_blocks, tests_run);
+    mu_run_test(test_block_left_multiply_vec_sparse, tests_run);
+    mu_run_test(test_block_left_multiply_vec_three_blocks, tests_run);
     mu_run_test(test_csr_vecmat_values_sparse, tests_run);
     mu_run_test(test_sum_all_rows_csr, tests_run);
     mu_run_test(test_sum_block_of_rows_csr, tests_run);

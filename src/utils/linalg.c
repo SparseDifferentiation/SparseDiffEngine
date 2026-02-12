@@ -317,3 +317,36 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
 
     return C;
 }
+
+/* Compute block-wise matrix-vector products.
+ * y = [A @ x1; A @ x2; ...; A @ xp] where A is m x n and x is (n*p)-length vector.
+ * x is split into p blocks of n elements each.
+ */
+void block_left_multiply_vec(const struct CSR_Matrix *A, const double *x,
+                             double *y, int p)
+{
+    assert(A != NULL && x != NULL && y != NULL && p > 0);
+
+    /* For each block */
+    for (int block = 0; block < p; block++)
+    {
+        int block_start = block * A->n;
+        int y_offset = block * A->m;
+
+        /* For each row of A */
+        for (int i = 0; i < A->m; i++)
+        {
+            double row_sum = 0.0;
+            int row_nnz = A->p[i + 1] - A->p[i];
+
+            /* Compute sparse dot product of A[i,:] with x_block */
+            for (int idx = 0; idx < row_nnz; idx++)
+            {
+                int col = A->i[A->p[i] + idx];
+                row_sum += A->x[A->p[i] + idx] * x[block_start + col];
+            }
+
+            y[y_offset + i] = row_sum;
+        }
+    }
+}
