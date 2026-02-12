@@ -40,7 +40,7 @@ const char *profile_left_matmul()
     }
 
     Timer timer;
-    clock_gettime(CLOCK_MONOTONIC, &timer.start);   
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
     AX->forward(AX, x_vals);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     printf("left_matmul forward time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
