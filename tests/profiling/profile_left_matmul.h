@@ -1,7 +1,7 @@
 #include <math.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "affine.h"
 #include "bivariate.h"
@@ -40,18 +40,20 @@ const char *profile_left_matmul()
     }
 
     // should benchmark forward later
-    //AX->forward(AX, x_vals);
+    // AX->forward(AX, x_vals);
 
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     AX->jacobian_init(AX);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
-    printf("left_matmul jacobian init time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
+    printf("left_matmul jacobian init time: %8.3f seconds\n",
+           GET_ELAPSED_SECONDS(timer));
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     AX->eval_jacobian(AX);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
-    printf("left_matmul jacobian eval time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
-    
+    printf("left_matmul jacobian eval time: %8.3f seconds\n",
+           GET_ELAPSED_SECONDS(timer));
+
     free(x_vals);
     free_csr_matrix(A);
     free_expr(AX);

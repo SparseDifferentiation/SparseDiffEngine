@@ -41,10 +41,11 @@ const char *test_block_left_multiply_single_block()
     CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
 
     /* Expected C is 2x2:
-     * C[0,0] = A[0,:] @ J[:,0] = 1.0 * 1.0 = 1.0 (row 0 has column 0, J col 0 has row 0)
-     * C[1,0] = A[1,:] @ J[:,0] = 1.0*1.0 + 1.0*0.0 = 1.0 (row 1 has columns 1,2, J col 0 has row 1)
-     * C[0,1] = A[0,:] @ J[:,1] = 0.0 (row 0 has column 0, J col 1 has row 2)
-     * C[1,1] = A[1,:] @ J[:,1] = 1.0*1.0 = 1.0 (row 1 has columns 1,2, J col 1 has row 2)
+     * C[0,0] = A[0,:] @ J[:,0] = 1.0 * 1.0 = 1.0 (row 0 has column 0, J col 0 has
+     * row 0) C[1,0] = A[1,:] @ J[:,0] = 1.0*1.0 + 1.0*0.0 = 1.0 (row 1 has columns
+     * 1,2, J col 0 has row 1) C[0,1] = A[0,:] @ J[:,1] = 0.0 (row 0 has column 0, J
+     * col 1 has row 2) C[1,1] = A[1,:] @ J[:,1] = 1.0*1.0 = 1.0 (row 1 has columns
+     * 1,2, J col 1 has row 2)
      */
     int expected_p[3] = {0, 2, 3};
     int expected_i[3] = {0, 1, 1};
@@ -98,7 +99,7 @@ const char *test_block_left_multiply_two_blocks()
     /* Compute C = [A @ J1; A @ J2] where:
      * J1 = [[1.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
      * J2 = [[0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-     * 
+     *
      * C = [A @ J1; A @ J2] is 4x3:
      * A @ J1 = [[1, 0, 0], [0, 0, 0]] (row 0 of A matches col 0 of J1)
      * A @ J2 = [[0, 0, 0], [0, 1, 1]] (row 1 of A matches cols 1,2 of J2)
@@ -145,7 +146,7 @@ const char *test_block_left_multiply_zero_column()
     CSC_Matrix *J = new_csc_matrix(2, 2, 1);
     double Jx[1] = {1.0};
     int Ji[1] = {0};
-    int Jp[3] = {0, 1, 1};  /* Column 0 has one nonzero, column 1 is empty */
+    int Jp[3] = {0, 1, 1}; /* Column 0 has one nonzero, column 1 is empty */
     memcpy(J->x, Jx, 1 * sizeof(double));
     memcpy(J->i, Ji, 1 * sizeof(int));
     memcpy(J->p, Jp, 3 * sizeof(int));
@@ -315,8 +316,9 @@ const char *test_block_left_multiply_vec_two_blocks()
 
     block_left_multiply_vec(A, x, y, 2);
 
-    /* Expected block 1: y[0:2] = A @ x1 = [1.0*1.0 + 2.0*2.0, 3.0*2.0 + 4.0*3.0] = [5.0, 18.0]
-     * Expected block 2: y[2:4] = A @ x2 = [1.0*4.0 + 2.0*5.0, 3.0*5.0 + 4.0*6.0] = [14.0, 39.0]
+    /* Expected block 1: y[0:2] = A @ x1 = [1.0*1.0 + 2.0*2.0, 3.0*2.0 + 4.0*3.0] =
+     * [5.0, 18.0] Expected block 2: y[2:4] = A @ x2 = [1.0*4.0 + 2.0*5.0, 3.0*5.0
+     * + 4.0*6.0] = [14.0, 39.0]
      */
     double expected_y[4] = {5.0, 18.0, 14.0, 39.0};
     mu_assert("y values incorrect", cmp_double_array(y, expected_y, 4));
@@ -349,8 +351,9 @@ const char *test_block_left_multiply_vec_sparse()
 
     block_left_multiply_vec(A, x, y, 2);
 
-    /* Expected block 1: y[0:3] = A @ x1 = [2.0*1.0, 3.0*3.0, 4.0*4.0] = [2.0, 9.0, 16.0]
-     * Expected block 2: y[3:6] = A @ x2 = [2.0*5.0, 3.0*7.0, 4.0*8.0] = [10.0, 21.0, 32.0]
+    /* Expected block 1: y[0:3] = A @ x1 = [2.0*1.0, 3.0*3.0, 4.0*4.0] =
+     * [2.0, 9.0, 16.0] Expected block 2: y[3:6] = A @ x2 =
+     * [2.0*5.0, 3.0*7.0, 4.0*8.0] = [10.0, 21.0, 32.0]
      */
     double expected_y[6] = {2.0, 9.0, 16.0, 10.0, 21.0, 32.0};
     mu_assert("y values incorrect", cmp_double_array(y, expected_y, 6));
@@ -382,9 +385,10 @@ const char *test_block_left_multiply_vec_three_blocks()
 
     block_left_multiply_vec(A, x, y, 3);
 
-    /* Expected block 1: y[0:2] = A @ x1 = [1.0*1.0 + 2.0*2.0, 3.0*1.0 + 4.0*2.0] = [5.0, 11.0]
-     * Expected block 2: y[2:4] = A @ x2 = [1.0*3.0 + 2.0*4.0, 3.0*3.0 + 4.0*4.0] = [11.0, 25.0]
-     * Expected block 3: y[4:6] = A @ x3 = [1.0*5.0 + 2.0*6.0, 3.0*5.0 + 4.0*6.0] = [17.0, 39.0]
+    /* Expected block 1: y[0:2] = A @ x1 = [1.0*1.0 + 2.0*2.0, 3.0*1.0 + 4.0*2.0] =
+     * [5.0, 11.0] Expected block 2: y[2:4] = A @ x2 = [1.0*3.0 + 2.0*4.0, 3.0*3.0
+     * + 4.0*4.0] = [11.0, 25.0] Expected block 3: y[4:6] = A @ x3 = [1.0*5.0
+     * + 2.0*6.0, 3.0*5.0 + 4.0*6.0] = [17.0, 39.0]
      */
     double expected_y[6] = {5.0, 11.0, 11.0, 25.0, 17.0, 39.0};
     mu_assert("y values incorrect", cmp_double_array(y, expected_y, 6));

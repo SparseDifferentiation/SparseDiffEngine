@@ -447,5 +447,3 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
         }
     }
 }
-
-

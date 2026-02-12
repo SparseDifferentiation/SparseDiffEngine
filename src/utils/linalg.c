@@ -196,9 +196,9 @@ void block_left_multiply_fill_values(const CSR_Matrix *A, const CSC_Matrix *J,
     int m = A->m;
     int n = A->n;
     int k = J->n;
- 
+
     int i, j, row_a, block, block_start, block_end, start, end;
-    
+
     /* to get rid of unitialized warnings */
     block = 0;
     block_start = 0;
@@ -322,8 +322,8 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
  * y = [A @ x1; A @ x2; ...; A @ xp] where A is m x n and x is (n*p)-length vector.
  * x is split into p blocks of n elements each.
  */
-void block_left_multiply_vec(const struct CSR_Matrix *A, const double *x,
-                             double *y, int p)
+void block_left_multiply_vec(const struct CSR_Matrix *A, const double *x, double *y,
+                             int p)
 {
     assert(A != NULL && x != NULL && y != NULL && p > 0);
 

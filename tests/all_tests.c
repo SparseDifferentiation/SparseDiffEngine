@@ -44,8 +44,8 @@
 #include "jacobian_tests/test_transpose.h"
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
-#include "utils/test_csr_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
+#include "utils/test_csr_matrix.h"
 #include "utils/test_linalg.h"
 #include "wsum_hess/elementwise/test_entr.h"
 #include "wsum_hess/elementwise/test_exp.h"
@@ -75,11 +75,11 @@
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
 #include "wsum_hess/test_transpose.h"
-#endif  /* PROFILE_ONLY */
+#endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
 #include "profiling/profile_left_matmul.h"
-#endif  /* PROFILE_ONLY */
+#endif /* PROFILE_ONLY */
 
 int main(void)
 {
@@ -279,12 +279,12 @@ int main(void)
     mu_run_test(test_problem_jacobian_multi, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
-#endif  /* PROFILE_ONLY */
+#endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
     printf("\n--- Profiling Tests ---\n");
     mu_run_test(profile_left_matmul, tests_run);
-#endif  /* PROFILE_ONLY */
+#endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);
 

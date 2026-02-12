@@ -169,4 +169,3 @@ const char *test_csr_csc_csr_roundtrip()
 
     return 0;
 }
-
