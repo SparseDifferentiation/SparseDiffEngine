@@ -325,8 +325,6 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
 void block_left_multiply_vec(const struct CSR_Matrix *A, const double *x, double *y,
                              int p)
 {
-    assert(A != NULL && x != NULL && y != NULL && p > 0);
-
     /* For each block */
     for (int block = 0; block < p; block++)
     {

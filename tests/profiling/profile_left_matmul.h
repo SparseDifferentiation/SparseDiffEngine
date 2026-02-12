@@ -14,7 +14,7 @@
 const char *profile_left_matmul()
 {
     /* A @ X where A is 50 x 50 dense stored in CSR and X is 50 x 50 variable */
-    int n = 50;
+    int n = 100;
     expr *X = new_variable(n, n, 0, n * n);
     CSR_Matrix *A = new_csr_matrix(n, n, n * n);
     for (int i = 0; i < n * n; i++)
@@ -39,10 +39,11 @@ const char *profile_left_matmul()
         x_vals[i] = 1.0;
     }
 
-    // should benchmark forward later
-    // AX->forward(AX, x_vals);
-
     Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);   
+    AX->forward(AX, x_vals);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("left_matmul forward time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     AX->jacobian_init(AX);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
