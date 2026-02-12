@@ -1,0 +1,23 @@
+#ifndef LINALG_H
+#define LINALG_H
+
+/* Forward declarations */
+struct CSR_Matrix;
+struct CSC_Matrix;
+
+/* Compute sparsity pattern for block left multiplication.
+ * C = [A @ J1; A @ J2; ...; A @ Jp] where A is m x n and J is (n*p) x k.
+ * J is provided in CSC format and is split into p blocks of n rows each.
+ * Result C is returned as CSC format with dimensions (m*p) x k.
+ */
+struct CSC_Matrix *block_left_multiply_fill_sparsity(const struct CSR_Matrix *A,
+                                                     const struct CSC_Matrix *J,
+                                                     int p);
+
+/* C = A @ B where A is CSR, B is CSC. Result C is CSR.
+ * Allocates and precomputes sparsity pattern. No workspace required.
+ */
+struct CSR_Matrix *csr_csc_matmul_alloc(const struct CSR_Matrix *A,
+                                       const struct CSC_Matrix *B);
+
+#endif /* LINALG_H */

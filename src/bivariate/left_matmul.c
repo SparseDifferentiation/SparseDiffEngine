@@ -17,6 +17,8 @@
  */
 #include "bivariate.h"
 #include "subexpr.h"
+#include "utils/Timer.h"
+#include "utils/linalg.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,12 +84,19 @@ static void jacobian_init(expr *node)
     expr *x = node->left;
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
+    Timer timer;
+
     /* initialize child's jacobian and precompute sparsity of its transpose */
     x->jacobian_init(x);
     lin_node->CSC_work = csr_to_csc_fill_sparsity(x->jacobian, node->iwork);
 
     /* precompute sparsity of this node's jacobian */
     node->jacobian = csr_csc_matmul_alloc(lin_node->A, lin_node->CSC_work);
+
+    CSC_Matrix *CSC_temp = block_left_multiply_fill_sparsity(
+        lin_node->A_temp, lin_node->CSC_work, x->d2);
+    node->jacobian = csc_to_csr_fill_sparsity(CSC_temp, lin_node->csr_to_csc_temp);
+    free_csc_matrix(CSC_temp);
 }
 
 static void eval_jacobian(expr *node)
@@ -99,7 +108,7 @@ static void eval_jacobian(expr *node)
     x->eval_jacobian(x);
     csr_to_csc_fill_values(x->jacobian, lin_node->CSC_work, node->iwork);
 
-    /* compute this node's jacobian */
+    /* compute this node's jacobian: TODO: should be done without lin_node->A */
     csr_csc_matmul_fill_values(lin_node->A, lin_node->CSC_work, node->jacobian);
 }
 
@@ -163,6 +172,12 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
               is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
+
+    lin_node->A_temp = new_csr_matrix(A->m, A->n, A->nnz);
+    memcpy(lin_node->A_temp->p, A->p, (A->m + 1) * sizeof(int));
+    memcpy(lin_node->A_temp->i, A->i, A->nnz * sizeof(int));
+    memcpy(lin_node->A_temp->x, A->x, A->nnz * sizeof(double));
+    lin_node->csr_to_csc_temp = (int *) malloc((A->m * d2) * sizeof(int));
 
     /* Initialize type-specific fields */
     lin_node->A = block_diag_repeat_csr(A, n_blocks);

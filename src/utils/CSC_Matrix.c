@@ -306,6 +306,69 @@ void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
     }
 }
 
+CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork)
+{
+    CSR_Matrix *C = new_csr_matrix(A->m, A->n, A->nnz);
+
+    int i, j;
+    int *count = iwork;
+    memset(count, 0, A->m * sizeof(int));
+
+    // -------------------------------------------------------------------
+    //              compute nnz in each row of A
+    // -------------------------------------------------------------------
+    for (i = 0; i < A->n; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; ++j)
+        {
+            count[A->i[j]]++;
+        }
+    }
+
+    // ------------------------------------------------------------------
+    //                      compute row pointers
+    // ------------------------------------------------------------------
+    C->p[0] = 0;
+    for (i = 0; i < A->m; ++i)
+    {
+        C->p[i + 1] = C->p[i] + count[i];
+        count[i] = C->p[i];
+    }
+
+    // ------------------------------------------------------------------
+    //                         fill column indices
+    // ------------------------------------------------------------------
+    for (i = 0; i < A->n; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; ++j)
+        {
+            C->i[count[A->i[j]]] = i;
+            count[A->i[j]]++;
+        }
+    }
+
+    return C;
+}
+
+void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
+{
+    int i, j;
+    int *count = iwork;
+    memcpy(count, C->p, A->m * sizeof(int));
+
+    // ------------------------------------------------------------------
+    //                         fill values
+    // ------------------------------------------------------------------
+    for (i = 0; i < A->n; ++i)
+    {
+        for (j = A->p[i]; j < A->p[i + 1]; ++j)
+        {
+            C->x[count[A->i[j]]] = A->x[j];
+            count[A->i[j]]++;
+        }
+    }
+}
+
 CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
 {
     /* A is m x n, B is m x p, C = B^T A is p x n */
@@ -414,24 +477,6 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
     }
 }
 
-static bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len)
-{
-    int ai = 0, bi = 0;
-    while (ai < a_len && bi < b_len)
-    {
-        if (a_idx[ai] == b_idx[bi]) return true;
-        if (a_idx[ai] < b_idx[bi])
-        {
-            ai++;
-        }
-        else
-        {
-            bi++;
-        }
-    }
-    return false;
-}
-
 /* Fill values of C = A @ B where A is CSR, B is CSC. */
 void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
                                 CSR_Matrix *C)
@@ -454,47 +499,3 @@ void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
     }
 }
 
-/* C = A @ B where A is CSR (m x n), B is CSC (n x p). Result C is CSR (m x p)
-  with precomputed sparsity pattern */
-CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
-{
-    int m = A->m;
-    int p = B->n;
-
-    int len_a, len_b;
-
-    int *Cp = (int *) malloc((m + 1) * sizeof(int));
-    iVec *Ci = iVec_new(m);
-
-    Cp[0] = 0;
-
-    // --------------------------------------------------------------
-    //            countz nnz and fill column indices
-    // --------------------------------------------------------------
-    int nnz = 0;
-    for (int i = 0; i < A->m; i++)
-    {
-        len_a = A->p[i + 1] - A->p[i];
-
-        for (int j = 0; j < B->n; j++)
-        {
-            len_b = B->p[j + 1] - B->p[j];
-
-            if (has_overlap(A->i + A->p[i], len_a, B->i + B->p[j], len_b))
-            {
-                iVec_append(Ci, j);
-                nnz++;
-            }
-        }
-
-        Cp[i + 1] = nnz;
-    }
-
-    CSR_Matrix *C = new_csr_matrix(m, p, nnz);
-    memcpy(C->p, Cp, (m + 1) * sizeof(int));
-    memcpy(C->i, Ci->data, nnz * sizeof(int));
-    free(Cp);
-    iVec_free(Ci);
-
-    return C;
-}

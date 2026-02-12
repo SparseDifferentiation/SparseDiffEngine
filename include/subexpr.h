@@ -103,13 +103,15 @@ typedef struct elementwise_mult_expr
 
 /* Left matrix multiplication: y = A * f(x) where f(x) is an expression. Note that
 here A does not have global column indices but it is a local matrix. This is an
-important distinction compared to linear_op_expr. */
+important distinction compared to ear_op_expr. */
 typedef struct left_matmul_expr
 {
     expr base;
     CSR_Matrix *A;
     CSR_Matrix *AT;
     CSC_Matrix *CSC_work;
+    CSR_Matrix *A_temp; // will be replaced by A
+    int *csr_to_csc_temp;
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

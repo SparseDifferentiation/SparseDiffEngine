@@ -18,6 +18,7 @@
 #include "bivariate.h"
 #include "subexpr.h"
 #include <stdlib.h>
+#include "utils/linalg.h"
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
    f(x) @ A, where A is a given matrix and f(x) is an arbitrary expression.

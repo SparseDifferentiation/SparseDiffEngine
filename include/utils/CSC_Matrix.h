@@ -52,10 +52,8 @@ void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C)
 CSC_Matrix *csr_to_csc_fill_sparsity(const CSR_Matrix *A, int *iwork);
 void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
 
-/* Allocate CSR matrix for C = A @ B where A is CSR, B is CSC
- * Precomputes sparsity pattern. No workspace required.
- */
-CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B);
+CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork);
+void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
 
 /* Fill values of C = A @ B where A is CSR, B is CSC
  * C must have sparsity pattern already computed

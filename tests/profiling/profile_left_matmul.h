@@ -9,6 +9,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"
+#include "utils/Timer.h"
 
 const char *profile_left_matmul()
 {
@@ -38,9 +39,18 @@ const char *profile_left_matmul()
         x_vals[i] = 1.0;
     }
 
-    AX->forward(AX, x_vals);
+    // should benchmark forward later
+    //AX->forward(AX, x_vals);
+
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
     AX->jacobian_init(AX);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("left_matmul jacobian init time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
     AX->eval_jacobian(AX);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("left_matmul jacobian eval time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
     
     free(x_vals);
     free_csr_matrix(A);
