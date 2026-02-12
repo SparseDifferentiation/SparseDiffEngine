@@ -19,10 +19,10 @@ const char *test_block_left_multiply_single_block()
     CSR_Matrix *A = new_csr_matrix(2, 3, 3);
     double Ax[3] = {1.0, 1.0, 1.0};
     int Ai[3] = {0, 1, 2};
-    int Ap[4] = {0, 1, 3};
+    int Ap[3] = {0, 1, 3};
     memcpy(A->x, Ax, 3 * sizeof(double));
     memcpy(A->i, Ai, 3 * sizeof(int));
-    memcpy(A->p, Ap, 4 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
 
     /* J is 3x2 CSC (single block, so p=1):
      * [1.0  0.0]

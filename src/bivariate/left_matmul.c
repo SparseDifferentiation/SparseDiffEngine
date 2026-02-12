@@ -76,10 +76,12 @@ static void free_type_data(expr *node)
     free_csr_matrix(lin_node->A_kron_T);
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
+    free(lin_node->iwork2);
     lin_node->A = NULL;
     lin_node->A_kron_T = NULL;
     lin_node->Jchild_CSC = NULL;
     lin_node->J_CSC = NULL;
+    lin_node->iwork2 = NULL;
 }
 
 static void jacobian_init(expr *node)
