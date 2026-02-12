@@ -1,8 +1,11 @@
+all_tests
+
 #include <stdio.h>
 
 #include "minunit.h"
 
 /* Include all test headers */
+#ifndef PROFILE_ONLY
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_hstack.h"
@@ -41,6 +44,7 @@
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
 #include "jacobian_tests/test_transpose.h"
+#include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_matrix.h"
@@ -72,6 +76,11 @@
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
 #include "wsum_hess/test_transpose.h"
+#endif  /* PROFILE_ONLY */
+
+#ifdef PROFILE_ONLY
+#include "profiling/profile_left_matmul.h"
+#endif  /* PROFILE_ONLY */
 
 int main(void)
 {
@@ -79,6 +88,7 @@ int main(void)
 
     int tests_run = 0;
 
+#ifndef PROFILE_ONLY
     printf("--- Forward Pass Tests ---\n");
     mu_run_test(test_variable, tests_run);
     mu_run_test(test_constant, tests_run);
@@ -257,6 +267,15 @@ int main(void)
     mu_run_test(test_problem_jacobian_multi, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
+    mu_run_test(test_param_scalar_mult_problem, tests_run);
+    mu_run_test(test_param_vector_mult_problem, tests_run);
+    mu_run_test(test_param_left_matmul_problem, tests_run);
+#endif  /* PROFILE_ONLY */
+
+#ifdef PROFILE_ONLY
+    printf("\n--- Profiling Tests ---\n");
+    mu_run_test(profile_left_matmul, tests_run);
+#endif  /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);
 
