@@ -61,7 +61,8 @@ static void forward(expr *node, const double *u)
 
     /* y = A_kron @ vec(f(x)) */
     CSR_Matrix *A = ((left_matmul_expr *) node)->A;
-    block_left_multiply_vec(A, x->value, node->value, x->d2);
+    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
+    block_left_multiply_vec(A, x->value, node->value, n_blocks);
 }
 
 static bool is_affine(const expr *node)
@@ -86,6 +87,7 @@ static void free_type_data(expr *node)
 
 static void jacobian_init(expr *node)
 {
+    printf("Initializing jacobian for left_matmul... \n");
     expr *x = node->left;
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
@@ -95,8 +97,9 @@ static void jacobian_init(expr *node)
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lin_node->J_CSC =
-        block_left_multiply_fill_sparsity(lin_node->A, lin_node->Jchild_CSC, x->d2);
+        block_left_multiply_fill_sparsity(lin_node->A, lin_node->Jchild_CSC, lin_node->n_blocks);
     node->jacobian = csc_to_csr_fill_sparsity(lin_node->J_CSC, lin_node->iwork2);
+    printf("Done initializing jacobian for left_matmul. \n");
 }
 
 static void eval_jacobian(expr *node)
@@ -118,6 +121,7 @@ static void eval_jacobian(expr *node)
 
 static void wsum_hess_init(expr *node)
 {
+    printf("Initializing wsum_hess for left_matmul... \n");
     /* initialize child's hessian */
     expr *x = node->left;
     x->wsum_hess_init(x);
@@ -128,15 +132,18 @@ static void wsum_hess_init(expr *node)
     memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
 
     /* work for computing A^T w*/
-    int dim = ((left_matmul_expr *) node)->AT->m * node->d2;
+    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
+    int dim = ((left_matmul_expr *) node)->A->n * n_blocks;
     node->dwork = (double *) malloc(dim * sizeof(double));
+    printf("Done initializing wsum_hess for left_matmul. \n");
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     /* compute A^T w*/
     CSR_Matrix *AT = ((left_matmul_expr *) node)->AT;
-    block_left_multiply_vec(AT, w, node->dwork, node->d2);
+    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
+    block_left_multiply_vec(AT, w, node->dwork, n_blocks);
 
     node->left->eval_wsum_hess(node->left, node->dwork);
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
@@ -149,18 +156,18 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
        to do A @ u where u is (n, ) which in C is actually (1, n). In that case
        the result of A @ u is (m, ), which is (1, m) according to broadcasting
        rules. We therefore check if this is the case. */
-    int d1, d2; //n_blocks;
+    int d1, d2, n_blocks;
     if (u->d1 == A->n)
     {
         d1 = A->m;
         d2 = u->d2;
-        //n_blocks = u->d2;
+        n_blocks = u->d2;
     }
     else if (u->d2 == A->n && u->d1 == 1)
     {
         d1 = 1;
         d2 = A->m;
-        //n_blocks = 1;
+        n_blocks = 1;
     }
     else
     {
@@ -177,11 +184,15 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     node->left = u;
     expr_retain(u);
 
+    /* allocate workspace. iwork is used for transposing A (requiring size A->n)
+       and for converting J_child csr to csc (requring size node->n_vars).
+       iwork2 is used for converting J_CSC to CSR (requring node->size) */
+    node->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
+    lin_node->iwork2 = (int *) malloc(node->size * sizeof(int));
+    lin_node->n_blocks = n_blocks;
+
     /* store A and AT */
     lin_node->A = new_csr(A);
-    lin_node->iwork2 = (int *) malloc((A->m * d2) * sizeof(int));
-    int alloc = MAX(A->n, node->n_vars);
-    node->iwork = (int *) malloc(alloc * sizeof(int));
     lin_node->AT = transpose(lin_node->A, node->iwork);
     
     return node;

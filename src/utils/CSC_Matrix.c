@@ -19,6 +19,7 @@
 #include "utils/iVec.h"
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
 {
@@ -292,6 +293,7 @@ CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork)
     {
         for (j = A->p[i]; j < A->p[i + 1]; ++j)
         {
+            assert(A->i[j] < A->m);
             count[A->i[j]]++;
         }
     }
@@ -313,6 +315,7 @@ CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork)
     {
         for (j = A->p[i]; j < A->p[i + 1]; ++j)
         {
+            assert(A->i[j] < A->m);
             C->i[count[A->i[j]]] = i;
             count[A->i[j]]++;
         }
@@ -334,6 +337,7 @@ void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
     {
         for (j = A->p[i]; j < A->p[i + 1]; ++j)
         {
+            assert(A->i[j] < A->m);
             C->x[count[A->i[j]]] = A->x[j];
             count[A->i[j]]++;
         }

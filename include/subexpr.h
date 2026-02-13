@@ -109,7 +109,7 @@ typedef struct left_matmul_expr
     expr base;
     CSR_Matrix *A;
     CSR_Matrix *AT;
-    CSR_Matrix *A_kron_T;
+    int n_blocks; 
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *iwork2; /* workspace for csc to csr */
