@@ -101,8 +101,7 @@ static void free_type_data(expr *node)
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
     free(lin_node->csc_to_csr_workspace);
-    if (lin_node->param_source)
-        free_expr(lin_node->param_source);
+    if (lin_node->param_source) free_expr(lin_node->param_source);
     lin_node->A = NULL;
     lin_node->AT = NULL;
     lin_node->Jchild_CSC = NULL;
