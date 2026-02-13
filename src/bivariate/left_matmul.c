@@ -18,7 +18,7 @@
 #include "bivariate.h"
 #include "subexpr.h"
 #include "utils/Timer.h"
-#include "utils/linalg.h"
+#include "utils/linalg_sparse_matmuls.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

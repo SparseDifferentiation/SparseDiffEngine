@@ -17,7 +17,7 @@
  */
 #include "bivariate.h"
 #include "subexpr.h"
-#include "utils/linalg.h"
+#include "utils/linalg_sparse_matmuls.h"
 #include <stdlib.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =

@@ -46,7 +46,7 @@
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
 #include "utils/test_csr_matrix.h"
-#include "utils/test_linalg.h"
+#include "utils/test_linalg_sparse_matmuls.h"
 #include "wsum_hess/elementwise/test_entr.h"
 #include "wsum_hess/elementwise/test_exp.h"
 #include "wsum_hess/elementwise/test_hyperbolic.h"
