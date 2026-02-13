@@ -4,7 +4,7 @@ set(CMAKE_C_STANDARD 99)
 
 set(DIFF_ENGINE_VERSION_MAJOR 0)
 set(DIFF_ENGINE_VERSION_MINOR 1)
-set(DIFF_ENGINE_VERSION_PATCH 1)
+set(DIFF_ENGINE_VERSION_PATCH 2)
 set(DIFF_ENGINE_VERSION "${DIFF_ENGINE_VERSION_MAJOR}.${DIFF_ENGINE_VERSION_MINOR}.${DIFF_ENGINE_VERSION_PATCH}")
 add_compile_definitions(DIFF_ENGINE_VERSION="${DIFF_ENGINE_VERSION}")
 
@@ -81,6 +81,8 @@ set_property(TARGET dnlp_diff PROPERTY POSITION_INDEPENDENT_CODE ON)
 # =============================================================================
 # C tests (only for standalone builds)
 # =============================================================================
+option(PROFILE_ONLY "Build only profiling tests" OFF)
+
 if(NOT SKBUILD)
     include_directories(${PROJECT_SOURCE_DIR}/tests)
     enable_testing()
@@ -90,5 +92,11 @@ if(NOT SKBUILD)
         tests/test_helpers.c
     )
     target_link_libraries(all_tests dnlp_diff)
+    
+    if(PROFILE_ONLY)
+        target_compile_definitions(all_tests PRIVATE PROFILE_ONLY)
+        message(STATUS "Building ONLY profiling tests")
+    endif()
+    
     add_test(NAME AllTests COMMAND all_tests)
 endif()

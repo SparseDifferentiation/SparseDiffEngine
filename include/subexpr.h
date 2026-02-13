@@ -117,9 +117,12 @@ typedef struct left_matmul_expr
     expr base;
     CSR_Matrix *A;
     CSR_Matrix *AT;
-    CSC_Matrix *CSC_work;
-    expr *param_source;
-    int src_m, src_n; /* original (non-block-diag) matrix dimensions */
+    int n_blocks;
+    CSC_Matrix *Jchild_CSC;
+    CSC_Matrix *J_CSC;
+    int *csc_to_csr_workspace;
+    expr *param_source;  /* if non-NULL, A/AT values come from this parameter */
+    int src_m, src_n;    /* original matrix dimensions */
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

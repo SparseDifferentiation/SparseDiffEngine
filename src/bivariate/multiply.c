@@ -17,6 +17,7 @@
  */
 #include "bivariate.h"
 #include "subexpr.h"
+#include "utils/CSR_sum.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>

@@ -133,3 +133,35 @@ const char *test_broadcast_scalar_to_matrix_jacobian(void)
     free_expr(bcast);
     return 0;
 }
+
+const char *test_double_broadcast(void)
+{
+    double x_vals[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    double b_vals[5] = {10.0, 20.0, 30.0, 40.0, 50.0};
+
+    /* form the expression x + b */
+    expr *x = new_variable(5, 1, 0, 5);
+    expr *b = new_constant(1, 5, 5, b_vals);
+    expr *bcast_x = new_broadcast(x, 5, 5);
+    expr *bcast_b = new_broadcast(b, 5, 5);
+    expr *sum = new_add(bcast_x, bcast_b);
+
+    sum->forward(sum, x_vals);
+    sum->jacobian_init(sum);
+    sum->eval_jacobian(sum);
+
+    /* All 6 elements depend on the single input variable */
+    // double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    // int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
+    // int expected_i[6] = {0, 0, 0, 0, 0, 0};
+    //
+    // mu_assert("broadcast scalar jacobian vals fail",
+    //          cmp_double_array(sum->jacobian->x, expected_x, 6));
+    // mu_assert("broadcast scalar jacobian rows fail",
+    //          cmp_int_array(sum ->jacobian->p, expected_p, 7));
+    // mu_assert("broadcast scalar jacobian cols fail",
+    //          cmp_int_array(bcast->jacobian->i, expected_i, 6));
+
+    free_expr(sum);
+    return 0;
+}

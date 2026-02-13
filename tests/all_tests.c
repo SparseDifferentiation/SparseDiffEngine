@@ -3,6 +3,7 @@
 #include "minunit.h"
 
 /* Include all test headers */
+#ifndef PROFILE_ONLY
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_hstack.h"
@@ -44,7 +45,9 @@
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
+#include "utils/test_csr_csc_conversion.h"
 #include "utils/test_csr_matrix.h"
+#include "utils/test_linalg_sparse_matmuls.h"
 #include "wsum_hess/elementwise/test_entr.h"
 #include "wsum_hess/elementwise/test_exp.h"
 #include "wsum_hess/elementwise/test_hyperbolic.h"
@@ -73,6 +76,11 @@
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
 #include "wsum_hess/test_transpose.h"
+#endif /* PROFILE_ONLY */
+
+#ifdef PROFILE_ONLY
+#include "profiling/profile_left_matmul.h"
+#endif /* PROFILE_ONLY */
 
 int main(void)
 {
@@ -80,6 +88,7 @@ int main(void)
 
     int tests_run = 0;
 
+#ifndef PROFILE_ONLY
     printf("--- Forward Pass Tests ---\n");
     mu_run_test(test_variable, tests_run);
     mu_run_test(test_constant, tests_run);
@@ -154,6 +163,7 @@ int main(void)
     mu_run_test(test_broadcast_row_jacobian, tests_run);
     mu_run_test(test_broadcast_col_jacobian, tests_run);
     mu_run_test(test_broadcast_scalar_to_matrix_jacobian, tests_run);
+    mu_run_test(test_double_broadcast, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_jacobian_trace_variable, tests_run);
@@ -240,6 +250,19 @@ int main(void)
     mu_run_test(test_kron_identity_csr, tests_run);
     mu_run_test(test_csr_to_csc1, tests_run);
     mu_run_test(test_csr_to_csc2, tests_run);
+    mu_run_test(test_csr_to_csc_split, tests_run);
+    mu_run_test(test_csc_to_csr_sparsity, tests_run);
+    mu_run_test(test_csc_to_csr_values, tests_run);
+    mu_run_test(test_csr_csc_csr_roundtrip, tests_run);
+    mu_run_test(test_block_left_multiply_single_block, tests_run);
+    mu_run_test(test_block_left_multiply_two_blocks, tests_run);
+    mu_run_test(test_block_left_multiply_zero_column, tests_run);
+    mu_run_test(test_csr_csc_matmul_alloc_basic, tests_run);
+    mu_run_test(test_csr_csc_matmul_alloc_sparse, tests_run);
+    mu_run_test(test_block_left_multiply_vec_single_block, tests_run);
+    mu_run_test(test_block_left_multiply_vec_two_blocks, tests_run);
+    mu_run_test(test_block_left_multiply_vec_sparse, tests_run);
+    mu_run_test(test_block_left_multiply_vec_three_blocks, tests_run);
     mu_run_test(test_csr_vecmat_values_sparse, tests_run);
     mu_run_test(test_sum_all_rows_csr, tests_run);
     mu_run_test(test_sum_block_of_rows_csr, tests_run);
@@ -261,6 +284,12 @@ int main(void)
     mu_run_test(test_param_scalar_mult_problem, tests_run);
     mu_run_test(test_param_vector_mult_problem, tests_run);
     mu_run_test(test_param_left_matmul_problem, tests_run);
+#endif /* PROFILE_ONLY */
+
+#ifdef PROFILE_ONLY
+    printf("\n--- Profiling Tests ---\n");
+    mu_run_test(profile_left_matmul, tests_run);
+#endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);
 
