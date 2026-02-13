@@ -108,6 +108,7 @@ typedef struct left_matmul_expr
 {
     expr base;
     CSR_Matrix *A;
+    CSR_Matrix *AT;
     CSR_Matrix *A_kron_T;
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;

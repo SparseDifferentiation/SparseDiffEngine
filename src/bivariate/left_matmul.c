@@ -73,12 +73,12 @@ static void free_type_data(expr *node)
 {
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
     free_csr_matrix(lin_node->A);
-    free_csr_matrix(lin_node->A_kron_T);
+    free_csr_matrix(lin_node->AT);
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
     free(lin_node->iwork2);
     lin_node->A = NULL;
-    lin_node->A_kron_T = NULL;
+    lin_node->AT = NULL;
     lin_node->Jchild_CSC = NULL;
     lin_node->J_CSC = NULL;
     lin_node->iwork2 = NULL;
@@ -128,15 +128,15 @@ static void wsum_hess_init(expr *node)
     memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
 
     /* work for computing A^T w*/
-    int dim = ((left_matmul_expr *) node)->A_kron_T->m;
+    int dim = ((left_matmul_expr *) node)->AT->m * node->d2;
     node->dwork = (double *) malloc(dim * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     /* compute A^T w*/
-    left_matmul_expr *lin_node = (left_matmul_expr *) node;
-    csr_matvec_wo_offset(lin_node->A_kron_T, w, node->dwork);
+    CSR_Matrix *AT = ((left_matmul_expr *) node)->AT;
+    block_left_multiply_vec(AT, w, node->dwork, node->d2);
 
     node->left->eval_wsum_hess(node->left, node->dwork);
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
@@ -149,18 +149,18 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
        to do A @ u where u is (n, ) which in C is actually (1, n). In that case
        the result of A @ u is (m, ), which is (1, m) according to broadcasting
        rules. We therefore check if this is the case. */
-    int d1, d2, n_blocks;
+    int d1, d2; //n_blocks;
     if (u->d1 == A->n)
     {
         d1 = A->m;
         d2 = u->d2;
-        n_blocks = u->d2;
+        //n_blocks = u->d2;
     }
     else if (u->d2 == A->n && u->d1 == 1)
     {
         d1 = 1;
         d2 = A->m;
-        n_blocks = 1;
+        //n_blocks = 1;
     }
     else
     {
@@ -177,16 +177,12 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     node->left = u;
     expr_retain(u);
 
-    /* store A */
+    /* store A and AT */
     lin_node->A = new_csr(A);
     lin_node->iwork2 = (int *) malloc((A->m * d2) * sizeof(int));
-
-    /* create kron(I, A)^T */
-    int alloc = MAX(A->n * n_blocks, node->n_vars);
+    int alloc = MAX(A->n, node->n_vars);
     node->iwork = (int *) malloc(alloc * sizeof(int));
-    CSR_Matrix *AT_temp = transpose(lin_node->A, node->iwork);
-    lin_node->A_kron_T = block_diag_repeat_csr(AT_temp, n_blocks);
-    free_csr_matrix(AT_temp);
-
+    lin_node->AT = transpose(lin_node->A, node->iwork);
+    
     return node;
 }
