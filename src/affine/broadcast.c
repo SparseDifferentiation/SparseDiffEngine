@@ -89,7 +89,7 @@ static void jacobian_init(expr *node)
     else
     {
         /* Scalar broadcast: (1, 1) -> (m, n) */
-        total_nnz = x->jacobian->nnz * node->d1 * node->d2;
+        total_nnz = x->jacobian->nnz * node->size;
     }
 
     node->jacobian = new_csr_matrix(node->size, node->n_vars, total_nnz);
@@ -99,10 +99,10 @@ static void jacobian_init(expr *node)
     // ---------------------------------------------------------------------
     CSR_Matrix *Jx = x->jacobian;
     CSR_Matrix *J = node->jacobian;
-    J->nnz = 0;
 
     if (bcast->type == BROADCAST_ROW)
     {
+        J->nnz = 0;
         for (int i = 0; i < node->d2; i++)
         {
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
@@ -117,11 +117,11 @@ static void jacobian_init(expr *node)
                 J->nnz += nnz_in_row;
             }
         }
+        assert(J->nnz == total_nnz);
         J->p[node->size] = total_nnz;
     }
     else if (bcast->type == BROADCAST_COL)
     {
-
         /* copy column indices */
         tile_int(J->i, Jx->i, Jx->nnz, node->d2);
 
@@ -129,10 +129,11 @@ static void jacobian_init(expr *node)
         int offset = 0;
         for (int i = 0; i < node->d2; i++)
         {
+            int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
             for (int j = 0; j < node->d1; j++)
             {
                 J->p[i * node->d1 + j] = offset;
-                offset += Jx->p[1] - Jx->p[0];
+                offset += nnz_in_row;
             }
         }
         assert(offset == total_nnz);
@@ -141,12 +142,12 @@ static void jacobian_init(expr *node)
     else
     {
         /* copy column indices */
-        tile_int(J->i, Jx->i, Jx->nnz, node->d1 * node->d2);
+        tile_int(J->i, Jx->i, Jx->nnz, node->size);
 
         /* set row pointers */
         int offset = 0;
         int nnz = Jx->p[1] - Jx->p[0];
-        for (int i = 0; i < node->d1 * node->d2; i++)
+        for (int i = 0; i < node->size; i++)
         {
             J->p[i] = offset;
             offset += nnz;
@@ -163,10 +164,10 @@ static void eval_jacobian(expr *node)
     broadcast_expr *bcast = (broadcast_expr *) node;
     CSR_Matrix *Jx = node->left->jacobian;
     CSR_Matrix *J = node->jacobian;
-    J->nnz = 0;
 
     if (bcast->type == BROADCAST_ROW)
     {
+        J->nnz = 0;
         for (int i = 0; i < node->d2; i++)
         {
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
@@ -180,7 +181,7 @@ static void eval_jacobian(expr *node)
     }
     else
     {
-        tile_double(J->x, Jx->x, Jx->nnz, node->d1 * node->d2);
+        tile_double(J->x, Jx->x, Jx->nnz, node->size);
     }
 }
 
@@ -268,9 +269,9 @@ expr *new_broadcast(expr *child, int d1, int d2)
     }
     else
     {
-        fprintf(
-            stderr,
-            "ERROR: inconsistency of broadcasting between DNLP-diff and CVXPY. \n");
+        fprintf(stderr,
+                "ERROR: inconsistency of broadcasting between SparseDifferentiation"
+                " and CVXPY. \n");
         exit(1);
     }
 

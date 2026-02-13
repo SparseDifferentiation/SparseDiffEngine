@@ -246,7 +246,7 @@ static inline void print_end_message(const Diff_engine_stats *stats)
 {
     printf("\n"
            "============================================================\n"
-           "              DNLP Differentiation Engine v%s\n"
+           "                SparseDifferentiation v%s\n"
            "  (c) D. Cederberg and W. Zhang, Stanford University, 2026\n"
            "============================================================\n",
            DIFF_ENGINE_VERSION);
