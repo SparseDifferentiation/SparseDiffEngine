@@ -87,7 +87,6 @@ static void free_type_data(expr *node)
 
 static void jacobian_init(expr *node)
 {
-    printf("Initializing jacobian for left_matmul... \n");
     expr *x = node->left;
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
@@ -99,7 +98,6 @@ static void jacobian_init(expr *node)
     lin_node->J_CSC =
         block_left_multiply_fill_sparsity(lin_node->A, lin_node->Jchild_CSC, lin_node->n_blocks);
     node->jacobian = csc_to_csr_fill_sparsity(lin_node->J_CSC, lin_node->iwork2);
-    printf("Done initializing jacobian for left_matmul. \n");
 }
 
 static void eval_jacobian(expr *node)
@@ -121,7 +119,6 @@ static void eval_jacobian(expr *node)
 
 static void wsum_hess_init(expr *node)
 {
-    printf("Initializing wsum_hess for left_matmul... \n");
     /* initialize child's hessian */
     expr *x = node->left;
     x->wsum_hess_init(x);
@@ -135,7 +132,6 @@ static void wsum_hess_init(expr *node)
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
     int dim = ((left_matmul_expr *) node)->A->n * n_blocks;
     node->dwork = (double *) malloc(dim * sizeof(double));
-    printf("Done initializing wsum_hess for left_matmul. \n");
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

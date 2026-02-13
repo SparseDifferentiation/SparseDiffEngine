@@ -162,6 +162,7 @@ int main(void)
     mu_run_test(test_broadcast_row_jacobian, tests_run);
     mu_run_test(test_broadcast_col_jacobian, tests_run);
     mu_run_test(test_broadcast_scalar_to_matrix_jacobian, tests_run);
+    mu_run_test(test_double_broadcast, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_jacobian_trace_variable, tests_run);
