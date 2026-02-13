@@ -5,6 +5,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 
 const char *test_diag_csr_mult()

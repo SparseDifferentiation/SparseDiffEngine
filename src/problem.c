@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "problem.h"
+#include "utils/CSR_sum.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdio.h>

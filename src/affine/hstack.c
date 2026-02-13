@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "utils/CSR_sum.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

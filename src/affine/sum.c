@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
 #include "utils/utils.h"

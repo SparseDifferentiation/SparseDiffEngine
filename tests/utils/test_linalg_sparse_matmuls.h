@@ -7,7 +7,7 @@
 #include "test_helpers.h"
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
-#include "utils/linalg.h"
+#include "utils/linalg_sparse_matmuls.h"
 
 /* Test block_left_multiply_fill_sparsity with simple case: single block */
 const char *test_block_left_multiply_single_block()
