@@ -46,9 +46,8 @@ CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p);
 void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset);
 void csr_matvec_wo_offset(const CSR_Matrix *A, const double *x, double *y);
 
-/* C = z^T A is assumed to have one row. C must have column indices pre-computed
-and transposed matrix AT must be provided. Fills in values of C only.
- */
+/* Computes values of the row matrix C = z^T A (column indices must have been
+   pre-computed) and transposed matrix AT must be provided) */
 void csr_matvec_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C);
 
 /* Insert value into CSR matrix A with just one row at col_idx. Assumes that A
