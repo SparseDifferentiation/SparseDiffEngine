@@ -17,9 +17,9 @@
  */
 #include "utils/CSC_Matrix.h"
 #include "utils/iVec.h"
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
 {

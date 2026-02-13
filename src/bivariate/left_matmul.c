@@ -77,12 +77,12 @@ static void free_type_data(expr *node)
     free_csr_matrix(lin_node->AT);
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
-    free(lin_node->iwork2);
+    free(lin_node->csc_to_csr_workspace);
     lin_node->A = NULL;
     lin_node->AT = NULL;
     lin_node->Jchild_CSC = NULL;
     lin_node->J_CSC = NULL;
-    lin_node->iwork2 = NULL;
+    lin_node->csc_to_csr_workspace = NULL;
 }
 
 static void jacobian_init(expr *node)
@@ -95,9 +95,10 @@ static void jacobian_init(expr *node)
     lin_node->Jchild_CSC = csr_to_csc_fill_sparsity(x->jacobian, node->iwork);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
-    lin_node->J_CSC =
-        block_left_multiply_fill_sparsity(lin_node->A, lin_node->Jchild_CSC, lin_node->n_blocks);
-    node->jacobian = csc_to_csr_fill_sparsity(lin_node->J_CSC, lin_node->iwork2);
+    lin_node->J_CSC = block_left_multiply_fill_sparsity(
+        lin_node->A, lin_node->Jchild_CSC, lin_node->n_blocks);
+    node->jacobian =
+        csc_to_csr_fill_sparsity(lin_node->J_CSC, lin_node->csc_to_csr_workspace);
 }
 
 static void eval_jacobian(expr *node)
@@ -114,7 +115,7 @@ static void eval_jacobian(expr *node)
 
     /* compute this node's jacobian: */
     block_left_multiply_fill_values(lnode->A, Jchild_CSC, J_CSC);
-    csc_to_csr_fill_values(J_CSC, node->jacobian, lnode->iwork2);
+    csc_to_csr_fill_values(J_CSC, node->jacobian, lnode->csc_to_csr_workspace);
 }
 
 static void wsum_hess_init(expr *node)
@@ -182,14 +183,15 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
 
     /* allocate workspace. iwork is used for transposing A (requiring size A->n)
        and for converting J_child csr to csc (requring size node->n_vars).
-       iwork2 is used for converting J_CSC to CSR (requring node->size) */
+       csc_to_csr_workspace is used for converting J_CSC to CSR (requring node->size)
+     */
     node->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
-    lin_node->iwork2 = (int *) malloc(node->size * sizeof(int));
+    lin_node->csc_to_csr_workspace = (int *) malloc(node->size * sizeof(int));
     lin_node->n_blocks = n_blocks;
 
     /* store A and AT */
     lin_node->A = new_csr(A);
     lin_node->AT = transpose(lin_node->A, node->iwork);
-    
+
     return node;
 }

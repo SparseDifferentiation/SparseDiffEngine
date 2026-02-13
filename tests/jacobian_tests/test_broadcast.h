@@ -151,15 +151,15 @@ const char *test_double_broadcast(void)
     sum->eval_jacobian(sum);
 
     /* All 6 elements depend on the single input variable */
-    //double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-    //int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
-    //int expected_i[6] = {0, 0, 0, 0, 0, 0};
-//
-    //mu_assert("broadcast scalar jacobian vals fail",
+    // double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    // int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
+    // int expected_i[6] = {0, 0, 0, 0, 0, 0};
+    //
+    // mu_assert("broadcast scalar jacobian vals fail",
     //          cmp_double_array(sum->jacobian->x, expected_x, 6));
-    //mu_assert("broadcast scalar jacobian rows fail",
+    // mu_assert("broadcast scalar jacobian rows fail",
     //          cmp_int_array(sum ->jacobian->p, expected_p, 7));
-    //mu_assert("broadcast scalar jacobian cols fail",
+    // mu_assert("broadcast scalar jacobian cols fail",
     //          cmp_int_array(bcast->jacobian->i, expected_i, 6));
 
     free_expr(sum);
