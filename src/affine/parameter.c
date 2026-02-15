@@ -16,10 +16,14 @@
  * limitations under the License.
  */
 
-/* Parameter leaf node: behaviorally identical to constant (zero derivatives
-   w.r.t. variables), but its values are updatable via problem_update_params.
-   This allows re-solving with different parameter values without rebuilding
-   the expression tree. */
+/* Unified parameter/constant leaf node.
+ *
+ * When param_id == PARAM_FIXED, this is a constant whose values are set at
+ * creation and never change. When param_id >= 0, values are updated via
+ * problem_update_params.
+ *
+ * In both cases the derivative behavior is identical: zero Jacobian and
+ * Hessian with respect to variables (always affine). */
 
 #include "affine.h"
 #include "subexpr.h"
@@ -28,26 +32,26 @@
 
 static void forward(expr *node, const double *u)
 {
-    /* Values are set by problem_update_params, not by forward pass */
+    /* Values are set at creation (constants) or by problem_update_params */
     (void) node;
     (void) u;
 }
 
 static void jacobian_init(expr *node)
 {
-    /* Parameter jacobian is all zeros: size x n_vars with 0 nonzeros */
+    /* Parameter/constant jacobian is all zeros: size x n_vars with 0 nonzeros */
     node->jacobian = new_csr_matrix(node->size, node->n_vars, 0);
 }
 
 static void eval_jacobian(expr *node)
 {
-    /* Parameter jacobian never changes */
+    /* Jacobian never changes */
     (void) node;
 }
 
 static void wsum_hess_init(expr *node)
 {
-    /* Parameter Hessian is all zeros */
+    /* Hessian is all zeros */
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
 }
 
@@ -63,12 +67,19 @@ static bool is_affine(const expr *node)
     return true;
 }
 
-expr *new_parameter(int d1, int d2, int param_id, int n_vars)
+expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *values)
 {
     parameter_expr *pnode = (parameter_expr *) calloc(1, sizeof(parameter_expr));
     init_expr(&pnode->base, d1, d2, n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, wsum_hess_init, eval_wsum_hess, NULL);
     pnode->param_id = param_id;
-    /* values will be populated by problem_update_params */
+
+    /* If values provided (fixed constant), copy them now */
+    if (values != NULL)
+    {
+        memcpy(pnode->base.value, values, pnode->base.size * sizeof(double));
+    }
+    /* Otherwise values will be populated by problem_update_params */
+
     return &pnode->base;
 }

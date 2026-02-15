@@ -1,10 +1,12 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "affine.h"
 #include "bivariate.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 /* Test: y = a ∘ log(x) where a is a constant vector */
@@ -20,7 +22,8 @@ const char *test_wsum_hess_const_vector_mult_log_vector()
 
     /* Create vector mult node: y = [2.0, 3.0, 4.0] ∘ log(x) */
     double a[3] = {2.0, 3.0, 4.0};
-    expr *y = new_const_vector_mult(a, log_node);
+    expr *a_node = new_parameter(3, 1, PARAM_FIXED, 3, a);
+    expr *y = new_vector_mult(a_node, log_node);
 
     /* Forward pass */
     y->forward(y, u_vals);
@@ -63,7 +66,8 @@ const char *test_wsum_hess_const_vector_mult_log_matrix()
 
     /* Create vector mult node: y = [1.5, 2.5, 3.5, 4.5] ∘ log(x) */
     double a[4] = {1.5, 2.5, 3.5, 4.5};
-    expr *y = new_const_vector_mult(a, log_node);
+    expr *a_node = new_parameter(2, 2, PARAM_FIXED, 4, a);
+    expr *y = new_vector_mult(a_node, log_node);
 
     /* Forward pass */
     y->forward(y, u_vals);

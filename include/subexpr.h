@@ -25,12 +25,17 @@
 /* Forward declaration */
 struct int_double_pair;
 
-/* Parameter node: like constant but with updatable values via problem_update_params
+/* param_id value for fixed (constant) parameters */
+#define PARAM_FIXED -1
+
+/* Parameter node: unified leaf for constants and updatable parameters.
+ * Constants use param_id == PARAM_FIXED and have values set at creation.
+ * Updatable parameters have param_id >= 0 and are updated via problem_update_params.
  */
 typedef struct parameter_expr
 {
     expr base;
-    int param_id; /* offset into global theta vector */
+    int param_id; /* offset into global theta vector, or PARAM_FIXED */
 } parameter_expr;
 
 /* Type-specific expression structures that "inherit" from expr */
@@ -136,20 +141,19 @@ typedef struct right_matmul_expr
     CSC_Matrix *CSC_work;
 } right_matmul_expr;
 
-/* Constant scalar multiplication: y = a * child where a is a constant double */
+/* Scalar multiplication: y = a * child where a comes from a parameter node */
 typedef struct const_scalar_mult_expr
 {
     expr base;
-    double a;
-    expr *param_source; /* if non-NULL, read a from param_source->value[0] */
+    expr *param_source; /* always set; read a from param_source->value[0] */
 } const_scalar_mult_expr;
 
-/* Constant vector elementwise multiplication: y = a \circ child for constant a */
+/* Vector elementwise multiplication: y = a \circ child where a comes from a
+ * parameter node */
 typedef struct const_vector_mult_expr
 {
     expr base;
-    double *a;          /* length equals node->size */
-    expr *param_source; /* if non-NULL, use param_source->value instead of a */
+    expr *param_source; /* always set; read a from param_source->value */
 } const_vector_mult_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */

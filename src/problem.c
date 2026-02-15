@@ -464,6 +464,7 @@ void problem_update_params(problem *prob, const double *theta)
     for (int i = 0; i < prob->n_param_nodes; i++)
     {
         parameter_expr *p = (parameter_expr *) prob->param_nodes[i];
+        if (p->param_id == PARAM_FIXED) continue;
         memcpy(p->base.value, theta + p->param_id, p->base.size * sizeof(double));
     }
     /* Force re-evaluation of affine Jacobians on next call */

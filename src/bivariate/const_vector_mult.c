@@ -21,13 +21,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Constant vector elementwise multiplication: y = a \circ child */
+/* Vector elementwise multiplication: y = a \circ child
+ * where a comes from a parameter node */
 
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
     const_vector_mult_expr *vn = (const_vector_mult_expr *) node;
-    const double *a = vn->param_source ? vn->param_source->value : vn->a;
+    const double *a = vn->param_source->value;
 
     /* child's forward pass */
     child->forward(child, u);
@@ -56,7 +57,7 @@ static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
     const_vector_mult_expr *vn = (const_vector_mult_expr *) node;
-    const double *a = vn->param_source ? vn->param_source->value : vn->a;
+    const double *a = vn->param_source->value;
 
     /* evaluate x */
     x->eval_jacobian(x);
@@ -90,7 +91,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
     const_vector_mult_expr *vn = (const_vector_mult_expr *) node;
-    const double *a = vn->param_source ? vn->param_source->value : vn->a;
+    const double *a = vn->param_source->value;
 
     /* scale weights w by a */
     for (int i = 0; i < node->size; i++)
@@ -104,19 +105,22 @@ static void eval_wsum_hess(expr *node, const double *w)
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 
-static void free_type_data(expr *node)
-{
-    const_vector_mult_expr *vnode = (const_vector_mult_expr *) node;
-    free(vnode->a);
-}
-
 static bool is_affine(const expr *node)
 {
     /* Affine iff the child is affine */
     return node->left->is_affine(node->left);
 }
 
-expr *new_const_vector_mult(const double *a, expr *child)
+static void free_type_data(expr *node)
+{
+    const_vector_mult_expr *vnode = (const_vector_mult_expr *) node;
+    if (vnode->param_source)
+    {
+        free_expr(vnode->param_source);
+    }
+}
+
+expr *new_vector_mult(expr *param_node, expr *child)
 {
     const_vector_mult_expr *vnode =
         (const_vector_mult_expr *) calloc(1, sizeof(const_vector_mult_expr));
@@ -128,40 +132,6 @@ expr *new_const_vector_mult(const double *a, expr *child)
     node->left = child;
     expr_retain(child);
 
-    /* copy a vector */
-    vnode->a = (double *) malloc(child->size * sizeof(double));
-    memcpy(vnode->a, a, child->size * sizeof(double));
-    vnode->param_source = NULL;
-
-    return node;
-}
-
-static void free_param_type_data(expr *node)
-{
-    const_vector_mult_expr *vnode = (const_vector_mult_expr *) node;
-    /* a is not owned when param_source is set */
-    free(vnode->a);
-    if (vnode->param_source)
-    {
-        free_expr(vnode->param_source);
-    }
-}
-
-expr *new_param_vector_mult(expr *param_node, expr *child)
-{
-    const_vector_mult_expr *vnode =
-        (const_vector_mult_expr *) calloc(1, sizeof(const_vector_mult_expr));
-    expr *node = &vnode->base;
-
-    init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess,
-              free_param_type_data);
-    node->left = child;
-    expr_retain(child);
-
-    /* Still allocate a copy for initial values (used before first update_params) */
-    vnode->a = (double *) malloc(child->size * sizeof(double));
-    memcpy(vnode->a, param_node->value, child->size * sizeof(double));
     vnode->param_source = param_node;
     expr_retain(param_node);
 

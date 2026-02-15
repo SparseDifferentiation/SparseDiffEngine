@@ -33,8 +33,8 @@ const char *test_param_scalar_mult_problem(void)
     /* Build tree: sum(a * log(x)) */
     expr *x = new_variable(2, 1, 0, n_vars);
     expr *log_x = new_log(x);
-    expr *a_param = new_parameter(1, 1, 0, n_vars);
-    expr *scaled = new_param_scalar_mult(a_param, log_x);
+    expr *a_param = new_parameter(1, 1, 0, n_vars, NULL);
+    expr *scaled = new_scalar_mult(a_param, log_x);
     expr *objective = new_sum(scaled, -1);
 
     /* Create problem (no constraints) */
@@ -103,8 +103,8 @@ const char *test_param_vector_mult_problem(void)
 
     /* Constraint: p ∘ x */
     expr *x_con = new_variable(2, 1, 0, n_vars);
-    expr *p_param = new_parameter(2, 1, 0, n_vars);
-    expr *constraint = new_param_vector_mult(p_param, x_con);
+    expr *p_param = new_parameter(2, 1, 0, n_vars, NULL);
+    expr *constraint = new_vector_mult(p_param, x_con);
 
     expr *constraints[1] = {constraint};
 
@@ -184,8 +184,8 @@ const char *test_param_left_matmul_problem(void)
 
     /* Constraint: A @ x */
     expr *x_con = new_variable(2, 1, 0, n_vars);
-    expr *A_param = new_parameter(2, 2, 0, n_vars);
-    expr *constraint = new_left_param_matmul(A_param, x_con);
+    expr *A_param = new_parameter(2, 2, 0, n_vars, NULL);
+    expr *constraint = new_left_matmul(A_param, x_con);
 
     expr *constraints[1] = {constraint};
 
