@@ -8,30 +8,27 @@
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 #include "utils/Timer.h"
 
 const char *profile_left_matmul()
 {
-    /* A @ X where A is 50 x 50 dense stored in CSR and X is 50 x 50 variable */
+    /* A @ X where A is 100 x 100 dense (all ones) and X is 100 x 100 variable */
     int n = 100;
     expr *X = new_variable(n, n, 0, n * n);
-    CSR_Matrix *A = new_csr_matrix(n, n, n * n);
+
+    /* Create n x n parameter of all ones (column-major, but all ones so order
+     * doesn't matter) */
+    double *A_vals = (double *) malloc(n * n * sizeof(double));
     for (int i = 0; i < n * n; i++)
     {
-        A->x[i] = 1.0; /* dense matrix of all ones */
+        A_vals[i] = 1.0;
     }
-    for (int row = 0; row < n; row++)
-    {
-        A->p[row] = row * n;
-        for (int col = 0; col < n; col++)
-        {
-            A->i[row * n + col] = col;
-        }
-    }
-    A->p[n] = n * n;
+    expr *A_param = new_parameter(n, n, PARAM_FIXED, n, A_vals);
+    free(A_vals);
 
-    expr *AX = new_left_matmul(X, A);
+    expr *AX = new_left_matmul(A_param, X);
 
     double *x_vals = (double *) malloc(n * n * sizeof(double));
     for (int i = 0; i < n * n; i++)
@@ -56,7 +53,6 @@ const char *profile_left_matmul()
            GET_ELAPSED_SECONDS(timer));
 
     free(x_vals);
-    free_csr_matrix(A);
     free_expr(AX);
     return 0;
 }

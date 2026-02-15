@@ -5,6 +5,7 @@
 #include "affine.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_broadcast_row_jacobian()
@@ -141,7 +142,7 @@ const char *test_double_broadcast(void)
 
     /* form the expression x + b */
     expr *x = new_variable(5, 1, 0, 5);
-    expr *b = new_constant(1, 5, 5, b_vals);
+    expr *b = new_parameter(1, 5, PARAM_FIXED, 5, b_vals);
     expr *bcast_x = new_broadcast(x, 5, 5);
     expr *bcast_b = new_broadcast(b, 5, 5);
     expr *sum = new_add(bcast_x, bcast_b);

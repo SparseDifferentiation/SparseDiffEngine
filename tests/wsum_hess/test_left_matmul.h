@@ -8,6 +8,7 @@
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_wsum_hess_left_matmul()
@@ -52,17 +53,12 @@ const char *test_wsum_hess_left_matmul()
 
     expr *x = new_variable(3, 1, 0, 3);
 
-    /* Create sparse matrix A in CSR format */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
-    int A_p[5] = {0, 2, 4, 6, 7};
-    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
-    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
-    memcpy(A->p, A_p, 5 * sizeof(int));
-    memcpy(A->i, A_i, 7 * sizeof(int));
-    memcpy(A->x, A_x, 7 * sizeof(double));
+    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] in column-major order */
+    double A_vals[12] = {1.0, 3.0, 5.0, 7.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 6.0, 0.0};
+    expr *A_param = new_parameter(4, 3, PARAM_FIXED, 3, A_vals);
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(log_x, A);
+    expr *A_log_x = new_left_matmul(A_param, log_x);
 
     A_log_x->forward(A_log_x, x_vals);
     A_log_x->jacobian_init(A_log_x);
@@ -84,7 +80,6 @@ const char *test_wsum_hess_left_matmul()
     mu_assert("cols incorrect", cmp_int_array(A_log_x->wsum_hess->i, expected_i, 3));
     mu_assert("rows incorrect", cmp_int_array(A_log_x->wsum_hess->p, expected_p, 4));
 
-    free_csr_matrix(A);
     free_expr(A_log_x);
     return 0;
 }
@@ -150,18 +145,13 @@ const char *test_wsum_hess_left_matmul_composite()
     memcpy(B->i, B_i, 9 * sizeof(int));
     memcpy(B->x, B_x, 9 * sizeof(double));
 
-    /* Create A matrix */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
-    int A_p[5] = {0, 2, 4, 6, 7};
-    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
-    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
-    memcpy(A->p, A_p, 5 * sizeof(int));
-    memcpy(A->i, A_i, 7 * sizeof(int));
-    memcpy(A->x, A_x, 7 * sizeof(double));
+    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] in column-major order */
+    double A_vals[12] = {1.0, 3.0, 5.0, 7.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 6.0, 0.0};
+    expr *A_param = new_parameter(4, 3, PARAM_FIXED, 3, A_vals);
 
     expr *Bx = new_linear(x, B, NULL);
     expr *log_Bx = new_log(Bx);
-    expr *A_log_Bx = new_left_matmul(log_Bx, A);
+    expr *A_log_Bx = new_left_matmul(A_param, log_Bx);
 
     A_log_Bx->forward(A_log_Bx, x_vals);
     A_log_Bx->jacobian_init(A_log_Bx);
@@ -186,7 +176,6 @@ const char *test_wsum_hess_left_matmul_composite()
     mu_assert("rows incorrect",
               cmp_int_array(A_log_Bx->wsum_hess->p, expected_p, 4));
 
-    free_csr_matrix(A);
     free_csr_matrix(B);
     free_expr(A_log_Bx);
     return 0;
@@ -223,17 +212,12 @@ const char *test_wsum_hess_left_matmul_matrix()
 
     expr *x = new_variable(3, 2, 0, 6);
 
-    /* Create sparse matrix A in CSR format */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
-    int A_p[5] = {0, 2, 4, 6, 7};
-    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
-    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
-    memcpy(A->p, A_p, 5 * sizeof(int));
-    memcpy(A->i, A_i, 7 * sizeof(int));
-    memcpy(A->x, A_x, 7 * sizeof(double));
+    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] in column-major order */
+    double A_vals[12] = {1.0, 3.0, 5.0, 7.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 6.0, 0.0};
+    expr *A_param = new_parameter(4, 3, PARAM_FIXED, 6, A_vals);
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(log_x, A);
+    expr *A_log_x = new_left_matmul(A_param, log_x);
 
     A_log_x->forward(A_log_x, x_vals);
     A_log_x->jacobian_init(A_log_x);
@@ -257,7 +241,6 @@ const char *test_wsum_hess_left_matmul_matrix()
     mu_assert("cols incorrect", cmp_int_array(A_log_x->wsum_hess->i, expected_i, 6));
     mu_assert("rows incorrect", cmp_int_array(A_log_x->wsum_hess->p, expected_p, 7));
 
-    free_csr_matrix(A);
     free_expr(A_log_x);
     return 0;
 }

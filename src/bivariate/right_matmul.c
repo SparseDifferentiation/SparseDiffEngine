@@ -33,10 +33,20 @@ expr *new_right_matmul(expr *u, const CSR_Matrix *A)
     int *work_transpose = (int *) malloc(A->n * sizeof(int));
     CSR_Matrix *AT = transpose(A, work_transpose);
 
-    expr *u_transpose = new_transpose(u);
-    expr *left_matmul = new_left_matmul(u_transpose, AT);
-    expr *node = new_transpose(left_matmul);
+    /* Convert AT (CSR) to dense column-major array for parameter node */
+    int m = AT->m; /* rows of AT = cols of A */
+    int n = AT->n; /* cols of AT = rows of A */
+    double *col_major = (double *) calloc(m * n, sizeof(double));
+    for (int row = 0; row < m; row++)
+        for (int k = AT->p[row]; k < AT->p[row + 1]; k++)
+            col_major[row + AT->i[k] * m] = AT->x[k];
 
+    expr *u_transpose = new_transpose(u);
+    expr *param_node = new_parameter(m, n, PARAM_FIXED, u->n_vars, col_major);
+    expr *left_matmul_node = new_left_matmul(param_node, u_transpose);
+    expr *node = new_transpose(left_matmul_node);
+
+    free(col_major);
     free_csr_matrix(AT);
     free(work_transpose);
     return node;

@@ -174,7 +174,6 @@ static void free_type_data(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     free_csr_matrix(qnode->Q);
-    qnode->Q = NULL;
 }
 
 static bool is_affine(const expr *node)

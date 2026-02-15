@@ -6,6 +6,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "other.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_forward_prod_axis_zero()
@@ -16,7 +17,7 @@ const char *test_forward_prod_axis_zero()
        Stored as: [1, 2, 3, 4, 5, 6]
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    expr *const_node = new_constant(2, 3, 0, values);
+    expr *const_node = new_parameter(2, 3, PARAM_FIXED, 0, values);
     expr *prod_node = new_prod_axis_zero(const_node);
     prod_node->forward(prod_node, NULL);
 

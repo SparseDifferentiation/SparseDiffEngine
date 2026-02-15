@@ -6,6 +6,7 @@
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_composite()
@@ -16,7 +17,7 @@ const char *test_composite()
     /* Build tree: log(exp(x) + c) */
     expr *var = new_variable(2, 1, 0, 2);
     expr *exp_node = new_exp(var);
-    expr *const_node = new_constant(2, 1, 0, c);
+    expr *const_node = new_parameter(2, 1, PARAM_FIXED, 0, c);
     expr *sum = new_add(exp_node, const_node);
     expr *log_node = new_log(sum);
 

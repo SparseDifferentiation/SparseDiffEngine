@@ -62,11 +62,7 @@ static void free_type_data(expr *node)
     if (lin_node->b != NULL)
     {
         free(lin_node->b);
-        lin_node->b = NULL;
     }
-
-    lin_node->A_csr = NULL;
-    lin_node->A_csc = NULL;
 }
 
 static void jacobian_init(expr *node)
