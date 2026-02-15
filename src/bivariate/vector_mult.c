@@ -27,7 +27,7 @@
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
-    const_vector_mult_expr *vn = (const_vector_mult_expr *) node;
+    vector_mult_expr *vn = (vector_mult_expr *) node;
     const double *a = vn->param_source->value;
 
     /* child's forward pass */
@@ -56,7 +56,7 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
-    const_vector_mult_expr *vn = (const_vector_mult_expr *) node;
+    vector_mult_expr *vn = (vector_mult_expr *) node;
     const double *a = vn->param_source->value;
 
     /* evaluate x */
@@ -90,7 +90,7 @@ static void wsum_hess_init(expr *node)
 static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
-    const_vector_mult_expr *vn = (const_vector_mult_expr *) node;
+    vector_mult_expr *vn = (vector_mult_expr *) node;
     const double *a = vn->param_source->value;
 
     /* scale weights w by a */
@@ -113,17 +113,14 @@ static bool is_affine(const expr *node)
 
 static void free_type_data(expr *node)
 {
-    const_vector_mult_expr *vnode = (const_vector_mult_expr *) node;
-    if (vnode->param_source)
-    {
-        free_expr(vnode->param_source);
-    }
+    vector_mult_expr *vnode = (vector_mult_expr *) node;
+    free_expr(vnode->param_source);
 }
 
 expr *new_vector_mult(expr *param_node, expr *child)
 {
-    const_vector_mult_expr *vnode =
-        (const_vector_mult_expr *) calloc(1, sizeof(const_vector_mult_expr));
+    vector_mult_expr *vnode =
+        (vector_mult_expr *) calloc(1, sizeof(vector_mult_expr));
     expr *node = &vnode->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,

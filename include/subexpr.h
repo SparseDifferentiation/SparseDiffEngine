@@ -126,7 +126,7 @@ typedef struct left_matmul_expr
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *csc_to_csr_workspace;
-    expr *param_source; /* if non-NULL, A/AT values come from this parameter */
+    expr *param_source; /* parameter node; A/AT values are refreshed from this */
     int src_m, src_n;   /* original matrix dimensions */
 } left_matmul_expr;
 
@@ -142,19 +142,19 @@ typedef struct right_matmul_expr
 } right_matmul_expr;
 
 /* Scalar multiplication: y = a * child where a comes from a parameter node */
-typedef struct const_scalar_mult_expr
+typedef struct scalar_mult_expr
 {
     expr base;
     expr *param_source; /* always set; read a from param_source->value[0] */
-} const_scalar_mult_expr;
+} scalar_mult_expr;
 
 /* Vector elementwise multiplication: y = a \circ child where a comes from a
  * parameter node */
-typedef struct const_vector_mult_expr
+typedef struct vector_mult_expr
 {
     expr base;
     expr *param_source; /* always set; read a from param_source->value */
-} const_vector_mult_expr;
+} vector_mult_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr

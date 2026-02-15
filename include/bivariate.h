@@ -33,7 +33,7 @@ expr *new_matmul(expr *x, expr *y);
 /* Left matrix multiplication: A @ f(x) where A comes from a parameter node */
 expr *new_left_matmul(expr *param_node, expr *child);
 
-/* Right matrix multiplication: f(x) @ A where A is a constant matrix */
+/* Right matrix multiplication: f(x) @ A where A is a fixed parameter matrix */
 expr *new_right_matmul(expr *u, const CSR_Matrix *A);
 
 /* Scalar multiplication: a * f(x) where a comes from a parameter node */

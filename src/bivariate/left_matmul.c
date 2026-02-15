@@ -95,13 +95,7 @@ static void free_type_data(expr *node)
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
     free(lin_node->csc_to_csr_workspace);
-    if (lin_node->param_source) free_expr(lin_node->param_source);
-    lin_node->A = NULL;
-    lin_node->AT = NULL;
-    lin_node->Jchild_CSC = NULL;
-    lin_node->J_CSC = NULL;
-    lin_node->csc_to_csr_workspace = NULL;
-    lin_node->param_source = NULL;
+    free_expr(lin_node->param_source);
 }
 
 static void jacobian_init(expr *node)

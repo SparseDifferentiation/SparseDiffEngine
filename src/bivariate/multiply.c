@@ -27,7 +27,7 @@
 // ------------------------------------------------------------------------------
 // Implementation of elementwise multiplication when both arguments are vectors.
 // If one argument is a scalar variable, the broadcasting should be represented
-// as a linear operator child node? How to treat if one variable is a constant?
+// as a linear operator child node.
 // ------------------------------------------------------------------------------
 static void forward(expr *node, const double *u)
 {

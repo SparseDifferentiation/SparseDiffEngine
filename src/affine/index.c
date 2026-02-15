@@ -154,11 +154,7 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     index_expr *idx = (index_expr *) node;
-    if (idx->indices)
-    {
-        free(idx->indices);
-        idx->indices = NULL;
-    }
+    free(idx->indices);
 }
 
 expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)

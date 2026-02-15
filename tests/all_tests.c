@@ -11,7 +11,7 @@
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
-#include "forward_pass/affine/test_variable_constant.h"
+#include "forward_pass/affine/test_variable_parameter.h"
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
@@ -20,8 +20,8 @@
 #include "forward_pass/test_prod_axis_zero.h"
 #include "jacobian_tests/test_broadcast.h"
 #include "jacobian_tests/test_composite.h"
-#include "jacobian_tests/test_const_scalar_mult.h"
-#include "jacobian_tests/test_const_vector_mult.h"
+#include "jacobian_tests/test_scalar_mult.h"
+#include "jacobian_tests/test_vector_mult.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
 #include "jacobian_tests/test_index.h"
@@ -57,8 +57,8 @@
 #include "wsum_hess/elementwise/test_trig.h"
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_broadcast.h"
-#include "wsum_hess/test_const_scalar_mult.h"
-#include "wsum_hess/test_const_vector_mult.h"
+#include "wsum_hess/test_scalar_mult.h"
+#include "wsum_hess/test_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
@@ -91,7 +91,7 @@ int main(void)
 #ifndef PROFILE_ONLY
     printf("--- Forward Pass Tests ---\n");
     mu_run_test(test_variable, tests_run);
-    mu_run_test(test_constant, tests_run);
+    mu_run_test(test_fixed_parameter, tests_run);
     mu_run_test(test_addition, tests_run);
     mu_run_test(test_linear_op, tests_run);
     mu_run_test(test_neg_forward, tests_run);
