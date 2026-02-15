@@ -24,7 +24,8 @@ const char *test_fixed_parameter()
     double u[2] = {0.0, 0.0};
     expr *const_node = new_parameter(2, 1, PARAM_FIXED, 0, c);
     const_node->forward(const_node, u);
-    mu_assert("Fixed parameter test failed", cmp_double_array(const_node->value, c, 2));
+    mu_assert("Fixed parameter test failed",
+              cmp_double_array(const_node->value, c, 2));
     free_expr(const_node);
     return 0;
 }
