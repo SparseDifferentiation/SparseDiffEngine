@@ -57,17 +57,11 @@ static void refresh_param_values(left_matmul_expr *lin_node)
 {
     if (!lin_node->param_source) return;
 
-    const double *src = lin_node->param_source->value;
-    int m = lin_node->A->m;
-    CSR_Matrix *A = lin_node->A;
-
-    /* Fill A values from column-major source, following existing sparsity pattern */
-    for (int row = 0; row < m; row++)
-        for (int k = A->p[row]; k < A->p[row + 1]; k++)
-            A->x[k] = src[row + A->i[k] * m];
+    memcpy(lin_node->A->x, lin_node->param_source->value,
+           lin_node->A->nnz * sizeof(double));
 
     /* Recompute AT values from updated A */
-    AT_fill_values(A, lin_node->AT, lin_node->base.iwork);
+    AT_fill_values(lin_node->A, lin_node->AT, lin_node->base.iwork);
 }
 
 static void forward(expr *node, const double *u)

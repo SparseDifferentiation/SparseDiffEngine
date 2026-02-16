@@ -164,14 +164,14 @@ const char *test_param_vector_mult_problem(void)
  * Test 3: left_param_matmul in constraint
  *
  * Problem: minimize sum(x), subject to A @ x, x size 2, A is 2x2
- *   A is a 2x2 matrix parameter (param_id=0, size=4, column-major)
- *   A = [[1,2],[3,4]] → column-major theta = [1,3,2,4]
+ *   A is a 2x2 matrix parameter (param_id=0, size=4, CSR data order)
+ *   A = [[1,2],[3,4]] → CSR data order theta = [1,2,3,4]
  *
  * At x=[1,2]:
  *   constraint_values = [1*1+2*2, 3*1+4*2] = [5, 11]
  *   jacobian = [[1,2],[3,4]]
  *
- * After update A = [[5,6],[7,8]] → theta = [5,7,6,8]:
+ * After update A = [[5,6],[7,8]] → theta = [5,6,7,8]:
  *   constraint_values = [5*1+6*2, 7*1+8*2] = [17, 23]
  *   jacobian = [[5,6],[7,8]]
  */
@@ -208,8 +208,8 @@ const char *test_param_left_matmul_problem(void)
     problem_register_params(prob, param_nodes, 1);
     problem_init_derivatives(prob);
 
-    /* Set A = [[1,2],[3,4]], column-major: [1,3,2,4] */
-    double theta[4] = {1.0, 3.0, 2.0, 4.0};
+    /* Set A = [[1,2],[3,4]], CSR data order: [1,2,3,4] */
+    double theta[4] = {1.0, 2.0, 3.0, 4.0};
     problem_update_params(prob, theta);
 
     double u[2] = {1.0, 2.0};
@@ -235,8 +235,8 @@ const char *test_param_left_matmul_problem(void)
     double expected_x[4] = {1.0, 2.0, 3.0, 4.0};
     mu_assert("jac->x wrong (A1)", cmp_double_array(jac->x, expected_x, 4));
 
-    /* Update A = [[5,6],[7,8]], column-major: [5,7,6,8] */
-    double theta2[4] = {5.0, 7.0, 6.0, 8.0};
+    /* Update A = [[5,6],[7,8]], CSR data order: [5,6,7,8] */
+    double theta2[4] = {5.0, 6.0, 7.0, 8.0};
     problem_update_params(prob, theta2);
 
     problem_constraint_forward(prob, u);
