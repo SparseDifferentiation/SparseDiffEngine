@@ -43,7 +43,7 @@ expr *new_right_matmul(expr *u, const CSR_Matrix *A)
 
     expr *u_transpose = new_transpose(u);
     expr *param_node = new_parameter(m, n, PARAM_FIXED, u->n_vars, col_major);
-    expr *left_matmul_node = new_left_matmul(param_node, u_transpose);
+    expr *left_matmul_node = new_left_matmul(param_node, u_transpose, AT);
     expr *node = new_transpose(left_matmul_node);
 
     free(col_major);

@@ -127,7 +127,6 @@ typedef struct left_matmul_expr
     CSC_Matrix *J_CSC;
     int *csc_to_csr_workspace;
     expr *param_source; /* parameter node; A/AT values are refreshed from this */
-    int src_m, src_n;   /* original matrix dimensions */
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

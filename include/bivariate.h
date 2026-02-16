@@ -31,7 +31,7 @@ expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
 expr *new_matmul(expr *x, expr *y);
 
 /* Left matrix multiplication: A @ f(x) where A comes from a parameter node */
-expr *new_left_matmul(expr *param_node, expr *child);
+expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A);
 
 /* Right matrix multiplication: f(x) @ A where A is a fixed parameter matrix */
 expr *new_right_matmul(expr *u, const CSR_Matrix *A);

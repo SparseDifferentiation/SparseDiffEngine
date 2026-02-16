@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "affine.h"
 #include "bivariate.h"
@@ -185,7 +186,18 @@ const char *test_param_left_matmul_problem(void)
     /* Constraint: A @ x */
     expr *x_con = new_variable(2, 1, 0, n_vars);
     expr *A_param = new_parameter(2, 2, 0, n_vars, NULL);
-    expr *constraint = new_left_matmul(A_param, x_con);
+
+    /* Dense 2x2 CSR with placeholder zeros (values refreshed from A_param) */
+    CSR_Matrix *A = new_csr_matrix(2, 2, 4);
+    int Ap[3] = {0, 2, 4};
+    int Ai[4] = {0, 1, 0, 1};
+    double Ax[4] = {0.0, 0.0, 0.0, 0.0};
+    memcpy(A->p, Ap, 3 * sizeof(int));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->x, Ax, 4 * sizeof(double));
+
+    expr *constraint = new_left_matmul(A_param, x_con, A);
+    free_csr_matrix(A);
 
     expr *constraints[1] = {constraint};
 

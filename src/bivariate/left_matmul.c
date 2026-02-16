@@ -51,11 +51,14 @@
 #include <string.h>
 
 /* Refresh A and AT values from param_source.
-   A is the small m x n matrix (NOT block-diagonal). */
+   A is the small m x n matrix (NOT block-diagonal).
+   No-op when param_source is NULL (fixed constant — values already in A). */
 static void refresh_param_values(left_matmul_expr *lin_node)
 {
+    if (!lin_node->param_source) return;
+
     const double *src = lin_node->param_source->value;
-    int m = lin_node->src_m;
+    int m = lin_node->A->m;
     CSR_Matrix *A = lin_node->A;
 
     /* Fill A values from column-major source, following existing sparsity pattern */
@@ -163,10 +166,10 @@ static void eval_wsum_hess(expr *node, const double *w)
            node->wsum_hess->nnz * sizeof(double));
 }
 
-expr *new_left_matmul(expr *param_node, expr *child)
+expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
 {
-    int A_m = param_node->d1;
-    int A_n = param_node->d2;
+    int A_m = A->m;
+    int A_n = A->n;
 
     /* Dimension logic: handle numpy broadcasting (1, n) as (n, ) */
     int d1, d2, n_blocks;
@@ -188,40 +191,6 @@ expr *new_left_matmul(expr *param_node, expr *child)
         exit(1);
     }
 
-    /* Build CSR from param_node's column-major values.
-     * For fixed parameters (PARAM_FIXED), skip zeros to preserve sparsity.
-     * For updatable parameters, build dense CSR since sparsity may change. */
-    parameter_expr *pnode = (parameter_expr *) param_node;
-    int sparse = (pnode->param_id == PARAM_FIXED);
-
-    int nnz = 0;
-    if (sparse)
-    {
-        for (int row = 0; row < A_m; row++)
-            for (int col = 0; col < A_n; col++)
-                if (param_node->value[row + col * A_m] != 0.0) nnz++;
-    }
-    else
-    {
-        nnz = A_m * A_n;
-    }
-
-    CSR_Matrix *A = new_csr_matrix(A_m, A_n, nnz);
-    int idx = 0;
-    for (int row = 0; row < A_m; row++)
-    {
-        A->p[row] = idx;
-        for (int col = 0; col < A_n; col++)
-        {
-            double val = param_node->value[row + col * A_m];
-            if (sparse && val == 0.0) continue;
-            A->i[idx] = col;
-            A->x[idx] = val;
-            idx++;
-        }
-    }
-    A->p[A_m] = idx;
-
     /* Allocate the type-specific struct */
     left_matmul_expr *lin_node =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
@@ -235,13 +204,11 @@ expr *new_left_matmul(expr *param_node, expr *child)
     node->iwork = (int *) malloc(MAX(A_n, node->n_vars) * sizeof(int));
     lin_node->csc_to_csr_workspace = (int *) malloc(node->size * sizeof(int));
     lin_node->n_blocks = n_blocks;
-    lin_node->A = A; /* transfer ownership */
-    lin_node->AT = transpose(A, node->iwork);
+    lin_node->A = new_csr(A);
+    lin_node->AT = transpose(lin_node->A, node->iwork);
 
     lin_node->param_source = param_node;
-    lin_node->src_m = A_m;
-    lin_node->src_n = A_n;
-    expr_retain(param_node);
+    if (param_node) expr_retain(param_node);
 
     return node;
 }

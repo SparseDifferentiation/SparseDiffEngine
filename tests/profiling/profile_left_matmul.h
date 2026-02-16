@@ -18,17 +18,26 @@ const char *profile_left_matmul()
     int n = 100;
     expr *X = new_variable(n, n, 0, n * n);
 
-    /* Create n x n parameter of all ones (column-major, but all ones so order
-     * doesn't matter) */
-    double *A_vals = (double *) malloc(n * n * sizeof(double));
-    for (int i = 0; i < n * n; i++)
+    /* Build dense n x n CSR (all ones) */
+    int nnz = n * n;
+    CSR_Matrix *A = new_csr_matrix(n, n, nnz);
     {
-        A_vals[i] = 1.0;
+        int idx = 0;
+        for (int row = 0; row < n; row++)
+        {
+            A->p[row] = idx;
+            for (int col = 0; col < n; col++)
+            {
+                A->i[idx] = col;
+                A->x[idx] = 1.0;
+                idx++;
+            }
+        }
+        A->p[n] = idx;
     }
-    expr *A_param = new_parameter(n, n, PARAM_FIXED, n, A_vals);
-    free(A_vals);
 
-    expr *AX = new_left_matmul(A_param, X);
+    expr *AX = new_left_matmul(NULL, X, A);
+    free_csr_matrix(A);
 
     double *x_vals = (double *) malloc(n * n * sizeof(double));
     for (int i = 0; i < n * n; i++)

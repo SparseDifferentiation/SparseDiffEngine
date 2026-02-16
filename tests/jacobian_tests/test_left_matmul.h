@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "bivariate.h"
 #include "elementwise_univariate.h"
@@ -31,12 +32,18 @@ const char *test_jacobian_left_matmul_log()
     double x_vals[3] = {1.0, 2.0, 3.0};
     expr *x = new_variable(3, 1, 0, 3);
 
-    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] in column-major order */
-    double A_vals[12] = {1.0, 3.0, 5.0, 7.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 6.0, 0.0};
-    expr *A_param = new_parameter(4, 3, PARAM_FIXED, 3, A_vals);
+    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] */
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    int A_p[5] = {0, 2, 4, 6, 7};
+    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
+    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    memcpy(A->p, A_p, 5 * sizeof(int));
+    memcpy(A->i, A_i, 7 * sizeof(int));
+    memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(A_param, log_x);
+    expr *A_log_x = new_left_matmul(NULL, log_x, A);
+    free_csr_matrix(A);
 
     A_log_x->forward(A_log_x, x_vals);
     A_log_x->jacobian_init(A_log_x);
@@ -69,12 +76,18 @@ const char *test_jacobian_left_matmul_log_matrix()
     double x_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 2, 0, 6);
 
-    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] in column-major order */
-    double A_vals[12] = {1.0, 3.0, 5.0, 7.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 6.0, 0.0};
-    expr *A_param = new_parameter(4, 3, PARAM_FIXED, 6, A_vals);
+    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] */
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    int A_p[5] = {0, 2, 4, 6, 7};
+    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
+    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    memcpy(A->p, A_p, 5 * sizeof(int));
+    memcpy(A->i, A_i, 7 * sizeof(int));
+    memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(A_param, log_x);
+    expr *A_log_x = new_left_matmul(NULL, log_x, A);
+    free_csr_matrix(A);
 
     A_log_x->forward(A_log_x, x_vals);
     A_log_x->jacobian_init(A_log_x);
@@ -134,13 +147,19 @@ const char *test_jacobian_left_matmul_log_composite()
     memcpy(B->i, B_i, 9 * sizeof(int));
     memcpy(B->x, B_x, 9 * sizeof(double));
 
-    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] in column-major order */
-    double A_vals[12] = {1.0, 3.0, 5.0, 7.0, 0.0, 0.0, 0.0, 0.0, 2.0, 4.0, 6.0, 0.0};
-    expr *A_param = new_parameter(4, 3, PARAM_FIXED, 3, A_vals);
+    /* A is 4x3: [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0] */
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    int A_p[5] = {0, 2, 4, 6, 7};
+    int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
+    double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    memcpy(A->p, A_p, 5 * sizeof(int));
+    memcpy(A->i, A_i, 7 * sizeof(int));
+    memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *Bx = new_linear(x, B, NULL);
     expr *log_Bx = new_log(Bx);
-    expr *A_log_Bx = new_left_matmul(A_param, log_Bx);
+    expr *A_log_Bx = new_left_matmul(NULL, log_Bx, A);
+    free_csr_matrix(A);
 
     A_log_Bx->forward(A_log_Bx, x_vals);
     A_log_Bx->jacobian_init(A_log_Bx);
