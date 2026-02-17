@@ -48,6 +48,7 @@
 */
 
 #include "utils/utils.h"
+#include <assert.h>
 #include <string.h>
 
 /* Refresh A and AT values from param_source.
@@ -59,6 +60,8 @@ static void refresh_param_values(left_matmul_expr *lin_node)
 
     if (!param || param->has_been_refreshed) return;
     param->has_been_refreshed = true;
+
+    assert(param->param_id != PARAM_FIXED);
 
     /* update values of A */
     memcpy(lin_node->A->x, lin_node->param_source->value,
@@ -74,7 +77,7 @@ static void forward(expr *node, const double *u)
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
     /* possibly refresh A and AT */
-    refresh_param_values(lin_node);
+    if (lin_node->refresh_param_values) lin_node->refresh_param_values(lin_node);
 
     /* child's forward pass */
     node->left->forward(node->left, u);
@@ -205,6 +208,7 @@ expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
     lin_node->A = new_csr(A);
     lin_node->AT = transpose(lin_node->A, lin_node->AT_iwork);
     lin_node->param_source = param_node;
+    lin_node->refresh_param_values = refresh_param_values;
 
     if (param_node) expr_retain(param_node);
 

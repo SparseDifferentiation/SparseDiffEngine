@@ -129,6 +129,7 @@ typedef struct left_matmul_expr
     int *csc_to_csr_workspace;
     int *AT_iwork;      /* work for computing AT values from A */
     expr *param_source; /* parameter node; A/AT values are refreshed from this */
+    void (*refresh_param_values)(struct left_matmul_expr *lin_node);
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

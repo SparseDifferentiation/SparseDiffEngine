@@ -254,4 +254,98 @@ const char *test_param_left_matmul_problem(void)
     return 0;
 }
 
+/*
+ * Test 4: right_param_matmul in constraint
+ *
+ * Problem: minimize sum(x), subject to x @ A, x size 1x2, A is 2x2
+ *   A is a 2x2 matrix parameter (param_id=0, size=4, CSR data order)
+ *   A = [[1,2],[3,4]] → CSR data order theta = [1,2,3,4]
+ *
+ * At x=[1,2]:
+ *   constraint_values = [1*1+2*3, 1*2+2*4] = [7, 10]
+ *   jacobian = [[1,3],[2,4]] = A^T
+ *
+ * After update A = [[5,6],[7,8]] → theta = [5,6,7,8]:
+ *   constraint_values = [1*5+2*7, 1*6+2*8] = [19, 22]
+ *   jacobian = [[5,7],[6,8]] = A^T
+ */
+const char *test_param_right_matmul_problem(void)
+{
+    int n_vars = 2;
+
+    /* Objective: sum(x) */
+    expr *x_obj = new_variable(1, 2, 0, n_vars);
+    expr *objective = new_sum(x_obj, -1);
+
+    /* Constraint: x @ A */
+    expr *x_con = new_variable(1, 2, 0, n_vars);
+    expr *A_param = new_parameter(2, 2, 0, n_vars, NULL);
+
+    /* Dense 2x2 CSR with placeholder zeros (values refreshed from A_param) */
+    CSR_Matrix *A = new_csr_matrix(2, 2, 4);
+    int Ap[3] = {0, 2, 4};
+    int Ai[4] = {0, 1, 0, 1};
+    double Ax[4] = {0.0, 0.0, 0.0, 0.0};
+    memcpy(A->p, Ap, 3 * sizeof(int));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->x, Ax, 4 * sizeof(double));
+
+    expr *constraint = new_right_matmul(A_param, x_con, A);
+    free_csr_matrix(A);
+
+    expr *constraints[1] = {constraint};
+
+    /* Create problem */
+    problem *prob = new_problem(objective, constraints, 1, true);
+
+    expr *param_nodes[1] = {A_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* Set A = [[1,2],[3,4]], CSR data order: [1,2,3,4] */
+    double theta[4] = {1.0, 2.0, 3.0, 4.0};
+    problem_update_params(prob, theta);
+
+    double u[2] = {1.0, 2.0};
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    double expected_cv[2] = {7.0, 10.0};
+    mu_assert("constraint values wrong (A1)",
+              cmp_double_array(prob->constraint_values, expected_cv, 2));
+
+    CSR_Matrix *jac = prob->jacobian;
+    mu_assert("jac rows wrong", jac->m == 2);
+    mu_assert("jac cols wrong", jac->n == 2);
+
+    /* Dense jacobian = [[1,3],[2,4]] = A^T, CSR: row 0 → cols 0,1 vals 1,3;
+     *                                         row 1 → cols 0,1 vals 2,4 */
+    int expected_p[3] = {0, 2, 4};
+    mu_assert("jac->p wrong (A1)", cmp_int_array(jac->p, expected_p, 3));
+
+    int expected_i[4] = {0, 1, 0, 1};
+    mu_assert("jac->i wrong (A1)", cmp_int_array(jac->i, expected_i, 4));
+
+    double expected_x[4] = {1.0, 3.0, 2.0, 4.0};
+    mu_assert("jac->x wrong (A1)", cmp_double_array(jac->x, expected_x, 4));
+
+    /* Update A = [[5,6],[7,8]], CSR data order: [5,6,7,8] */
+    double theta2[4] = {5.0, 6.0, 7.0, 8.0};
+    problem_update_params(prob, theta2);
+
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    double expected_cv2[2] = {19.0, 22.0};
+    mu_assert("constraint values wrong (A2)",
+              cmp_double_array(prob->constraint_values, expected_cv2, 2));
+
+    double expected_x2[4] = {5.0, 7.0, 6.0, 8.0};
+    mu_assert("jac->x wrong (A2)", cmp_double_array(jac->x, expected_x2, 4));
+
+    free_problem(prob);
+
+    return 0;
+}
+
 #endif /* TEST_PARAM_PROB_H */

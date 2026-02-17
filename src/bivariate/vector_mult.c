@@ -27,8 +27,10 @@
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
-    vector_mult_expr *vn = (vector_mult_expr *) node;
-    const double *a = vn->param_source->value;
+    // vector_mult_expr *vn = (vector_mult_expr *) node;
+    // const double *a = vn->param_source->value;
+
+    const double *a = ((vector_mult_expr *) node)->param_source->value;
 
     /* child's forward pass */
     child->forward(child, u);
@@ -56,8 +58,10 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
-    vector_mult_expr *vn = (vector_mult_expr *) node;
-    const double *a = vn->param_source->value;
+    // vector_mult_expr *vn = (vector_mult_expr *) node;
+    // const double *a = vn->param_source->value;
+
+    const double *a = ((vector_mult_expr *) node)->param_source->value;
 
     /* evaluate x */
     x->eval_jacobian(x);
@@ -90,8 +94,10 @@ static void wsum_hess_init(expr *node)
 static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
-    vector_mult_expr *vn = (vector_mult_expr *) node;
-    const double *a = vn->param_source->value;
+    // vector_mult_expr *vn = (vector_mult_expr *) node;
+    // const double *a = vn->param_source->value;
+
+    const double *a = ((vector_mult_expr *) node)->param_source->value;
 
     /* scale weights w by a */
     for (int i = 0; i < node->size; i++)

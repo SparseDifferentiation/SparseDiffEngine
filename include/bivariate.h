@@ -34,8 +34,8 @@ expr *new_matmul(expr *x, expr *y);
    Only the forward pass possibly updates the parameter. */
 expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A);
 
-/* Right matrix multiplication: f(x) @ A where A is a fixed parameter matrix */
-expr *new_right_matmul(expr *u, const CSR_Matrix *A);
+/* Right matrix multiplication: f(x) @ A where A comes from a parameter node. */
+expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
 
 /* Scalar multiplication: a * f(x) where a comes from a parameter node */
 expr *new_scalar_mult(expr *param_node, expr *child);
