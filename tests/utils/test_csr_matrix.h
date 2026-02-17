@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "memory_wrappers.h"
 #include "minunit.h"
 #include "test_helpers.h"
 #include "utils/CSR_Matrix.h"
@@ -432,7 +433,7 @@ const char *test_AT_alloc_and_fill()
 
     free_csr_matrix(A);
     free_csr_matrix(AT);
-    free(iwork);
+    FREE_AND_NULL(iwork);
 
     return 0;
 }

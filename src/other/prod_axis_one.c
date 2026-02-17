@@ -1,3 +1,4 @@
+#include "memory_wrappers.h"
 #include "other.h"
 #include <assert.h>
 #include <math.h>
@@ -371,9 +372,9 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     prod_axis *pnode = (prod_axis *) node;
-    free(pnode->num_of_zeros);
-    free(pnode->zero_index);
-    free(pnode->prod_nonzero);
+    FREE_AND_NULL(pnode->num_of_zeros);
+    FREE_AND_NULL(pnode->zero_index);
+    FREE_AND_NULL(pnode->prod_nonzero);
 }
 
 expr *new_prod_axis_one(expr *child)

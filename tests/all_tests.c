@@ -11,7 +11,7 @@
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
-#include "forward_pass/affine/test_variable_constant.h"
+#include "forward_pass/affine/test_variable_parameter.h"
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
@@ -20,8 +20,6 @@
 #include "forward_pass/test_prod_axis_zero.h"
 #include "jacobian_tests/test_broadcast.h"
 #include "jacobian_tests/test_composite.h"
-#include "jacobian_tests/test_const_scalar_mult.h"
-#include "jacobian_tests/test_const_vector_mult.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
 #include "jacobian_tests/test_index.h"
@@ -39,9 +37,12 @@
 #include "jacobian_tests/test_rel_entr_scalar_vector.h"
 #include "jacobian_tests/test_rel_entr_vector_scalar.h"
 #include "jacobian_tests/test_right_matmul.h"
+#include "jacobian_tests/test_scalar_mult.h"
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
 #include "jacobian_tests/test_transpose.h"
+#include "jacobian_tests/test_vector_mult.h"
+#include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
@@ -56,8 +57,6 @@
 #include "wsum_hess/elementwise/test_trig.h"
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_broadcast.h"
-#include "wsum_hess/test_const_scalar_mult.h"
-#include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
@@ -72,9 +71,11 @@
 #include "wsum_hess/test_rel_entr_scalar_vector.h"
 #include "wsum_hess/test_rel_entr_vector_scalar.h"
 #include "wsum_hess/test_right_matmul.h"
+#include "wsum_hess/test_scalar_mult.h"
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
 #include "wsum_hess/test_transpose.h"
+#include "wsum_hess/test_vector_mult.h"
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
@@ -90,7 +91,7 @@ int main(void)
 #ifndef PROFILE_ONLY
     printf("--- Forward Pass Tests ---\n");
     mu_run_test(test_variable, tests_run);
-    mu_run_test(test_constant, tests_run);
+    mu_run_test(test_fixed_parameter, tests_run);
     mu_run_test(test_addition, tests_run);
     mu_run_test(test_linear_op, tests_run);
     mu_run_test(test_neg_forward, tests_run);
@@ -280,6 +281,10 @@ int main(void)
     mu_run_test(test_problem_jacobian_multi, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
+    mu_run_test(test_param_scalar_mult_problem, tests_run);
+    mu_run_test(test_param_vector_mult_problem, tests_run);
+    mu_run_test(test_param_left_matmul_problem, tests_run);
+    mu_run_test(test_param_right_matmul_problem, tests_run);
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY

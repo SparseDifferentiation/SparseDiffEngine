@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "utils/CSR_Matrix.h"
+#include "memory_wrappers.h"
 #include "utils/int_double_pair.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -49,10 +50,10 @@ void free_csr_matrix(CSR_Matrix *matrix)
 {
     if (matrix)
     {
-        free(matrix->p);
-        free(matrix->i);
-        free(matrix->x);
-        free(matrix);
+        FREE_AND_NULL(matrix->p);
+        FREE_AND_NULL(matrix->i);
+        FREE_AND_NULL(matrix->x);
+        FREE_AND_NULL(matrix);
     }
 }
 
@@ -448,5 +449,5 @@ void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_Matrix *C)
         }
     }
 
-    free(counts);
+    FREE_AND_NULL(counts);
 }

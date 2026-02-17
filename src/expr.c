@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "expr.h"
+#include "memory_wrappers.h"
 #include "utils/int_double_pair.h"
 #include <stdlib.h>
 #include <string.h>
@@ -61,19 +62,16 @@ void free_expr(expr *node)
     }
 
     /* free value array and jacobian */
-    free(node->value);
+    FREE_AND_NULL(node->value);
     free_csr_matrix(node->jacobian);
     free_csr_matrix(node->wsum_hess);
-    free(node->dwork);
-    free(node->iwork);
-    node->value = NULL;
+    FREE_AND_NULL(node->dwork);
+    FREE_AND_NULL(node->iwork);
     node->jacobian = NULL;
     node->wsum_hess = NULL;
-    node->dwork = NULL;
-    node->iwork = NULL;
 
     /* free the node itself */
-    free(node);
+    FREE_AND_NULL(node);
 }
 
 void expr_retain(expr *node)

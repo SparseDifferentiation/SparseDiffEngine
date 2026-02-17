@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "memory_wrappers.h"
 #include "utils/CSR_sum.h"
 #include <assert.h>
 #include <stdio.h>
@@ -165,13 +166,10 @@ static void free_type_data(expr *node)
     for (int i = 0; i < hnode->n_args; i++)
     {
         free_expr(hnode->args[i]);
-        hnode->args[i] = NULL;
     }
 
     free_csr_matrix(hnode->CSR_work);
-    hnode->CSR_work = NULL;
-    free(hnode->args);
-    hnode->args = NULL;
+    FREE_AND_NULL(hnode->args);
 }
 
 expr *new_hstack(expr **args, int n_args, int n_vars)

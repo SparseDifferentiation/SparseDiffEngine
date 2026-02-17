@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "bivariate.h"
+#include "memory_wrappers.h"
 #include "subexpr.h"
 #include "utils/CSC_Matrix.h"
 #include <assert.h>
@@ -102,7 +103,7 @@ static void jacobian_init(expr *node)
         }
         assert(nonzero_cols == node->jacobian->nnz);
 
-        free(col_nz);
+        FREE_AND_NULL(col_nz);
 
         /* insert y variable index at correct position */
         insert_idx(y->var_id, node->jacobian->i, node->jacobian->nnz);

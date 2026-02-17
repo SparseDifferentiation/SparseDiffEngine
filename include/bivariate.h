@@ -30,16 +30,17 @@ expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
 /* Matrix multiplication: Z = X @ Y */
 expr *new_matmul(expr *x, expr *y);
 
-/* Left matrix multiplication: A @ f(x) where A is a constant matrix */
-expr *new_left_matmul(expr *u, const CSR_Matrix *A);
+/* Left matrix multiplication: A @ f(x) where A comes from a parameter node.
+   Only the forward pass possibly updates the parameter. */
+expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A);
 
-/* Right matrix multiplication: f(x) @ A where A is a constant matrix */
-expr *new_right_matmul(expr *u, const CSR_Matrix *A);
+/* Right matrix multiplication: f(x) @ A where A comes from a parameter node. */
+expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
 
-/* Constant scalar multiplication: a * f(x) where a is a constant double */
-expr *new_const_scalar_mult(double a, expr *child);
+/* Scalar multiplication: a * f(x) where a comes from a parameter node */
+expr *new_scalar_mult(expr *param_node, expr *child);
 
-/* Constant vector elementwise multiplication: a ∘ f(x) where a is constant */
-expr *new_const_vector_mult(const double *a, expr *child);
+/* Vector elementwise multiplication: a ∘ f(x) where a comes from a parameter node */
+expr *new_vector_mult(expr *param_node, expr *child);
 
 #endif /* BIVARIATE_H */

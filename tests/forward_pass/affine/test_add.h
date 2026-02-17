@@ -5,6 +5,7 @@
 #include "affine.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_addition()
@@ -12,7 +13,7 @@ const char *test_addition()
     double u[2] = {3.0, 4.0};
     double c[2] = {1.0, 2.0};
     expr *var = new_variable(2, 1, 0, 2);
-    expr *const_node = new_constant(2, 1, 0, c);
+    expr *const_node = new_parameter(2, 1, PARAM_FIXED, 0, c);
     expr *sum = new_add(var, const_node);
     sum->forward(sum, u);
     double expected[2] = {4.0, 6.0};

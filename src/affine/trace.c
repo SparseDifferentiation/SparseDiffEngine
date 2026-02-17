@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "memory_wrappers.h"
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 #include "utils/utils.h"
@@ -139,7 +140,7 @@ static void free_type_data(expr *node)
     if (node)
     {
         trace_expr *tnode = (trace_expr *) node;
-        free(tnode->idx_map);
+        FREE_AND_NULL(tnode->idx_map);
     }
 }
 

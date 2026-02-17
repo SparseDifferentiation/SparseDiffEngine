@@ -25,6 +25,20 @@
 /* Forward declaration */
 struct int_double_pair;
 
+/* param_id value for fixed (constant) parameters */
+#define PARAM_FIXED -1
+
+/* Parameter node: unified leaf for constants and updatable parameters.
+ * Constants use param_id == PARAM_FIXED and have values set at creation.
+ * Updatable parameters have param_id >= 0 and are updated via problem_update_params.
+ */
+typedef struct parameter_expr
+{
+    expr base;
+    int param_id;            /* offset into global theta vector, or PARAM_FIXED */
+    bool has_been_refreshed; /* tracks whether parameter has been refreshed */
+} parameter_expr;
+
 /* Type-specific expression structures that "inherit" from expr */
 
 /* Linear operator: y = A * x + b */
@@ -113,6 +127,9 @@ typedef struct left_matmul_expr
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *csc_to_csr_workspace;
+    int *AT_iwork;      /* work for computing AT values from A */
+    expr *param_source; /* parameter node; A/AT values are refreshed from this */
+    void (*refresh_param_values)(struct left_matmul_expr *lin_node);
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.
@@ -126,19 +143,20 @@ typedef struct right_matmul_expr
     CSC_Matrix *CSC_work;
 } right_matmul_expr;
 
-/* Constant scalar multiplication: y = a * child where a is a constant double */
-typedef struct const_scalar_mult_expr
+/* Scalar multiplication: y = a * child where a comes from a parameter node */
+typedef struct scalar_mult_expr
 {
     expr base;
-    double a;
-} const_scalar_mult_expr;
+    expr *param_source; /* always set; read a from param_source->value[0] */
+} scalar_mult_expr;
 
-/* Constant vector elementwise multiplication: y = a \circ child for constant a */
-typedef struct const_vector_mult_expr
+/* Vector elementwise multiplication: y = a \circ child where a comes from a
+ * parameter node */
+typedef struct vector_mult_expr
 {
     expr base;
-    double *a; /* length equals node->size */
-} const_vector_mult_expr;
+    expr *param_source; /* always set; read a from param_source->value */
+} vector_mult_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr

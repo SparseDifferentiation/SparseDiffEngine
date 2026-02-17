@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "memory_wrappers.h"
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
@@ -175,7 +176,7 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     sum_expr *snode = (sum_expr *) node;
-    free(snode->idx_map);
+    FREE_AND_NULL(snode->idx_map);
 }
 
 expr *new_sum(expr *child, int axis)

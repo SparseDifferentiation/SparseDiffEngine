@@ -1,3 +1,4 @@
+#include "memory_wrappers.h"
 #include "other.h"
 #include "subexpr.h"
 #include "utils/CSC_Matrix.h"
@@ -129,7 +130,7 @@ static void jacobian_init(expr *node)
             }
         }
         assert(nonzero_cols == node->jacobian->nnz);
-        free(col_nz);
+        FREE_AND_NULL(col_nz);
 
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = node->jacobian->nnz;
@@ -174,7 +175,6 @@ static void free_type_data(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     free_csr_matrix(qnode->Q);
-    qnode->Q = NULL;
 }
 
 static bool is_affine(const expr *node)

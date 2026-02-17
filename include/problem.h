@@ -59,6 +59,11 @@ typedef struct problem
      * hessian are called */
     bool jacobian_called;
 
+    /* Parameter tracking for fast parameter updates. */
+    expr **param_nodes; /* weak references to parameter nodes in tree */
+    int n_param_nodes;
+    int total_parameter_size;
+
     /* Statistics for performance measurement */
     Diff_engine_stats stats;
     bool verbose;
@@ -77,5 +82,9 @@ void problem_constraint_forward(problem *prob, const double *u);
 void problem_gradient(problem *prob);
 void problem_jacobian(problem *prob);
 void problem_hessian(problem *prob, double obj_w, const double *w);
+
+/* Parameter support */
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes);
+void problem_update_params(problem *prob, const double *theta);
 
 #endif

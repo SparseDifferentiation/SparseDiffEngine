@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "memory_wrappers.h"
 #include "subexpr.h"
 #include <assert.h>
 #include <stdio.h>
@@ -38,7 +39,7 @@ static bool check_for_duplicates(const int *indices, int n_idxs, int max_idx)
         }
         seen[indices[i]] = true;
     }
-    free(seen);
+    FREE_AND_NULL(seen);
     return has_dup;
 }
 
@@ -154,11 +155,7 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     index_expr *idx = (index_expr *) node;
-    if (idx->indices)
-    {
-        free(idx->indices);
-        idx->indices = NULL;
-    }
+    FREE_AND_NULL(idx->indices);
 }
 
 expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)

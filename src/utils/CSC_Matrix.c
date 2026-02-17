@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "utils/CSC_Matrix.h"
+#include "memory_wrappers.h"
 #include "utils/iVec.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -32,10 +33,10 @@ CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
 
     if (!matrix->p || !matrix->i || !matrix->x)
     {
-        free(matrix->p);
-        free(matrix->i);
-        free(matrix->x);
-        free(matrix);
+        FREE_AND_NULL(matrix->p);
+        FREE_AND_NULL(matrix->i);
+        FREE_AND_NULL(matrix->x);
+        FREE_AND_NULL(matrix);
         return NULL;
     }
 
@@ -50,10 +51,10 @@ void free_csc_matrix(CSC_Matrix *matrix)
 {
     if (matrix)
     {
-        free(matrix->p);
-        free(matrix->i);
-        free(matrix->x);
-        free(matrix);
+        FREE_AND_NULL(matrix->p);
+        FREE_AND_NULL(matrix->i);
+        FREE_AND_NULL(matrix->x);
+        FREE_AND_NULL(matrix);
     }
 }
 
@@ -105,7 +106,7 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
     symmetrize_csr(Cp, Ci->data, n, C);
 
     /* free workspace */
-    free(Cp);
+    FREE_AND_NULL(Cp);
     iVec_free(Ci);
 
     return C;
@@ -211,7 +212,7 @@ CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
         }
     }
 
-    free(count);
+    FREE_AND_NULL(count);
     return C;
 }
 
@@ -395,7 +396,7 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     memcpy(C->i, Ci->data, nnz * sizeof(int));
 
     /* free workspace */
-    free(Cp);
+    FREE_AND_NULL(Cp);
     iVec_free(Ci);
 
     return C;

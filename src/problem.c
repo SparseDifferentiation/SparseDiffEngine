@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 #include "problem.h"
+#include "memory_wrappers.h"
+#include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -65,6 +67,9 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->stats.time_forward_constraints = 0.0;
     prob->stats.nnz_affine = 0;
     prob->stats.nnz_nonlinear = 0;
+
+    prob->param_nodes = NULL;
+    prob->n_param_nodes = 0;
 
     prob->verbose = verbose;
 
@@ -231,7 +236,7 @@ void problem_init_hessian(problem *prob)
     prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
     int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
-    free(iwork);
+    FREE_AND_NULL(iwork);
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
@@ -282,11 +287,14 @@ void free_problem(problem *prob)
     if (prob == NULL) return;
 
     /* Free allocated arrays */
-    free(prob->constraint_values);
-    free(prob->gradient_values);
+    FREE_AND_NULL(prob->constraint_values);
+    FREE_AND_NULL(prob->gradient_values);
     free_csr_matrix(prob->jacobian);
     free_csr_matrix(prob->lagrange_hessian);
-    free(prob->hess_idx_map);
+    FREE_AND_NULL(prob->hess_idx_map);
+
+    /* Free parameter node array (weak references, not owned) */
+    FREE_AND_NULL(prob->param_nodes);
 
     /* Release expression references (decrements refcount) */
     free_expr(prob->objective);
@@ -294,7 +302,7 @@ void free_problem(problem *prob)
     {
         free_expr(prob->constraints[i]);
     }
-    free(prob->constraints);
+    FREE_AND_NULL(prob->constraints);
 
     if (prob->verbose)
     {
@@ -302,7 +310,7 @@ void free_problem(problem *prob)
     }
 
     /* Free problem struct */
-    free(prob);
+    FREE_AND_NULL(prob);
 }
 
 double problem_objective_forward(problem *prob, const double *u)
@@ -439,4 +447,31 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_hessian += GET_ELAPSED_SECONDS(timer);
+}
+
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)
+{
+    prob->n_param_nodes = n_param_nodes;
+    prob->param_nodes = (expr **) malloc(n_param_nodes * sizeof(expr *));
+    memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
+
+    prob->total_parameter_size = 0;
+    for (int i = 0; i < n_param_nodes; i++)
+    {
+        prob->total_parameter_size += param_nodes[i]->size;
+    }
+}
+
+void problem_update_params(problem *prob, const double *theta)
+{
+    for (int i = 0; i < prob->n_param_nodes; i++)
+    {
+        parameter_expr *p = (parameter_expr *) prob->param_nodes[i];
+        if (p->param_id == PARAM_FIXED) continue;
+        memcpy(p->base.value, theta + p->param_id, p->base.size * sizeof(double));
+        p->has_been_refreshed = false;
+    }
+
+    /* force re-evaluation of affine Jacobians on next call */
+    prob->jacobian_called = false;
 }

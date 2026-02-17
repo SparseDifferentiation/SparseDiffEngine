@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "memory_wrappers.h"
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/iVec.h"
@@ -183,7 +184,7 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
 
     /* Clean up workspace */
-    free(Cp);
+    FREE_AND_NULL(Cp);
     iVec_free(Ci);
 
     return C;
@@ -312,7 +313,7 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
     CSR_Matrix *C = new_csr_matrix(m, p, nnz);
     memcpy(C->p, Cp, (m + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
-    free(Cp);
+    FREE_AND_NULL(Cp);
     iVec_free(Ci);
 
     return C;

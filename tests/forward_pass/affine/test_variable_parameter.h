@@ -5,6 +5,7 @@
 #include "affine.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_variable()
@@ -17,13 +18,14 @@ const char *test_variable()
     return 0;
 }
 
-const char *test_constant()
+const char *test_fixed_parameter()
 {
     double c[2] = {5.0, 10.0};
     double u[2] = {0.0, 0.0};
-    expr *const_node = new_constant(2, 1, 0, c);
+    expr *const_node = new_parameter(2, 1, PARAM_FIXED, 0, c);
     const_node->forward(const_node, u);
-    mu_assert("Constant test failed", cmp_double_array(const_node->value, c, 2));
+    mu_assert("Fixed parameter test failed",
+              cmp_double_array(const_node->value, c, 2));
     free_expr(const_node);
     return 0;
 }

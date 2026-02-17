@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Constant scalar multiplication: y = a * child where a is a constant double */
+/* Scalar multiplication: y = a * child where a comes from a parameter node */
 
 static void forward(expr *node, const double *u)
 {
@@ -32,7 +32,7 @@ static void forward(expr *node, const double *u)
     child->forward(child, u);
 
     /* local forward pass: multiply each element by scalar a */
-    double a = ((const_scalar_mult_expr *) node)->a;
+    double a = ((scalar_mult_expr *) node)->param_source->value[0];
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = a * child->value[i];
@@ -55,7 +55,7 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *child = node->left;
-    double a = ((const_scalar_mult_expr *) node)->a;
+    double a = ((scalar_mult_expr *) node)->param_source->value[0];
 
     /* evaluate child */
     child->eval_jacobian(child);
@@ -85,7 +85,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     expr *x = node->left;
     x->eval_wsum_hess(x, w);
 
-    double a = ((const_scalar_mult_expr *) node)->a;
+    double a = ((scalar_mult_expr *) node)->param_source->value[0];
     for (int j = 0; j < x->wsum_hess->nnz; j++)
     {
         node->wsum_hess->x[j] = a * x->wsum_hess->x[j];
@@ -98,17 +98,25 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
-expr *new_const_scalar_mult(double a, expr *child)
+static void free_type_data(expr *node)
 {
-    const_scalar_mult_expr *mult_node =
-        (const_scalar_mult_expr *) calloc(1, sizeof(const_scalar_mult_expr));
+    scalar_mult_expr *sn = (scalar_mult_expr *) node;
+    free_expr(sn->param_source);
+}
+
+expr *new_scalar_mult(expr *param_node, expr *child)
+{
+    scalar_mult_expr *mult_node =
+        (scalar_mult_expr *) calloc(1, sizeof(scalar_mult_expr));
     expr *node = &mult_node->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess,
+              free_type_data);
     node->left = child;
-    mult_node->a = a;
+    mult_node->param_source = param_node;
     expr_retain(child);
+    expr_retain(param_node);
 
     return node;
 }

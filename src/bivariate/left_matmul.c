@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "bivariate.h"
+#include "memory_wrappers.h"
 #include "subexpr.h"
 #include "utils/Timer.h"
 #include "utils/linalg_sparse_matmuls.h"
@@ -23,10 +24,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* This file implement the atom 'left_matmul' corresponding to the operation y =
-   A @ f(x), where A is a given matrix and f(x) is an arbitrary expression.
-   Here, f(x) can be a vector-valued expression and a matrix-valued
-   expression. The dimensions are A - m x n, f(x) - n x p, y - m x p.
+/* This file implements the atom 'left_matmul' corresponding to the operation y =
+   A @ f(x), where A is a given matrix (from a parameter node) and f(x) is an
+   arbitrary expression. Here, f(x) can be a vector-valued expression and a
+   matrix-valued expression. The dimensions are A - m x n, f(x) - n x p, y - m x p.
    Note that here A does not have global column indices but it is a local matrix.
    This is an important distinction compared to linear_op_expr.
 
@@ -45,24 +46,45 @@
 
     Working in terms of A_kron unifies the implementation of f(x) being
     vector-valued or matrix-valued.
-
-    I (dance858) think we can get additional big speedups when A is dense by
-    introducing a dense matrix class.
 */
 
 #include "utils/utils.h"
+#include <assert.h>
+#include <string.h>
+
+/* Refresh A and AT values from param_source.
+   A is the small m x n matrix (NOT block-diagonal).
+   No-op when param_source is NULL (fixed constant — values already in A). */
+static void refresh_param_values(left_matmul_expr *lin_node)
+{
+    parameter_expr *param = (parameter_expr *) lin_node->param_source;
+
+    if (!param || param->has_been_refreshed) return;
+    param->has_been_refreshed = true;
+
+    assert(param->param_id != PARAM_FIXED);
+
+    /* update values of A */
+    memcpy(lin_node->A->x, lin_node->param_source->value,
+           lin_node->A->nnz * sizeof(double));
+
+    /* update values of AT */
+    AT_fill_values(lin_node->A, lin_node->AT, lin_node->AT_iwork);
+}
 
 static void forward(expr *node, const double *u)
 {
     expr *x = node->left;
+    left_matmul_expr *lin_node = (left_matmul_expr *) node;
+
+    /* possibly refresh A and AT */
+    if (lin_node->refresh_param_values) lin_node->refresh_param_values(lin_node);
 
     /* child's forward pass */
     node->left->forward(node->left, u);
 
     /* y = A_kron @ vec(f(x)) */
-    CSR_Matrix *A = ((left_matmul_expr *) node)->A;
-    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
-    block_left_multiply_vec(A, x->value, node->value, n_blocks);
+    block_left_multiply_vec(lin_node->A, x->value, node->value, lin_node->n_blocks);
 }
 
 static bool is_affine(const expr *node)
@@ -77,12 +99,9 @@ static void free_type_data(expr *node)
     free_csr_matrix(lin_node->AT);
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
-    free(lin_node->csc_to_csr_workspace);
-    lin_node->A = NULL;
-    lin_node->AT = NULL;
-    lin_node->Jchild_CSC = NULL;
-    lin_node->J_CSC = NULL;
-    lin_node->csc_to_csr_workspace = NULL;
+    FREE_AND_NULL(lin_node->csc_to_csr_workspace);
+    FREE_AND_NULL(lin_node->AT_iwork);
+    free_expr(lin_node->param_source);
 }
 
 static void jacobian_init(expr *node)
@@ -137,7 +156,7 @@ static void wsum_hess_init(expr *node)
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    /* compute A^T w*/
+    /* compute A^T w */
     CSR_Matrix *AT = ((left_matmul_expr *) node)->AT;
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
     block_left_multiply_vec(AT, w, node->dwork, n_blocks);
@@ -147,20 +166,21 @@ static void eval_wsum_hess(expr *node, const double *w)
            node->wsum_hess->nnz * sizeof(double));
 }
 
-expr *new_left_matmul(expr *u, const CSR_Matrix *A)
+expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
 {
-    /* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users
+    /* Dimension logic: handle numpy broadcasting (1, n) as (n, )/
+       We expect u->d1 == A->n. However, numpy's broadcasting rules allow users
        to do A @ u where u is (n, ) which in C is actually (1, n). In that case
        the result of A @ u is (m, ), which is (1, m) according to broadcasting
        rules. We therefore check if this is the case. */
     int d1, d2, n_blocks;
-    if (u->d1 == A->n)
+    if (child->d1 == A->n)
     {
         d1 = A->m;
-        d2 = u->d2;
-        n_blocks = u->d2;
+        d2 = child->d2;
+        n_blocks = child->d2;
     }
-    else if (u->d2 == A->n && u->d1 == 1)
+    else if (child->d2 == A->n && child->d1 == 1)
     {
         d1 = 1;
         d2 = A->m;
@@ -168,7 +188,7 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     }
     else
     {
-        fprintf(stderr, "Error in new_left_matmul: dimension mismatch \n");
+        fprintf(stderr, "Error in new_left_matmul: dimension mismatch\n");
         exit(1);
     }
 
@@ -176,22 +196,25 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     left_matmul_expr *lin_node =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lin_node->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init, eval_jacobian,
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
               is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
-    node->left = u;
-    expr_retain(u);
+    node->left = child;
+    expr_retain(child);
 
-    /* allocate workspace. iwork is used for transposing A (requiring size A->n)
-       and for converting J_child csr to csc (requring size node->n_vars).
-       csc_to_csr_workspace is used for converting J_CSC to CSR (requring node->size)
-     */
-    node->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
+    /* Store small A (NOT block-diagonal) — block functions handle the rest
+       Allocate workspace. iwork is used for converting J_child csr to csc
+       (requring size node->n_vars). csc_to_csr_workspace is used for
+       converting J_CSC to CSR (requring node->size) */
+    node->iwork = (int *) malloc(node->n_vars * sizeof(int));
+    lin_node->AT_iwork = (int *) malloc(A->n * sizeof(int));
     lin_node->csc_to_csr_workspace = (int *) malloc(node->size * sizeof(int));
     lin_node->n_blocks = n_blocks;
-
-    /* store A and AT */
     lin_node->A = new_csr(A);
-    lin_node->AT = transpose(lin_node->A, node->iwork);
+    lin_node->AT = transpose(lin_node->A, lin_node->AT_iwork);
+    lin_node->param_source = param_node;
+    lin_node->refresh_param_values = refresh_param_values;
+
+    if (param_node) expr_retain(param_node);
 
     return node;
 }
