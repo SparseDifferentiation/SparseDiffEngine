@@ -200,7 +200,10 @@ expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
     node->left = child;
     expr_retain(child);
 
-    /* Store small A (NOT block-diagonal) — block functions handle the rest */
+    /* Store small A (NOT block-diagonal) — block functions handle the rest
+       Allocate workspace. iwork is used for converting J_child csr to csc
+       (requring size node->n_vars). csc_to_csr_workspace is used for
+       converting J_CSC to CSR (requring node->size) */
     node->iwork = (int *) malloc(node->n_vars * sizeof(int));
     lin_node->AT_iwork = (int *) malloc(A->n * sizeof(int));
     lin_node->csc_to_csr_workspace = (int *) malloc(node->size * sizeof(int));
