@@ -155,6 +155,7 @@ static void free_type_data(expr *node)
 {
     index_expr *idx = (index_expr *) node;
     free(idx->indices);
+    idx->indices = NULL;
 }
 
 expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)

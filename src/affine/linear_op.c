@@ -55,14 +55,13 @@ static void free_type_data(expr *node)
     if (!node->jacobian)
     {
         free_csr_matrix(lin_node->A_csr);
+        lin_node->A_csr = NULL;
     }
 
     free_csc_matrix(lin_node->A_csc);
-
-    if (lin_node->b != NULL)
-    {
-        free(lin_node->b);
-    }
+    lin_node->A_csc = NULL;
+    free(lin_node->b);
+    lin_node->b = NULL;
 }
 
 static void jacobian_init(expr *node)
