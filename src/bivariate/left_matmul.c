@@ -162,21 +162,23 @@ static void eval_wsum_hess(expr *node, const double *w)
 
 expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
 {
-    int A_m = A->m;
-    int A_n = A->n;
+    /* Dimension logic: handle numpy broadcasting (1, n) as (n, )/
+       We expect u->d1 == A->n. However, numpy's broadcasting rules allow users
+       to do A @ u where u is (n, ) which in C is actually (1, n). In that case
+       the result of A @ u is (m, ), which is (1, m) according to broadcasting
+       rules. We therefore check if this is the case. */
 
-    /* Dimension logic: handle numpy broadcasting (1, n) as (n, ) */
     int d1, d2, n_blocks;
-    if (child->d1 == A_n)
+    if (child->d1 == A->n)
     {
-        d1 = A_m;
+        d1 = A->m;
         d2 = child->d2;
         n_blocks = child->d2;
     }
-    else if (child->d2 == A_n && child->d1 == 1)
+    else if (child->d2 == A->n && child->d1 == 1)
     {
         d1 = 1;
-        d2 = A_m;
+        d2 = A->m;
         n_blocks = 1;
     }
     else
@@ -195,7 +197,7 @@ expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
     expr_retain(child);
 
     /* Store small A (NOT block-diagonal) — block functions handle the rest */
-    node->iwork = (int *) malloc(MAX(A_n, node->n_vars) * sizeof(int));
+    node->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
     lin_node->csc_to_csr_workspace = (int *) malloc(node->size * sizeof(int));
     lin_node->n_blocks = n_blocks;
     lin_node->A = new_csr(A);

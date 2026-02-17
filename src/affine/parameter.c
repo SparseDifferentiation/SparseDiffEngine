@@ -70,16 +70,17 @@ static bool is_affine(const expr *node)
 expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *values)
 {
     parameter_expr *pnode = (parameter_expr *) calloc(1, sizeof(parameter_expr));
-    init_expr(&pnode->base, d1, d2, n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    expr *node = &pnode->base;
+    init_expr(node, d1, d2, n_vars, forward, jacobian_init, eval_jacobian, is_affine,
+              wsum_hess_init, eval_wsum_hess, NULL);
     pnode->param_id = param_id;
 
-    /* If values provided (fixed constant), copy them now */
+    /* If values provided (fixed constant), copy them now.
+       Otherwise values will be populated by problem_update_params. */
     if (values != NULL)
     {
-        memcpy(pnode->base.value, values, pnode->base.size * sizeof(double));
+        memcpy(node->value, values, node->size * sizeof(double));
     }
-    /* Otherwise values will be populated by problem_update_params */
 
-    return &pnode->base;
+    return node;
 }
