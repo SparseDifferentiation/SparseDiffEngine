@@ -35,7 +35,8 @@ struct int_double_pair;
 typedef struct parameter_expr
 {
     expr base;
-    int param_id; /* offset into global theta vector, or PARAM_FIXED */
+    int param_id;            /* offset into global theta vector, or PARAM_FIXED */
+    bool has_been_refreshed; /* tracks whether parameter has been refreshed */
 } parameter_expr;
 
 /* Type-specific expression structures that "inherit" from expr */
@@ -126,6 +127,7 @@ typedef struct left_matmul_expr
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *csc_to_csr_workspace;
+    int *AT_iwork;      /* work for computing AT values from A */
     expr *param_source; /* parameter node; A/AT values are refreshed from this */
 } left_matmul_expr;
 

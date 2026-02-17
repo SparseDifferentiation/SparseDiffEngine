@@ -30,7 +30,8 @@ expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
 /* Matrix multiplication: Z = X @ Y */
 expr *new_matmul(expr *x, expr *y);
 
-/* Left matrix multiplication: A @ f(x) where A comes from a parameter node */
+/* Left matrix multiplication: A @ f(x) where A comes from a parameter node.
+   Only the forward pass possibly updates the parameter. */
 expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A);
 
 /* Right matrix multiplication: f(x) @ A where A is a fixed parameter matrix */

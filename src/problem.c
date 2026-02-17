@@ -456,7 +456,9 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
 
     prob->total_parameter_size = 0;
     for (int i = 0; i < n_param_nodes; i++)
+    {
         prob->total_parameter_size += param_nodes[i]->size;
+    }
 }
 
 void problem_update_params(problem *prob, const double *theta)
@@ -466,7 +468,9 @@ void problem_update_params(problem *prob, const double *theta)
         parameter_expr *p = (parameter_expr *) prob->param_nodes[i];
         if (p->param_id == PARAM_FIXED) continue;
         memcpy(p->base.value, theta + p->param_id, p->base.size * sizeof(double));
+        p->has_been_refreshed = false;
     }
-    /* Force re-evaluation of affine Jacobians on next call */
+
+    /* force re-evaluation of affine Jacobians on next call */
     prob->jacobian_called = false;
 }

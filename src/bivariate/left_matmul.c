@@ -55,13 +55,17 @@
    No-op when param_source is NULL (fixed constant — values already in A). */
 static void refresh_param_values(left_matmul_expr *lin_node)
 {
-    if (!lin_node->param_source) return;
+    parameter_expr *param = (parameter_expr *) lin_node->param_source;
 
+    if (!param || param->has_been_refreshed) return;
+    param->has_been_refreshed = true;
+
+    /* update values of A */
     memcpy(lin_node->A->x, lin_node->param_source->value,
            lin_node->A->nnz * sizeof(double));
 
-    /* Recompute AT values from updated A */
-    AT_fill_values(lin_node->A, lin_node->AT, lin_node->base.iwork);
+    /* update values of AT */
+    AT_fill_values(lin_node->A, lin_node->AT, lin_node->AT_iwork);
 }
 
 static void forward(expr *node, const double *u)
@@ -69,7 +73,7 @@ static void forward(expr *node, const double *u)
     expr *x = node->left;
     left_matmul_expr *lin_node = (left_matmul_expr *) node;
 
-    /* refresh A/AT from parameter source */
+    /* possibly refresh A and AT */
     refresh_param_values(lin_node);
 
     /* child's forward pass */
@@ -92,6 +96,7 @@ static void free_type_data(expr *node)
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
     free(lin_node->csc_to_csr_workspace);
+    free(lin_node->AT_iwork);
     free_expr(lin_node->param_source);
 }
 
@@ -118,9 +123,6 @@ static void eval_jacobian(expr *node)
 
     CSC_Matrix *Jchild_CSC = lnode->Jchild_CSC;
     CSC_Matrix *J_CSC = lnode->J_CSC;
-
-    /* refresh A from parameter source */
-    refresh_param_values(lnode);
 
     /* evaluate child's jacobian and convert to CSC */
     x->eval_jacobian(x);
@@ -167,7 +169,6 @@ expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
        to do A @ u where u is (n, ) which in C is actually (1, n). In that case
        the result of A @ u is (m, ), which is (1, m) according to broadcasting
        rules. We therefore check if this is the case. */
-
     int d1, d2, n_blocks;
     if (child->d1 == A->n)
     {
@@ -197,13 +198,14 @@ expr *new_left_matmul(expr *param_node, expr *child, const CSR_Matrix *A)
     expr_retain(child);
 
     /* Store small A (NOT block-diagonal) — block functions handle the rest */
-    node->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
+    node->iwork = (int *) malloc(node->n_vars * sizeof(int));
+    lin_node->AT_iwork = (int *) malloc(A->n * sizeof(int));
     lin_node->csc_to_csr_workspace = (int *) malloc(node->size * sizeof(int));
     lin_node->n_blocks = n_blocks;
     lin_node->A = new_csr(A);
-    lin_node->AT = transpose(lin_node->A, node->iwork);
-
+    lin_node->AT = transpose(lin_node->A, lin_node->AT_iwork);
     lin_node->param_source = param_node;
+
     if (param_node) expr_retain(param_node);
 
     return node;

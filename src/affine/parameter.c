@@ -74,6 +74,7 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
     init_expr(node, d1, d2, n_vars, forward, jacobian_init, eval_jacobian, is_affine,
               wsum_hess_init, eval_wsum_hess, NULL);
     pnode->param_id = param_id;
+    pnode->has_been_refreshed = false;
 
     /* If values provided (fixed constant), copy them now.
        Otherwise values will be populated by problem_update_params. */
