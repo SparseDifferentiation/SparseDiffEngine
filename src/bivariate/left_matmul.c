@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "bivariate.h"
+#include "memory_wrappers.h"
 #include "subexpr.h"
 #include "utils/Timer.h"
 #include "utils/linalg_sparse_matmuls.h"
@@ -98,8 +99,8 @@ static void free_type_data(expr *node)
     free_csr_matrix(lin_node->AT);
     free_csc_matrix(lin_node->Jchild_CSC);
     free_csc_matrix(lin_node->J_CSC);
-    free(lin_node->csc_to_csr_workspace);
-    free(lin_node->AT_iwork);
+    FREE_AND_NULL(lin_node->csc_to_csr_workspace);
+    FREE_AND_NULL(lin_node->AT_iwork);
     free_expr(lin_node->param_source);
 }
 

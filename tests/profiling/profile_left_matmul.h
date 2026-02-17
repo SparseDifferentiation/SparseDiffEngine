@@ -7,6 +7,7 @@
 #include "bivariate.h"
 #include "elementwise_univariate.h"
 #include "expr.h"
+#include "memory_wrappers.h"
 #include "minunit.h"
 #include "subexpr.h"
 #include "test_helpers.h"
@@ -61,7 +62,7 @@ const char *profile_left_matmul()
     printf("left_matmul jacobian eval time: %8.3f seconds\n",
            GET_ELAPSED_SECONDS(timer));
 
-    free(x_vals);
+    FREE_AND_NULL(x_vals);
     free_expr(AX);
     return 0;
 }

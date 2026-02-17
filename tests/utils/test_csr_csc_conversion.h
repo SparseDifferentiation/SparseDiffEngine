@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "memory_wrappers.h"
 #include "minunit.h"
 #include "test_helpers.h"
 #include "utils/CSC_Matrix.h"
@@ -46,7 +47,7 @@ const char *test_csr_to_csc_split()
 
     mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 5));
 
-    free(iwork);
+    FREE_AND_NULL(iwork);
     free_csr_matrix(A);
     free_csc_matrix(C);
 
@@ -90,7 +91,7 @@ const char *test_csc_to_csr_sparsity()
     mu_assert("C dimensions incorrect", C->m == 4 && C->n == 5);
     mu_assert("C nnz incorrect", C->nnz == 5);
 
-    free(iwork);
+    FREE_AND_NULL(iwork);
     free_csc_matrix(A);
     free_csr_matrix(C);
 
@@ -123,7 +124,7 @@ const char *test_csc_to_csr_values()
 
     mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 5));
 
-    free(iwork);
+    FREE_AND_NULL(iwork);
     free_csc_matrix(A);
     free_csr_matrix(C);
 
@@ -161,8 +162,8 @@ const char *test_csr_csc_csr_roundtrip()
     mu_assert("Round-trip: col indices incorrect", cmp_int_array(C->i, Ai, 8));
     mu_assert("Round-trip: row pointers incorrect", cmp_int_array(C->p, Ap, 4));
 
-    free(iwork_csc);
-    free(iwork_csr);
+    FREE_AND_NULL(iwork_csc);
+    FREE_AND_NULL(iwork_csr);
     free_csr_matrix(A);
     free_csc_matrix(B);
     free_csr_matrix(C);

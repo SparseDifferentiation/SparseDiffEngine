@@ -17,6 +17,7 @@
  */
 #include "affine.h"
 #include "bivariate.h"
+#include "memory_wrappers.h"
 #include "subexpr.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/linalg_sparse_matmuls.h"
@@ -59,7 +60,7 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 
     /* functionality for parameter */
     left_matmul_expr *left_matmul_data = (left_matmul_expr *) left_matmul_node;
-    free(left_matmul_data->AT_iwork);
+    FREE_AND_NULL(left_matmul_data->AT_iwork);
     left_matmul_data->AT_iwork = work_transpose;
     left_matmul_data->refresh_param_values = refresh_param_values;
 

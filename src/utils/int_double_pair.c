@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "utils/int_double_pair.h"
+#include "memory_wrappers.h"
 #include <stdlib.h>
 
 static int compare_int_double_pair(const void *a, const void *b)
@@ -45,7 +46,7 @@ void set_int_double_pair_array(int_double_pair *pair, int *ints, double *doubles
 
 void free_int_double_pair_array(int_double_pair *array)
 {
-    free(array);
+    FREE_AND_NULL(array);
 }
 
 void sort_int_double_pair_array(int_double_pair *array, int size)

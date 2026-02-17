@@ -19,6 +19,7 @@
 #ifndef VEC_MACROS_H
 #define VEC_MACROS_H
 
+#include "memory_wrappers.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +49,7 @@
         vec->data = (TYPE *) malloc(capacity * sizeof(TYPE));                       \
         if (vec->data == NULL)                                                      \
         {                                                                           \
-            free(vec);                                                              \
+            FREE_AND_NULL(vec);                                                     \
             return NULL;                                                            \
         }                                                                           \
                                                                                     \
@@ -59,8 +60,9 @@
                                                                                     \
     static inline void TYPE_NAME##Vec_free(TYPE_NAME##Vec *vec)                     \
     {                                                                               \
-        free(vec->data);                                                            \
-        free(vec);                                                                  \
+        if (!vec) return;                                                           \
+        FREE_AND_NULL(vec->data);                                                   \
+        FREE_AND_NULL(vec);                                                         \
     }                                                                               \
                                                                                     \
     static inline void TYPE_NAME##Vec_clear_no_resize(TYPE_NAME##Vec *vec)          \

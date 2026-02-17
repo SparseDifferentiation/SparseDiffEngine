@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "memory_wrappers.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,8 +61,7 @@ static void free_type_data(expr *node)
 
     free_csc_matrix(lin_node->A_csc);
     lin_node->A_csc = NULL;
-    free(lin_node->b);
-    lin_node->b = NULL;
+    FREE_AND_NULL(lin_node->b);
 }
 
 static void jacobian_init(expr *node)
