@@ -19,8 +19,8 @@
 #define PROBLEM_H
 
 #include "expr.h"
-#include "utils/CSR_Matrix.h"
 #include "utils/COO_Matrix.h"
+#include "utils/CSR_Matrix.h"
 #include "utils/Timer.h"
 #include <stdbool.h>
 

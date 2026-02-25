@@ -31,12 +31,9 @@ const char *test_csr_to_coo()
     int expected_cols[6] = {0, 1, 1, 2, 0, 2};
     double expected_x[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    mu_assert("rows incorrect",
-              cmp_int_array(coo->rows, expected_rows, 6));
-    mu_assert("cols incorrect",
-              cmp_int_array(coo->cols, expected_cols, 6));
-    mu_assert("vals incorrect",
-              cmp_double_array(coo->x, expected_x, 6));
+    mu_assert("rows incorrect", cmp_int_array(coo->rows, expected_rows, 6));
+    mu_assert("cols incorrect", cmp_int_array(coo->cols, expected_cols, 6));
+    mu_assert("vals incorrect", cmp_double_array(coo->x, expected_x, 6));
 
     free_coo_matrix(coo);
     free_csr_matrix(A);
@@ -70,12 +67,9 @@ const char *test_csr_to_coo_lower_triangular()
     double expected_x[6] = {1, 2, 5, 3, 6, 9};
     int expected_map[6] = {0, 3, 4, 6, 7, 8};
 
-    mu_assert("ltri rows incorrect",
-              cmp_int_array(coo->rows, expected_rows, 6));
-    mu_assert("ltri cols incorrect",
-              cmp_int_array(coo->cols, expected_cols, 6));
-    mu_assert("ltri vals incorrect",
-              cmp_double_array(coo->x, expected_x, 6));
+    mu_assert("ltri rows incorrect", cmp_int_array(coo->rows, expected_rows, 6));
+    mu_assert("ltri cols incorrect", cmp_int_array(coo->cols, expected_cols, 6));
+    mu_assert("ltri vals incorrect", cmp_double_array(coo->x, expected_x, 6));
     mu_assert("ltri value_map incorrect",
               cmp_int_array(coo->value_map, expected_map, 6));
 
@@ -101,8 +95,7 @@ const char *test_refresh_lower_triangular_coo()
     refresh_lower_triangular_coo(coo, vals2);
 
     double expected_x[6] = {10, 20, 50, 30, 60, 90};
-    mu_assert("refresh vals incorrect",
-              cmp_double_array(coo->x, expected_x, 6));
+    mu_assert("refresh vals incorrect", cmp_double_array(coo->x, expected_x, 6));
 
     free_coo_matrix(coo);
     free_csr_matrix(A);

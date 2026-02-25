@@ -34,8 +34,7 @@ COO_Matrix *new_coo_matrix(const CSR_Matrix *A);
 COO_Matrix *new_coo_matrix_lower_triangular(const CSR_Matrix *A);
 
 /* Refresh COO values from a new CSR value array using value_map */
-void refresh_lower_triangular_coo(COO_Matrix *coo,
-                                  const double *vals);
+void refresh_lower_triangular_coo(COO_Matrix *coo, const double *vals);
 
 void free_coo_matrix(COO_Matrix *matrix);
 

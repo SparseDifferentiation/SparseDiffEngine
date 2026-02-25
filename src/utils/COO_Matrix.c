@@ -88,8 +88,7 @@ COO_Matrix *new_coo_matrix_lower_triangular(const CSR_Matrix *A)
     return coo;
 }
 
-void refresh_lower_triangular_coo(COO_Matrix *coo,
-                                  const double *vals)
+void refresh_lower_triangular_coo(COO_Matrix *coo, const double *vals)
 {
     for (int i = 0; i < coo->nnz; i++)
     {

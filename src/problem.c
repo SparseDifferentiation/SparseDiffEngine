@@ -252,7 +252,8 @@ void problem_init_hessian_coo_lower_triangular(problem *prob)
     problem_init_hessian(prob);
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    prob->lagrange_hessian_coo = new_coo_matrix_lower_triangular(prob->lagrange_hessian);
+    prob->lagrange_hessian_coo =
+        new_coo_matrix_lower_triangular(prob->lagrange_hessian);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
 }
