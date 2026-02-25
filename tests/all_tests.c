@@ -45,6 +45,7 @@
 #include "problem/test_problem.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
+#include "utils/test_coo_matrix.h"
 #include "utils/test_csr_matrix.h"
 #include "utils/test_linalg_sparse_matmuls.h"
 #include "wsum_hess/elementwise/test_entr.h"
@@ -271,6 +272,9 @@ int main(void)
     mu_run_test(test_ATA_alloc_random, tests_run);
     mu_run_test(test_ATA_alloc_random2, tests_run);
     mu_run_test(test_BTA_alloc_and_BTDA_fill, tests_run);
+    mu_run_test(test_csr_to_coo, tests_run);
+    mu_run_test(test_csr_to_coo_lower_triangular, tests_run);
+    mu_run_test(test_refresh_lower_triangular_coo, tests_run);
 
     printf("\n--- Problem Struct Tests ---\n");
     mu_run_test(test_problem_new_free, tests_run);
