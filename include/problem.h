@@ -19,6 +19,7 @@
 #define PROBLEM_H
 
 #include "expr.h"
+#include "utils/COO_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/Timer.h"
 #include <stdbool.h>
@@ -45,21 +46,22 @@ typedef struct problem
     int n_vars;
     int total_constraint_size;
 
-    /* Allocated by new_problem */
+    /* allocated by new_problem */
     double *constraint_values;
     double *gradient_values;
 
-    /* Allocated by problem_init_derivatives */
+    /* allocated by problem_init_derivatives */
     CSR_Matrix *jacobian;
     CSR_Matrix *lagrange_hessian;
-    int *hess_idx_map; /* Maps all wsum_hess nnz to lagrange_hessian (obj +
-                          constraints) */
+    int *hess_idx_map; /* maps all wsum_hess nnz to lagrange_hessian */
+    COO_Matrix *jacobian_coo;
+    COO_Matrix *lagrange_hessian_coo; /* lower triangular part stored in COO */
 
     /* for the affine shortcut we keep track of the first time the jacobian and
      * hessian are called */
     bool jacobian_called;
 
-    /* Statistics for performance measurement */
+    /* statistics for performance measurement */
     Diff_engine_stats stats;
     bool verbose;
 } problem;
@@ -70,6 +72,8 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
 void problem_init_jacobian(problem *prob);
 void problem_init_hessian(problem *prob);
 void problem_init_derivatives(problem *prob);
+void problem_init_jacobian_coo(problem *prob);
+void problem_init_hessian_coo_lower_triangular(problem *prob);
 void free_problem(problem *prob);
 
 double problem_objective_forward(problem *prob, const double *u);
