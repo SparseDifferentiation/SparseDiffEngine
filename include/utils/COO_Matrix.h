@@ -9,6 +9,7 @@
  * - rows: array of size nnz containing row indices
  * - cols: array of size nnz containing column indices
  * - x: array of size nnz containing values
+ * - value_map: array of size nnz mapping CSR entries to COO entries (for lower-triangular COO)
  * - m: number of rows
  * - n: number of columns
  * - nnz: number of nonzero entries
