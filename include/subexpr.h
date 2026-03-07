@@ -115,6 +115,25 @@ typedef struct left_matmul_expr
     int *csc_to_csr_workspace;
 } left_matmul_expr;
 
+/* Dense left matrix multiplication: y = A * f(x) where A is a dense matrix.
+ * Performance-optimized variant that uses BLAS (cblas_dgemv/dgemm) instead of
+ * sparse operations. Avoids the per-row overlap checks in sparsity detection and
+ * sparse dot products in value computation. */
+typedef struct dense_left_matmul_expr
+{
+    expr base;
+    double *A_dense;    /* row-major m×n */
+    double *AT_dense;   /* row-major n×m (for wsum_hess) */
+    int m, n, n_blocks;
+    CSC_Matrix *Jchild_CSC;
+    CSC_Matrix *J_CSC;
+    int *csc_to_csr_workspace;
+    double *J_block_work; /* n × BATCH col-major workspace for dgemm */
+    double *C_block_work; /* m × BATCH col-major workspace for dgemm */
+    int *col_work;        /* 2 × n_vars ints for column indices/offsets */
+    bool affine_cached;   /* true if Jacobian was pre-computed in init */
+} dense_left_matmul_expr;
+
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.
  * f(x) has shape p x n, A has shape n x q, output y has shape p x q.
  * Uses vec(y) = B * vec(f(x)) where B = A^T kron I_p. */

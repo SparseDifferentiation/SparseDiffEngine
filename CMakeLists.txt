@@ -53,6 +53,14 @@ if(NOT MSVC)
     target_link_libraries(dnlp_diff m)
 endif()
 
+# Link BLAS (needed for dense_left_matmul / dense_right_matmul)
+if(APPLE)
+    target_link_libraries(dnlp_diff "-framework Accelerate")
+else()
+    find_package(BLAS REQUIRED)
+    target_link_libraries(dnlp_diff ${BLAS_LIBRARIES})
+endif()
+
 # Config-specific compile options (compiler-specific)
 if(MSVC)
     target_compile_options(dnlp_diff PRIVATE

@@ -36,6 +36,14 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A);
 /* Right matrix multiplication: f(x) @ A where A is a constant matrix */
 expr *new_right_matmul(expr *u, const CSR_Matrix *A);
 
+/* Dense left matrix multiplication: A @ f(x) where A is a dense row-major matrix.
+   Uses BLAS for all operations — much faster than sparse path for dense A. */
+expr *new_dense_left_matmul(expr *child, const double *A_dense, int m, int n);
+
+/* Dense right matrix multiplication: f(x) @ A where A is a dense row-major matrix.
+   Implemented as (A^T @ f(x)^T)^T using dense_left_matmul. */
+expr *new_dense_right_matmul(expr *u, const double *A_dense, int m, int n);
+
 /* Constant scalar multiplication: a * f(x) where a is a constant double */
 expr *new_const_scalar_mult(double a, expr *child);
 
