@@ -21,7 +21,8 @@ const char *test_jacobian_dense_left_matmul_log(void)
     expr *x = new_variable(3, 1, 0, 3);
 
     /* A is 4x3 dense row-major */
-    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
+    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0,
+                          5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
 
     expr *log_x = new_log(x);
     expr *A_log_x = new_dense_left_matmul(log_x, A_dense, 4, 3);
@@ -36,10 +37,10 @@ const char *test_jacobian_dense_left_matmul_log(void)
      * all 3 columns have entries, so all 4 rows get all 3 columns.
      * The values at zero positions of A will be 0.0. */
     double expected_Ax[12] = {
-        1.0,       0.0,       2.0 / 3.0, /* row 0: A[0,:] @ diag(1/x) */
-        3.0,       0.0,       4.0 / 3.0, /* row 1 */
-        5.0,       0.0,       2.0,       /* row 2 */
-        7.0,       0.0,       0.0        /* row 3 */
+        1.0, 0.0, 2.0 / 3.0, /* row 0: A[0,:] @ diag(1/x) */
+        3.0, 0.0, 4.0 / 3.0, /* row 1 */
+        5.0, 0.0, 2.0,       /* row 2 */
+        7.0, 0.0, 0.0        /* row 3 */
     };
     int expected_Ai[12] = {0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2};
     int expected_Ap[5] = {0, 3, 6, 9, 12};
@@ -64,7 +65,8 @@ const char *test_jacobian_dense_left_matmul_log_matrix(void)
     double x_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 2, 0, 6);
 
-    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
+    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0,
+                          5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
 
     expr *log_x = new_log(x);
     expr *A_log_x = new_dense_left_matmul(log_x, A_dense, 4, 3);
@@ -120,7 +122,8 @@ const char *test_jacobian_dense_left_matmul_log_composite(void)
     memcpy(B->i, B_i, 9 * sizeof(int));
     memcpy(B->x, B_x, 9 * sizeof(double));
 
-    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
+    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0,
+                          5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
 
     expr *Bx = new_linear(x, B, NULL);
     expr *log_Bx = new_log(Bx);

@@ -85,8 +85,8 @@ static void free_type_data(expr *node)
    Since A is dense, if ANY entry in a block of J's column is nonzero,
    ALL m rows in the corresponding block of C get entries.
    Two-pass approach: count nnz first, then fill — avoids O(m*p*k) temp buffer. */
-static CSC_Matrix *dense_block_left_multiply_fill_sparsity(const CSC_Matrix *J, int m,
-                                                           int n, int p)
+static CSC_Matrix *dense_block_left_multiply_fill_sparsity(const CSC_Matrix *J,
+                                                           int m, int n, int p)
 {
     int k = J->n;
     int *Cp = (int *) malloc((k + 1) * sizeof(int));
@@ -158,13 +158,9 @@ static CSC_Matrix *dense_block_left_multiply_fill_sparsity(const CSC_Matrix *J, 
    Columns with a single entry in the block use a fast scaled-column-copy
    path (O(m) vs O(m*n) for dgemm), which is critical when child J is
    an identity or permutation matrix. */
-static void dense_block_left_multiply_fill_values(const double *A_dense,
-                                                  const CSC_Matrix *J,
-                                                  CSC_Matrix *C, int m, int n,
-                                                  int p, double *J_block,
-                                                  double *C_block,
-                                                  int *col_indices,
-                                                  int *col_C_offsets)
+static void dense_block_left_multiply_fill_values(
+    const double *A_dense, const CSC_Matrix *J, CSC_Matrix *C, int m, int n, int p,
+    double *J_block, double *C_block, int *col_indices, int *col_C_offsets)
 {
     int k = J->n;
 
@@ -271,8 +267,7 @@ static void jacobian_init(expr *node)
     /* compute sparsity of this node's jacobian in CSC and CSR */
     dn->J_CSC = dense_block_left_multiply_fill_sparsity(dn->Jchild_CSC, dn->m, dn->n,
                                                         dn->n_blocks);
-    node->jacobian =
-        csc_to_csr_fill_sparsity(dn->J_CSC, dn->csc_to_csr_workspace);
+    node->jacobian = csc_to_csr_fill_sparsity(dn->J_CSC, dn->csc_to_csr_workspace);
 
     /* Allocate dgemm batch workspaces */
     int batch = DGEMM_BATCH_SIZE;
@@ -298,7 +293,8 @@ static void eval_jacobian(expr *node)
 {
     dense_left_matmul_expr *dn = (dense_left_matmul_expr *) node;
 
-    /* Affine children have constant Jacobians — already computed in jacobian_init. */
+    /* Affine children have constant Jacobians — already computed in jacobian_init.
+     */
     if (dn->affine_cached) return;
 
     expr *x = node->left;

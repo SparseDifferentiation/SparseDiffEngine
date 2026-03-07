@@ -122,8 +122,8 @@ typedef struct left_matmul_expr
 typedef struct dense_left_matmul_expr
 {
     expr base;
-    double *A_dense;    /* row-major m×n */
-    double *AT_dense;   /* row-major n×m (for wsum_hess) */
+    double *A_dense;  /* row-major m×n */
+    double *AT_dense; /* row-major n×m (for wsum_hess) */
     int m, n, n_blocks;
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;

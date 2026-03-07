@@ -23,7 +23,8 @@ const char *test_wsum_hess_dense_left_matmul(void)
     double w[4] = {1.0, 2.0, 3.0, 4.0};
 
     expr *x = new_variable(3, 1, 0, 3);
-    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
+    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0,
+                          5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
 
     expr *log_x = new_log(x);
     expr *A_log_x = new_dense_left_matmul(log_x, A_dense, 4, 3);
@@ -57,7 +58,8 @@ const char *test_wsum_hess_dense_left_matmul_matrix(void)
     double w[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
 
     expr *x = new_variable(3, 2, 0, 6);
-    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
+    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0,
+                          5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
 
     expr *log_x = new_log(x);
     expr *A_log_x = new_dense_left_matmul(log_x, A_dense, 4, 3);
@@ -67,7 +69,8 @@ const char *test_wsum_hess_dense_left_matmul_matrix(void)
     A_log_x->wsum_hess_init(A_log_x);
     A_log_x->eval_wsum_hess(A_log_x, w);
 
-    double expected_x[6] = {-50.0, -0.0, -28.0 / 9.0, -57.0 / 8.0, -0.0, -19.0 / 9.0};
+    double expected_x[6] = {-50.0,       -0.0, -28.0 / 9.0,
+                            -57.0 / 8.0, -0.0, -19.0 / 9.0};
     int expected_i[6] = {0, 1, 2, 3, 4, 5};
     int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
 
@@ -101,7 +104,8 @@ const char *test_wsum_hess_dense_left_matmul_composite(void)
     memcpy(B->i, B_i, 9 * sizeof(int));
     memcpy(B->x, B_x, 9 * sizeof(double));
 
-    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
+    double A_dense[12] = {1.0, 0.0, 2.0, 3.0, 0.0, 4.0,
+                          5.0, 0.0, 6.0, 7.0, 0.0, 0.0};
 
     expr *Bx = new_linear(x, B, NULL);
     expr *log_Bx = new_log(Bx);
@@ -112,10 +116,9 @@ const char *test_wsum_hess_dense_left_matmul_composite(void)
     A_log_Bx->wsum_hess_init(A_log_Bx);
     A_log_Bx->eval_wsum_hess(A_log_Bx, w);
 
-    double expected_x[9] = {
-        -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0,
-        -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0,
-        -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0};
+    double expected_x[9] = {-13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0,
+                            -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0,
+                            -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0};
     int expected_i[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     int expected_p[4] = {0, 3, 6, 9};
 
