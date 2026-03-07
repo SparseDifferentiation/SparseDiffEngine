@@ -25,7 +25,9 @@
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
 #include "jacobian_tests/test_index.h"
+#ifndef _MSC_VER
 #include "jacobian_tests/test_dense_left_matmul.h"
+#endif
 #include "jacobian_tests/test_left_matmul.h"
 #include "jacobian_tests/test_log.h"
 #include "jacobian_tests/test_matmul.h"
@@ -62,7 +64,9 @@
 #include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_index.h"
+#ifndef _MSC_VER
 #include "wsum_hess/test_dense_left_matmul.h"
+#endif
 #include "wsum_hess/test_left_matmul.h"
 #include "wsum_hess/test_matmul.h"
 #include "wsum_hess/test_multiply.h"
@@ -170,9 +174,11 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_jacobian_trace_variable, tests_run);
     mu_run_test(test_jacobian_trace_composite, tests_run);
+#ifndef _MSC_VER
     mu_run_test(test_jacobian_dense_left_matmul_log, tests_run);
     mu_run_test(test_jacobian_dense_left_matmul_log_matrix, tests_run);
     mu_run_test(test_jacobian_dense_left_matmul_log_composite, tests_run);
+#endif
     mu_run_test(test_jacobian_left_matmul_log, tests_run);
     mu_run_test(test_jacobian_left_matmul_log_matrix, tests_run);
     mu_run_test(test_jacobian_left_matmul_log_composite, tests_run);
@@ -231,9 +237,11 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
+#ifndef _MSC_VER
     mu_run_test(test_wsum_hess_dense_left_matmul, tests_run);
     mu_run_test(test_wsum_hess_dense_left_matmul_matrix, tests_run);
     mu_run_test(test_wsum_hess_dense_left_matmul_composite, tests_run);
+#endif
     mu_run_test(test_wsum_hess_left_matmul, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_matrix, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_composite, tests_run);

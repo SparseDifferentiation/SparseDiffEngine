@@ -11,7 +11,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y valgrind
+          sudo apt-get install -y valgrind libopenblas-dev
 
       - name: Configure Debug build
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug

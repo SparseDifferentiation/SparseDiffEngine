@@ -16,6 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Install BLAS (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libopenblas-dev
+
       # Configure CMake with ASan + UBSan
       - name: Configure with sanitizers
         run: cmake -B build -S . \

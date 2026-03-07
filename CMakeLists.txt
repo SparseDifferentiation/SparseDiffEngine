@@ -44,6 +44,10 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 # Source files - automatically gather all .c files from src/
 file(GLOB_RECURSE SOURCES "src/*.c")
 
+# Exclude BLAS-dependent files on Windows (no BLAS available)
+if(MSVC)
+    list(FILTER SOURCES EXCLUDE REGEX "dense_left_matmul\\.c$|dense_right_matmul\\.c$")
+endif()
 
 # Create core library
 add_library(dnlp_diff ${SOURCES})
@@ -56,7 +60,7 @@ endif()
 # Link BLAS (needed for dense_left_matmul / dense_right_matmul)
 if(APPLE)
     target_link_libraries(dnlp_diff "-framework Accelerate")
-else()
+elseif(NOT MSVC)
     find_package(BLAS REQUIRED)
     target_link_libraries(dnlp_diff ${BLAS_LIBRARIES})
 endif()
