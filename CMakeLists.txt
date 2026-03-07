@@ -53,6 +53,15 @@ if(NOT MSVC)
     target_link_libraries(dnlp_diff m)
 endif()
 
+# Find and link BLAS
+find_package(BLAS REQUIRED)
+if(APPLE)
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
+    target_link_libraries(dnlp_diff ${ACCELERATE_FRAMEWORK})
+else()
+    target_link_libraries(dnlp_diff ${BLAS_LIBRARIES})
+endif()
+
 # Config-specific compile options (compiler-specific)
 if(MSVC)
     target_compile_options(dnlp_diff PRIVATE

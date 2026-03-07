@@ -10,7 +10,7 @@
 #include "utils/linalg_sparse_matmuls.h"
 
 /* Test block_left_multiply_fill_sparsity with simple case: single block */
-const char *test_block_left_multiply_single_block()
+const char *test_block_left_multiply_single_block(void)
 {
     /* A is 2x3 CSR:
      * [1.0  0.0  0.0]
@@ -61,7 +61,7 @@ const char *test_block_left_multiply_single_block()
 }
 
 /* Test block_left_multiply_fill_sparsity with two blocks */
-const char *test_block_left_multiply_two_blocks()
+const char *test_block_left_multiply_two_blocks(void)
 {
     /* A is 2x2 CSR:
      * [1.0  0.0]
@@ -128,7 +128,7 @@ const char *test_block_left_multiply_two_blocks()
 }
 
 /* Test block_left_multiply_fill_sparsity with all zero column in J */
-const char *test_block_left_multiply_zero_column()
+const char *test_block_left_multiply_zero_column(void)
 {
     /* A is 2x2 CSR (identity) */
     CSR_Matrix *A = new_csr_matrix(2, 2, 2);
@@ -167,7 +167,7 @@ const char *test_block_left_multiply_zero_column()
 }
 
 /* Test csr_csc_matmul_alloc: C = A @ B where A is CSR and B is CSC */
-const char *test_csr_csc_matmul_alloc_basic()
+const char *test_csr_csc_matmul_alloc_basic(void)
 {
     /* A is 3x2 CSR:
      * [1.0  0.0]
@@ -215,7 +215,7 @@ const char *test_csr_csc_matmul_alloc_basic()
 }
 
 /* Test csr_csc_matmul_alloc with sparse result */
-const char *test_csr_csc_matmul_alloc_sparse()
+const char *test_csr_csc_matmul_alloc_sparse(void)
 {
     /* A is 2x3 CSR:
      * [1.0  0.0  0.0]
@@ -262,7 +262,7 @@ const char *test_csr_csc_matmul_alloc_sparse()
 }
 
 /* Test block_left_multiply_vec with single block: y = A @ x */
-const char *test_block_left_multiply_vec_single_block()
+const char *test_block_left_multiply_vec_single_block(void)
 {
     /* A is 2x3 CSR:
      * [1.0  0.0  2.0]
@@ -294,7 +294,7 @@ const char *test_block_left_multiply_vec_single_block()
 }
 
 /* Test block_left_multiply_vec with two blocks: y = [A @ x1; A @ x2] */
-const char *test_block_left_multiply_vec_two_blocks()
+const char *test_block_left_multiply_vec_two_blocks(void)
 {
     /* A is 2x3 CSR:
      * [1.0  2.0  0.0]
@@ -328,7 +328,7 @@ const char *test_block_left_multiply_vec_two_blocks()
 }
 
 /* Test block_left_multiply_vec with sparse matrix and multiple blocks */
-const char *test_block_left_multiply_vec_sparse()
+const char *test_block_left_multiply_vec_sparse(void)
 {
     /* A is 3x4 CSR (very sparse):
      * [2.0  0.0  0.0  0.0]
@@ -363,7 +363,7 @@ const char *test_block_left_multiply_vec_sparse()
 }
 
 /* Test block_left_multiply_vec with three blocks */
-const char *test_block_left_multiply_vec_three_blocks()
+const char *test_block_left_multiply_vec_three_blocks(void)
 {
     /* A is 2x2 CSR:
      * [1.0  2.0]

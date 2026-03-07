@@ -8,7 +8,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_hstack_forward_vectors()
+const char *test_hstack_forward_vectors(void)
 {
     /* x is 3x1 variable with values [1, 2, 3] */
     double u[3] = {1.0, 2.0, 3.0};
@@ -33,7 +33,7 @@ const char *test_hstack_forward_vectors()
     return 0;
 }
 
-const char *test_hstack_forward_matrix()
+const char *test_hstack_forward_matrix(void)
 {
     /* x is 3x2 variable with values stored column-wise: [1, 3, 5, 2, 4, 6] */
     double u[6] = {1.0, 3.0, 5.0, 2.0, 4.0, 6.0};

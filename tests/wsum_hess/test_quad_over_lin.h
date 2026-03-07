@@ -4,7 +4,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_quad_over_lin_xy()
+const char *test_wsum_hess_quad_over_lin_xy(void)
 {
     /* x^T x / y with x var_id=2 (3 vars), y var_id=7, total n_vars=9
      * x = [1, 2, 3], y = 4, w = 2
@@ -33,7 +33,7 @@ const char *test_wsum_hess_quad_over_lin_xy()
     return 0;
 }
 
-const char *test_wsum_hess_quad_over_lin_yx()
+const char *test_wsum_hess_quad_over_lin_yx(void)
 {
     /* x^T x / y with y var_id=2, x var_id=5 (3 vars), total n_vars=9
      * x = [1, 2, 3], y = 4, w = 2

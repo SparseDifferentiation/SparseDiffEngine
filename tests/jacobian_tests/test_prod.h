@@ -5,7 +5,7 @@
 #include "other.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_prod_no_zero()
+const char *test_jacobian_prod_no_zero(void)
 {
     /* x is 4x1 variable, global index 2, total 8 vars
      * x = [1, 2, 3, 4]
@@ -32,7 +32,7 @@ const char *test_jacobian_prod_no_zero()
     return 0;
 }
 
-const char *test_jacobian_prod_one_zero()
+const char *test_jacobian_prod_one_zero(void)
 {
     /* x = [1, 0, 3, 4], zero at index 1
      * df/dx = [0, prod_nonzero, 0, 0] = [0, 12, 0, 0]
@@ -57,7 +57,7 @@ const char *test_jacobian_prod_one_zero()
     return 0;
 }
 
-const char *test_jacobian_prod_two_zeros()
+const char *test_jacobian_prod_two_zeros(void)
 {
     /* x = [1, 0, 0, 4], two zeros -> Jacobian all zeros */
     double u_vals[8] = {0.0, 0.0, 1.0, 0.0, 0.0, 4.0, 0.0, 0.0};

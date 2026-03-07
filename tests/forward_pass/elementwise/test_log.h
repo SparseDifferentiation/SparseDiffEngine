@@ -8,7 +8,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_log()
+const char *test_log(void)
 {
     double u[2] = {1.0, 2.718281828};
     expr *var = new_variable(2, 1, 0, 2);

@@ -30,8 +30,12 @@ expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
 /* Matrix multiplication: Z = X @ Y */
 expr *new_matmul(expr *x, expr *y);
 
-/* Left matrix multiplication: A @ f(x) where A is a constant matrix */
+/* Left matrix multiplication: A @ f(x) where A is a constant sparse matrix */
 expr *new_left_matmul(expr *u, const CSR_Matrix *A);
+
+/* Left matrix multiplication: A @ f(x) where A is a constant dense matrix
+ * (row-major, m x n). Uses CBLAS for efficient computation. */
+expr *new_left_matmul_dense(expr *u, int m, int n, const double *data);
 
 /* Right matrix multiplication: f(x) @ A where A is a constant matrix */
 expr *new_right_matmul(expr *u, const CSR_Matrix *A);

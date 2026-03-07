@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_broadcast_row_jacobian()
+const char *test_broadcast_row_jacobian(void)
 {
     /* Test jacobian of broadcast row: (1, 3) -> (2, 3)
      * Input variable: 3 elements (d1=1, d2=3)

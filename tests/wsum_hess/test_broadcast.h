@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_broadcast_row()
+const char *test_wsum_hess_broadcast_row(void)
 {
     /* Test: wsum_hess of broadcast_row(log(x)) where x is (1, 3)
      * x = [1.0, 2.0, 4.0] (row vector)
@@ -66,7 +66,7 @@ const char *test_wsum_hess_broadcast_row()
     return 0;
 }
 
-const char *test_wsum_hess_broadcast_col()
+const char *test_wsum_hess_broadcast_col(void)
 {
     /* Test: wsum_hess of broadcast_col(log(x)) where x is (3, 1)
      * x = [1.0, 2.0, 4.0]^T (column vector)
@@ -121,7 +121,7 @@ const char *test_wsum_hess_broadcast_col()
     return 0;
 }
 
-const char *test_wsum_hess_broadcast_scalar_to_matrix()
+const char *test_wsum_hess_broadcast_scalar_to_matrix(void)
 {
     /* Test: wsum_hess of broadcast_scalar(log(x)) where x is scalar (1, 1)
      * x = 5.0

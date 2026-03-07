@@ -21,6 +21,7 @@
 #include "expr.h"
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/matrix.h"
 
 /* Forward declaration */
 struct int_double_pair;
@@ -107,12 +108,12 @@ important distinction compared to linear_op_expr. */
 typedef struct left_matmul_expr
 {
     expr base;
-    CSR_Matrix *A;
-    CSR_Matrix *AT;
+    Matrix *A;
+    Matrix *AT;
     int n_blocks;
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
-    int *csc_to_csr_workspace;
+    int *csc_to_csr_work;
 } left_matmul_expr;
 
 /* Right matrix multiplication: y = f(x) * A where f(x) is an expression.

@@ -10,7 +10,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_right_matmul()
+const char *test_wsum_hess_right_matmul(void)
 {
     /* Test weighted sum of Hessian of log(x) @ A where:
      * x is 2x2 variable at x = [[1, 2], [3, 4]] (vectorized column-wise: [1, 3, 2,
@@ -60,7 +60,7 @@ const char *test_wsum_hess_right_matmul()
     return 0;
 }
 
-const char *test_wsum_hess_right_matmul_vector()
+const char *test_wsum_hess_right_matmul_vector(void)
 {
     /* Test weighted sum of Hessian of log(x) @ A where:
      * x is 1x3 variable at x = [1, 2, 3]

@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_jacobian_elementwise_mult_1()
+const char *test_jacobian_elementwise_mult_1(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of x * y (elementwise multiplication)
@@ -31,7 +31,7 @@ const char *test_jacobian_elementwise_mult_1()
     return 0;
 }
 
-const char *test_jacobian_elementwise_mult_2()
+const char *test_jacobian_elementwise_mult_2(void)
 {
     // var = (z, y, w, x) where z is 2 x 1, y is 3 x 1, w is 2 x 1, x is 3 x 1
     // we compute jacobian of x * y (elementwise multiplication)
@@ -56,7 +56,7 @@ const char *test_jacobian_elementwise_mult_2()
     return 0;
 }
 
-const char *test_jacobian_elementwise_mult_3()
+const char *test_jacobian_elementwise_mult_3(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of Ax * By (elementwise multiplication)
@@ -121,7 +121,7 @@ const char *test_jacobian_elementwise_mult_3()
     return 0;
 }
 
-const char *test_jacobian_elementwise_mult_4()
+const char *test_jacobian_elementwise_mult_4(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of Ax * Ax (elementwise multiplication)

@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 
-const char *test_quad_over_lin1()
+const char *test_quad_over_lin1(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of x^T x / y
@@ -32,7 +32,7 @@ const char *test_quad_over_lin1()
     return 0;
 }
 
-const char *test_quad_over_lin2()
+const char *test_quad_over_lin2(void)
 {
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of x^T x / y
@@ -56,7 +56,7 @@ const char *test_quad_over_lin2()
     return 0;
 }
 
-const char *test_quad_over_lin3()
+const char *test_quad_over_lin3(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of (Ax)^T(Ax)/y where
@@ -95,7 +95,7 @@ const char *test_quad_over_lin3()
     return 0;
 }
 
-const char *test_quad_over_lin4()
+const char *test_quad_over_lin4(void)
 {
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of (Ax)^T(Ax)/y where
@@ -135,7 +135,7 @@ const char *test_quad_over_lin4()
     return 0;
 }
 
-const char *test_quad_over_lin5()
+const char *test_quad_over_lin5(void)
 {
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of (Avar)^T(Avar)/y where

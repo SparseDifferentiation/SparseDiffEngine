@@ -8,7 +8,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_composite()
+const char *test_composite(void)
 {
     double u[2] = {1.0, 2.0};
     double c[2] = {1.0, 1.0};

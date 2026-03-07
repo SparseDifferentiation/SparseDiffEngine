@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_wsum_hess_multiply_1()
+const char *test_wsum_hess_multiply_1(void)
 {
     // Total 12 variables: [?, ?, ?, x0, x1, x2, ?, ?, y0, y1, y2, ?]
     // x has var_id = 3, y has var_id = 8
@@ -37,7 +37,7 @@ const char *test_wsum_hess_multiply_1()
     return 0;
 }
 
-const char *test_wsum_hess_multiply_sparse_random()
+const char *test_wsum_hess_multiply_sparse_random(void)
 {
     /* Test with larger random sparse matrices
      * A: 5x10 CSR matrix
@@ -109,7 +109,7 @@ const char *test_wsum_hess_multiply_sparse_random()
     return 0;
 }
 
-const char *test_wsum_hess_multiply_linear_ops()
+const char *test_wsum_hess_multiply_linear_ops(void)
 {
     /* Test Hessian for mult(Ax, Bx) where A, B are 4x3 linear operators
      * A = [[1.0, 0.0, 2.0],
@@ -191,7 +191,7 @@ const char *test_wsum_hess_multiply_linear_ops()
     return 0;
 }
 
-const char *test_wsum_hess_multiply_2()
+const char *test_wsum_hess_multiply_2(void)
 {
     // Total 12 variables: [?, ?, ?, y0, y1, y2, ?, ?, x0, x1, x2, ?]
     // y has var_id = 3, x has var_id = 8

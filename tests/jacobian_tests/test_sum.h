@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_sum_log()
+const char *test_jacobian_sum_log(void)
 {
     /* Test Jacobian of sum(log(x)) where x is 3x1 variable evaluated at [1, 2, 3]
      * Jacobian should be [0, 0, 1/1, 1/2, 1/3, 0] = [0, 0, 1.0, 0.5, 1/3, 0] as a
@@ -32,7 +32,7 @@ const char *test_jacobian_sum_log()
     return 0;
 }
 
-const char *test_jacobian_sum_mult()
+const char *test_jacobian_sum_mult(void)
 {
     /* Test Jacobian of sum(x * y) where both x and y are 3x1 variables
      * x has global variable index 2, y has global variable index 6
@@ -66,7 +66,7 @@ const char *test_jacobian_sum_mult()
     return 0;
 }
 
-const char *test_jacobian_sum_log_axis_0()
+const char *test_jacobian_sum_log_axis_0(void)
 {
     /* Test Jacobian of sum(log(x), axis=0) where x is 3x2 variable,
      * global index 2, total 8 variables
@@ -105,7 +105,7 @@ const char *test_jacobian_sum_log_axis_0()
     free_expr(sum_node);
     return 0;
 }
-const char *test_jacobian_sum_add_log_axis_0()
+const char *test_jacobian_sum_add_log_axis_0(void)
 {
     /* Test Jacobian of sum(add(log(x), log(y)), axis=0) where x and y are 3x2
      * x.value = [[1.0, 2.0],
@@ -152,7 +152,7 @@ const char *test_jacobian_sum_add_log_axis_0()
     free_expr(sum_node);
     return 0;
 }
-const char *test_jacobian_sum_log_axis_1()
+const char *test_jacobian_sum_log_axis_1(void)
 {
     /* Test Jacobian of sum(log(x), axis=1) where x is 3x2 variable,
      * global index 2, total 8 variables

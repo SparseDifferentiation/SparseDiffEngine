@@ -109,16 +109,15 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
     /* A is m x n, J is (n*p) x k, C is (m*p) x k */
     int m = A->m;
     int n = A->n;
-    int k = J->n;
     int j, jj, block, block_start, block_end, block_jj_start, block_jj_end,
         row_offset;
 
     /* allocate column pointers and an estimate of row indices */
-    int *Cp = (int *) malloc((k + 1) * sizeof(int));
-    iVec *Ci = iVec_new(k * m);
+    int *Cp = (int *) malloc((J->n + 1) * sizeof(int));
+    iVec *Ci = iVec_new(J->n * m);
     Cp[0] = 0;
 
-    /* for each column of j */
+    /* for each column of J */
     for (j = 0; j < J->n; j++)
     {
         /* if empty we continue */
@@ -175,14 +174,9 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
         Cp[j + 1] = Ci->len;
     }
 
-    /* Allocate result matrix C in CSC format */
-    CSC_Matrix *C = new_csc_matrix(m * p, k, Ci->len);
-
-    /* Copy column pointers and row indices */
-    memcpy(C->p, Cp, (k + 1) * sizeof(int));
+    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len);
+    memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
-
-    /* Clean up workspace */
     free(Cp);
     iVec_free(Ci);
 

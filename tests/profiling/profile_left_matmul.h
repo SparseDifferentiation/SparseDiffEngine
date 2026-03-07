@@ -11,7 +11,7 @@
 #include "test_helpers.h"
 #include "utils/Timer.h"
 
-const char *profile_left_matmul()
+const char *profile_left_matmul(void)
 {
     /* A @ X where A is 50 x 50 dense stored in CSR and X is 50 x 50 variable */
     int n = 100;

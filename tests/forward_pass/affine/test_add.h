@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_addition()
+const char *test_addition(void)
 {
     double u[2] = {3.0, 4.0};
     double c[2] = {1.0, 2.0};

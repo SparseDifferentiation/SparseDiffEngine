@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_jacobian_matmul()
+const char *test_jacobian_matmul(void)
 {
     /* Test: Z = X @ Y where X is 2x3, Y is 3x4
      * var = (X, Y) where X starts at index 0 (size 6), Y starts at index 6 (size 12)

@@ -5,7 +5,7 @@
 #include "test_helpers.h"
 #include <string.h>
 
-const char *test_wsum_hess_quad_form()
+const char *test_wsum_hess_quad_form(void)
 {
     // x has var_id = 3, dimension 4, total variables = 10
     double u_vals[10] = {0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0};

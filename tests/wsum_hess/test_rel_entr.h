@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_wsum_hess_rel_entr_1()
+const char *test_wsum_hess_rel_entr_1(void)
 {
     // Total 10 variables: [?, x0, x1, x2, ?, ?, y0, y1, y2, ?]
     // x has var_id = 1, y has var_id = 6
@@ -37,7 +37,7 @@ const char *test_wsum_hess_rel_entr_1()
     return 0;
 }
 
-const char *test_wsum_hess_rel_entr_2()
+const char *test_wsum_hess_rel_entr_2(void)
 {
     // Total 10 variables: [?, y0, y1, y2, ?, ?, x0, x1, x2, ?]
     // y has var_id = 1, x has var_id = 6
@@ -68,7 +68,7 @@ const char *test_wsum_hess_rel_entr_2()
     return 0;
 }
 
-const char *test_wsum_hess_rel_entr_matrix()
+const char *test_wsum_hess_rel_entr_matrix(void)
 {
     // x, y are 3 x 2 matrices (vectorized columnwise)
     // x has var_id = 0, y has var_id = 6

@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_power()
+const char *test_wsum_hess_power(void)
 {
     double u_vals[3] = {1.0, 2.0, 3.0};
     double w[3] = {1.0, 2.0, 3.0};
