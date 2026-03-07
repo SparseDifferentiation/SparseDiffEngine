@@ -140,8 +140,7 @@ static void dense_block_left_mult_values(const Matrix *A, const CSC_Matrix *J,
                 end--;
             }
 
-            /* scatter sparse J column into dense vector and then compute
-               A @ j_dense */
+            /* scatter sparse J col into dense vector and then compute A @ j_dense */
             memset(j_dense, 0, n * sizeof(double));
             for (s = start; s < end; s++)
             {

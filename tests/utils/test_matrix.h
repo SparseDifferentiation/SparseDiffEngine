@@ -72,8 +72,7 @@ const char *test_sparse_vs_dense_mult_vec(void)
     sparse->block_left_mult_vec(sparse, x, y_sparse, 1);
     dense->block_left_mult_vec(dense, x, y_dense, 1);
 
-    mu_assert("sparse vs dense mismatch",
-              cmp_double_array(y_sparse, y_dense, 2));
+    mu_assert("sparse vs dense mismatch", cmp_double_array(y_sparse, y_dense, 2));
 
     free_matrix(sparse);
     free_matrix(dense);
@@ -94,8 +93,7 @@ const char *test_dense_matrix_trans(void)
     /* AT should be [1 4; 2 5; 3 6] stored row-major */
     Dense_Matrix *dm = (Dense_Matrix *) AT;
     double AT_expected[6] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0};
-    mu_assert("AT vals incorrect",
-              cmp_double_array(dm->x, AT_expected, 6));
+    mu_assert("AT vals incorrect", cmp_double_array(dm->x, AT_expected, 6));
 
     free_matrix(A);
     free_matrix(AT);
