@@ -6,7 +6,6 @@
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
-#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_jacobian_dense_left_matmul_log(void)

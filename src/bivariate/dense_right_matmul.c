@@ -19,7 +19,6 @@
 #include "bivariate.h"
 #include "subexpr.h"
 #include <stdlib.h>
-#include <string.h>
 
 /* This file implements the atom 'dense_right_matmul' corresponding to the
    operation y = f(x) @ A, where A is a given dense matrix.

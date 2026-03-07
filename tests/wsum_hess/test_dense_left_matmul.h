@@ -1,6 +1,5 @@
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "affine.h"
@@ -8,7 +7,6 @@
 #include "elementwise_univariate.h"
 #include "expr.h"
 #include "minunit.h"
-#include "subexpr.h"
 #include "test_helpers.h"
 
 const char *test_wsum_hess_dense_left_matmul(void)
