@@ -54,11 +54,14 @@ if(NOT MSVC)
 endif()
 
 # Find and link BLAS
-find_package(BLAS REQUIRED)
 if(APPLE)
     find_library(ACCELERATE_FRAMEWORK Accelerate)
     target_link_libraries(dnlp_diff ${ACCELERATE_FRAMEWORK})
+elseif(MSVC)
+    find_package(OpenBLAS CONFIG REQUIRED)
+    target_link_libraries(dnlp_diff OpenBLAS::OpenBLAS)
 else()
+    find_package(BLAS REQUIRED)
     target_link_libraries(dnlp_diff ${BLAS_LIBRARIES})
 endif()
 
