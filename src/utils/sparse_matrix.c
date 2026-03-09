@@ -63,5 +63,13 @@ Matrix *new_sparse_matrix(const CSR_Matrix *A)
 Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork)
 {
     CSR_Matrix *AT = transpose(self->csr, iwork);
-    return new_sparse_matrix(AT);
+    Sparse_Matrix *sm = (Sparse_Matrix *) calloc(1, sizeof(Sparse_Matrix));
+    sm->base.m = AT->m;
+    sm->base.n = AT->n;
+    sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
+    sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
+    sm->base.block_left_mult_values = sparse_block_left_mult_values;
+    sm->base.free_fn = sparse_free;
+    sm->csr = AT;
+    return &sm->base;
 }
