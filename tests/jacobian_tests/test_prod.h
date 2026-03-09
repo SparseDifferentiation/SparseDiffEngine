@@ -4,6 +4,7 @@
 #include "minunit.h"
 #include "other.h"
 #include "test_helpers.h"
+#include "affine.h"
 
 const char *test_jacobian_prod_no_zero(void)
 {

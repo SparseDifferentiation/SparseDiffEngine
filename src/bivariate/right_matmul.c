@@ -17,9 +17,7 @@
  */
 #include "affine.h"
 #include "bivariate.h"
-#include "subexpr.h"
 #include "utils/CSR_Matrix.h"
-#include "utils/linalg_sparse_matmuls.h"
 #include <stdlib.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
@@ -39,5 +37,26 @@ expr *new_right_matmul(expr *u, const CSR_Matrix *A)
 
     free_csr_matrix(AT);
     free(work_transpose);
+    return node;
+}
+
+expr *new_right_matmul_dense(expr *u, int m, int n, const double *data)
+{
+    /* We express: u @ A = (A^T @ u^T)^T
+       A is m x n, so A^T is n x m. */
+    double *AT = (double *) malloc(n * m * sizeof(double));
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            AT[j * m + i] = data[i * n + j];
+        }
+    }
+
+    expr *u_transpose = new_transpose(u);
+    expr *left_matmul_node = new_left_matmul_dense(u_transpose, m, n, AT);
+    expr *node = new_transpose(left_matmul_node);
+
+    free(AT);
     return node;
 }

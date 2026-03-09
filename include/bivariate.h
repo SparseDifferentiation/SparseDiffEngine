@@ -40,6 +40,8 @@ expr *new_left_matmul_dense(expr *u, int m, int n, const double *data);
 /* Right matrix multiplication: f(x) @ A where A is a constant matrix */
 expr *new_right_matmul(expr *u, const CSR_Matrix *A);
 
+expr *new_right_matmul_dense(expr *u, int m, int n, const double *data);
+
 /* Constant scalar multiplication: a * f(x) where a is a constant double */
 expr *new_const_scalar_mult(double a, expr *child);
 
