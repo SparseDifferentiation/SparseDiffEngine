@@ -37,15 +37,8 @@ static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *
        y (p x m) = x (p x n) * A^T (n x m), all row-major.
        cblas with RowMajor: C = alpha * A * B + beta * C
        where A = x (p x n), B = A^T (n x m), C = y (p x m). */
-    /* cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
-                   p, m, n, 1.0, x, n, dm->x,
-                   n, 0.0, y, m); */
-    for (int b = 0; b < p; b++)
-    {
-        cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0,
-                    dm->x, n, x + b * n, 1,
-                    0.0, y + b * m, 1);
-    }
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, p, m, n, 1.0, x, n, dm->x,
+                n, 0.0, y, m);
 }
 
 static CSC_Matrix *dense_block_left_mult_sparsity(const Matrix *A,
