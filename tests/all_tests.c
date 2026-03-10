@@ -15,6 +15,7 @@
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
+#include "forward_pass/test_left_matmul_dense.h"
 #include "forward_pass/test_matmul.h"
 #include "forward_pass/test_prod_axis_one.h"
 #include "forward_pass/test_prod_axis_zero.h"
@@ -112,6 +113,7 @@ int main(void)
     mu_run_test(test_forward_prod_axis_zero, tests_run);
     mu_run_test(test_forward_prod_axis_one, tests_run);
     mu_run_test(test_matmul, tests_run);
+    mu_run_test(test_left_matmul_dense, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);

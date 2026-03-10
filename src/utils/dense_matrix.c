@@ -30,14 +30,22 @@ static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *
 
     /* y = kron(I_p, A) @ x via a single dgemm call:
        Treat x as n x p (column-major blocks) and y as m x p.
-       But x and y are stored as p blocks of length n and m respectively
-       (i.e. block-interleaved). This is the same as treating them as
-       row-major matrices of shape p x n and p x m, so:
+       But x and y are stored as p blocks of length n and m
+       respectively (i.e. block-interleaved). This is the same as
+       treating them as row-major matrices of shape p x n and
+       p x m, so:
        y (p x m) = x (p x n) * A^T (n x m), all row-major.
        cblas with RowMajor: C = alpha * A * B + beta * C
        where A = x (p x n), B = A^T (n x m), C = y (p x m). */
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, p, m, n, 1.0, x, n, dm->x,
-                n, 0.0, y, m);
+    /* cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                   p, m, n, 1.0, x, n, dm->x,
+                   n, 0.0, y, m); */
+    for (int b = 0; b < p; b++)
+    {
+        cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0,
+                    dm->x, n, x + b * n, 1,
+                    0.0, y + b * m, 1);
+    }
 }
 
 static CSC_Matrix *dense_block_left_mult_sparsity(const Matrix *A,

@@ -54,7 +54,7 @@ expr *new_right_matmul_dense(expr *u, int m, int n, const double *data)
     }
 
     expr *u_transpose = new_transpose(u);
-    expr *left_matmul_node = new_left_matmul_dense(u_transpose, m, n, AT);
+    expr *left_matmul_node = new_left_matmul_dense(u_transpose, n, m, AT);
     expr *node = new_transpose(left_matmul_node);
 
     free(AT);
