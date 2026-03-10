@@ -21,33 +21,28 @@ const char *test_left_matmul_dense(void)
     expr *X = new_variable(3, 3, 0, 9);
 
     /* Constant matrix A in row-major order */
-    double A_data[9] = {1.0, 2.0, 3.0,
-                        4.0, 5.0, 6.0,
-                        7.0, 8.0, 9.0};
+    double A_data[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
 
     /* Build expression Z = A @ X */
     expr *Z = new_left_matmul_dense(X, 3, 3, A_data);
 
     /* Variable values in column-major order */
-    double u[9] = {1.0, 2.0, 3.0,   /* first column */
-                   4.0, 5.0, 6.0,   /* second column */
-                   7.0, 8.0, 9.0};  /* third column */
+    double u[9] = {1.0, 2.0, 3.0,  /* first column */
+                   4.0, 5.0, 6.0,  /* second column */
+                   7.0, 8.0, 9.0}; /* third column */
 
     /* Evaluate forward pass */
     Z->forward(Z, u);
 
     /* Expected result (3 x 3) in column-major order */
-    double expected[9] = {14.0,  32.0,  50.0,   /* first column */
-                          32.0,  77.0,  122.0,  /* second column */
-                          50.0,  122.0, 194.0}; /* third column */
+    double expected[9] = {14.0, 32.0,  50.0,   /* first column */
+                          32.0, 77.0,  122.0,  /* second column */
+                          50.0, 122.0, 194.0}; /* third column */
 
     /* Verify dimensions */
-    mu_assert("left_matmul_dense result should have d1=3",
-              Z->d1 == 3);
-    mu_assert("left_matmul_dense result should have d2=3",
-              Z->d2 == 3);
-    mu_assert("left_matmul_dense result should have size=9",
-              Z->size == 9);
+    mu_assert("left_matmul_dense result should have d1=3", Z->d1 == 3);
+    mu_assert("left_matmul_dense result should have d2=3", Z->d2 == 3);
+    mu_assert("left_matmul_dense result should have size=9", Z->size == 9);
 
     /* Verify values */
     mu_assert("Left matmul dense forward pass test failed",
