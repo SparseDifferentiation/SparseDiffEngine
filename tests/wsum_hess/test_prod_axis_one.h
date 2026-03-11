@@ -6,7 +6,7 @@
 #include "other.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_prod_axis_one_no_zeros()
+const char *test_wsum_hess_prod_axis_one_no_zeros(void)
 {
     /* x is 2x3 variable, global index 1, total 8 vars
      * x = [1, 2, 3, 4, 5, 6] (column-major)
@@ -72,7 +72,7 @@ const char *test_wsum_hess_prod_axis_one_no_zeros()
     return 0;
 }
 
-const char *test_wsum_hess_prod_axis_one_one_zero()
+const char *test_wsum_hess_prod_axis_one_one_zero(void)
 {
     /* x is 3x3 variable, global index 1, total 10 vars
      * x = [1, 2, 3, 4, 0, 6, 7, 8, 9] (column-major)
@@ -171,7 +171,7 @@ const char *test_wsum_hess_prod_axis_one_one_zero()
     return 0;
 }
 
-const char *test_wsum_hess_prod_axis_one_mixed_zeros()
+const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
 {
     /* x is 5x3 variable, global index 1, total 16 vars
      * Rows (axis=1 products):
@@ -321,7 +321,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros()
     free_expr(p);
     return 0;
 }
-const char *test_wsum_hess_prod_axis_one_2x2()
+const char *test_wsum_hess_prod_axis_one_2x2(void)
 {
     /* x is 2x2 variable, global index 0, total 4 vars
      * x = [2, 1, 3, 2] (column-major)

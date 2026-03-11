@@ -6,7 +6,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_log()
+const char *test_jacobian_log(void)
 {
     double u_vals[5] = {0.0, 0.0, 1.0, 2.0, 3.0};
     double expected_Ax[3] = {1.0, 0.5, 0.333333333};
@@ -24,7 +24,7 @@ const char *test_jacobian_log()
     return 0;
 }
 
-const char *test_jacobian_log_matrix()
+const char *test_jacobian_log_matrix(void)
 {
     double u_vals[7] = {0.0, 0.0, 0.0, 1.0, 2.0, 4.0, 5.0};
     double expected_Ax[4] = {1.0, 0.5, 0.25, 0.2};

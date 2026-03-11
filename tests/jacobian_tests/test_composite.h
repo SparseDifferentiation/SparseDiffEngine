@@ -5,7 +5,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_composite_log()
+const char *test_jacobian_composite_log(void)
 {
     double u_vals[6] = {0, 0, 1, 2, 3, 0};
 
@@ -45,7 +45,7 @@ const char *test_jacobian_composite_log()
        0 0 0 0 0 2 2
        0 0 0 0 0 3 3]
 */
-const char *test_jacobian_composite_log_add()
+const char *test_jacobian_composite_log_add(void)
 {
     double u_vals[7] = {0, 0, 1, 1, 1, 2, 2};
 

@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_variable()
+const char *test_variable(void)
 {
     double u[3] = {1.0, 2.0, 3.0};
     expr *var = new_variable(3, 1, 0, 3);
@@ -17,7 +17,7 @@ const char *test_variable()
     return 0;
 }
 
-const char *test_constant()
+const char *test_constant(void)
 {
     double c[2] = {5.0, 10.0};
     double u[2] = {0.0, 0.0};

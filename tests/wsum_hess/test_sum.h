@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_sum_log_linear()
+const char *test_wsum_hess_sum_log_linear(void)
 {
     double Ax[6] = {1, 1, 2, 3, 1, -1};
     int Ai[6] = {0, 1, 0, 1, 0, 1};
@@ -50,7 +50,7 @@ const char *test_wsum_hess_sum_log_linear()
     return 0;
 }
 
-const char *test_wsum_hess_sum_log_axis0()
+const char *test_wsum_hess_sum_log_axis0(void)
 {
     /* Test: wsum_hess of sum(log(x), axis=0) where x is 3x2
      * x = [[1, 4],
@@ -88,7 +88,7 @@ const char *test_wsum_hess_sum_log_axis0()
     return 0;
 }
 
-const char *test_wsum_hess_sum_log_axis1()
+const char *test_wsum_hess_sum_log_axis1(void)
 {
     /* Test: wsum_hess of sum(log(x), axis=1) where x is 3x2
      * x = [[1, 4],

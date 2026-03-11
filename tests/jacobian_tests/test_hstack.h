@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_hstack_vectors()
+const char *test_jacobian_hstack_vectors(void)
 {
     /* Test Jacobian of hstack(log(x), exp(x), sin(x)) where x is 3x1
      * x = [1, 2, 3] at global indices [0, 1, 2]
@@ -49,7 +49,7 @@ const char *test_jacobian_hstack_vectors()
     return 0;
 }
 
-const char *test_jacobian_hstack_matrix()
+const char *test_jacobian_hstack_matrix(void)
 {
     /* Test Jacobian of hstack(log(x), exp(x), sin(x)) where x is 3x2
      * x stored column-wise: [1, 3, 5, 2, 4, 6]

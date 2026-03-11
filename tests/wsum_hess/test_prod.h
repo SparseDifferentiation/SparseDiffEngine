@@ -8,7 +8,7 @@
 
 /* Common setup: x is 4x1 variable, global index 2, total 8 vars */
 
-const char *test_wsum_hess_prod_no_zero()
+const char *test_wsum_hess_prod_no_zero(void)
 {
     /* x = [1, 2, 3, 4], f = 24 */
     double u_vals[8] = {0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 0.0, 0.0};
@@ -35,7 +35,7 @@ const char *test_wsum_hess_prod_no_zero()
     return 0;
 }
 
-const char *test_wsum_hess_prod_one_zero()
+const char *test_wsum_hess_prod_one_zero(void)
 {
     /* x = [1, 0, 3, 4], zero at index 1, prod_nonzero = 12 */
     double u_vals[8] = {0.0, 0.0, 1.0, 0.0, 3.0, 4.0, 0.0, 0.0};
@@ -68,7 +68,7 @@ const char *test_wsum_hess_prod_one_zero()
     return 0;
 }
 
-const char *test_wsum_hess_prod_two_zeros()
+const char *test_wsum_hess_prod_two_zeros(void)
 {
     /* x = [1, 0, 0, 4], zeros at 1 and 2, prod over others = 4 */
     double u_vals[8] = {0.0, 0.0, 1.0, 0.0, 0.0, 4.0, 0.0, 0.0};
@@ -96,7 +96,7 @@ const char *test_wsum_hess_prod_two_zeros()
     return 0;
 }
 
-const char *test_wsum_hess_prod_many_zeros()
+const char *test_wsum_hess_prod_many_zeros(void)
 {
     /* x = [0, 0, 0, 4], three zeros => Hessian all zeros */
     double u_vals[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0};

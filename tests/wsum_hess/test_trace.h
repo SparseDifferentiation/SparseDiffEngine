@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_trace_variable()
+const char *test_wsum_hess_trace_variable(void)
 {
     /* Test weighted sum of Hessian of trace(x) where x is 3x3 variable
      * x has global variable index 1
@@ -43,7 +43,7 @@ const char *test_wsum_hess_trace_variable()
     return 0;
 }
 
-const char *test_wsum_hess_trace_log_variable()
+const char *test_wsum_hess_trace_log_variable(void)
 {
     /* Test weighted sum of Hessian of trace(log(x)) where x is 3x3 variable
      * x has global variable index 1
@@ -79,7 +79,7 @@ const char *test_wsum_hess_trace_log_variable()
     return 0;
 }
 
-const char *test_wsum_hess_trace_composite()
+const char *test_wsum_hess_trace_composite(void)
 {
     /* Test weighted sum of Hessian of trace(log(x) + exp(x)) where x is 3x3 variable
      * x has global variable index 1

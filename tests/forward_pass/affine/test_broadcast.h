@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_broadcast_row()
+const char *test_broadcast_row(void)
 {
     /* Test broadcast row: (1, 3) -> (2, 3)
      * Input:  [1.0, 2.0, 3.0] (row vector)
@@ -30,7 +30,7 @@ const char *test_broadcast_row()
     return 0;
 }
 
-const char *test_broadcast_col()
+const char *test_broadcast_col(void)
 {
     /* Test broadcast column: (3, 1) -> (3, 2)
      * Input:  [[1.0],
@@ -56,7 +56,7 @@ const char *test_broadcast_col()
     return 0;
 }
 
-const char *test_broadcast_matrix()
+const char *test_broadcast_matrix(void)
 {
     /* Test no broadcast needed: (2, 3) -> (2, 3)
      * This should work when child shape already matches target

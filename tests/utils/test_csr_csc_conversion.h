@@ -9,7 +9,7 @@
 #include "utils/CSR_Matrix.h"
 
 /* Test CSR to CSC conversion with fill_sparsity and fill_values */
-const char *test_csr_to_csc_split()
+const char *test_csr_to_csc_split(void)
 {
     /* Create a 4x5 CSR matrix A:
      * [1.0  0.0  0.0  0.0  1.0]
@@ -54,7 +54,7 @@ const char *test_csr_to_csc_split()
 }
 
 /* Test CSC to CSR conversion with fill_sparsity */
-const char *test_csc_to_csr_sparsity()
+const char *test_csc_to_csr_sparsity(void)
 {
     /* Create a 4x5 CSC matrix A:
      * [1.0  0.0  0.0  0.0  2.0]
@@ -98,7 +98,7 @@ const char *test_csc_to_csr_sparsity()
 }
 
 /* Test CSC to CSR conversion with fill_values */
-const char *test_csc_to_csr_values()
+const char *test_csc_to_csr_values(void)
 {
     /* Create a 4x5 CSC matrix A */
     CSC_Matrix *A = new_csc_matrix(4, 5, 5);
@@ -131,7 +131,7 @@ const char *test_csc_to_csr_values()
 }
 
 /* Test round-trip conversion: CSR -> CSC -> CSR */
-const char *test_csr_csc_csr_roundtrip()
+const char *test_csr_csc_csr_roundtrip(void)
 {
     /* Create a 3x4 CSR matrix A:
      * [1.0  2.0  0.0  3.0]

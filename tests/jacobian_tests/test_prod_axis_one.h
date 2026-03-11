@@ -6,7 +6,7 @@
 #include "other.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_prod_axis_one()
+const char *test_jacobian_prod_axis_one(void)
 {
     /* x is 3x3 variable, global index 1, total 10 vars
      * x = [1, 2, 3, 4, 5, 6, 7, 8, 9] (column-major order)
@@ -50,7 +50,7 @@ const char *test_jacobian_prod_axis_one()
     return 0;
 }
 
-const char *test_jacobian_prod_axis_one_one_zero()
+const char *test_jacobian_prod_axis_one_one_zero(void)
 {
     /* x is 3x3 variable, global index 1, total 10 vars
      * x = [1, 2, 3, 4, 0, 6, 7, 8, 9] (column-major order)

@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_left_matmul_log()
+const char *test_jacobian_left_matmul_log(void)
 {
     /* Test Jacobian of A @ log(x) where:
      * x is 3x1 variable at x = [1, 2, 3]
@@ -68,7 +68,7 @@ const char *test_jacobian_left_matmul_log()
     return 0;
 }
 
-const char *test_jacobian_left_matmul_log_matrix()
+const char *test_jacobian_left_matmul_log_matrix(void)
 {
     /* x is 3x2, vectorized column-wise: [1,2,3 | 4,5,6] */
     double x_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
@@ -107,7 +107,7 @@ const char *test_jacobian_left_matmul_log_matrix()
     return 0;
 }
 
-const char *test_jacobian_left_matmul_log_composite()
+const char *test_jacobian_left_matmul_log_composite(void)
 {
     /* Test Jacobian of A @ log(B @ x) where:
      * x is 3x1 variable at x = [1, 2, 3]

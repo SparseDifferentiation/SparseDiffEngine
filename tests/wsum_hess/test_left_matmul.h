@@ -10,7 +10,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_left_matmul()
+const char *test_wsum_hess_left_matmul(void)
 {
     /* Test weighted sum of Hessian of A @ log(x) where:
      * x is 3x1 variable at x = [1, 2, 3]
@@ -89,7 +89,7 @@ const char *test_wsum_hess_left_matmul()
     return 0;
 }
 
-const char *test_wsum_hess_left_matmul_composite()
+const char *test_wsum_hess_left_matmul_composite(void)
 {
     /* Test weighted sum of Hessian of A @ log(B @ x) where:
      * x is 3x1 variable at x = [1, 2, 3]
@@ -192,7 +192,7 @@ const char *test_wsum_hess_left_matmul_composite()
     return 0;
 }
 
-const char *test_wsum_hess_left_matmul_matrix()
+const char *test_wsum_hess_left_matmul_matrix(void)
 {
     /* Test weighted sum of Hessian of A @ log(x) where:
      * x is 3x2 variable, vectorized column-wise: [1, 2, 3, 4, 5, 6]

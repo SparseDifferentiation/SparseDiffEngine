@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_log()
+const char *test_wsum_hess_log(void)
 {
     /* Test: wsum_hess of log(x) where x = [1, 2, 3] (3x1) at global variable index 2
      * Total 7 variables, weight w = [1, 2, 3]
@@ -48,7 +48,7 @@ const char *test_wsum_hess_log()
     return 0;
 }
 
-const char *test_wsum_hess_log_composite()
+const char *test_wsum_hess_log_composite(void)
 {
     double u_vals[5] = {1, 2, 3, 4, 5};
     double w[3] = {-1, -2, -3};

@@ -13,12 +13,24 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [Release, Debug]
-        
+
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install BLAS (Ubuntu)
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y libopenblas-dev
+
+    - name: Install OpenBLAS (Windows)
+      if: runner.os == 'Windows'
+      run: vcpkg install openblas:x64-windows
+
     - name: Configure CMake
-      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_VERBOSE_MAKEFILE=ON
+      run: >
+        cmake -B build -S .
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_VERBOSE_MAKEFILE=ON
+        ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
       
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}

@@ -7,7 +7,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_matmul()
+const char *test_matmul(void)
 {
     /* Test: Z = X @ Y where
      * X is 3x2:  [1  4]     Y is 2x4:  [7   9   11  13]

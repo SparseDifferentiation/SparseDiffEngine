@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_linear_op()
+const char *test_linear_op(void)
 {
     /* create CSR matrix
      A = [0 0 2 3 0 0]

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(DNLP_Diff_Engine C)
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(DIFF_ENGINE_VERSION_MAJOR 0)
 set(DIFF_ENGINE_VERSION_MINOR 1)
@@ -51,6 +52,18 @@ add_library(dnlp_diff ${SOURCES})
 # Link math library (Unix/Linux only)
 if(NOT MSVC)
     target_link_libraries(dnlp_diff m)
+endif()
+
+# Find and link BLAS
+if(APPLE)
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
+    target_link_libraries(dnlp_diff ${ACCELERATE_FRAMEWORK})
+elseif(MSVC)
+    find_package(OpenBLAS CONFIG REQUIRED)
+    target_link_libraries(dnlp_diff OpenBLAS::OpenBLAS)
+else()
+    find_package(BLAS REQUIRED)
+    target_link_libraries(dnlp_diff ${BLAS_LIBRARIES})
 endif()
 
 # Config-specific compile options (compiler-specific)

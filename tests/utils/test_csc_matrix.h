@@ -7,7 +7,7 @@
 #include "test_helpers.h"
 #include "utils/CSC_Matrix.h"
 
-const char *test_csr_to_csc1()
+const char *test_csr_to_csc1(void)
 {
     CSR_Matrix *A = new_csr_matrix(4, 5, 5);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
@@ -33,7 +33,7 @@ const char *test_csr_to_csc1()
     return 0;
 }
 
-const char *test_csr_to_csc2()
+const char *test_csr_to_csc2(void)
 {
     CSR_Matrix *A = new_csr_matrix(20, 30, 120);
     double Ax[120] = {9, 6, 5, 9, 7, 3, 8, 2, 6, 1, 3, 9, 2, 8, 9, 1, 4, 9, 2, 1,
@@ -98,7 +98,7 @@ const char *test_csr_to_csc2()
  * [0  x  0]
  * [x  0  x]
  */
-const char *test_ATA_alloc_simple()
+const char *test_ATA_alloc_simple(void)
 {
     CSC_Matrix *A = new_csc_matrix(4, 3, 6);
     int Ap[4] = {0, 2, 3, 6};
@@ -134,7 +134,7 @@ const char *test_ATA_alloc_simple()
  * [2  0  0  4]
  *
  */
-const char *test_ATA_alloc_diagonal_like()
+const char *test_ATA_alloc_diagonal_like(void)
 {
     /* Create A in CSC format (3 rows, 4 cols, 4 nonzeros) */
     CSC_Matrix *A = new_csc_matrix(3, 4, 4);
@@ -157,7 +157,7 @@ const char *test_ATA_alloc_diagonal_like()
     return 0;
 }
 
-const char *test_ATA_alloc_random()
+const char *test_ATA_alloc_random(void)
 {
     /* Create A in CSC format  */
     CSC_Matrix *A = new_csc_matrix(10, 15, 15);
@@ -194,7 +194,7 @@ const char *test_ATA_alloc_random()
     return 0;
 }
 
-const char *test_ATA_alloc_random2()
+const char *test_ATA_alloc_random2(void)
 {
     /* Create A in CSC format  */
     int m = 15;
@@ -231,7 +231,7 @@ const char *test_ATA_alloc_random2()
 
     return 0;
 }
-const char *test_BTA_alloc_and_BTDA_fill()
+const char *test_BTA_alloc_and_BTDA_fill(void)
 {
     /* Create A: 4x3 CSC matrix
      * [1.0  0.0  2.0]

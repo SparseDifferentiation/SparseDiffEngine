@@ -8,7 +8,7 @@
 #include "other.h"
 #include "test_helpers.h"
 
-const char *test_forward_prod_axis_zero()
+const char *test_forward_prod_axis_zero(void)
 {
     /* Create a 2x3 constant matrix stored column-wise:
        [1, 3, 5]

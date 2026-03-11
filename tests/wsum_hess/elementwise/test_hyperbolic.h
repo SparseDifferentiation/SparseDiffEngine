@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_sinh()
+const char *test_wsum_hess_sinh(void)
 {
     /* Test: wsum_hess of sinh(x) where x = [1, 2, 3] (3x1) at global variable index
      * 0 Total 3 variables, weight w = [1, 2, 3]
@@ -44,7 +44,7 @@ const char *test_wsum_hess_sinh()
     return 0;
 }
 
-const char *test_wsum_hess_tanh()
+const char *test_wsum_hess_tanh(void)
 {
     /* Test: wsum_hess of tanh(x) where x = [1, 2, 3] (3x1) at global variable index
      * 0 Total 3 variables, weight w = [1, 2, 3]
@@ -81,7 +81,7 @@ const char *test_wsum_hess_tanh()
     return 0;
 }
 
-const char *test_wsum_hess_asinh()
+const char *test_wsum_hess_asinh(void)
 {
     /* Test: wsum_hess of asinh(x) where x = [1, 2, 3] (3x1) at global variable index
      * 0 Total 3 variables, weight w = [1, 2, 3]
@@ -118,7 +118,7 @@ const char *test_wsum_hess_asinh()
     return 0;
 }
 
-const char *test_wsum_hess_atanh()
+const char *test_wsum_hess_atanh(void)
 {
     /* Test: wsum_hess of atanh(x) where x = [0.1, 0.2, 0.3] (3x1) at global variable
      * index 0 Total 3 variables, weight w = [1, 2, 3]

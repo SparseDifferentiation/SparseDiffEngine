@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_jacobian_rel_entr_vector_scalar()
+const char *test_jacobian_rel_entr_vector_scalar(void)
 {
     // x is 3x1 with values [1, 2, 3], y is scalar 4
     double u_vals[4] = {1.0, 2.0, 3.0, 4.0};

@@ -9,7 +9,7 @@
 
 /* Test: y = a * log(x) where a is a scalar constant */
 
-const char *test_wsum_hess_const_scalar_mult_log_vector()
+const char *test_wsum_hess_const_scalar_mult_log_vector(void)
 {
     /* Create variable x: [1.0, 2.0, 4.0] */
     double u_vals[3] = {1.0, 2.0, 4.0};
@@ -54,7 +54,7 @@ const char *test_wsum_hess_const_scalar_mult_log_vector()
     return 0;
 }
 
-const char *test_wsum_hess_const_scalar_mult_log_matrix()
+const char *test_wsum_hess_const_scalar_mult_log_matrix(void)
 {
     /* Create variable x as 2x2 matrix: [[1.0, 2.0], [4.0, 8.0]] */
     double u_vals[4] = {1.0, 2.0, 4.0, 8.0};

@@ -8,7 +8,7 @@
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 
-const char *test_diag_csr_mult()
+const char *test_diag_csr_mult(void)
 {
     /* Create a 3x3 CSR matrix A:
      * [1.0  2.0  0.0]
@@ -51,7 +51,7 @@ const char *test_diag_csr_mult()
 [0  3  0] + [2 0 3] =   [2 3 3]
 [4  0  5]   [0 6 0]     [4 6 5]
 */
-const char *test_csr_sum()
+const char *test_csr_sum(void)
 {
     CSR_Matrix *A = new_csr_matrix(3, 3, 5);
     double Ax[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
@@ -93,7 +93,7 @@ const char *test_csr_sum()
 [0  0  3] + [2 0 3] =   [2 0 6]
 [4  0  5]   [0 6 0]     [4 6 5]
 */
-const char *test_csr_sum2()
+const char *test_csr_sum2(void)
 {
     CSR_Matrix *A = new_csr_matrix(3, 3, 5);
     double Ax[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
@@ -130,7 +130,7 @@ const char *test_csr_sum2()
     return 0;
 }
 
-const char *test_transpose()
+const char *test_transpose(void)
 {
     CSR_Matrix *A = new_csr_matrix(4, 5, 5);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
@@ -163,7 +163,7 @@ A = [1 0 0 0 1
      2 0 0 0 0
      0 4 0 0 0]
 */
-const char *test_csr_vecmat_values_sparse()
+const char *test_csr_vecmat_values_sparse(void)
 {
     CSR_Matrix *A = new_csr_matrix(4, 5, 5);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
@@ -200,7 +200,7 @@ const char *test_csr_vecmat_values_sparse()
 
     return 0;
 }
-const char *test_sum_all_rows_csr()
+const char *test_sum_all_rows_csr(void)
 {
     /* Create a 3x4 CSR matrix A:
      * [1.0  2.0  0.0  0.0]
@@ -235,7 +235,7 @@ const char *test_sum_all_rows_csr()
 
     return 0;
 }
-const char *test_sum_block_of_rows_csr()
+const char *test_sum_block_of_rows_csr(void)
 {
     /* Create a 9x4 CSR matrix A and sum blocks of size 3
      * Block 0 (rows 0-2):
@@ -314,7 +314,7 @@ const char *test_sum_block_of_rows_csr()
 
     return 0;
 }
-const char *test_sum_evenly_spaced_rows_csr()
+const char *test_sum_evenly_spaced_rows_csr(void)
 {
     /* Create a 9x4 CSR matrix A (same as test_sum_block_of_rows_csr) and sum evenly
      * spaced rows With row_spacing=3:
@@ -392,7 +392,7 @@ const char *test_sum_evenly_spaced_rows_csr()
 
     return 0;
 }
-const char *test_AT_alloc_and_fill()
+const char *test_AT_alloc_and_fill(void)
 {
     /* Create a 3x4 CSR matrix A:
      * [1.0  0.0  2.0  0.0]
@@ -437,7 +437,7 @@ const char *test_AT_alloc_and_fill()
     return 0;
 }
 
-const char *test_kron_identity_csr()
+const char *test_kron_identity_csr(void)
 {
     /* Test A kron I_p where:
      * A is 2x3:

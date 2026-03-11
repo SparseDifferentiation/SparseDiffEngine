@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-const char *test_quad_form()
+const char *test_quad_form(void)
 {
     // x^T Q x where x is 3 x 1 variable and has global index 2,
     // Q = [1 2 0; 2 3 0; 0 0 4]
@@ -41,7 +41,7 @@ const char *test_quad_form()
 }
 
 /* This test is commented out, see the function eval_jabobian_old in
-src/other/quad_form.c. const char *test_quad_form2()
+src/other/quad_form.c. const char *test_quad_form2(void)
 {
     // (Au)^T Q (Au) where u is 6 x 1,
     //    Q = [1 2 0;

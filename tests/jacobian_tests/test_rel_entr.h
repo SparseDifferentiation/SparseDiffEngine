@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_jacobian_rel_entr_vector_args_1()
+const char *test_jacobian_rel_entr_vector_args_1(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of x log(x) - x log(y)
@@ -37,7 +37,7 @@ const char *test_jacobian_rel_entr_vector_args_1()
     return 0;
 }
 
-const char *test_jacobian_rel_entr_vector_args_2()
+const char *test_jacobian_rel_entr_vector_args_2(void)
 {
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
     // we compute jacobian of x log(x) - x log(y)
@@ -68,7 +68,7 @@ const char *test_jacobian_rel_entr_vector_args_2()
     return 0;
 }
 
-const char *test_jacobian_rel_entr_matrix_args()
+const char *test_jacobian_rel_entr_matrix_args(void)
 {
     // x, y are 3 x 2 matrices (vectorized columnwise)
     // x has global variable index 0, y has global variable index 6

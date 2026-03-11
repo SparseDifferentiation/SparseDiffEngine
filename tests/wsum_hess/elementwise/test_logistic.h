@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_logistic()
+const char *test_wsum_hess_logistic(void)
 {
     /* Test: wsum_hess of logistic(x) where x = [1, 2, 3] (3x1) at global variable
      * index 0 Total 3 variables, weight w = [1, 2, 3]

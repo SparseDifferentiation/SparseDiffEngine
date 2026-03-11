@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_wsum_hess_matmul()
+const char *test_wsum_hess_matmul(void)
 {
     /* Test: Z = X @ Y where X is 2x3, Y is 3x4
      * var = (X, Y) where X starts at index 0 (size 6), Y starts at index 6 (size 12)
@@ -106,7 +106,7 @@ const char *test_wsum_hess_matmul()
     return 0;
 }
 
-const char *test_wsum_hess_matmul_yx()
+const char *test_wsum_hess_matmul_yx(void)
 {
     /* Test: Z = X @ Y where X is 2x3, Y is 3x4
      * var = (Y, X) where Y starts at index 0 (size 12), X starts at index 12 (size

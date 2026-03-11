@@ -8,7 +8,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_jacobian_transpose()
+const char *test_jacobian_transpose(void)
 {
     // A = [1 2; 3 4]
     CSR_Matrix *A = new_csr_matrix(2, 2, 4);

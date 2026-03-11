@@ -9,7 +9,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_sin()
+const char *test_wsum_hess_sin(void)
 {
     double u_vals[3] = {1.0, 2.0, 3.0};
     double w[3] = {1.0, 2.0, 3.0};
@@ -37,7 +37,7 @@ const char *test_wsum_hess_sin()
     return 0;
 }
 
-const char *test_wsum_hess_cos()
+const char *test_wsum_hess_cos(void)
 {
     double u_vals[3] = {1.0, 2.0, 3.0};
     double w[3] = {1.0, 2.0, 3.0};
@@ -65,7 +65,7 @@ const char *test_wsum_hess_cos()
     return 0;
 }
 
-const char *test_wsum_hess_tan()
+const char *test_wsum_hess_tan(void)
 {
     double u_vals[3] = {1.0, 2.0, 3.0};
     double w[3] = {1.0, 2.0, 3.0};

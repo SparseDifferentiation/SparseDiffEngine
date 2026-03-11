@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_wsum_hess_hstack()
+const char *test_wsum_hess_hstack(void)
 {
     /* Test: hstack([log(x), log(z), exp(x), sin(y)])
      * Variables: x at idx 0, z at idx 3, y at idx 6
@@ -100,7 +100,7 @@ const char *test_wsum_hess_hstack()
     return 0;
 }
 
-const char *test_wsum_hess_hstack_matrix()
+const char *test_wsum_hess_hstack_matrix(void)
 {
     /* Test: hstack([log(x), log(z), exp(x), sin(y)]) with matrix variables
      * Variables: x at idx 0, z at idx 6, y at idx 12

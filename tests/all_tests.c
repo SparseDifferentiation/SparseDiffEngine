@@ -15,6 +15,7 @@
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
+#include "forward_pass/test_left_matmul_dense.h"
 #include "forward_pass/test_matmul.h"
 #include "forward_pass/test_prod_axis_one.h"
 #include "forward_pass/test_prod_axis_zero.h"
@@ -43,11 +44,13 @@
 #include "jacobian_tests/test_trace.h"
 #include "jacobian_tests/test_transpose.h"
 #include "problem/test_problem.h"
+#include "utils/test_cblas.h"
 #include "utils/test_coo_matrix.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
 #include "utils/test_csr_matrix.h"
 #include "utils/test_linalg_sparse_matmuls.h"
+#include "utils/test_matrix.h"
 #include "wsum_hess/elementwise/test_entr.h"
 #include "wsum_hess/elementwise/test_exp.h"
 #include "wsum_hess/elementwise/test_hyperbolic.h"
@@ -110,6 +113,7 @@ int main(void)
     mu_run_test(test_forward_prod_axis_zero, tests_run);
     mu_run_test(test_forward_prod_axis_one, tests_run);
     mu_run_test(test_matmul, tests_run);
+    mu_run_test(test_left_matmul_dense, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);
@@ -242,6 +246,7 @@ int main(void)
     mu_run_test(test_wsum_hess_transpose, tests_run);
 
     printf("\n--- Utility Tests ---\n");
+    mu_run_test(test_cblas_ddot, tests_run);
     mu_run_test(test_diag_csr_mult, tests_run);
     mu_run_test(test_csr_sum, tests_run);
     mu_run_test(test_csr_sum2, tests_run);
@@ -275,6 +280,11 @@ int main(void)
     mu_run_test(test_csr_to_coo, tests_run);
     mu_run_test(test_csr_to_coo_lower_triangular, tests_run);
     mu_run_test(test_refresh_lower_triangular_coo, tests_run);
+    mu_run_test(test_dense_matrix_mult_vec, tests_run);
+    mu_run_test(test_dense_matrix_mult_vec_blocks, tests_run);
+    mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
+    mu_run_test(test_dense_matrix_trans, tests_run);
+    mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
 
     printf("\n--- Problem Struct Tests ---\n");
     mu_run_test(test_problem_new_free, tests_run);

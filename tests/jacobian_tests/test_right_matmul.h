@@ -8,7 +8,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_jacobian_right_matmul_log()
+const char *test_jacobian_right_matmul_log(void)
 {
     /* Test Jacobian of log(x) @ A where:
      * x is 2x2 variable at x = [[1, 2], [3, 4]] (vectorized column-wise: [1, 3, 2,
@@ -56,7 +56,7 @@ const char *test_jacobian_right_matmul_log()
     return 0;
 }
 
-const char *test_jacobian_right_matmul_log_vector()
+const char *test_jacobian_right_matmul_log_vector(void)
 {
     /* Test Jacobian of log(x) @ A where:
      * x is 1x3 variable at x = [1, 2, 3]

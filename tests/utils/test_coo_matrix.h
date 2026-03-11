@@ -6,7 +6,7 @@
 #include "test_helpers.h"
 #include "utils/COO_Matrix.h"
 
-const char *test_csr_to_coo()
+const char *test_csr_to_coo(void)
 {
     /* Create a 3x3 CSR matrix A:
      * [1.0  2.0  0.0]
@@ -41,7 +41,7 @@ const char *test_csr_to_coo()
     return 0;
 }
 
-const char *test_csr_to_coo_lower_triangular()
+const char *test_csr_to_coo_lower_triangular(void)
 {
     /* Symmetric 3x3 matrix:
      * [1  2  3]
@@ -79,7 +79,7 @@ const char *test_csr_to_coo_lower_triangular()
     return 0;
 }
 
-const char *test_refresh_lower_triangular_coo()
+const char *test_refresh_lower_triangular_coo(void)
 {
     CSR_Matrix *A = new_csr_matrix(3, 3, 9);
     int Ap[4] = {0, 3, 6, 9};

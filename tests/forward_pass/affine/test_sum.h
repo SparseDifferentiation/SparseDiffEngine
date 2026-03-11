@@ -8,7 +8,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 
-const char *test_sum_axis_neg1()
+const char *test_sum_axis_neg1(void)
 {
     /* Create a 3x2 constant matrix stored column-wise:
        [1, 4]
@@ -33,7 +33,7 @@ const char *test_sum_axis_neg1()
     return 0;
 }
 
-const char *test_sum_axis_0()
+const char *test_sum_axis_0(void)
 {
     /* Create a 3x2 constant matrix stored column-wise:
        [1, 4]
@@ -60,7 +60,7 @@ const char *test_sum_axis_0()
     return 0;
 }
 
-const char *test_sum_axis_1()
+const char *test_sum_axis_1(void)
 {
     /* Create a 3x2 constant matrix stored column-wise:
        [1, 4]

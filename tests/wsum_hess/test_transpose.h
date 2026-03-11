@@ -7,7 +7,7 @@
 #include <math.h>
 #include <stdio.h>
 
-const char *test_wsum_hess_transpose()
+const char *test_wsum_hess_transpose(void)
 {
 
     expr *X = new_variable(2, 2, 0, 8);
