@@ -15,6 +15,7 @@
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
+#include "forward_pass/elementwise/test_normal_cdf.h"
 #include "forward_pass/test_left_matmul_dense.h"
 #include "forward_pass/test_matmul.h"
 #include "forward_pass/test_prod_axis_one.h"
@@ -101,6 +102,7 @@ int main(void)
     mu_run_test(test_promote_scalar_to_vector, tests_run);
     mu_run_test(test_exp, tests_run);
     mu_run_test(test_log, tests_run);
+    mu_run_test(test_normal_cdf, tests_run);
     mu_run_test(test_composite, tests_run);
     mu_run_test(test_sum_axis_neg1, tests_run);
     mu_run_test(test_sum_axis_0, tests_run);
