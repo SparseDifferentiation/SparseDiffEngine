@@ -129,9 +129,9 @@ static void jacobian_init(expr *node)
         int offset = 0;
         for (int i = 0; i < node->d2; i++)
         {
-            int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
             for (int j = 0; j < node->d1; j++)
             {
+                int nnz_in_row = Jx->p[j + 1] - Jx->p[j];
                 J->p[i * node->d1 + j] = offset;
                 offset += nnz_in_row;
             }
