@@ -19,9 +19,7 @@ const char *test_normal_cdf(void)
     expr *node = new_normal_cdf(var);
     node->forward(node, u);
     /* computed in python */
-    double correct[3] = {0.8413447460685429,
-                         0.9772498680518208,
-                         0.9986501019683699};
+    double correct[3] = {0.8413447460685429, 0.9772498680518208, 0.9986501019683699};
     mu_assert("fail", cmp_double_array(node->value, correct, 3));
     free_expr(node);
     return 0;
