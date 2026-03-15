@@ -37,6 +37,7 @@ expr *new_atanh(expr *child);
 expr *new_logistic(expr *child);
 expr *new_power(expr *child, double p);
 expr *new_xexp(expr *child);
+expr *new_normal_cdf(expr *child);
 
 /* the jacobian and wsum_hess for elementwise univariate atoms are always
    initialized in the same way and implement the chain rule in the same way */
