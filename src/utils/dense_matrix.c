@@ -141,15 +141,31 @@ static void dense_block_left_mult_values(const Matrix *A, const CSC_Matrix *J,
                 end--;
             }
 
-            /* scatter sparse J col into dense vector and then compute A @ j_dense */
-            memset(j_dense, 0, n * sizeof(double));
-            for (s = start; s < end; s++)
-            {
-                j_dense[J->i[s] - block_start] = J->x[s];
-            }
+            int count = end - start;
 
-            cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, dm->x, n, j_dense, 1,
-                        0.0, C->x + i, 1);
+            if (count == 1)
+            {
+                /* Fast path: C column segment = val * A[:, row_in_block] */
+                int row_in_block = J->i[start] - block_start;
+                double val = J->x[start];
+                cblas_dcopy(m, dm->x + row_in_block, n, C->x + i, 1);
+                if (val != 1.0)
+                {
+                    cblas_dscal(m, val, C->x + i, 1);
+                }
+            }
+            else
+            {
+                /* scatter sparse J col into dense vector and then compute A @ j_dense */
+                memset(j_dense, 0, n * sizeof(double));
+                for (s = start; s < end; s++)
+                {
+                    j_dense[J->i[s] - block_start] = J->x[s];
+                }
+
+                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, dm->x, n, j_dense, 1,
+                            0.0, C->x + i, 1);
+            }
         }
     }
 }
