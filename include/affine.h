@@ -29,6 +29,7 @@ expr *new_neg(expr *child);
 
 expr *new_sum(expr *child, int axis);
 expr *new_hstack(expr **args, int n_args, int n_vars);
+expr *new_vstack(expr **args, int n_args, int n_vars);
 expr *new_promote(expr *child, int d1, int d2);
 expr *new_trace(expr *child);
 
