@@ -46,6 +46,11 @@ typedef struct problem
     int n_vars;
     int total_constraint_size;
 
+    /* parameter support */
+    expr **param_nodes;
+    int n_param_nodes;
+    int total_parameter_size;
+
     /* allocated by new_problem */
     double *constraint_values;
     double *gradient_values;
@@ -75,6 +80,9 @@ void problem_init_derivatives(problem *prob);
 void problem_init_jacobian_coo(problem *prob);
 void problem_init_hessian_coo_lower_triangular(problem *prob);
 void free_problem(problem *prob);
+
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes);
+void problem_update_params(problem *prob, const double *theta);
 
 double problem_objective_forward(problem *prob, const double *u);
 void problem_constraint_forward(problem *prob, const double *u);

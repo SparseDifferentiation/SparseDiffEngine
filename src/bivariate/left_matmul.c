@@ -48,16 +48,34 @@
 
 #include "utils/utils.h"
 
+static void refresh_param_values(left_matmul_expr *lnode)
+{
+    if (lnode->param_source == NULL)
+    {
+        return;
+    }
+    parameter_expr *param = (parameter_expr *) lnode->param_source;
+    if (param->has_been_refreshed)
+    {
+        return;
+    }
+    param->has_been_refreshed = true;
+    lnode->refresh_param_values(lnode);
+}
+
 static void forward(expr *node, const double *u)
 {
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    refresh_param_values(lnode);
+
     expr *x = node->left;
 
     /* child's forward pass */
     node->left->forward(node->left, u);
 
     /* y = A_kron @ vec(f(x)) */
-    Matrix *A = ((left_matmul_expr *) node)->A;
-    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
+    Matrix *A = lnode->A;
+    int n_blocks = lnode->n_blocks;
     A->block_left_mult_vec(A, x->value, node->value, n_blocks);
 }
 
@@ -74,11 +92,16 @@ static void free_type_data(expr *node)
     free_csc_matrix(lnode->Jchild_CSC);
     free_csc_matrix(lnode->J_CSC);
     free(lnode->csc_to_csr_work);
+    if (lnode->param_source != NULL)
+    {
+        free_expr(lnode->param_source);
+    }
     lnode->A = NULL;
     lnode->AT = NULL;
     lnode->Jchild_CSC = NULL;
     lnode->J_CSC = NULL;
     lnode->csc_to_csr_work = NULL;
+    lnode->param_source = NULL;
 }
 
 static void jacobian_init(expr *node)
@@ -98,8 +121,9 @@ static void jacobian_init(expr *node)
 
 static void eval_jacobian(expr *node)
 {
-    expr *x = node->left;
     left_matmul_expr *lnode = (left_matmul_expr *) node;
+    refresh_param_values(lnode);
+    expr *x = node->left;
 
     CSC_Matrix *Jchild_CSC = lnode->Jchild_CSC;
     CSC_Matrix *J_CSC = lnode->J_CSC;
@@ -132,9 +156,12 @@ static void wsum_hess_init(expr *node)
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    refresh_param_values(lnode);
+
     /* compute A^T w*/
-    Matrix *AT = ((left_matmul_expr *) node)->AT;
-    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
+    Matrix *AT = lnode->AT;
+    int n_blocks = lnode->n_blocks;
     AT->block_left_mult_vec(AT, w, node->dwork, n_blocks);
 
     node->left->eval_wsum_hess(node->left, node->dwork);
@@ -142,7 +169,33 @@ static void eval_wsum_hess(expr *node, const double *w)
            node->wsum_hess->nnz * sizeof(double));
 }
 
-expr *new_left_matmul(expr *u, const CSR_Matrix *A)
+static void refresh_sparse_left(left_matmul_expr *lnode)
+{
+    Sparse_Matrix *sm_A = (Sparse_Matrix *) lnode->A;
+    Sparse_Matrix *sm_AT = (Sparse_Matrix *) lnode->AT;
+    lnode->A->update_values(lnode->A, lnode->param_source->value);
+    /* Recompute AT values from A */
+    AT_fill_values(sm_A->csr, sm_AT->csr, lnode->base.iwork);
+}
+
+static void refresh_dense_left(left_matmul_expr *lnode)
+{
+    Dense_Matrix *dm_A = (Dense_Matrix *) lnode->A;
+    int m = dm_A->base.m;
+    int n = dm_A->base.n;
+    lnode->A->update_values(lnode->A, lnode->param_source->value);
+    /* Recompute AT data (transpose of row-major A) */
+    Dense_Matrix *dm_AT = (Dense_Matrix *) lnode->AT;
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            dm_AT->x[j * m + i] = dm_A->x[i * n + j];
+        }
+    }
+}
+
+expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 {
     /* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users
        to do A @ u where u is (n, ) which in C is actually (1, n). In that case
@@ -188,10 +241,19 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
     lnode->A = new_sparse_matrix(A);
     lnode->AT = sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->iwork);
 
+    /* parameter support */
+    lnode->param_source = param_node;
+    if (param_node != NULL)
+    {
+        expr_retain(param_node);
+        lnode->refresh_param_values = refresh_sparse_left;
+    }
+
     return node;
 }
 
-expr *new_left_matmul_dense(expr *u, int m, int n, const double *data)
+expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
+                            const double *data)
 {
     int d1, d2, n_blocks;
     if (u->d1 == n)
@@ -226,6 +288,14 @@ expr *new_left_matmul_dense(expr *u, int m, int n, const double *data)
 
     lnode->A = new_dense_matrix(m, n, data);
     lnode->AT = dense_matrix_trans((const Dense_Matrix *) lnode->A);
+
+    /* parameter support */
+    lnode->param_source = param_node;
+    if (param_node != NULL)
+    {
+        expr_retain(param_node);
+        lnode->refresh_param_values = refresh_dense_left;
+    }
 
     return node;
 }

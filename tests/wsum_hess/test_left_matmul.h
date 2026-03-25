@@ -62,7 +62,7 @@ const char *test_wsum_hess_left_matmul(void)
     memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(log_x, A);
+    expr *A_log_x = new_left_matmul(NULL, log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
     A_log_x->jacobian_init(A_log_x);
@@ -161,7 +161,7 @@ const char *test_wsum_hess_left_matmul_composite(void)
 
     expr *Bx = new_linear(x, B, NULL);
     expr *log_Bx = new_log(Bx);
-    expr *A_log_Bx = new_left_matmul(log_Bx, A);
+    expr *A_log_Bx = new_left_matmul(NULL, log_Bx, A);
 
     A_log_Bx->forward(A_log_Bx, x_vals);
     A_log_Bx->jacobian_init(A_log_Bx);
@@ -233,7 +233,7 @@ const char *test_wsum_hess_left_matmul_matrix(void)
     memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(log_x, A);
+    expr *A_log_x = new_left_matmul(NULL, log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
     A_log_x->jacobian_init(A_log_x);

@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "problem.h"
+#include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -302,6 +303,9 @@ void free_problem(problem *prob)
 {
     if (prob == NULL) return;
 
+    /* Free param_nodes array (weak refs, don't free the nodes) */
+    free(prob->param_nodes);
+
     /* Free allocated arrays */
     free(prob->constraint_values);
     free(prob->gradient_values);
@@ -325,6 +329,34 @@ void free_problem(problem *prob)
 
     /* Free problem struct */
     free(prob);
+}
+
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)
+{
+    prob->n_param_nodes = n_param_nodes;
+    prob->param_nodes = (expr **) malloc(n_param_nodes * sizeof(expr *));
+    prob->total_parameter_size = 0;
+
+    for (int i = 0; i < n_param_nodes; i++)
+    {
+        prob->param_nodes[i] = param_nodes[i];
+        prob->total_parameter_size += param_nodes[i]->size;
+    }
+}
+
+void problem_update_params(problem *prob, const double *theta)
+{
+    for (int i = 0; i < prob->n_param_nodes; i++)
+    {
+        expr *pnode = prob->param_nodes[i];
+        parameter_expr *param = (parameter_expr *) pnode;
+        int offset = param->param_id;
+        memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
+        param->has_been_refreshed = false;
+    }
+
+    /* Force re-evaluation of affine Jacobians on next call */
+    prob->jacobian_called = false;
 }
 
 double problem_objective_forward(problem *prob, const double *u)

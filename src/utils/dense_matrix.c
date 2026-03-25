@@ -154,6 +154,12 @@ static void dense_block_left_mult_values(const Matrix *A, const CSC_Matrix *J,
     }
 }
 
+static void dense_update_values(Matrix *self, const double *new_values)
+{
+    Dense_Matrix *dm = (Dense_Matrix *) self;
+    memcpy(dm->x, new_values, dm->base.m * dm->base.n * sizeof(double));
+}
+
 static void dense_free(Matrix *A)
 {
     Dense_Matrix *dm = (Dense_Matrix *) A;
@@ -170,6 +176,7 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
     dm->base.block_left_mult_sparsity = dense_block_left_mult_sparsity;
     dm->base.block_left_mult_values = dense_block_left_mult_values;
+    dm->base.update_values = dense_update_values;
     dm->base.free_fn = dense_free;
     dm->x = (double *) malloc(m * n * sizeof(double));
     memcpy(dm->x, data, m * n * sizeof(double));

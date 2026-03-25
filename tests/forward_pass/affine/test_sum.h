@@ -17,7 +17,7 @@ const char *test_sum_axis_neg1(void)
        Stored as: [1, 2, 3, 4, 5, 6]
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    expr *const_node = new_constant(3, 2, 0, values);
+    expr *const_node = new_parameter(3, 2, PARAM_FIXED, 0, values);
     expr *log_node = new_log(const_node);
     expr *sum_node = new_sum(log_node, -1);
     sum_node->forward(sum_node, NULL);
@@ -42,7 +42,7 @@ const char *test_sum_axis_0(void)
        Stored as: [1, 2, 3, 4, 5, 6]
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    expr *const_node = new_constant(3, 2, 0, values);
+    expr *const_node = new_parameter(3, 2, PARAM_FIXED, 0, values);
     expr *log_node = new_log(const_node);
     expr *sum_node = new_sum(log_node, 0);
     sum_node->forward(sum_node, NULL);
@@ -69,7 +69,7 @@ const char *test_sum_axis_1(void)
        Stored as: [1, 2, 3, 4, 5, 6]
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    expr *const_node = new_constant(3, 2, 0, values);
+    expr *const_node = new_parameter(3, 2, PARAM_FIXED, 0, values);
     expr *log_node = new_log(const_node);
     expr *sum_node = new_sum(log_node, 1);
     sum_node->forward(sum_node, NULL);
