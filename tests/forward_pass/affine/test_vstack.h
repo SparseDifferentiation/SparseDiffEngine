@@ -56,11 +56,7 @@ const char *test_vstack_forward_matrix(void)
      *   [log(1), log(2), exp(7), log(3), log(4), exp(8),
      *    log(5), log(6), exp(9)]
      */
-    double ux[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    double uy[3] = {7.0, 8.0, 9.0};
     double u[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
-    (void) ux;
-    (void) uy;
 
     expr *x = new_variable(2, 3, 0, 9);
     expr *y = new_variable(1, 3, 6, 9);
