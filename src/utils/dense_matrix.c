@@ -156,15 +156,16 @@ static void dense_block_left_mult_values(const Matrix *A, const CSC_Matrix *J,
             }
             else
             {
-                /* scatter sparse J col into dense vector and then compute A @ j_dense */
+                /* scatter sparse J col into dense vector and then compute A @
+                 * j_dense */
                 memset(j_dense, 0, n * sizeof(double));
                 for (s = start; s < end; s++)
                 {
                     j_dense[J->i[s] - block_start] = J->x[s];
                 }
 
-                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, dm->x, n, j_dense, 1,
-                            0.0, C->x + i, 1);
+                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, dm->x, n,
+                            j_dense, 1, 0.0, C->x + i, 1);
             }
         }
     }

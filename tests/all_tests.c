@@ -7,12 +7,12 @@
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_hstack.h"
-#include "forward_pass/affine/test_vstack.h"
 #include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
 #include "forward_pass/affine/test_variable_constant.h"
+#include "forward_pass/affine/test_vstack.h"
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
@@ -27,7 +27,6 @@
 #include "jacobian_tests/test_const_vector_mult.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
-#include "jacobian_tests/test_vstack.h"
 #include "jacobian_tests/test_index.h"
 #include "jacobian_tests/test_left_matmul.h"
 #include "jacobian_tests/test_log.h"
@@ -46,6 +45,8 @@
 #include "jacobian_tests/test_sum.h"
 #include "jacobian_tests/test_trace.h"
 #include "jacobian_tests/test_transpose.h"
+#include "jacobian_tests/test_vstack.h"
+#include "numerical_diff/test_numerical_diff.h"
 #include "problem/test_problem.h"
 #include "utils/test_cblas.h"
 #include "utils/test_coo_matrix.h"
@@ -66,7 +67,6 @@
 #include "wsum_hess/test_const_scalar_mult.h"
 #include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
-#include "wsum_hess/test_vstack.h"
 #include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
 #include "wsum_hess/test_matmul.h"
@@ -83,6 +83,7 @@
 #include "wsum_hess/test_sum.h"
 #include "wsum_hess/test_trace.h"
 #include "wsum_hess/test_transpose.h"
+#include "wsum_hess/test_vstack.h"
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
@@ -296,6 +297,9 @@ int main(void)
     mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
     mu_run_test(test_dense_matrix_trans, tests_run);
     mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
+
+    printf("\n--- Numerical Diff Tests ---\n");
+    mu_run_test(test_check_jacobian_composite_log, tests_run);
 
     printf("\n--- Problem Struct Tests ---\n");
     mu_run_test(test_problem_new_free, tests_run);
