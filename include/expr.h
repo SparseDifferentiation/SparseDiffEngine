@@ -56,6 +56,8 @@ typedef struct expr
     // ------------------------------------------------------------------------
     double *value;
     CSR_Matrix *jacobian;
+    CSC_Matrix *jacobian_csc;
+    int *csc_work; /* workspace for CSR-CSC conversion */
     CSR_Matrix *wsum_hess;
     forward_fn forward;
     jacobian_init_fn jacobian_init;
@@ -82,6 +84,10 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
                wsum_hess_fn eval_wsum_hess, free_type_data_fn free_type_data);
 
 void free_expr(expr *node);
+
+/* Initialize CSC form of the Jacobian from the CSR Jacobian.
+ * Must be called after jacobian_init. */
+void jacobian_csc_init(expr *node);
 
 /* Reference counting helpers */
 void expr_retain(expr *node);

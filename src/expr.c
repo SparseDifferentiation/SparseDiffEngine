@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "expr.h"
+#include "utils/CSC_Matrix.h"
 #include "utils/int_double_pair.h"
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,12 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->free_type_data = free_type_data;
 }
 
+void jacobian_csc_init(expr *node)
+{
+    node->csc_work = (int *) malloc(node->n_vars * sizeof(int));
+    node->jacobian_csc = csr_to_csc_fill_sparsity(node->jacobian, node->csc_work);
+}
+
 void free_expr(expr *node)
 {
     if (node == NULL) return;
@@ -63,6 +70,8 @@ void free_expr(expr *node)
     /* free value array and jacobian */
     free(node->value);
     free_csr_matrix(node->jacobian);
+    free_csc_matrix(node->jacobian_csc);
+    free(node->csc_work);
     free_csr_matrix(node->wsum_hess);
     free(node->dwork);
     free(node->iwork);

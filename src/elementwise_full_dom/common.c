@@ -59,7 +59,7 @@ void wsum_hess_init_elementwise(expr *node)
     int id = child->var_id;
     int i;
 
-    /* if the variable is a child*/
+    /* if the variable is a child */
     if (id != NOT_A_VARIABLE)
     {
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
@@ -75,11 +75,25 @@ void wsum_hess_init_elementwise(expr *node)
             node->wsum_hess->p[i] = node->size;
         }
     }
-    /* otherwise it will be a linear operator */
     else
     {
-        linear_op_expr *lin_child = (linear_op_expr *) child;
-        node->wsum_hess = ATA_alloc(lin_child->A_csc);
+        /* Hessian of h(x) = w^T f(g(x) is term1 + term 2 where
+            term1 = J_g^T @ D @ J_g with D = sum_i w_i Hf_i,
+            term2 = sum_i (J_f^T w)_i^T Hg_i.
+
+            For elementwise functions, D is diagonal. */
+        jacobian_csc_init(child);
+        CSC_Matrix *Jg = child->jacobian_csc;
+
+        if (child->is_affine(child))
+        {
+            node->wsum_hess = ATA_alloc(Jg);
+        }
+        else
+        {
+            /* have one two terms*/
+            child->wsum_hess_init(child);
+        }
     }
 }
 
