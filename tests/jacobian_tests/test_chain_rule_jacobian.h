@@ -13,8 +13,7 @@ const char *test_jacobian_exp_sum(void)
     expr *exp_sum_x = new_exp(sum_x);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(exp_sum_x, u_vals,
-                             NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian(exp_sum_x, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_sum_x);
     return 0;
@@ -31,8 +30,7 @@ const char *test_jacobian_exp_sum_mult(void)
     expr *exp_sum_xy = new_exp(sum_xy);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(exp_sum_xy, u_vals,
-                             NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian(exp_sum_xy, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_sum_xy);
     return 0;
