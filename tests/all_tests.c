@@ -22,6 +22,7 @@
 #include "forward_pass/test_prod_axis_one.h"
 #include "forward_pass/test_prod_axis_zero.h"
 #include "jacobian_tests/test_broadcast.h"
+#include "jacobian_tests/test_chain_rule_jacobian.h"
 #include "jacobian_tests/test_composite_exp.h"
 #include "jacobian_tests/test_const_scalar_mult.h"
 #include "jacobian_tests/test_const_vector_mult.h"
@@ -129,6 +130,8 @@ int main(void)
     mu_run_test(test_jacobian_log, tests_run);
     mu_run_test(test_jacobian_log_matrix, tests_run);
     mu_run_test(test_jacobian_composite_exp, tests_run);
+    mu_run_test(test_jacobian_exp_sum, tests_run);
+    mu_run_test(test_jacobian_exp_sum_mult, tests_run);
     mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_const_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_const_scalar_mult_log_matrix, tests_run);

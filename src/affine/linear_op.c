@@ -74,14 +74,20 @@ static void jacobian_init(expr *node)
     node->jacobian = ((linear_op_expr *) node)->A_csr;
 }
 
+static void eval_jacobian(expr *node)
+{
+    /* Linear operator jacobian never changes - nothing to evaluate */
+    (void) node;
+}
+
 expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
 {
     assert(u->d2 == 1);
     /* Allocate the type-specific struct */
     linear_op_expr *lin_node = (linear_op_expr *) calloc(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;
-    init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init, NULL, is_affine,
-              NULL, NULL, free_type_data);
+    init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init, eval_jacobian,
+              is_affine, NULL, NULL, free_type_data);
     node->left = u;
     expr_retain(u);
 
