@@ -73,7 +73,10 @@ void free_expr(expr *node)
     free_csc_matrix(node->jacobian_csc);
     free(node->csc_work);
     free_csr_matrix(node->wsum_hess);
+    free_csr_matrix(node->hess_term1);
+    free_csr_matrix(node->hess_term2);
     free(node->dwork);
+    free(node->local_jac_diag);
     free(node->iwork);
     node->value = NULL;
     node->jacobian = NULL;

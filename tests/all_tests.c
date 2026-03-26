@@ -65,6 +65,7 @@
 #include "wsum_hess/elementwise/test_trig.h"
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_broadcast.h"
+#include "wsum_hess/test_chain_rule_wsum_hess.h"
 #include "wsum_hess/test_const_scalar_mult.h"
 #include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
@@ -259,6 +260,8 @@ int main(void)
     mu_run_test(test_wsum_hess_trace_log_variable, tests_run);
     mu_run_test(test_wsum_hess_trace_composite, tests_run);
     mu_run_test(test_wsum_hess_transpose, tests_run);
+    mu_run_test(test_wsum_hess_exp_sum, tests_run);
+    mu_run_test(test_wsum_hess_exp_sum_mult, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_cblas_ddot, tests_run);
