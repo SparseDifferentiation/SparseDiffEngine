@@ -7,6 +7,7 @@
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_hstack.h"
+#include "forward_pass/affine/test_vstack.h"
 #include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
@@ -26,6 +27,7 @@
 #include "jacobian_tests/test_const_vector_mult.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
+#include "jacobian_tests/test_vstack.h"
 #include "jacobian_tests/test_index.h"
 #include "jacobian_tests/test_left_matmul.h"
 #include "jacobian_tests/test_log.h"
@@ -64,6 +66,7 @@
 #include "wsum_hess/test_const_scalar_mult.h"
 #include "wsum_hess/test_const_vector_mult.h"
 #include "wsum_hess/test_hstack.h"
+#include "wsum_hess/test_vstack.h"
 #include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
 #include "wsum_hess/test_matmul.h"
@@ -109,6 +112,8 @@ int main(void)
     mu_run_test(test_sum_axis_1, tests_run);
     mu_run_test(test_hstack_forward_vectors, tests_run);
     mu_run_test(test_hstack_forward_matrix, tests_run);
+    mu_run_test(test_vstack_forward_vectors, tests_run);
+    mu_run_test(test_vstack_forward_matrix, tests_run);
     mu_run_test(test_broadcast_row, tests_run);
     mu_run_test(test_broadcast_col, tests_run);
     mu_run_test(test_broadcast_matrix, tests_run);
@@ -158,6 +163,8 @@ int main(void)
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
+    mu_run_test(test_jacobian_vstack_vectors, tests_run);
+    mu_run_test(test_jacobian_vstack_matrix, tests_run);
     mu_run_test(test_index_forward_simple, tests_run);
     mu_run_test(test_index_forward_repeated, tests_run);
     mu_run_test(test_index_jacobian_of_variable, tests_run);
@@ -218,6 +225,8 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
+    mu_run_test(test_wsum_hess_vstack_vectors, tests_run);
+    mu_run_test(test_wsum_hess_vstack_matrix, tests_run);
     mu_run_test(test_wsum_hess_index_log, tests_run);
     mu_run_test(test_wsum_hess_index_repeated, tests_run);
     mu_run_test(test_wsum_hess_sum_index_log, tests_run);
