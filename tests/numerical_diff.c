@@ -100,21 +100,18 @@ int check_jacobian(expr *node, const double *u, double h)
 
 /* Compute g = J^T w where J is CSR (m x n) and w has m entries.
  * Result written into g (size n), which must be zero-initialized. */
-static void csr_transpose_mult_vec(const CSR_Matrix *J,
-                                   const double *w, double *g)
+static void csr_transpose_mult_vec(const CSR_Matrix *J, const double *w, double *g)
 {
     for (int row = 0; row < J->m; row++)
     {
-        for (int idx = J->p[row]; idx < J->p[row + 1];
-             idx++)
+        for (int idx = J->p[row]; idx < J->p[row + 1]; idx++)
         {
             g[J->i[idx]] += J->x[idx] * w[row];
         }
     }
 }
 
-double *numerical_wsum_hess(expr *node, const double *u,
-                            const double *w, double h)
+double *numerical_wsum_hess(expr *node, const double *u, const double *w, double h)
 {
     int n = node->n_vars;
     double inv_2h = 1.0 / (2.0 * h);
@@ -123,7 +120,7 @@ double *numerical_wsum_hess(expr *node, const double *u,
     node->jacobian_init(node);
     node->forward(node, u);
 
-    double *H = calloc((size_t)n * n, sizeof(double));
+    double *H = calloc((size_t) n * n, sizeof(double));
     double *u_work = malloc(n * sizeof(double));
     double *g_plus = malloc(n * sizeof(double));
     double *g_minus = malloc(n * sizeof(double));
@@ -150,8 +147,7 @@ double *numerical_wsum_hess(expr *node, const double *u,
 
         for (int i = 0; i < n; i++)
         {
-            H[i * n + j] =
-                (g_plus[i] - g_minus[i]) * inv_2h;
+            H[i * n + j] = (g_plus[i] - g_minus[i]) * inv_2h;
         }
     }
 
@@ -161,24 +157,20 @@ double *numerical_wsum_hess(expr *node, const double *u,
     return H;
 }
 
-int check_wsum_hess(expr *node, const double *u,
-                    const double *w, double h)
+int check_wsum_hess(expr *node, const double *u, const double *w, double h)
 {
     int n = node->n_vars;
 
-    node->jacobian_init(node);
+    /* Compute numerical first (does its own jacobian_init) */
+    double *H_num = numerical_wsum_hess(node, u, w, h);
+
+    /* Now compute analytical (reuses jacobian from numerical) */
     node->wsum_hess_init(node);
     node->forward(node, u);
     node->eval_jacobian(node);
     node->eval_wsum_hess(node, w);
 
-    double *H_num = numerical_wsum_hess(node, u, w, h);
-
-    /* Restore expression state */
-    node->forward(node, u);
-    node->eval_jacobian(node);
-
-    double *H_ana = calloc((size_t)n * n, sizeof(double));
+    double *H_ana = calloc((size_t) n * n, sizeof(double));
     csr_to_dense(node->wsum_hess, H_ana);
 
     int result = 1;
