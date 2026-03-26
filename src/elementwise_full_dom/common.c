@@ -51,7 +51,8 @@ void eval_jacobian_elementwise(expr *node)
         child->eval_jacobian(child);
         CSR_Matrix *Jg = child->jacobian;
         node->local_jacobian(node, node->work->local_jac_diag);
-        memcpy(node->work->dwork, node->work->local_jac_diag, node->size * sizeof(double));
+        memcpy(node->work->dwork, node->work->local_jac_diag,
+               node->size * sizeof(double));
         diag_csr_mult_fill_values(node->work->dwork, Jg, node->jacobian);
     }
 }
@@ -107,8 +108,8 @@ void wsum_hess_init_elementwise(expr *node)
             /* wsum_hess = term1 + term2 */
             int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
             node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
-            sum_csr_matrices_fill_sparsity(node->work->hess_term1, node->work->hess_term2,
-                                           node->wsum_hess);
+            sum_csr_matrices_fill_sparsity(node->work->hess_term1,
+                                           node->work->hess_term2, node->wsum_hess);
         }
     }
 }
@@ -133,7 +134,8 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
             }
 
             node->local_wsum_hess(node, node->work->dwork, w);
-            ATDA_fill_values(child->work->jacobian_csc, node->work->dwork, node->wsum_hess);
+            ATDA_fill_values(child->work->jacobian_csc, node->work->dwork,
+                             node->wsum_hess);
         }
         else
         {
@@ -143,10 +145,12 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
 
             /* term1: Jg^T @ D @ Jg */
             node->local_wsum_hess(node, node->work->dwork, w);
-            ATDA_fill_values(child->work->jacobian_csc, node->work->dwork, node->work->hess_term1);
+            ATDA_fill_values(child->work->jacobian_csc, node->work->dwork,
+                             node->work->hess_term1);
 
             /* term2: child Hessian with weight Jf^T w */
-            memcpy(node->work->dwork, node->work->local_jac_diag, node->size * sizeof(double));
+            memcpy(node->work->dwork, node->work->local_jac_diag,
+                   node->size * sizeof(double));
             for (int k = 0; k < node->size; k++)
             {
                 node->work->dwork[k] *= w[k];
@@ -157,8 +161,8 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
                    child->wsum_hess->nnz * sizeof(double));
 
             /* wsum_hess = term1 + term2 */
-            sum_csr_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
-                                         node->wsum_hess);
+            sum_csr_matrices_fill_values(node->work->hess_term1,
+                                         node->work->hess_term2, node->wsum_hess);
         }
     }
 }

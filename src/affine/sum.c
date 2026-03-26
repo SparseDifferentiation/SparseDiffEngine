@@ -88,7 +88,8 @@ static void jacobian_init(expr *node)
 
     /* we never have to store more than the child's nnz */
     node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
-    node->work->iwork = malloc(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
+    node->work->iwork =
+        malloc(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
     snode->idx_map = malloc(x->jacobian->nnz * sizeof(int));
 
     /* the idx_map array maps each nonzero entry j in x->jacobian
@@ -98,8 +99,8 @@ static void jacobian_init(expr *node)
 
     if (axis == -1)
     {
-        sum_all_rows_csr_fill_sparsity_and_idx_map(x->jacobian, node->jacobian,
-                                                   node->work->iwork, snode->idx_map);
+        sum_all_rows_csr_fill_sparsity_and_idx_map(
+            x->jacobian, node->jacobian, node->work->iwork, snode->idx_map);
     }
     else if (axis == 0)
     {
@@ -109,7 +110,8 @@ static void jacobian_init(expr *node)
     else if (axis == 1)
     {
         sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, node->size, node->work->iwork, snode->idx_map);
+            x->jacobian, node->jacobian, node->size, node->work->iwork,
+            snode->idx_map);
     }
 }
 

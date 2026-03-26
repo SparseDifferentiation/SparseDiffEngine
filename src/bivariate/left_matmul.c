@@ -186,7 +186,8 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
 
     /* store A and AT */
     lnode->A = new_sparse_matrix(A);
-    lnode->AT = sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->work->iwork);
+    lnode->AT =
+        sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->work->iwork);
 
     return node;
 }

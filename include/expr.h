@@ -45,7 +45,11 @@ typedef struct
     double *dwork;
     int *iwork;
     CSC_Matrix *jacobian_csc;
-    int *csc_work;          /* for CSR-CSC conversion */
+    int *csc_work; /* for CSR-CSC conversion */
+
+    /* jacobian_csc_filled is only used for affine functions to avoid redundant
+       conversions. Could become relevant for non-affine functions if we start
+       supporting common subexpressions on the Python side. */
     bool jacobian_csc_filled;
     double *local_jac_diag; /* cached f'(g(x)) diagonal */
     CSR_Matrix *hess_term1; /* Jg^T D Jg workspace */
