@@ -39,7 +39,20 @@ typedef void (*local_wsum_hess_fn)(struct expr *node, double *out, const double 
 typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
 
-/* Base expression node structure - contains only common fields */
+/* Workspace for derivative computation */
+typedef struct
+{
+    double *dwork;
+    int *iwork;
+    CSC_Matrix *jacobian_csc;
+    int *csc_work;          /* for CSR-CSC conversion */
+    bool jacobian_csc_filled;
+    double *local_jac_diag; /* cached f'(g(x)) diagonal */
+    CSR_Matrix *hess_term1; /* Jg^T D Jg workspace */
+    CSR_Matrix *hess_term2; /* child wsum_hess workspace */
+} Expr_Work;
+
+/* Base expression node structure */
 typedef struct expr
 {
     // ------------------------------------------------------------------------
@@ -48,24 +61,13 @@ typedef struct expr
     int d1, d2, size, n_vars, refcount, var_id;
     struct expr *left;
     struct expr *right;
-    double *dwork;
-    int *iwork;
 
     // ------------------------------------------------------------------------
     //                     oracle related quantities
     // ------------------------------------------------------------------------
     double *value;
     CSR_Matrix *jacobian;
-    CSC_Matrix *jacobian_csc;
-    int *csc_work; /* workspace for CSR-CSC conversion */
-
-    /* jacobian_csc_filled is only used for affine functions to avoid redundant
-       conversions. Could become relevant for non-affine functions if we start
-       supporting common subexpressions on the Python side. */
-    bool jacobian_csc_filled;
     CSR_Matrix *wsum_hess;
-    CSR_Matrix *hess_term1; /* Jg^T D Jg workspace */
-    CSR_Matrix *hess_term2; /* child wsum_hess workspace */
     forward_fn forward;
     jacobian_init_fn jacobian_init;
     wsum_hess_init_fn wsum_hess_init;
@@ -76,10 +78,10 @@ typedef struct expr
     //                      other things
     // ------------------------------------------------------------------------
     is_affine_fn is_affine;
-    double *local_jac_diag;             /* cached f'(g(x)) diagonal */
     local_jacobian_fn local_jacobian;   /* used by elementwise univariate atoms*/
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
+    Expr_Work *work;                    /* derivative workspace */
 
     // name of node just for debugging - should be removed later
     char name[32];

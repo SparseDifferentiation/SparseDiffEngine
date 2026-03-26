@@ -49,7 +49,7 @@ static void jacobian_init(expr *node)
 {
     node->left->jacobian_init(node->left);
     node->right->jacobian_init(node->right);
-    node->dwork = (double *) malloc(2 * node->size * sizeof(double));
+    node->work->dwork = (double *) malloc(2 * node->size * sizeof(double));
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
 
@@ -130,9 +130,9 @@ static void wsum_hess_init(expr *node)
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         CSR_Matrix *C; /* C = B^T diag(w) A */
         C = BTA_alloc(A, B);
-        node->iwork = (int *) malloc(C->m * sizeof(int));
+        node->work->iwork = (int *) malloc(C->m * sizeof(int));
 
-        CSR_Matrix *CT = AT_alloc(C, node->iwork);
+        CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
         mul_node->CSR_work1 = C;
         mul_node->CSR_work2 = CT;
 
@@ -169,7 +169,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         BTDA_fill_values(A, B, w, C);
 
         /* Compute CT = C^T = A^T diag(w) B */
-        AT_fill_values(C, CT, node->iwork);
+        AT_fill_values(C, CT, node->work->iwork);
 
         /* Hessian = C + CT = B^T diag(w) A + A^T diag(w) B */
         sum_csr_matrices_fill_values(C, CT, node->wsum_hess);

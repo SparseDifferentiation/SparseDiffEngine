@@ -100,7 +100,7 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* workspace for extracting diagonal weights */
-    node->dwork = (double *) calloc(x->size, sizeof(double));
+    node->work->dwork = (double *) calloc(x->size, sizeof(double));
 
     /* Copy child's Hessian structure (diag_vec is linear, so its own Hessian is
      * zero) */
@@ -118,11 +118,11 @@ static void eval_wsum_hess(expr *node, const double *w)
     /* Extract weights from diagonal positions of w (which has n^2 elements) */
     for (int i = 0; i < n; i++)
     {
-        node->dwork[i] = w[i * (n + 1)];
+        node->work->dwork[i] = w[i * (n + 1)];
     }
 
     /* Evaluate child's Hessian with extracted weights */
-    x->eval_wsum_hess(x, node->dwork);
+    x->eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 
