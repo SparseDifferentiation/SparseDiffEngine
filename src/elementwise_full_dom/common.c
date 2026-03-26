@@ -22,7 +22,6 @@ void jacobian_init_elementwise(expr *node)
         }
         node->jacobian->p[node->size] = node->size;
     }
-    /* otherwise it will be a linear operator */
     else
     {
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
