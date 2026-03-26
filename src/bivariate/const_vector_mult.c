@@ -81,7 +81,7 @@ static void wsum_hess_init(expr *node)
     memcpy(node->wsum_hess->p, x->wsum_hess->p, (node->n_vars + 1) * sizeof(int));
     memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
 
-    node->dwork = (double *) malloc(node->size * sizeof(double));
+    node->work->dwork = (double *) malloc(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -92,10 +92,10 @@ static void eval_wsum_hess(expr *node, const double *w)
     /* scale weights w by a */
     for (int i = 0; i < node->size; i++)
     {
-        node->dwork[i] = a[i] * w[i];
+        node->work->dwork[i] = a[i] * w[i];
     }
 
-    x->eval_wsum_hess(x, node->dwork);
+    x->eval_wsum_hess(x, node->work->dwork);
 
     /* copy values from child to this node */
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));

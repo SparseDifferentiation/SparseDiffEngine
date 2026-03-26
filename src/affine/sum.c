@@ -88,7 +88,8 @@ static void jacobian_init(expr *node)
 
     /* we never have to store more than the child's nnz */
     node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
-    node->iwork = malloc(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
+    node->work->iwork =
+        malloc(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
     snode->idx_map = malloc(x->jacobian->nnz * sizeof(int));
 
     /* the idx_map array maps each nonzero entry j in x->jacobian
@@ -98,18 +99,19 @@ static void jacobian_init(expr *node)
 
     if (axis == -1)
     {
-        sum_all_rows_csr_fill_sparsity_and_idx_map(x->jacobian, node->jacobian,
-                                                   node->iwork, snode->idx_map);
+        sum_all_rows_csr_fill_sparsity_and_idx_map(
+            x->jacobian, node->jacobian, node->work->iwork, snode->idx_map);
     }
     else if (axis == 0)
     {
         sum_block_of_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, x->d1, node->iwork, snode->idx_map);
+            x->jacobian, node->jacobian, x->d1, node->work->iwork, snode->idx_map);
     }
     else if (axis == 1)
     {
         sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, node->size, node->iwork, snode->idx_map);
+            x->jacobian, node->jacobian, node->size, node->work->iwork,
+            snode->idx_map);
     }
 }
 
@@ -135,7 +137,7 @@ static void wsum_hess_init(expr *node)
 
     /* we never have to store more than the child's nnz */
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
-    node->dwork = malloc(x->size * sizeof(double));
+    node->work->dwork = malloc(x->size * sizeof(double));
 
     /* copy sparsity pattern */
     memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->n_vars + 1) * sizeof(int));
@@ -150,18 +152,18 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     if (axis == -1)
     {
-        scaled_ones(node->dwork, x->size, *w);
+        scaled_ones(node->work->dwork, x->size, *w);
     }
     else if (axis == 0)
     {
-        repeat(node->dwork, w, x->d2, x->d1);
+        repeat(node->work->dwork, w, x->d2, x->d1);
     }
     else if (axis == 1)
     {
-        tile_double(node->dwork, w, x->d1, x->d2);
+        tile_double(node->work->dwork, w, x->d1, x->d2);
     }
 
-    x->eval_wsum_hess(x, node->dwork);
+    x->eval_wsum_hess(x, node->work->dwork);
 
     /* copy values */
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));

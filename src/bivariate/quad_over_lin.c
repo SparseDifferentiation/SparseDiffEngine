@@ -82,7 +82,7 @@ static void jacobian_init(expr *node)
     else /* left node is not a variable (guaranteed to be a linear operator) */
     {
         linear_op_expr *lin_x = (linear_op_expr *) x;
-        node->dwork = (double *) malloc(x->size * sizeof(double));
+        node->work->dwork = (double *) malloc(x->size * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
@@ -111,12 +111,12 @@ static void jacobian_init(expr *node)
         node->jacobian->p[1] = node->jacobian->nnz;
 
         /* find position where y should be inserted */
-        node->iwork = (int *) malloc(sizeof(int));
+        node->work->iwork = (int *) malloc(sizeof(int));
         for (int j = 0; j < node->jacobian->nnz; j++)
         {
             if (node->jacobian->i[j] == y->var_id)
             {
-                node->iwork[0] = j;
+                node->work->iwork[0] = j;
                 break;
             }
         }
@@ -156,16 +156,16 @@ static void eval_jacobian(expr *node)
         /* local jacobian */
         for (int j = 0; j < x->size; j++)
         {
-            node->dwork[j] = (2.0 * x->value[j]) / y->value[0];
+            node->work->dwork[j] = (2.0 * x->value[j]) / y->value[0];
         }
 
         /* chain rule (no derivative wrt y) using CSC format */
-        csc_matvec_fill_values(A_csc, node->dwork, node->jacobian);
+        csc_matvec_fill_values(A_csc, node->work->dwork, node->jacobian);
 
         /* insert derivative wrt y at right place (for correctness this assumes
            that y does not appear in the numerator, but this will always be
            the case since y is a new variable for the denominator */
-        node->jacobian->x[node->iwork[0]] = -node->value[0] / y->value[0];
+        node->jacobian->x[node->work->iwork[0]] = -node->value[0] / y->value[0];
     }
 }
 

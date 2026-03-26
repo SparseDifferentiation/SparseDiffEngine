@@ -40,12 +40,14 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->wsum_hess_init = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     node->free_type_data = free_type_data;
+    node->work = (Expr_Work *) calloc(1, sizeof(Expr_Work));
 }
 
 void jacobian_csc_init(expr *node)
 {
-    node->csc_work = (int *) malloc(node->n_vars * sizeof(int));
-    node->jacobian_csc = csr_to_csc_fill_sparsity(node->jacobian, node->csc_work);
+    node->work->csc_work = (int *) malloc(node->n_vars * sizeof(int));
+    node->work->jacobian_csc =
+        csr_to_csc_fill_sparsity(node->jacobian, node->work->csc_work);
 }
 
 void free_expr(expr *node)
@@ -67,22 +69,23 @@ void free_expr(expr *node)
         node->free_type_data(node);
     }
 
-    /* free value array and jacobian */
+    /* free value array and derivative matrices */
     free(node->value);
     free_csr_matrix(node->jacobian);
-    free_csc_matrix(node->jacobian_csc);
-    free(node->csc_work);
     free_csr_matrix(node->wsum_hess);
-    free_csr_matrix(node->hess_term1);
-    free_csr_matrix(node->hess_term2);
-    free(node->dwork);
-    free(node->local_jac_diag);
-    free(node->iwork);
-    node->value = NULL;
-    node->jacobian = NULL;
-    node->wsum_hess = NULL;
-    node->dwork = NULL;
-    node->iwork = NULL;
+
+    /* free workspace */
+    if (node->work)
+    {
+        free(node->work->dwork);
+        free(node->work->iwork);
+        free_csc_matrix(node->work->jacobian_csc);
+        free(node->work->csc_work);
+        free(node->work->local_jac_diag);
+        free_csr_matrix(node->work->hess_term1);
+        free_csr_matrix(node->work->hess_term2);
+        free(node->work);
+    }
 
     /* free the node itself */
     free(node);

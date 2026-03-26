@@ -50,7 +50,7 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
     }
     else
     {
-        sigmas = node->dwork;
+        sigmas = node->work->dwork;
     }
 
     for (int j = 0; j < node->size; j++)
