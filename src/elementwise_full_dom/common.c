@@ -1,22 +1,4 @@
-/*
- * Copyright 2026 Daniel Cederberg and William Zhang
- *
- * This file is part of the DNLP-differentiation-engine project.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#include "elementwise_univariate.h"
-#include "expr.h"
+#include "elementwise_full_dom.h"
 #include "subexpr.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -121,10 +103,6 @@ bool is_affine_elementwise(const expr *node)
     return false;
 }
 
-/* Helper function to initialize an already-allocated expr for elementwise operations
- * This is called when a power_expr or other type-specific struct is allocated
- * and we need to initialize the base expr fields
- */
 void init_elementwise(expr *node, expr *child)
 {
     /* Initialize base fields */

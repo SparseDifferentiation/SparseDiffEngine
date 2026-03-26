@@ -5,9 +5,11 @@
 
 #include "affine.h"
 #include "bivariate.h"
-#include "elementwise_univariate.h"
+#include "elementwise_full_dom.h"
+#include "elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "test_helpers.h"
 
 const char *test_wsum_hess_left_matmul(void)
@@ -89,53 +91,9 @@ const char *test_wsum_hess_left_matmul(void)
     return 0;
 }
 
-const char *test_wsum_hess_left_matmul_composite(void)
+const char *test_wsum_hess_left_matmul_exp_composite(void)
 {
-    /* Test weighted sum of Hessian of A @ log(B @ x) where:
-     * x is 3x1 variable at x = [1, 2, 3]
-     * B is 3x3 dense matrix of all ones
-     * A is 4x3 sparse matrix [1, 0, 2; 3, 0, 4; 5, 0, 6; 7, 0, 0]
-     * Weights w = [1, 2, 3, 4]
-     *
-     * B @ x = [6, 6, 6]^T
-     * log(B @ x) = [log(6), log(6), log(6)]^T
-     * f = A @ log(B @ x) is 4x1
-     *
-     * The Hessian is more complex due to the composite chain rule.
-     * df/dx = A @ diag(1/(B@x)) @ B
-     *
-     * The second derivative involves:
-     * d²f/dx² = A @ d(diag(1/y))/dy @ dy/dx @ B + A @ diag(1/y) @ 0
-     * where y = B @ x
-     *
-     * d(diag(1/y))/dy = -diag(1/y²)
-     * dy/dx = B
-     *
-     * So: d²f[k]/dx² = -sum_j sum_i A[k,i] * (1/(B@x)_i²) * B[i,j] * B[i,l]
-     * This is dense and symmetric.
-     *
-     * For our case with B = all ones, B@x = [6,6,6], so 1/(B@x)² = 1/36 for each
-     * element
-     *
-     * For wsum_hess = sum_k w_k * d²f_k/dx²
-     * We use the chain rule: weight w goes through A
-     * weighted_w_prime[i] = sum_k w_k * A[k,i]
-     * Then: wsum_hess[i,l] = -weighted_w_prime[i] * (1/36) * B[i,j] * (same for l)
-     *
-     * A^T @ w = [50, 0, 28]^T (from A^T w)
-     * So weighted contribution for each element of B@x is -[50, 0, 28] / 36
-     *
-     * The result is a 3x3 matrix (outer product of weighted_w_prime with B):
-     * wsum_hess = -diag([50/36, 0, 28/36]) @ B @ B^T = -diag([50/36, 0, 28/36]) @
-     * (all ones) = [-50/36, -50/36, -50/36; 0,      0,      0; -28/36, -28/36,
-     * -28/36] = [-25/18, -25/18, -25/18; 0,      0,      0; -7/9,   -7/9,   -7/9]
-     *
-     * Stored as dense 3x3:
-     * nnz = 6 (zeros in row 1)
-     * p = [0, 3, 3, 6]
-     * i = [0, 1, 2, 0, 1, 2]
-     * x = [-25/18, -25/18, -25/18, -7/9, -7/9, -7/9]
-     */
+    /* Test weighted sum of Hessian of A @ exp(B @ x) */
     double x_vals[3] = {1.0, 2.0, 3.0};
     double w[4] = {1.0, 2.0, 3.0, 4.0};
 
@@ -160,35 +118,15 @@ const char *test_wsum_hess_left_matmul_composite(void)
     memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *Bx = new_linear(x, B, NULL);
-    expr *log_Bx = new_log(Bx);
-    expr *A_log_Bx = new_left_matmul(log_Bx, A);
+    expr *exp_Bx = new_exp(Bx);
+    expr *A_exp_Bx = new_left_matmul(exp_Bx, A);
 
-    A_log_Bx->forward(A_log_Bx, x_vals);
-    A_log_Bx->jacobian_init(A_log_Bx);
-    A_log_Bx->wsum_hess_init(A_log_Bx);
-    A_log_Bx->eval_wsum_hess(A_log_Bx, w);
-
-    /* Expected wsum_hess: 3x3 dense matrix (9 nonzeros)
-     * All entries are -13/6 because the hessian of log(B@x) w.r.t. x
-     * becomes dense when B is dense (all ones) */
-    double expected_x[9] = {
-        -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0, /* row 0 */
-        -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0, /* row 1 */
-        -13.0 / 6.0, -13.0 / 6.0, -13.0 / 6.0  /* row 2 */
-    };
-    int expected_i[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
-    int expected_p[4] = {0, 3, 6, 9}; /* each row has 3 entries */
-
-    mu_assert("vals incorrect",
-              cmp_double_array(A_log_Bx->wsum_hess->x, expected_x, 9));
-    mu_assert("cols incorrect",
-              cmp_int_array(A_log_Bx->wsum_hess->i, expected_i, 9));
-    mu_assert("rows incorrect",
-              cmp_int_array(A_log_Bx->wsum_hess->p, expected_p, 4));
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(A_exp_Bx, x_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_csr_matrix(A);
     free_csr_matrix(B);
-    free_expr(A_log_Bx);
+    free_expr(A_exp_Bx);
     return 0;
 }
 

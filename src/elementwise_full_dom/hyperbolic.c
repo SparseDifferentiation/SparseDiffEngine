@@ -1,4 +1,4 @@
-#include "elementwise_univariate.h"
+#include "elementwise_full_dom.h"
 #include <assert.h>
 #include <math.h>
 
@@ -112,43 +112,5 @@ expr *new_asinh(expr *child)
     node->forward = asinh_forward;
     node->local_jacobian = asinh_local_jacobian;
     node->local_wsum_hess = asinh_local_wsum_hess;
-    return node;
-}
-
-/* ----------------------- atanh ----------------------- */
-static void atanh_forward(expr *node, const double *u)
-{
-    node->left->forward(node->left, u);
-    for (int i = 0; i < node->size; i++)
-    {
-        node->value[i] = atanh(node->left->value[i]);
-    }
-}
-
-static void atanh_local_jacobian(expr *node, double *vals)
-{
-    expr *child = node->left;
-    for (int j = 0; j < node->size; j++)
-    {
-        vals[j] = 1.0 / (1.0 - child->value[j] * child->value[j]);
-    }
-}
-
-static void atanh_local_wsum_hess(expr *node, double *out, const double *w)
-{
-    double *x = node->left->value;
-    for (int j = 0; j < node->size; j++)
-    {
-        double c = 1.0 - x[j] * x[j];
-        out[j] = w[j] * (2.0 * x[j]) / (c * c);
-    }
-}
-
-expr *new_atanh(expr *child)
-{
-    expr *node = new_elementwise(child);
-    node->forward = atanh_forward;
-    node->local_jacobian = atanh_local_jacobian;
-    node->local_wsum_hess = atanh_local_wsum_hess;
     return node;
 }
