@@ -113,9 +113,7 @@ static void wsum_hess_init(expr *node)
        structural zeros, but we do not try to exploit that sparsity
        right now. */
     CSR_Matrix *Hx = x->wsum_hess;
-    node->wsum_hess = new_csr_matrix(Hx->m, Hx->n, Hx->nnz);
-    memcpy(node->wsum_hess->p, Hx->p, (Hx->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, Hx->i, Hx->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(Hx);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

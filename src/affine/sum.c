@@ -136,12 +136,8 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* we never have to store more than the child's nnz */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
     node->work->dwork = malloc(x->size * sizeof(double));
-
-    /* copy sparsity pattern */
-    memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->n_vars + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

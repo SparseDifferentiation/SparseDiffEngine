@@ -102,16 +102,14 @@ static void wsum_hess_init(expr *node)
 
     /* initialize child's hessian */
     x->wsum_hess_init(x);
-
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
+  
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
 
     /* We copy over the sparsity pattern from the child. This also includes the
        contribution to wsum_hess of entries of the child that will always have
        zero weight in eval_wsum_hess. We do this for simplicity. But the Hessian
        can for sure be made more sophisticated. */
-    memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->n_vars + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

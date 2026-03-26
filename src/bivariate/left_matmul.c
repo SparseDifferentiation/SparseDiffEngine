@@ -120,9 +120,7 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* allocate this node's hessian with the same sparsity as child's */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
-    memcpy(node->wsum_hess->p, x->wsum_hess->p, (node->n_vars + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
