@@ -1,5 +1,6 @@
 #include "affine.h"
-#include "elementwise_univariate.h"
+#include "elementwise_full_dom.h"
+#include "elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"

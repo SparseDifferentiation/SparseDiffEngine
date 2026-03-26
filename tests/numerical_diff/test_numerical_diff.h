@@ -1,11 +1,11 @@
 #include <string.h>
 
 #include "affine.h"
-#include "elementwise_univariate.h"
+#include "elementwise_full_dom.h"
 #include "minunit.h"
 #include "numerical_diff.h"
 
-const char *test_check_jacobian_composite_log(void)
+const char *test_check_jacobian_composite_exp(void)
 {
     double u_vals[6] = {0, 0, 1, 2, 3, 0};
 
@@ -19,17 +19,17 @@ const char *test_check_jacobian_composite_log(void)
 
     expr *u = new_variable(3, 1, 2, 6);
     expr *Au = new_linear(u, A, NULL);
-    expr *log_node = new_log(Au);
+    expr *exp_node = new_exp(Au);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(log_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian(exp_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
-    free_expr(log_node);
+    free_expr(exp_node);
     free_csr_matrix(A);
     return 0;
 }
 
-const char *test_check_wsum_hess_log_composite(void)
+const char *test_check_wsum_hess_exp_composite(void)
 {
     double u_vals[5] = {1, 2, 3, 4, 5};
     double w[3] = {-1, -2, -3};
@@ -43,12 +43,12 @@ const char *test_check_wsum_hess_log_composite(void)
 
     expr *x = new_variable(5, 1, 0, 5);
     expr *Ax_node = new_linear(x, A_csr, NULL);
-    expr *log_node = new_log(Ax_node);
+    expr *exp_node = new_exp(Ax_node);
 
     mu_assert("check_wsum_hess failed",
-              check_wsum_hess(log_node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+              check_wsum_hess(exp_node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
-    free_expr(log_node);
+    free_expr(exp_node);
     free_csr_matrix(A_csr);
     return 0;
 }
