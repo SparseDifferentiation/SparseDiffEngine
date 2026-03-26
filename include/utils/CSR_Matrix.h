@@ -28,6 +28,7 @@ typedef struct CSR_Matrix
 /* constructors and destructors */
 CSR_Matrix *new_csr_matrix(int m, int n, int nnz);
 CSR_Matrix *new_csr(const CSR_Matrix *A);
+CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A);
 void free_csr_matrix(CSR_Matrix *matrix);
 void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C);
 

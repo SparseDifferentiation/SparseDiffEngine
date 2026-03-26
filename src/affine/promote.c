@@ -78,12 +78,7 @@ static void wsum_hess_init(expr *node)
 
     /* same sparsity as child since we're summing weights */
     CSR_Matrix *child_hess = node->left->wsum_hess;
-    node->wsum_hess = new_csr_matrix(child_hess->m, child_hess->n, child_hess->nnz);
-
-    /* copy sparsity pattern */
-    memcpy(node->wsum_hess->p, child_hess->p, (child_hess->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, child_hess->i, child_hess->nnz * sizeof(int));
-    node->wsum_hess->nnz = child_hess->nnz;
+    node->wsum_hess = new_csr_copy_sparsity(child_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

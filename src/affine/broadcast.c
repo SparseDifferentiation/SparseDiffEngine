@@ -191,9 +191,7 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* Same sparsity as child - weights get summed */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
-    memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->wsum_hess->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
     /* allocate space for weight vector */
     node->work->dwork = malloc(node->size * sizeof(double));

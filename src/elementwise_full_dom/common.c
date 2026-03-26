@@ -27,13 +27,9 @@ void jacobian_init_elementwise(expr *node)
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
         child->jacobian_init(child);
         CSR_Matrix *Jg = child->jacobian;
-        node->jacobian = new_csr_matrix(Jg->m, Jg->n, Jg->nnz);
+        node->jacobian = new_csr_copy_sparsity(Jg);
         node->work->dwork = (double *) malloc(node->size * sizeof(double));
         node->work->local_jac_diag = (double *) malloc(node->size * sizeof(double));
-
-        /* copy sparsity pattern of child */
-        memcpy(node->jacobian->p, Jg->p, sizeof(int) * (Jg->m + 1));
-        memcpy(node->jacobian->i, Jg->i, sizeof(int) * Jg->nnz);
     }
 }
 
@@ -101,9 +97,7 @@ void wsum_hess_init_elementwise(expr *node)
             /* term2: child's Hessian */
             child->wsum_hess_init(child);
             CSR_Matrix *Hg = child->wsum_hess;
-            node->work->hess_term2 = new_csr_matrix(Hg->m, Hg->n, Hg->nnz);
-            memcpy(node->work->hess_term2->p, Hg->p, (Hg->m + 1) * sizeof(int));
-            memcpy(node->work->hess_term2->i, Hg->i, Hg->nnz * sizeof(int));
+            node->work->hess_term2 = new_csr_copy_sparsity(Hg);
 
             /* wsum_hess = term1 + term2 */
             int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
