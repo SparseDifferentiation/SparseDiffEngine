@@ -262,6 +262,9 @@ int main(void)
     mu_run_test(test_wsum_hess_transpose, tests_run);
     mu_run_test(test_wsum_hess_exp_sum, tests_run);
     mu_run_test(test_wsum_hess_exp_sum_mult, tests_run);
+    mu_run_test(test_wsum_hess_exp_sum_matmul, tests_run);
+    mu_run_test(test_wsum_hess_sin_sum_axis0_matmul, tests_run);
+    mu_run_test(test_wsum_hess_logistic_sum_axis0_matmul, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_cblas_ddot, tests_run);
