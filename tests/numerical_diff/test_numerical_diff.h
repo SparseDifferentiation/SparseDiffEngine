@@ -28,3 +28,31 @@ const char *test_check_jacobian_composite_log(void)
     free_csr_matrix(A);
     return 0;
 }
+
+const char *test_check_wsum_hess_log_composite(void)
+{
+    double u_vals[5] = {1, 2, 3, 4, 5};
+    double w[3] = {-1, -2, -3};
+    double Ax[] = {1, 2, 3, 4,  5, 6,  7, 8,
+                   9, 10, 11, 12, 13, 14, 15};
+    int Ai[] = {0, 1, 2, 3, 4, 0, 1, 2, 3, 4,
+                0, 1, 2, 3, 4};
+    int Ap[] = {0, 5, 10, 15};
+    CSR_Matrix *A_csr = new_csr_matrix(3, 5, 15);
+    memcpy(A_csr->x, Ax, 15 * sizeof(double));
+    memcpy(A_csr->i, Ai, 15 * sizeof(int));
+    memcpy(A_csr->p, Ap, 4 * sizeof(int));
+
+    expr *x = new_variable(5, 1, 0, 5);
+    expr *Ax_node = new_linear(x, A_csr, NULL);
+    expr *log_node = new_log(Ax_node);
+
+    mu_assert(
+        "check_wsum_hess failed",
+        check_wsum_hess(log_node, u_vals, w,
+                        NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(log_node);
+    free_csr_matrix(A_csr);
+    return 0;
+}

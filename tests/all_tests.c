@@ -300,6 +300,7 @@ int main(void)
 
     printf("\n--- Numerical Diff Tests ---\n");
     mu_run_test(test_check_jacobian_composite_log, tests_run);
+    mu_run_test(test_check_wsum_hess_log_composite, tests_run);
 
     printf("\n--- Problem Struct Tests ---\n");
     mu_run_test(test_problem_new_free, tests_run);
