@@ -1,5 +1,6 @@
 #include "elementwise_full_dom.h"
 #include "subexpr.h"
+#include "utils/CSR_Matrix.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,14 +23,15 @@ void jacobian_init_elementwise(expr *node)
     /* otherwise it will be a linear operator */
     else
     {
-        CSR_Matrix *J = ((linear_op_expr *) child)->A_csr;
-        node->jacobian = new_csr_matrix(J->m, J->n, J->nnz);
-
+        /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
+        child->jacobian_init(child);
+        CSR_Matrix *Jg = child->jacobian;
+        node->jacobian = new_csr_matrix(Jg->m, Jg->n, Jg->nnz);
         node->dwork = (double *) malloc(node->size * sizeof(double));
 
         /* copy sparsity pattern of child */
-        memcpy(node->jacobian->p, J->p, sizeof(int) * (J->m + 1));
-        memcpy(node->jacobian->i, J->i, sizeof(int) * J->nnz);
+        memcpy(node->jacobian->p, Jg->p, sizeof(int) * (Jg->m + 1));
+        memcpy(node->jacobian->i, Jg->i, sizeof(int) * Jg->nnz);
     }
 }
 
@@ -43,10 +45,11 @@ void eval_jacobian_elementwise(expr *node)
     }
     else
     {
-        /* Child will be a linear operator */
-        linear_op_expr *lin_child = (linear_op_expr *) child;
+        /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
+        child->eval_jacobian(child);
+        CSR_Matrix *Jg = child->jacobian;
         node->local_jacobian(node, node->dwork);
-        diag_csr_mult_fill_values(node->dwork, lin_child->A_csr, node->jacobian);
+        diag_csr_mult_fill_values(node->dwork, Jg, node->jacobian);
     }
 }
 
