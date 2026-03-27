@@ -130,17 +130,6 @@ typedef struct left_matmul_expr
     void (*refresh_param_values)(struct left_matmul_expr *);
 } left_matmul_expr;
 
-/* Right matrix multiplication: y = f(x) * A where f(x) is an expression.
- * f(x) has shape p x n, A has shape n x q, output y has shape p x q.
- * Uses vec(y) = B * vec(f(x)) where B = A^T kron I_p. */
-typedef struct right_matmul_expr
-{
-    expr base;
-    CSR_Matrix *B;  /* B = A^T kron I_p */
-    CSR_Matrix *BT; /* B^T for backpropagating Hessian weights */
-    CSC_Matrix *CSC_work;
-} right_matmul_expr;
-
 /* Scalar multiplication: y = a * child where a comes from param_source */
 typedef struct scalar_mult_expr
 {

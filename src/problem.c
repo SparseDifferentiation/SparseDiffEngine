@@ -335,11 +335,11 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
 {
     prob->n_param_nodes = n_param_nodes;
     prob->param_nodes = (expr **) malloc(n_param_nodes * sizeof(expr *));
-    prob->total_parameter_size = 0;
+    memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
 
+    prob->total_parameter_size = 0;
     for (int i = 0; i < n_param_nodes; i++)
     {
-        prob->param_nodes[i] = param_nodes[i];
         prob->total_parameter_size += param_nodes[i]->size;
     }
 }
@@ -350,6 +350,8 @@ void problem_update_params(problem *prob, const double *theta)
     {
         expr *pnode = prob->param_nodes[i];
         parameter_expr *param = (parameter_expr *) pnode;
+        if (param->param_id == PARAM_FIXED)
+            continue;
         int offset = param->param_id;
         memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
         param->has_been_refreshed = false;

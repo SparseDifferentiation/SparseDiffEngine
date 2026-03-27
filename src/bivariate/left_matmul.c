@@ -122,7 +122,6 @@ static void jacobian_init(expr *node)
 static void eval_jacobian(expr *node)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
-    refresh_param_values(lnode);
     expr *x = node->left;
 
     CSC_Matrix *Jchild_CSC = lnode->Jchild_CSC;
@@ -157,7 +156,6 @@ static void wsum_hess_init(expr *node)
 static void eval_wsum_hess(expr *node, const double *w)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
-    refresh_param_values(lnode);
 
     /* compute A^T w*/
     Matrix *AT = lnode->AT;

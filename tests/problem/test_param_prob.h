@@ -345,4 +345,86 @@ const char *test_param_right_matmul_problem(void)
     return 0;
 }
 
+/*
+ * Test 5: PARAM_FIXED params are skipped by problem_update_params
+ *
+ * Problem: minimize a * sum(log(x)) + b * sum(x), no constraints, x size 2
+ *   a is a FIXED scalar parameter (param_id=PARAM_FIXED, value=2.0)
+ *   b is an updatable scalar parameter (param_id=0)
+ *
+ * At x=[1,2], a=2, b=3:
+ *   obj = 2*(log(1)+log(2)) + 3*(1+2) = 2*log(2) + 9
+ *   gradient = [2/1 + 3, 2/2 + 3] = [5.0, 4.0]
+ *
+ * After update theta={5.0} (only b changes to 5, a stays 2):
+ *   obj = 2*log(2) + 5*3 = 2*log(2) + 15
+ *   gradient = [2/1 + 5, 2/2 + 5] = [7.0, 6.0]
+ */
+const char *test_param_fixed_skip_in_update(void)
+{
+    int n_vars = 2;
+
+    /* Build tree: a * sum(log(x)) + b * sum(x) */
+    expr *x1 = new_variable(2, 1, 0, n_vars);
+    expr *log_x = new_log(x1);
+    double a_val = 2.0;
+    expr *a_param = new_parameter(1, 1, PARAM_FIXED, n_vars, &a_val);
+    expr *a_log = new_scalar_mult(a_param, log_x);
+    expr *sum_a_log = new_sum(a_log, -1);
+
+    expr *x2 = new_variable(2, 1, 0, n_vars);
+    expr *b_param = new_parameter(1, 1, 0, n_vars, NULL);
+    expr *b_x = new_scalar_mult(b_param, x2);
+    expr *sum_b_x = new_sum(b_x, -1);
+
+    expr *objective = new_add(sum_a_log, sum_b_x);
+
+    /* Create problem and register BOTH params */
+    problem *prob = new_problem(objective, NULL, 0, false);
+
+    expr *param_nodes[2] = {a_param, b_param};
+    problem_register_params(prob, param_nodes, 2);
+    problem_init_derivatives(prob);
+
+    /* Set b=3 and evaluate at x=[1,2] */
+    double theta[1] = {3.0};
+    problem_update_params(prob, theta);
+
+    /* Verify a is still 2.0 (not overwritten) */
+    mu_assert("a_param changed after update",
+              fabs(a_param->value[0] - 2.0) < 1e-10);
+
+    double u[2] = {1.0, 2.0};
+    double obj_val = problem_objective_forward(prob, u);
+    problem_gradient(prob);
+
+    double expected_obj = 2.0 * log(2.0) + 9.0;
+    mu_assert("obj wrong (b=3)", fabs(obj_val - expected_obj) < 1e-10);
+
+    double expected_grad[2] = {5.0, 4.0};
+    mu_assert("gradient wrong (b=3)",
+              cmp_double_array(prob->gradient_values, expected_grad, 2));
+
+    /* Update b=5, a should stay 2 */
+    theta[0] = 5.0;
+    problem_update_params(prob, theta);
+
+    mu_assert("a_param changed after second update",
+              fabs(a_param->value[0] - 2.0) < 1e-10);
+
+    obj_val = problem_objective_forward(prob, u);
+    problem_gradient(prob);
+
+    double expected_obj2 = 2.0 * log(2.0) + 15.0;
+    mu_assert("obj wrong (b=5)", fabs(obj_val - expected_obj2) < 1e-10);
+
+    double expected_grad2[2] = {7.0, 6.0};
+    mu_assert("gradient wrong (b=5)",
+              cmp_double_array(prob->gradient_values, expected_grad2, 2));
+
+    free_problem(prob);
+
+    return 0;
+}
+
 #endif /* TEST_PARAM_PROB_H */
