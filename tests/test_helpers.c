@@ -36,13 +36,17 @@ int cmp_int_array(const int *actual, const int *expected, int size)
     {
         if (actual[i] != expected[i])
         {
-            printf("  FAILED: actual[%d] = %d, expected %d\n", i,
-                   actual[i], expected[i]);
+            printf("  FAILED: actual[%d] = %d, expected %d\n", i, actual[i],
+                   expected[i]);
             return 0;
         }
     }
     return 1;
 }
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /* Standard normal via Box-Muller transform */
 static double randn(void)
@@ -72,11 +76,8 @@ CSR_Matrix *new_csr_random(int m, int n, double density)
                 if (nnz >= cap)
                 {
                     cap *= 2;
-                    tmp_i = (int *) realloc(
-                        tmp_i, (size_t) cap * sizeof(int));
-                    tmp_x = (double *) realloc(
-                        tmp_x,
-                        (size_t) cap * sizeof(double));
+                    tmp_i = (int *) realloc(tmp_i, (size_t) cap * sizeof(int));
+                    tmp_x = (double *) realloc(tmp_x, (size_t) cap * sizeof(double));
                 }
                 tmp_i[nnz] = c;
                 tmp_x[nnz] = randn();

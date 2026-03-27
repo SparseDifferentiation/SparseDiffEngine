@@ -4,8 +4,8 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
-#include "utils/CSR_Matrix.h"
 #include "test_helpers.h"
+#include "utils/CSR_Matrix.h"
 
 const char *test_jacobian_exp_sum(void)
 {
@@ -109,5 +109,3 @@ const char *test_jacobian_AX_BX_multiply(void)
     free_expr(multiply);
     return 0;
 }
-
-
