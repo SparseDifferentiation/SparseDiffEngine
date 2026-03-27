@@ -76,6 +76,7 @@ static void wsum_hess_init(expr *node)
     /* both x and y are variables*/
     if (x->var_id != NOT_A_VARIABLE)
     {
+        assert(y->var_id != NOT_A_VARIABLE);
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
 
         int i, var1_id, var2_id;

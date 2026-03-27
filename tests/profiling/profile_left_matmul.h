@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "affine.h"
-#include "bivariate.h"
+#include "affine.h"
 #include "elementwise_full_dom.h"
 #include "elementwise_restricted_dom.h"
 #include "expr.h"
