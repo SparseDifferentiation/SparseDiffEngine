@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "bivariate.h"
+#include "bivariate_restricted_dom.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>

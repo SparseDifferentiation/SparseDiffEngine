@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "bivariate.h"
+#include "bivariate_full_dom.h"
 #include "subexpr.h"
 #include "utils/mini_numpy.h"
 #include <assert.h>

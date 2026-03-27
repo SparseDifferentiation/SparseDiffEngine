@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "bivariate.h"
+#include "affine.h"
 #include "subexpr.h"
 #include <stdio.h>
 #include <stdlib.h>

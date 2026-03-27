@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
-#include "bivariate.h"
+
 #include "utils/CSR_Matrix.h"
 #include <stdlib.h>
 
