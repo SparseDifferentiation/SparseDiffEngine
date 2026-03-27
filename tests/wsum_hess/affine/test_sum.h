@@ -52,8 +52,8 @@ const char *test_wsum_hess_sum_log_axis0(void)
     expr *sum_node = new_sum(log_node, 0);
 
     sum_node->forward(sum_node, x);
-    sum_node->jacobian_init(sum_node);
-    sum_node->wsum_hess_init(sum_node);
+    jacobian_init(sum_node);
+    wsum_hess_init(sum_node);
     sum_node->eval_wsum_hess(sum_node, w);
 
     /* Expected diagonal values */
@@ -90,8 +90,8 @@ const char *test_wsum_hess_sum_log_axis1(void)
     expr *sum_node = new_sum(log_node, 1);
 
     sum_node->forward(sum_node, x);
-    sum_node->jacobian_init(sum_node);
-    sum_node->wsum_hess_init(sum_node);
+    jacobian_init(sum_node);
+    wsum_hess_init(sum_node);
     sum_node->eval_wsum_hess(sum_node, w);
 
     /* Expected diagonal values */

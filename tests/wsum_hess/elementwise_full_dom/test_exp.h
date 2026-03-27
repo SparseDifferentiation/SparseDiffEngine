@@ -18,7 +18,7 @@ const char *test_wsum_hess_exp(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *exp_node = new_exp(x);
     exp_node->forward(exp_node, u_vals);
-    exp_node->wsum_hess_init(exp_node);
+    wsum_hess_init(exp_node);
     exp_node->eval_wsum_hess(exp_node, w);
 
     /* Expected values on the diagonal: w_i * exp(x_i) */

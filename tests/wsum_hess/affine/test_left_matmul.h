@@ -66,8 +66,8 @@ const char *test_wsum_hess_left_matmul(void)
     expr *A_log_x = new_left_matmul(log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
-    A_log_x->jacobian_init(A_log_x);
-    A_log_x->wsum_hess_init(A_log_x);
+    jacobian_init(A_log_x);
+    wsum_hess_init(A_log_x);
     A_log_x->eval_wsum_hess(A_log_x, w);
 
     /* Expected wsum_hess: diagonal matrix with all 3 entries
@@ -173,8 +173,8 @@ const char *test_wsum_hess_left_matmul_matrix(void)
     expr *A_log_x = new_left_matmul(log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
-    A_log_x->jacobian_init(A_log_x);
-    A_log_x->wsum_hess_init(A_log_x);
+    jacobian_init(A_log_x);
+    wsum_hess_init(A_log_x);
     A_log_x->eval_wsum_hess(A_log_x, w);
 
     /* Expected wsum_hess: 6x6 diagonal matrix with all 6 entries */

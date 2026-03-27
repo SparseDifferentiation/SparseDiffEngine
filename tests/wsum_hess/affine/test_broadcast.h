@@ -31,8 +31,8 @@ const char *test_wsum_hess_broadcast_row(void)
     expr *bcast = new_broadcast(log_node, 2, 3);
 
     bcast->forward(bcast, x);
-    bcast->jacobian_init(bcast);
-    bcast->wsum_hess_init(bcast);
+    jacobian_init(bcast);
+    wsum_hess_init(bcast);
 
     /* Weights for the 2x3 output (columnwise):
      * w = [1.0, 0.5,  2.0, 1.0,  0.25, 0.125]
@@ -86,8 +86,8 @@ const char *test_wsum_hess_broadcast_col(void)
     expr *bcast = new_broadcast(log_node, 3, 2);
 
     bcast->forward(bcast, x);
-    bcast->jacobian_init(bcast);
-    bcast->wsum_hess_init(bcast);
+    jacobian_init(bcast);
+    wsum_hess_init(bcast);
 
     /* Weights for the 3x2 output (columnwise):
      * w = [1.0, 0.5, 0.25,  2.0, 1.0, 0.5]
@@ -140,8 +140,8 @@ const char *test_wsum_hess_broadcast_scalar_to_matrix(void)
     expr *bcast = new_broadcast(log_node, 2, 3);
 
     bcast->forward(bcast, x);
-    bcast->jacobian_init(bcast);
-    bcast->wsum_hess_init(bcast);
+    jacobian_init(bcast);
+    wsum_hess_init(bcast);
 
     /* Weights for the 2x3 output (columnwise):
      * w = [1.0, 0.5, 2.0, 1.0, 0.25, 0.125]

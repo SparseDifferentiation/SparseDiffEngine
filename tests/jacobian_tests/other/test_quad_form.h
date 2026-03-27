@@ -23,7 +23,7 @@ const char *test_quad_form(void)
     memcpy(Q->p, Qp, 4 * sizeof(int));
     expr *node = new_quad_form(x, Q);
 
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->forward(node, u_vals);
     node->eval_jacobian(node);
 
@@ -69,7 +69,7 @@ memcpy(A->p, Ap, 4 * sizeof(int));
 expr *Au = new_linear(u, A, NULL);
 expr *node = new_quad_form(Au, Q);
 
-node->jacobian_init(node);
+jacobian_init(node);
 node->forward(node, u_vals);
 node->eval_jacobian(node);
 

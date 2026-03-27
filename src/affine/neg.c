@@ -32,11 +32,11 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     /* initialize child's jacobian */
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     /* same sparsity pattern as child */
     node->jacobian = new_csr_copy_sparsity(x->jacobian);
@@ -47,7 +47,7 @@ static void eval_jacobian(expr *node)
     /* evaluate child's jacobian */
     node->left->eval_jacobian(node->left);
 
-    /* negate values only (sparsity pattern set in jacobian_init) */
+    /* negate values only (sparsity pattern set in jacobian_init_impl) */
     CSR_Matrix *child_jac = node->left->jacobian;
     for (int k = 0; k < child_jac->nnz; k++)
     {
@@ -55,12 +55,12 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
 
     /* initialize child's wsum_hess */
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     /* same sparsity pattern as child */
     CSR_Matrix *child_hess = x->wsum_hess;
@@ -72,7 +72,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     /* For f(x) = -g(x): d²f/dx² = -d²g/dx² */
     node->left->eval_wsum_hess(node->left, w);
 
-    /* negate values (sparsity pattern set in wsum_hess_init) */
+    /* negate values (sparsity pattern set in wsum_hess_init_impl) */
     CSR_Matrix *child_hess = node->left->wsum_hess;
     for (int k = 0; k < child_hess->nnz; k++)
     {
@@ -88,8 +88,8 @@ static bool is_affine(const expr *node)
 expr *new_neg(expr *child)
 {
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
     expr_retain(child);
 

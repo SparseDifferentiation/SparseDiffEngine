@@ -77,14 +77,14 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     sum_expr *snode = (sum_expr *) node;
     int axis = snode->axis;
 
     /* initialize child's jacobian */
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     /* we never have to store more than the child's nnz */
     node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
@@ -129,11 +129,11 @@ static void eval_jacobian(expr *node)
                         node->jacobian->x);
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
     /* initialize child's wsum_hess */
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     /* we never have to store more than the child's nnz */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
@@ -202,8 +202,8 @@ expr *new_sum(expr *child, int axis)
 
     /* to be consistent with CVXPY and NumPy we treat the result from
        sum with an axis argument as a row vector */
-    init_expr(node, 1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
+    init_expr(node, 1, d2, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = child;
     expr_retain(child);
 

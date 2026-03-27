@@ -39,12 +39,12 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
 
     /* initialize child jacobian */
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     /* same sparsity as child */
     node->jacobian = new_csr_copy_sparsity(x->jacobian);
@@ -65,12 +65,12 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
 
     /* initialize child's weighted Hessian */
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     /* same sparsity as child */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
@@ -100,8 +100,8 @@ expr *new_const_scalar_mult(double a, expr *child)
         (const_scalar_mult_expr *) calloc(1, sizeof(const_scalar_mult_expr));
     expr *node = &mult_node->base;
 
-    init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
     mult_node->a = a;
     expr_retain(child);

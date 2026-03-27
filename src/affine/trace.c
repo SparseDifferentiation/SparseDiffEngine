@@ -43,13 +43,13 @@ static void forward(expr *node, const double *u)
     node->value[0] = sum;
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     assert(x->d1 == x->d2);
 
     /* initialize child's jacobian */
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     // ---------------------------------------------------------------
     //    count total nnz and allocate matrix with sufficient space
@@ -96,12 +96,12 @@ static void eval_jacobian(expr *node)
 }
 
 /* Placeholders for Hessian-related functions */
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
 
     /* initialize child's hessian */
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
 
@@ -145,8 +145,8 @@ expr *new_trace(expr *child)
 {
     trace_expr *tnode = (trace_expr *) calloc(1, sizeof(trace_expr));
     expr *node = &tnode->base;
-    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
+    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = child;
     expr_retain(child);
 

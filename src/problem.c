@@ -164,12 +164,12 @@ void problem_init_jacobian(problem *prob)
     // -------------------------------------------------------------------------------
     //                           Jacobian structure
     // -------------------------------------------------------------------------------
-    prob->objective->jacobian_init(prob->objective);
+    jacobian_init(prob->objective);
     int nnz = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-        c->jacobian_init(c);
+        jacobian_init(c);
         nnz += c->jacobian->nnz;
 
         if (c->is_affine(c))
@@ -216,12 +216,12 @@ void problem_init_hessian(problem *prob)
     // -------------------------------------------------------------------------------
     //                        Lagrange Hessian structure
     // -------------------------------------------------------------------------------
-    prob->objective->wsum_hess_init(prob->objective);
+    wsum_hess_init(prob->objective);
     int nnz = prob->objective->wsum_hess->nnz;
 
     for (int i = 0; i < prob->n_constraints; i++)
     {
-        prob->constraints[i]->wsum_hess_init(prob->constraints[i]);
+        wsum_hess_init(prob->constraints[i]);
         nnz += prob->constraints[i]->wsum_hess->nnz;
     }
 

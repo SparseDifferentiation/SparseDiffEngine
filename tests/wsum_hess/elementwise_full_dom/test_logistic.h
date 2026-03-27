@@ -26,9 +26,9 @@ const char *test_wsum_hess_logistic(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *logistic_node = new_logistic(x);
     logistic_node->forward(logistic_node, u_vals);
-    logistic_node->jacobian_init(logistic_node);
+    jacobian_init(logistic_node);
     logistic_node->eval_jacobian(logistic_node);
-    logistic_node->wsum_hess_init(logistic_node);
+    wsum_hess_init(logistic_node);
     logistic_node->eval_wsum_hess(logistic_node, w);
 
     /* Expected values on the diagonal: w_i * σ(x_i) * (1 - σ(x_i)) */

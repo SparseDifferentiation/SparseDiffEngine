@@ -34,7 +34,7 @@ const char *test_jacobian_prod_axis_one(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
-    p->jacobian_init(p);
+    jacobian_init(p);
     p->eval_jacobian(p);
 
     /* CSR format for 3x10 Jacobian with row-strided structure */
@@ -77,7 +77,7 @@ const char *test_jacobian_prod_axis_one_one_zero(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
-    p->jacobian_init(p);
+    jacobian_init(p);
     p->eval_jacobian(p);
 
     /* CSR format for 3x10 Jacobian with row-strided structure */

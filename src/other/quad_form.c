@@ -25,7 +25,7 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     assert(node->left->var_id != NOT_A_VARIABLE);
 
@@ -55,7 +55,7 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
     expr *x = node->left;
@@ -94,7 +94,7 @@ The following two functions are commented out. It supports the jacobian for
 quad_form(Ax, Q), but after reconsideration, I think we should treat this as
 quad_form(x, A.TQA) in the canonicalization so we don't need to support the chain
 rule here.
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     node->work->dwork = (double *) malloc(x->d1 * sizeof(double));
@@ -189,8 +189,8 @@ expr *new_quad_form(expr *left, CSR_Matrix *Q)
     quad_form_expr *qnode = (quad_form_expr *) calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = left;
     expr_retain(left);
 

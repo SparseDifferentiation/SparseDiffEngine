@@ -22,7 +22,7 @@ const char *test_jacobian_composite_exp(void)
     expr *u = new_variable(3, 1, 2, 6);
     expr *Au = new_linear(u, A, NULL);
     expr *exp_node = new_exp(Au);
-    exp_node->jacobian_init(exp_node);
+    jacobian_init(exp_node);
     exp_node->forward(exp_node, u_vals);
     exp_node->eval_jacobian(exp_node);
 

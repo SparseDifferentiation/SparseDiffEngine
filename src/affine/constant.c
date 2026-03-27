@@ -26,7 +26,7 @@ static void forward(expr *node, const double *u)
     (void) u;
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     /* Constant jacobian is all zeros: size x n_vars with 0 nonzeros.
      * new_csr_matrix uses calloc for row pointers, so they're already 0. */
@@ -39,7 +39,7 @@ static void eval_jacobian(expr *node)
     (void) node;
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     /* Constant Hessian is all zeros: n_vars x n_vars with 0 nonzeros. */
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
@@ -61,8 +61,8 @@ static bool is_affine(const expr *node)
 expr *new_constant(int d1, int d2, int n_vars, const double *values)
 {
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, d1, d2, n_vars, forward, jacobian_init, eval_jacobian, is_affine,
-              wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian, is_affine,
+              wsum_hess_init_impl, eval_wsum_hess, NULL);
     memcpy(node->value, values, node->size * sizeof(double));
 
     return node;

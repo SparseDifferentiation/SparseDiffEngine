@@ -17,7 +17,7 @@ const char *test_wsum_hess_prod_no_zero(void)
     expr *p = new_prod(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, &w);
 
     /* Row-major over dense 4x4 block */
@@ -44,7 +44,7 @@ const char *test_wsum_hess_prod_one_zero(void)
     expr *p = new_prod(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, &w);
 
     double expected_x[16];
@@ -77,7 +77,7 @@ const char *test_wsum_hess_prod_two_zeros(void)
     expr *p = new_prod(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, &w);
 
     double expected_x[16];
@@ -105,7 +105,7 @@ const char *test_wsum_hess_prod_many_zeros(void)
     expr *p = new_prod(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, &w);
 
     double expected_x[16];

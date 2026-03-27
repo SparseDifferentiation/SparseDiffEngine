@@ -28,9 +28,9 @@ const char *test_wsum_hess_quad_form(void)
     expr *x = new_variable(4, 1, 3, 10);
     expr *node = new_quad_form(x, Q);
 
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, &w);
 
     int expected_p[11] = {0, 0, 0, 0, 2, 5, 8, 10, 10, 10, 10};

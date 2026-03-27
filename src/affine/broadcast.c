@@ -66,10 +66,10 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
-    x->jacobian_init(x);
+    jacobian_init(x);
     broadcast_expr *bcast = (broadcast_expr *) node;
     int total_nnz;
 
@@ -185,10 +185,10 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     /* Same sparsity as child - weights get summed */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
@@ -279,8 +279,8 @@ expr *new_broadcast(expr *child, int d1, int d2)
     // --------------------------------------------------------------------------
     //                  initialize the rest of the expression
     // --------------------------------------------------------------------------
-    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
     expr_retain(child);
     bcast->type = type;
