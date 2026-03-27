@@ -109,8 +109,7 @@ const char *test_wsum_hess_sin_cos(void)
     expr *sin_cos_x = new_sin(cos_x);
 
     mu_assert("check_wsum_hess failed",
-              check_wsum_hess(sin_cos_x, u_vals, w,
-                              NUMERICAL_DIFF_DEFAULT_H));
+              check_wsum_hess(sin_cos_x, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sin_cos_x);
     return 0;

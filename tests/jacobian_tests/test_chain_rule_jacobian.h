@@ -45,8 +45,7 @@ const char *test_jacobian_sin_cos(void)
     expr *sin_cos_x = new_sin(cos_x);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(sin_cos_x, u_vals,
-                             NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian(sin_cos_x, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sin_cos_x);
     return 0;
