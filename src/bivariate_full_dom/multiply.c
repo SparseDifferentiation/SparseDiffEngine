@@ -63,6 +63,9 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     expr *y = node->right;
 
+    x->eval_jacobian(x);
+    y->eval_jacobian(y);
+
     /* chain rule */
     sum_scaled_csr_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
                                         y->value, x->value);
