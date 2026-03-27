@@ -208,20 +208,17 @@ static void eval_wsum_hess(expr *node, const double *w)
             }
         }
 
-        /* both are linear operators */
         CSC_Matrix *Jg1 = x->work->jacobian_csc;
         CSC_Matrix *Jg2 = y->work->jacobian_csc;
+
+        // -----------------------------------------------------------------------
+        //  compute C = Jg2^T diag(w) Jg1, CT = C^T, and sum to get hess = C + CT
+        // -----------------------------------------------------------------------
         CSR_Matrix *C = ((elementwise_mult_expr *) node)->CSR_work1;
         CSR_Matrix *CT = ((elementwise_mult_expr *) node)->CSR_work2;
-
-        /* Compute C = B^T diag(w) A */
-        BTDA_fill_values(Jg1, Jg2, w, C);
-
-        /* Compute CT = C^T = A^T diag(w) B */
-        AT_fill_values(C, CT, node->work->iwork);
-
-        /* Hessian = C + CT = B^T diag(w) A + A^T diag(w) B */
-        sum_csr_matrices_fill_values(C, CT, node->wsum_hess);
+        BTDA_fill_values(Jg1, Jg2, w, C);                     /* compute C  */
+        AT_fill_values(C, CT, node->work->iwork);             /* compute CT */
+        sum_csr_matrices_fill_values(C, CT, node->wsum_hess); /* hess = C + CT */
     }
 }
 
