@@ -17,7 +17,7 @@ const char *test_wsum_hess_quad_over_lin_xy(void)
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, &w);
 
     int expected_p[10] = {0, 0, 0, 2, 4, 6, 6, 6, 10, 10};
@@ -46,7 +46,7 @@ const char *test_wsum_hess_quad_over_lin_yx(void)
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, &w);
 
     int expected_p[10] = {0, 0, 0, 4, 4, 4, 6, 8, 10, 10};

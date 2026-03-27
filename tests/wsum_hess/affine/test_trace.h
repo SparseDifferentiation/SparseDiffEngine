@@ -30,8 +30,8 @@ const char *test_wsum_hess_trace_variable(void)
     expr *trace_node = new_trace(x);
 
     trace_node->forward(trace_node, u_vals);
-    trace_node->jacobian_init(trace_node);
-    trace_node->wsum_hess_init(trace_node);
+    jacobian_init(trace_node);
+    wsum_hess_init(trace_node);
     trace_node->eval_wsum_hess(trace_node, &w);
 
     /* For a linear operation (variable), Hessian is zero */
@@ -62,8 +62,8 @@ const char *test_wsum_hess_trace_log_variable(void)
     expr *trace_node = new_trace(log_node);
 
     trace_node->forward(trace_node, u_vals);
-    trace_node->jacobian_init(trace_node);
-    trace_node->wsum_hess_init(trace_node);
+    jacobian_init(trace_node);
+    wsum_hess_init(trace_node);
     trace_node->eval_wsum_hess(trace_node, &w);
 
     double expected_Ax[9] = {-2.0, 0, 0, 0, -0.08, 0, 0, 0, -0.024691358024691357};
@@ -111,8 +111,8 @@ const char *test_wsum_hess_trace_composite(void)
     expr *trace_node = new_trace(add_node);
 
     trace_node->forward(trace_node, u_vals);
-    trace_node->jacobian_init(trace_node);
-    trace_node->wsum_hess_init(trace_node);
+    jacobian_init(trace_node);
+    wsum_hess_init(trace_node);
     trace_node->eval_wsum_hess(trace_node, &w);
 
     /* Expected diagonal Hessian values at indices [1,1], [5,5], [9,9]

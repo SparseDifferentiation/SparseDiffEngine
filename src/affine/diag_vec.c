@@ -44,11 +44,11 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     int n = x->size;
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     CSR_Matrix *Jx = x->jacobian;
     CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
@@ -92,12 +92,12 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
 
     /* initialize child's wsum_hess */
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     /* workspace for extracting diagonal weights */
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
@@ -137,8 +137,8 @@ expr *new_diag_vec(expr *child)
     /* n is the number of elements (works for both row and column vectors) */
     int n = child->size;
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, n, n, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, n, n, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
     expr_retain(child);
 

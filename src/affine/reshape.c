@@ -31,10 +31,10 @@ static void forward(expr *node, const double *u)
     memcpy(node->value, node->left->value, node->size * sizeof(double));
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
-    x->jacobian_init(x);
+    jacobian_init(x);
     node->jacobian = new_csr_copy_sparsity(x->jacobian);
 }
 
@@ -45,10 +45,10 @@ static void eval_jacobian(expr *node)
     memcpy(node->jacobian->x, x->jacobian->x, x->jacobian->nnz * sizeof(double));
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 }
 
@@ -68,8 +68,8 @@ expr *new_reshape(expr *child, int d1, int d2)
 {
     assert(d1 * d2 == child->size);
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
     expr_retain(child);
 

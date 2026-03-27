@@ -25,7 +25,7 @@ void jacobian_init_elementwise(expr *node)
     else
     {
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
-        child->jacobian_init(child);
+        jacobian_init(child);
         CSR_Matrix *Jg = child->jacobian;
         node->jacobian = new_csr_copy_sparsity(Jg);
         node->work->dwork = (double *) malloc(node->size * sizeof(double));
@@ -95,7 +95,7 @@ void wsum_hess_init_elementwise(expr *node)
             node->work->hess_term1 = ATA_alloc(Jg);
 
             /* term2: child's Hessian */
-            child->wsum_hess_init(child);
+            wsum_hess_init(child);
             CSR_Matrix *Hg = child->wsum_hess;
             node->work->hess_term2 = new_csr_copy_sparsity(Hg);
 

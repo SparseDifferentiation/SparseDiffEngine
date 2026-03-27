@@ -11,7 +11,7 @@ const char *test_neg_jacobian(void)
     expr *var = new_variable(3, 1, 0, 3);
     expr *neg_node = new_neg(var);
     neg_node->forward(neg_node, u);
-    neg_node->jacobian_init(neg_node);
+    jacobian_init(neg_node);
     neg_node->eval_jacobian(neg_node);
 
     /* Jacobian of neg(x) is -I (diagonal with -1) */
@@ -42,7 +42,7 @@ const char *test_neg_chain(void)
     /* neg(neg(x)) should equal x */
     mu_assert("neg chain forward failed", cmp_double_array(neg2->value, u, 3));
 
-    neg2->jacobian_init(neg2);
+    jacobian_init(neg2);
     neg2->eval_jacobian(neg2);
 
     /* Jacobian of neg(neg(x)) is (-1)*(-1)*I = I */

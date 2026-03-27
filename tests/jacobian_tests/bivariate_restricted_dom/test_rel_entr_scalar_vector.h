@@ -14,7 +14,7 @@ const char *test_jacobian_rel_entr_scalar_vector(void)
     expr *node = new_rel_entr_first_arg_scalar(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double a = log(1.0 / 1.0) + 1.0;

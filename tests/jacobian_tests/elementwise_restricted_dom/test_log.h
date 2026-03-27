@@ -16,7 +16,7 @@ const char *test_jacobian_log(void)
     expr *u = new_variable(3, 1, 2, 5);
     expr *log_node = new_log(u);
     log_node->forward(log_node, u_vals);
-    log_node->jacobian_init(log_node);
+    jacobian_init(log_node);
     log_node->eval_jacobian(log_node);
     mu_assert("vals fail", cmp_double_array(log_node->jacobian->x, expected_Ax, 3));
     mu_assert("rows fail", cmp_int_array(log_node->jacobian->p, expected_Ap, 4));
@@ -34,7 +34,7 @@ const char *test_jacobian_log_matrix(void)
     expr *u = new_variable(2, 2, 3, 7);
     expr *log_node = new_log(u);
     log_node->forward(log_node, u_vals);
-    log_node->jacobian_init(log_node);
+    jacobian_init(log_node);
     log_node->eval_jacobian(log_node);
     mu_assert("vals fail", cmp_double_array(log_node->jacobian->x, expected_Ax, 4));
     mu_assert("rows fail", cmp_int_array(log_node->jacobian->p, expected_Ap, 5));

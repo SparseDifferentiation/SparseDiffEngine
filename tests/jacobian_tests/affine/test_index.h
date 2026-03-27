@@ -50,7 +50,7 @@ const char *test_index_jacobian_of_variable(void)
     expr *var = new_variable(3, 1, 0, 3);
     expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
-    idx->jacobian_init(idx);
+    jacobian_init(idx);
     idx->eval_jacobian(idx);
 
     /* Jacobian is 2x3 with pattern: row 0 selects col 0, row 1 selects col 2 */
@@ -75,7 +75,7 @@ const char *test_index_jacobian_of_log(void)
     expr *log_node = new_log(var);
     expr *idx = new_index(log_node, 1, 2, indices, 2);
     idx->forward(idx, u);
-    idx->jacobian_init(idx);
+    jacobian_init(idx);
     idx->eval_jacobian(idx);
 
     /* d/dx log(x) = diag(1/x), then select rows 0 and 2
@@ -101,7 +101,7 @@ const char *test_index_jacobian_repeated(void)
     expr *var = new_variable(3, 1, 0, 3);
     expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
-    idx->jacobian_init(idx);
+    jacobian_init(idx);
     idx->eval_jacobian(idx);
 
     /* Both rows select column 0 */
@@ -132,7 +132,7 @@ const char *test_sum_of_index(void)
     expr *s = new_sum(idx, -1); /* sum all */
 
     s->forward(s, u);
-    s->jacobian_init(s);
+    jacobian_init(s);
     s->eval_jacobian(s);
 
     /* Gradient: [1, 0, 1] in sparse form */

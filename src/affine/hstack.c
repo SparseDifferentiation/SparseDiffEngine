@@ -42,7 +42,7 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
 
@@ -51,7 +51,7 @@ static void jacobian_init(expr *node)
     for (int i = 0; i < hnode->n_args; i++)
     {
         assert(hnode->args[i] != NULL);
-        hnode->args[i]->jacobian_init(hnode->args[i]);
+        jacobian_init(hnode->args[i]);
         nnz += hnode->args[i]->jacobian->nnz;
     }
 
@@ -100,14 +100,14 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     /* initialize children's hessians */
     hstack_expr *hnode = (hstack_expr *) node;
     int nnz = 0;
     for (int i = 0; i < hnode->n_args; i++)
     {
-        hnode->args[i]->wsum_hess_init(hnode->args[i]);
+        wsum_hess_init(hnode->args[i]);
         nnz += hnode->args[i]->wsum_hess->nnz;
     }
 
@@ -187,8 +187,9 @@ expr *new_hstack(expr **args, int n_args, int n_vars)
     /* Allocate the type-specific struct */
     hstack_expr *hnode = (hstack_expr *) calloc(1, sizeof(hstack_expr));
     expr *node = &hnode->base;
-    init_expr(node, args[0]->d1, d2, n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, wsum_hess_eval, free_type_data);
+    init_expr(node, args[0]->d1, d2, n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, wsum_hess_eval,
+              free_type_data);
 
     /* Set type-specific fields (deep copy args array) */
     hnode->args = (expr **) calloc(n_args, sizeof(expr *));

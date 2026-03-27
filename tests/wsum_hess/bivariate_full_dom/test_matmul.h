@@ -44,7 +44,7 @@ const char *test_wsum_hess_matmul(void)
 
     /* Forward pass and Hessian initialization */
     Z->forward(Z, u_vals);
-    Z->wsum_hess_init(Z);
+    wsum_hess_init(Z);
     Z->eval_wsum_hess(Z, w);
 
     /* Verify Hessian dimensions and sparsity */
@@ -144,7 +144,7 @@ const char *test_wsum_hess_matmul_yx(void)
 
     /* Forward pass and Hessian initialization */
     Z->forward(Z, u_vals);
-    Z->wsum_hess_init(Z);
+    wsum_hess_init(Z);
     Z->eval_wsum_hess(Z, w);
 
     /* Verify Hessian dimensions and sparsity */

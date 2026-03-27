@@ -48,7 +48,7 @@ static bool is_affine(const expr *node)
     return false;
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -146,7 +146,7 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -330,8 +330,8 @@ expr *new_matmul(expr *x, expr *y)
     expr *node = (expr *) calloc(1, sizeof(expr));
 
     /* Initialize with d1 = x->d1, d2 = y->d2 (result is m x n) */
-    init_expr(node, x->d1, y->d2, x->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, x->d1, y->d2, x->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
 
     /* Set children */
     node->left = x;

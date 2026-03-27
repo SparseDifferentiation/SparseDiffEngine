@@ -31,7 +31,7 @@ const char *test_jacobian_hstack_vectors(void)
     expr *stack = new_hstack(args, 3, 3);
 
     stack->forward(stack, u);
-    stack->jacobian_init(stack);
+    jacobian_init(stack);
     stack->eval_jacobian(stack);
 
     /* Expected jacobian: 9x3 with 9 nonzeros (diagonal blocks) */
@@ -73,7 +73,7 @@ const char *test_jacobian_hstack_matrix(void)
     expr *stack = new_hstack(args, 3, 6);
 
     stack->forward(stack, u);
-    stack->jacobian_init(stack);
+    jacobian_init(stack);
     stack->eval_jacobian(stack);
 
     /* Expected jacobian: 18x6 with 18 nonzeros (diagonal) */

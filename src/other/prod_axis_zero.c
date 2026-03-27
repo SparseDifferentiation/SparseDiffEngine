@@ -48,12 +48,12 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
 
     /* initialize child's jacobian */
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
@@ -127,7 +127,7 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
 
@@ -342,8 +342,8 @@ expr *new_prod_axis_zero(expr *child)
     expr *node = &pnode->base;
 
     /* output is always a row vector 1 x d2 - TODO: is that correct? */
-    init_expr(node, 1, child->d2, child->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess,
+    init_expr(node, 1, child->d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
               free_type_data);
 
     /* allocate arrays to store per-column statistics */

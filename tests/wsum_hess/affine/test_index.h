@@ -27,8 +27,8 @@ const char *test_wsum_hess_index_log(void)
     expr *idx = new_index(log_node, 1, 2, indices, 2);
 
     idx->forward(idx, u);
-    idx->jacobian_init(idx);
-    idx->wsum_hess_init(idx);
+    jacobian_init(idx);
+    wsum_hess_init(idx);
     idx->eval_wsum_hess(idx, w);
 
     /* Expected diagonal values:
@@ -61,8 +61,8 @@ const char *test_wsum_hess_index_repeated(void)
     expr *idx = new_index(log_node, 1, 2, indices, 2);
 
     idx->forward(idx, u);
-    idx->jacobian_init(idx);
-    idx->wsum_hess_init(idx);
+    jacobian_init(idx);
+    wsum_hess_init(idx);
     idx->eval_wsum_hess(idx, w);
 
     /* Hessian of log at x=2 is -1/4
@@ -99,8 +99,8 @@ const char *test_wsum_hess_sum_index_log(void)
     expr *sum_node = new_sum(idx, -1);
 
     sum_node->forward(sum_node, u);
-    sum_node->jacobian_init(sum_node);
-    sum_node->wsum_hess_init(sum_node);
+    jacobian_init(sum_node);
+    wsum_hess_init(sum_node);
     sum_node->eval_wsum_hess(sum_node, &w);
 
     /* Expected diagonal values:

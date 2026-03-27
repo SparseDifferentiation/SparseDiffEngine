@@ -31,7 +31,7 @@ const char *test_jacobian_vstack_vectors(void)
     expr *stack = new_vstack(args, 2, 3);
 
     stack->forward(stack, u);
-    stack->jacobian_init(stack);
+    jacobian_init(stack);
     stack->eval_jacobian(stack);
 
     double expected_x[6] = {1.0, 0.5, 1.0 / 3.0, exp(1.0), exp(2.0), exp(3.0)};
@@ -80,7 +80,7 @@ const char *test_jacobian_vstack_matrix(void)
     expr *stack = new_vstack(args, 2, 9);
 
     stack->forward(stack, u);
-    stack->jacobian_init(stack);
+    jacobian_init(stack);
     stack->eval_jacobian(stack);
 
     double expected_x[9] = {1.0,      0.5, exp(7.0),  1.0 / 3.0, 0.25,

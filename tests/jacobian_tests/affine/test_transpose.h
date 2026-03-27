@@ -25,7 +25,7 @@ const char *test_jacobian_transpose(void)
     expr *transpose_AX = new_transpose(AX);
     double u[4] = {1, 3, 2, 4};
     transpose_AX->forward(transpose_AX, u);
-    transpose_AX->jacobian_init(transpose_AX);
+    jacobian_init(transpose_AX);
     transpose_AX->eval_jacobian(transpose_AX);
 
     // Jacobian of transpose_AX

@@ -28,7 +28,7 @@ const char *test_jacobian_prod_axis_zero(void)
     expr *p = new_prod_axis_zero(x);
 
     p->forward(p, u_vals);
-    p->jacobian_init(p);
+    jacobian_init(p);
     p->eval_jacobian(p);
 
     /* CSR format for 3x8 Jacobian with block diagonal structure */

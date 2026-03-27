@@ -34,11 +34,11 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     /* initialize children's jacobians */
-    node->left->jacobian_init(node->left);
-    node->right->jacobian_init(node->right);
+    jacobian_init(node->left);
+    jacobian_init(node->right);
 
     /* we never have to store more than the sum of children's nnz */
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
@@ -60,11 +60,11 @@ static void eval_jacobian(expr *node)
                                  node->jacobian);
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     /* initialize children's wsum_hess */
-    node->left->wsum_hess_init(node->left);
-    node->right->wsum_hess_init(node->right);
+    wsum_hess_init(node->left);
+    wsum_hess_init(node->right);
 
     /* we never have to store more than the sum of children's nnz */
     int nnz_max = node->left->wsum_hess->nnz + node->right->wsum_hess->nnz;
@@ -95,8 +95,8 @@ expr *new_add(expr *left, expr *right)
 {
     assert(left->d1 == right->d1 && left->d2 == right->d2);
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = left;
     node->right = right;
     expr_retain(left);

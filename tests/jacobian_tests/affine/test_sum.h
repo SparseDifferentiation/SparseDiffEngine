@@ -19,7 +19,7 @@ const char *test_jacobian_sum_log(void)
     expr *log_node = new_log(x);
     expr *sum_node = new_sum(log_node, -1);
     sum_node->forward(sum_node, u_vals);
-    sum_node->jacobian_init(sum_node);
+    jacobian_init(sum_node);
     sum_node->eval_jacobian(sum_node);
     double expected_Ax[3] = {1.0, 0.5, 1.0 / 3.0};
     int expected_Ap[2] = {0, 3};
@@ -52,7 +52,7 @@ const char *test_jacobian_sum_mult(void)
     expr *sum_node = new_sum(mult_node, -1);
 
     sum_node->forward(sum_node, u_vals);
-    sum_node->jacobian_init(sum_node);
+    jacobian_init(sum_node);
     sum_node->eval_jacobian(sum_node);
 
     double expected_Ax[6] = {2, 3, 4, 1, 2, 3};
@@ -92,7 +92,7 @@ const char *test_jacobian_sum_log_axis_0(void)
     expr *log_node = new_log(x);
     expr *sum_node = new_sum(log_node, 0);
     sum_node->forward(sum_node, u_vals);
-    sum_node->jacobian_init(sum_node);
+    jacobian_init(sum_node);
     sum_node->eval_jacobian(sum_node);
 
     double expected_Ax[6] = {1.0, 1.0 / 3.0, 1.0 / 5.0, 0.5, 0.25, 1.0 / 6.0};
@@ -134,7 +134,7 @@ const char *test_jacobian_sum_add_log_axis_0(void)
     expr *sum_node = new_sum(add_node, 0);
 
     sum_node->forward(sum_node, u_vals);
-    sum_node->jacobian_init(sum_node);
+    jacobian_init(sum_node);
     sum_node->eval_jacobian(sum_node);
 
     /* Expected jacobian values for both rows */
@@ -181,7 +181,7 @@ const char *test_jacobian_sum_log_axis_1(void)
     expr *log_node = new_log(x);
     expr *sum_node = new_sum(log_node, 1);
     sum_node->forward(sum_node, u_vals);
-    sum_node->jacobian_init(sum_node);
+    jacobian_init(sum_node);
     sum_node->eval_jacobian(sum_node);
 
     double expected_Ax[6] = {1.0, 0.5, 1.0 / 3.0, 0.25, 1.0 / 5.0, 1.0 / 6.0};
