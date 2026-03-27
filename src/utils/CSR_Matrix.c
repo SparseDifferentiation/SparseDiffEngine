@@ -45,6 +45,14 @@ CSR_Matrix *new_csr(const CSR_Matrix *A)
     return copy;
 }
 
+CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A)
+{
+    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
+    memcpy(copy->i, A->i, A->nnz * sizeof(int));
+    return copy;
+}
+
 void free_csr_matrix(CSR_Matrix *matrix)
 {
     if (matrix)

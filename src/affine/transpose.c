@@ -92,14 +92,10 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* same sparsity pattern as child */
-    CSR_Matrix *H = node->wsum_hess;
-    H = new_csr_matrix(x->wsum_hess->m, node->n_vars, x->wsum_hess->nnz);
-    memcpy(H->p, x->wsum_hess->p, (H->m + 1) * sizeof(int));
-    memcpy(H->i, x->wsum_hess->i, H->nnz * sizeof(int));
-    node->wsum_hess = H;
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
     /* for computing Kw where K is the commutation matrix */
-    node->dwork = (double *) malloc(node->size * sizeof(double));
+    node->work->dwork = (double *) malloc(node->size * sizeof(double));
 }
 static void eval_wsum_hess(expr *node, const double *w)
 {
@@ -112,11 +108,11 @@ static void eval_wsum_hess(expr *node, const double *w)
     {
         for (int j = 0; j < d1; ++j)
         {
-            node->dwork[j * d2 + i] = w[i * d1 + j];
+            node->work->dwork[j * d2 + i] = w[i * d1 + j];
         }
     }
 
-    node->left->eval_wsum_hess(node->left, node->dwork);
+    node->left->eval_wsum_hess(node->left, node->work->dwork);
 
     /* copy to this node's hessian */
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,

@@ -4,12 +4,14 @@
 #include <string.h>
 
 #include "affine.h"
-#include "elementwise_univariate.h"
+#include "elementwise_full_dom.h"
+#include "elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "test_helpers.h"
 
-const char *test_wsum_hess_sum_log_linear(void)
+const char *test_wsum_hess_sum_exp_linear(void)
 {
     double Ax[6] = {1, 1, 2, 3, 1, -1};
     int Ai[6] = {0, 1, 0, 1, 0, 1};
@@ -23,26 +25,11 @@ const char *test_wsum_hess_sum_log_linear(void)
 
     expr *x = new_variable(2, 1, 0, 2);
     expr *Ax_node = new_linear(x, A, NULL);
-    expr *log_node = new_log(Ax_node);
-    expr *sum_node = new_sum(log_node, -1);
+    expr *exp_node = new_exp(Ax_node);
+    expr *sum_node = new_sum(exp_node, -1);
 
-    sum_node->forward(sum_node, x_vals);
-    sum_node->jacobian_init(sum_node);
-    // sum_node->eval_jacobian(sum_node);
-    sum_node->wsum_hess_init(sum_node);
-    sum_node->eval_wsum_hess(sum_node, &w);
-
-    double expected_x[4] = {-1.5 * 526.0 / 441.0, 1.5 * 338.0 / 441.0,
-                            1.5 * 338.0 / 441.0, -1.5 * 571.0 / 441.0};
-    int expected_p[3] = {0, 2, 4};
-    int expected_i[4] = {0, 1, 0, 1};
-
-    mu_assert("vals incorrect",
-              cmp_double_array(sum_node->wsum_hess->x, expected_x, 4));
-    mu_assert("rows incorrect",
-              cmp_int_array(sum_node->wsum_hess->p, expected_p, 3));
-    mu_assert("cols incorrect",
-              cmp_int_array(sum_node->wsum_hess->i, expected_i, 4));
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(sum_node, x_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sum_node);
     free_csr_matrix(A);

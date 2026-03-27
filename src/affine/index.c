@@ -104,7 +104,7 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* for setting weight vector to evaluate hessian of child */
-    node->dwork = (double *) calloc(x->size, sizeof(double));
+    node->work->dwork = (double *) calloc(x->size, sizeof(double));
 
     /* in the implementation of eval_wsum_hess we evaluate the
        child's hessian with a weight vector that has w[i] = 0
@@ -113,9 +113,7 @@ static void wsum_hess_init(expr *node)
        structural zeros, but we do not try to exploit that sparsity
        right now. */
     CSR_Matrix *Hx = x->wsum_hess;
-    node->wsum_hess = new_csr_matrix(Hx->m, Hx->n, Hx->nnz);
-    memcpy(node->wsum_hess->p, Hx->p, (Hx->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, Hx->i, Hx->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(Hx);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -126,10 +124,10 @@ static void eval_wsum_hess(expr *node, const double *w)
     if (idx->has_duplicates)
     {
         /* zero and accumulate for repeated indices */
-        memset(node->dwork, 0, x->size * sizeof(double));
+        memset(node->work->dwork, 0, x->size * sizeof(double));
         for (int i = 0; i < idx->n_idxs; i++)
         {
-            node->dwork[idx->indices[i]] += w[i];
+            node->work->dwork[idx->indices[i]] += w[i];
         }
     }
     else
@@ -137,12 +135,12 @@ static void eval_wsum_hess(expr *node, const double *w)
         /* direct write (no memset needed, no accumulation) */
         for (int i = 0; i < idx->n_idxs; i++)
         {
-            node->dwork[idx->indices[i]] = w[i];
+            node->work->dwork[idx->indices[i]] = w[i];
         }
     }
 
     /* evalute hessian of child */
-    x->eval_wsum_hess(x, node->dwork);
+    x->eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 

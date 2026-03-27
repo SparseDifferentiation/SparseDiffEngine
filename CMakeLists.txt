@@ -103,6 +103,7 @@ if(NOT SKBUILD)
     add_executable(all_tests
         tests/all_tests.c
         tests/test_helpers.c
+        tests/numerical_diff.c
     )
     target_link_libraries(all_tests dnlp_diff)
     

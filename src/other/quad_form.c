@@ -16,12 +16,12 @@ static void forward(expr *node, const double *u)
 
     /* local forward pass  */
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
-    csr_matvec(Q, x->value, node->dwork, 0);
+    csr_matvec(Q, x->value, node->work->dwork, 0);
     node->value[0] = 0.0;
 
     for (int i = 0; i < x->size; i++)
     {
-        node->value[0] += x->value[i] * node->dwork[i];
+        node->value[0] += x->value[i] * node->work->dwork[i];
     }
 }
 
@@ -30,7 +30,7 @@ static void jacobian_init(expr *node)
     assert(node->left->var_id != NOT_A_VARIABLE);
 
     expr *x = node->left;
-    node->dwork = (double *) malloc(x->size * sizeof(double));
+    node->work->dwork = (double *) malloc(x->size * sizeof(double));
     node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
     node->jacobian->p[0] = 0;
     node->jacobian->p[1] = x->size;
@@ -97,7 +97,7 @@ rule here.
 static void jacobian_init(expr *node)
 {
     expr *x = node->left;
-    node->dwork = (double *) malloc(x->d1 * sizeof(double));
+    node->work->dwork = (double *) malloc(x->d1 * sizeof(double));
 
     // if x is a variable
     if (x->var_id != NOT_A_VARIABLE)
@@ -157,15 +157,15 @@ static void eval_jacobian_old(expr *node)
         linear_op_expr *lin_x = (linear_op_expr *) x;
 
         // local jacobian
-        csr_matvec(Q, x->value, node->dwork, 0);
+        csr_matvec(Q, x->value, node->work->dwork, 0);
 
         for (int j = 0; j < x->d1; j++)
         {
-            node->dwork[j] *= 2.0;
+            node->work->dwork[j] *= 2.0;
         }
 
         // chain rule using CSC format
-        csc_matvec_fill_values(lin_x->A_csc, node->dwork, node->jacobian);
+        csc_matvec_fill_values(lin_x->A_csc, node->work->dwork, node->jacobian);
     }
 }
 */

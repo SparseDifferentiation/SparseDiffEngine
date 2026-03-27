@@ -42,7 +42,7 @@ static void refresh_sparse_right(left_matmul_expr *lnode)
     /* lnode->AT holds the original A; update its values from param */
     lnode->AT->update_values(lnode->AT, lnode->param_source->value);
     /* Recompute A^T (lnode->A) from A (lnode->AT) */
-    AT_fill_values(sm_A_inner->csr, sm_AT_inner->csr, lnode->base.iwork);
+    AT_fill_values(sm_A_inner->csr, sm_AT_inner->csr, lnode->base.work->iwork);
 }
 
 static void refresh_dense_right(left_matmul_expr *lnode)

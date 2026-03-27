@@ -39,7 +39,24 @@ typedef void (*local_wsum_hess_fn)(struct expr *node, double *out, const double 
 typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
 
-/* Base expression node structure - contains only common fields */
+/* Workspace for derivative computation */
+typedef struct
+{
+    double *dwork;
+    int *iwork;
+    CSC_Matrix *jacobian_csc;
+    int *csc_work; /* for CSR-CSC conversion */
+
+    /* jacobian_csc_filled is only used for affine functions to avoid redundant
+       conversions. Could become relevant for non-affine functions if we start
+       supporting common subexpressions on the Python side. */
+    bool jacobian_csc_filled;
+    double *local_jac_diag; /* cached f'(g(x)) diagonal */
+    CSR_Matrix *hess_term1; /* Jg^T D Jg workspace */
+    CSR_Matrix *hess_term2; /* child wsum_hess workspace */
+} Expr_Work;
+
+/* Base expression node structure */
 typedef struct expr
 {
     // ------------------------------------------------------------------------
@@ -48,8 +65,6 @@ typedef struct expr
     int d1, d2, size, n_vars, refcount, var_id;
     struct expr *left;
     struct expr *right;
-    double *dwork;
-    int *iwork;
 
     // ------------------------------------------------------------------------
     //                     oracle related quantities
@@ -70,6 +85,7 @@ typedef struct expr
     local_jacobian_fn local_jacobian;   /* used by elementwise univariate atoms*/
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
+    Expr_Work *work;                    /* derivative workspace */
 
     // name of node just for debugging - should be removed later
     char name[32];
@@ -82,6 +98,10 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
                wsum_hess_fn eval_wsum_hess, free_type_data_fn free_type_data);
 
 void free_expr(expr *node);
+
+/* Initialize CSC form of the Jacobian from the CSR Jacobian.
+ * Must be called after jacobian_init. */
+void jacobian_csc_init(expr *node);
 
 /* Reference counting helpers */
 void expr_retain(expr *node);

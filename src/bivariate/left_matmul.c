@@ -111,7 +111,7 @@ static void jacobian_init(expr *node)
 
     /* initialize child's jacobian and precompute sparsity of its CSC */
     x->jacobian_init(x);
-    lnode->Jchild_CSC = csr_to_csc_fill_sparsity(x->jacobian, node->iwork);
+    lnode->Jchild_CSC = csr_to_csc_fill_sparsity(x->jacobian, node->work->iwork);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
@@ -129,7 +129,7 @@ static void eval_jacobian(expr *node)
 
     /* evaluate child's jacobian and convert to CSC */
     x->eval_jacobian(x);
-    csr_to_csc_fill_values(x->jacobian, Jchild_CSC, node->iwork);
+    csr_to_csc_fill_values(x->jacobian, Jchild_CSC, node->work->iwork);
 
     /* compute this node's jacobian: */
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
@@ -143,14 +143,12 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* allocate this node's hessian with the same sparsity as child's */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
-    memcpy(node->wsum_hess->p, x->wsum_hess->p, (node->n_vars + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
     int dim = ((left_matmul_expr *) node)->AT->m * n_blocks;
-    node->dwork = (double *) malloc(dim * sizeof(double));
+    node->work->dwork = (double *) malloc(dim * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -160,9 +158,9 @@ static void eval_wsum_hess(expr *node, const double *w)
     /* compute A^T w*/
     Matrix *AT = lnode->AT;
     int n_blocks = lnode->n_blocks;
-    AT->block_left_mult_vec(AT, w, node->dwork, n_blocks);
+    AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
 
-    node->left->eval_wsum_hess(node->left, node->dwork);
+    node->left->eval_wsum_hess(node->left, node->work->dwork);
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -173,7 +171,7 @@ static void refresh_sparse_left(left_matmul_expr *lnode)
     Sparse_Matrix *sm_AT = (Sparse_Matrix *) lnode->AT;
     lnode->A->update_values(lnode->A, lnode->param_source->value);
     /* Recompute AT values from A */
-    AT_fill_values(sm_A->csr, sm_AT->csr, lnode->base.iwork);
+    AT_fill_values(sm_A->csr, sm_AT->csr, lnode->base.work->iwork);
 }
 
 static void refresh_dense_left(left_matmul_expr *lnode)
@@ -231,13 +229,14 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
        (requiring size node->n_vars) and for transposing A (requiring size A->n).
        csc_to_csr_work is used for converting J_CSC to CSR (requiring
        node->size) */
-    node->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
+    node->work->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
     lnode->csc_to_csr_work = (int *) malloc(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
     /* store A and AT */
     lnode->A = new_sparse_matrix(A);
-    lnode->AT = sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->iwork);
+    lnode->AT =
+        sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->work->iwork);
 
     /* parameter support */
     lnode->param_source = param_node;
@@ -280,7 +279,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     node->left = u;
     expr_retain(u);
 
-    node->iwork = (int *) malloc(MAX(n, node->n_vars) * sizeof(int));
+    node->work->iwork = (int *) malloc(MAX(n, node->n_vars) * sizeof(int));
     lnode->csc_to_csr_work = (int *) malloc(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 

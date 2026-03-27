@@ -12,6 +12,7 @@
 #include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
 #include "forward_pass/affine/test_variable_parameter.h"
+#include "forward_pass/affine/test_vstack.h"
 #include "forward_pass/composite/test_composite.h"
 #include "forward_pass/elementwise/test_exp.h"
 #include "forward_pass/elementwise/test_log.h"
@@ -21,7 +22,8 @@
 #include "forward_pass/test_prod_axis_one.h"
 #include "forward_pass/test_prod_axis_zero.h"
 #include "jacobian_tests/test_broadcast.h"
-#include "jacobian_tests/test_composite.h"
+#include "jacobian_tests/test_chain_rule_jacobian.h"
+#include "jacobian_tests/test_composite_exp.h"
 #include "jacobian_tests/test_elementwise_mult.h"
 #include "jacobian_tests/test_hstack.h"
 #include "jacobian_tests/test_index.h"
@@ -44,6 +46,8 @@
 #include "jacobian_tests/test_trace.h"
 #include "jacobian_tests/test_transpose.h"
 #include "jacobian_tests/test_vector_mult.h"
+#include "jacobian_tests/test_vstack.h"
+#include "numerical_diff/test_numerical_diff.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_cblas.h"
@@ -62,6 +66,7 @@
 #include "wsum_hess/elementwise/test_trig.h"
 #include "wsum_hess/elementwise/test_xexp.h"
 #include "wsum_hess/test_broadcast.h"
+#include "wsum_hess/test_chain_rule_wsum_hess.h"
 #include "wsum_hess/test_hstack.h"
 #include "wsum_hess/test_index.h"
 #include "wsum_hess/test_left_matmul.h"
@@ -81,6 +86,7 @@
 #include "wsum_hess/test_trace.h"
 #include "wsum_hess/test_transpose.h"
 #include "wsum_hess/test_vector_mult.h"
+#include "wsum_hess/test_vstack.h"
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
@@ -110,6 +116,8 @@ int main(void)
     mu_run_test(test_sum_axis_1, tests_run);
     mu_run_test(test_hstack_forward_vectors, tests_run);
     mu_run_test(test_hstack_forward_matrix, tests_run);
+    mu_run_test(test_vstack_forward_vectors, tests_run);
+    mu_run_test(test_vstack_forward_matrix, tests_run);
     mu_run_test(test_broadcast_row, tests_run);
     mu_run_test(test_broadcast_col, tests_run);
     mu_run_test(test_broadcast_matrix, tests_run);
@@ -123,8 +131,10 @@ int main(void)
     mu_run_test(test_neg_chain, tests_run);
     mu_run_test(test_jacobian_log, tests_run);
     mu_run_test(test_jacobian_log_matrix, tests_run);
-    mu_run_test(test_jacobian_composite_log, tests_run);
-    mu_run_test(test_jacobian_composite_log_add, tests_run);
+    mu_run_test(test_jacobian_composite_exp, tests_run);
+    mu_run_test(test_jacobian_exp_sum, tests_run);
+    mu_run_test(test_jacobian_exp_sum_mult, tests_run);
+    mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_matrix, tests_run);
     mu_run_test(test_jacobian_vector_mult_log_vector, tests_run);
@@ -159,6 +169,8 @@ int main(void)
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
+    mu_run_test(test_jacobian_vstack_vectors, tests_run);
+    mu_run_test(test_jacobian_vstack_matrix, tests_run);
     mu_run_test(test_index_forward_simple, tests_run);
     mu_run_test(test_index_forward_repeated, tests_run);
     mu_run_test(test_index_jacobian_of_variable, tests_run);
@@ -177,7 +189,7 @@ int main(void)
     mu_run_test(test_jacobian_trace_composite, tests_run);
     mu_run_test(test_jacobian_left_matmul_log, tests_run);
     mu_run_test(test_jacobian_left_matmul_log_matrix, tests_run);
-    mu_run_test(test_jacobian_left_matmul_log_composite, tests_run);
+    mu_run_test(test_jacobian_left_matmul_exp_composite, tests_run);
     mu_run_test(test_jacobian_right_matmul_log, tests_run);
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
     mu_run_test(test_jacobian_matmul, tests_run);
@@ -185,7 +197,7 @@ int main(void)
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
-    mu_run_test(test_wsum_hess_log_composite, tests_run);
+    mu_run_test(test_wsum_hess_exp_composite, tests_run);
     mu_run_test(test_wsum_hess_exp, tests_run);
     mu_run_test(test_wsum_hess_entr, tests_run);
     mu_run_test(test_wsum_hess_logistic, tests_run);
@@ -198,7 +210,7 @@ int main(void)
     mu_run_test(test_wsum_hess_tanh, tests_run);
     mu_run_test(test_wsum_hess_asinh, tests_run);
     mu_run_test(test_wsum_hess_atanh, tests_run);
-    mu_run_test(test_wsum_hess_sum_log_linear, tests_run);
+    mu_run_test(test_wsum_hess_sum_exp_linear, tests_run);
     mu_run_test(test_wsum_hess_sum_log_axis0, tests_run);
     mu_run_test(test_wsum_hess_sum_log_axis1, tests_run);
     mu_run_test(test_wsum_hess_prod_no_zero, tests_run);
@@ -219,6 +231,8 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
+    mu_run_test(test_wsum_hess_vstack_vectors, tests_run);
+    mu_run_test(test_wsum_hess_vstack_matrix, tests_run);
     mu_run_test(test_wsum_hess_index_log, tests_run);
     mu_run_test(test_wsum_hess_index_repeated, tests_run);
     mu_run_test(test_wsum_hess_sum_index_log, tests_run);
@@ -235,7 +249,7 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
     mu_run_test(test_wsum_hess_left_matmul, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_matrix, tests_run);
-    mu_run_test(test_wsum_hess_left_matmul_composite, tests_run);
+    mu_run_test(test_wsum_hess_left_matmul_exp_composite, tests_run);
     mu_run_test(test_wsum_hess_matmul, tests_run);
     mu_run_test(test_wsum_hess_matmul_yx, tests_run);
     mu_run_test(test_wsum_hess_right_matmul, tests_run);
@@ -247,6 +261,11 @@ int main(void)
     mu_run_test(test_wsum_hess_trace_log_variable, tests_run);
     mu_run_test(test_wsum_hess_trace_composite, tests_run);
     mu_run_test(test_wsum_hess_transpose, tests_run);
+    mu_run_test(test_wsum_hess_exp_sum, tests_run);
+    mu_run_test(test_wsum_hess_exp_sum_mult, tests_run);
+    mu_run_test(test_wsum_hess_exp_sum_matmul, tests_run);
+    mu_run_test(test_wsum_hess_sin_sum_axis0_matmul, tests_run);
+    mu_run_test(test_wsum_hess_logistic_sum_axis0_matmul, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_cblas_ddot, tests_run);
@@ -288,6 +307,10 @@ int main(void)
     mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
     mu_run_test(test_dense_matrix_trans, tests_run);
     mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
+
+    printf("\n--- Numerical Diff Tests ---\n");
+    mu_run_test(test_check_jacobian_composite_exp, tests_run);
+    mu_run_test(test_check_wsum_hess_exp_composite, tests_run);
 
     printf("\n--- Problem Struct Tests ---\n");
     mu_run_test(test_problem_new_free, tests_run);

@@ -4,9 +4,11 @@
 #include <string.h>
 
 #include "affine.h"
-#include "elementwise_univariate.h"
+#include "elementwise_full_dom.h"
+#include "elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "test_helpers.h"
 
 const char *test_wsum_hess_log(void)
@@ -48,7 +50,7 @@ const char *test_wsum_hess_log(void)
     return 0;
 }
 
-const char *test_wsum_hess_log_composite(void)
+const char *test_wsum_hess_exp_composite(void)
 {
     double u_vals[5] = {1, 2, 3, 4, 5};
     double w[3] = {-1, -2, -3};
@@ -62,31 +64,13 @@ const char *test_wsum_hess_log_composite(void)
 
     expr *x = new_variable(5, 1, 0, 5);
     expr *Ax_node = new_linear(x, A_csr, NULL);
-    expr *log_node = new_log(Ax_node);
-    log_node->forward(log_node, u_vals);
-    log_node->jacobian_init(log_node);
-    log_node->wsum_hess_init(log_node);
-    log_node->eval_wsum_hess(log_node, w);
+    expr *exp_node = new_exp(Ax_node);
 
-    /* computed offline in Python */
-    double expected_x[25] = {
-        0.01322865, 0.01505453, 0.01688042, 0.0187063,  0.02053219,
-        0.01505453, 0.01740073, 0.01974692, 0.02209311, 0.0244393,
-        0.01688042, 0.01974692, 0.02261342, 0.02547992, 0.02834642,
-        0.0187063,  0.02209311, 0.02547992, 0.02886673, 0.03225353,
-        0.02053219, 0.0244393,  0.02834642, 0.03225353, 0.03616065};
-    int expected_p[6] = {0, 5, 10, 15, 20, 25};
-    int expected_i[25] = {0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2,
-                          3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4};
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(exp_node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
-    mu_assert("vals incorrect",
-              cmp_double_array(log_node->wsum_hess->x, expected_x, 25));
-    mu_assert("rows incorrect",
-              cmp_int_array(log_node->wsum_hess->p, expected_p, 6));
-    mu_assert("cols incorrect",
-              cmp_int_array(log_node->wsum_hess->i, expected_i, 25));
     free_csr_matrix(A_csr);
-    free_expr(log_node);
+    free_expr(exp_node);
 
     return 0;
 }

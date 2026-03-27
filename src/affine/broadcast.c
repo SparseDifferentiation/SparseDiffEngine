@@ -191,12 +191,10 @@ static void wsum_hess_init(expr *node)
     x->wsum_hess_init(x);
 
     /* Same sparsity as child - weights get summed */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, x->wsum_hess->nnz);
-    memcpy(node->wsum_hess->p, x->wsum_hess->p, (x->wsum_hess->m + 1) * sizeof(int));
-    memcpy(node->wsum_hess->i, x->wsum_hess->i, x->wsum_hess->nnz * sizeof(int));
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
     /* allocate space for weight vector */
-    node->dwork = malloc(node->size * sizeof(double));
+    node->work->dwork = malloc(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -205,7 +203,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     expr *x = node->left;
 
     /* Zero out the work array first */
-    memset(node->dwork, 0, x->size * sizeof(double));
+    memset(node->work->dwork, 0, x->size * sizeof(double));
 
     if (bcast->type == BROADCAST_ROW)
     {
@@ -214,7 +212,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         {
             for (int i = 0; i < node->d1; i++)
             {
-                node->dwork[j] += w[i + j * node->d1];
+                node->work->dwork[j] += w[i + j * node->d1];
             }
         }
     }
@@ -225,21 +223,21 @@ static void eval_wsum_hess(expr *node, const double *w)
         {
             for (int i = 0; i < node->d1; i++)
             {
-                node->dwork[i] += w[i + j * node->d1];
+                node->work->dwork[i] += w[i + j * node->d1];
             }
         }
     }
     else
     {
         /* (1, 1) -> (m, n): scalar has m*n weights to sum */
-        node->dwork[0] = 0.0;
+        node->work->dwork[0] = 0.0;
         for (int k = 0; k < node->size; k++)
         {
-            node->dwork[0] += w[k];
+            node->work->dwork[0] += w[k];
         }
     }
 
-    x->eval_wsum_hess(x, node->dwork);
+    x->eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 }
 
