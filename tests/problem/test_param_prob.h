@@ -391,8 +391,7 @@ const char *test_param_fixed_skip_in_update(void)
     problem_update_params(prob, theta);
 
     /* Verify a is still 2.0 (not overwritten) */
-    mu_assert("a_param changed after update",
-              fabs(a_param->value[0] - 2.0) < 1e-10);
+    mu_assert("a_param changed after update", fabs(a_param->value[0] - 2.0) < 1e-10);
 
     double u[2] = {1.0, 2.0};
     double obj_val = problem_objective_forward(prob, u);

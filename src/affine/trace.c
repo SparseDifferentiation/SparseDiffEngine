@@ -102,7 +102,7 @@ static void wsum_hess_init(expr *node)
 
     /* initialize child's hessian */
     x->wsum_hess_init(x);
-  
+
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
 
     /* We copy over the sparsity pattern from the child. This also includes the

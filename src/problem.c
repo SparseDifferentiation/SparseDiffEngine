@@ -350,8 +350,7 @@ void problem_update_params(problem *prob, const double *theta)
     {
         expr *pnode = prob->param_nodes[i];
         parameter_expr *param = (parameter_expr *) pnode;
-        if (param->param_id == PARAM_FIXED)
-            continue;
+        if (param->param_id == PARAM_FIXED) continue;
         int offset = param->param_id;
         memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
         param->has_been_refreshed = false;
