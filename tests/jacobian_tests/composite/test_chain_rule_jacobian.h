@@ -89,6 +89,8 @@ const char *test_jacobian_Ax_Bx_multiply(void)
               check_jacobian(multiply, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(multiply);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
     return 0;
 }
 
@@ -107,5 +109,7 @@ const char *test_jacobian_AX_BX_multiply(void)
               check_jacobian(multiply, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(multiply);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
     return 0;
 }
