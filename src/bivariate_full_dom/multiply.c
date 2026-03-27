@@ -128,23 +128,29 @@ static void wsum_hess_init_impl(expr *node)
     else
     {
         /* chain rule: the Hessian is in this case given by
-           wsum_hess = term1 + term1^T + term2 + term3 where
+           wsum_hess = C + C^T + term2 + term3 where
 
-           * term1 = J_{g2}^T diag(w) J_{g1}
+           * C = J_{g2}^T diag(w) J_{g1}
            * term2 = sum_k w_k g2_k H_{g1_k}
            * term3 = sum_k w_k g1_k H_{g2_k}
 
-            The two last terms are nonzero only if g1 and g2 are nonlinear.
+           The two last terms are nonzero only if g1 and g2 are nonlinear.
+           Here, we view multiply as the composition h(x) = f(g1(x), g2(x)) where f
+           is the elementwise multiplication operator, and g1 and g2 are the left and
+           right child nodes.
         */
 
+        /* prepare sparsity pattern of csc conversion */
+        jacobian_csc_init(x);
+        jacobian_csc_init(y);
+
         /* both are linear operators */
-        CSC_Matrix *A = ((linear_op_expr *) x)->A_csc;
-        CSC_Matrix *B = ((linear_op_expr *) y)->A_csc;
+        CSC_Matrix *Jg1 = x->work->jacobian_csc;
+        CSC_Matrix *Jg2 = y->work->jacobian_csc;
 
         /* Allocate workspace for Hessian computation */
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
-        CSR_Matrix *C; /* C = B^T diag(w) A */
-        C = BTA_alloc(A, B);
+        CSR_Matrix *C = BTA_alloc(Jg1, Jg2); /* C = Jg2^T diag(w) Jg1 */
         node->work->iwork = (int *) malloc(C->m * sizeof(int));
 
         CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
@@ -174,14 +180,42 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
     else
     {
+        // ----------------------------------------------------------------------
+        //            convert Jacobians of children to CSC format
+        //      (we only need to do this once if the child is affine)
+        //      TODO: what if we have parameters? Should we set jacobian_csc_filled
+        //      to false whenever parameters change value?
+        // ----------------------------------------------------------------------
+        if (!x->work->jacobian_csc_filled)
+        {
+            csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+                                   x->work->csc_work);
+
+            if (x->is_affine(x))
+            {
+                x->work->jacobian_csc_filled = true;
+            }
+        }
+
+        if (!y->work->jacobian_csc_filled)
+        {
+            csr_to_csc_fill_values(y->jacobian, y->work->jacobian_csc,
+                                   y->work->csc_work);
+
+            if (y->is_affine(y))
+            {
+                y->work->jacobian_csc_filled = true;
+            }
+        }
+
         /* both are linear operators */
-        CSC_Matrix *A = ((linear_op_expr *) x)->A_csc;
-        CSC_Matrix *B = ((linear_op_expr *) y)->A_csc;
+        CSC_Matrix *Jg1 = x->work->jacobian_csc;
+        CSC_Matrix *Jg2 = y->work->jacobian_csc;
         CSR_Matrix *C = ((elementwise_mult_expr *) node)->CSR_work1;
         CSR_Matrix *CT = ((elementwise_mult_expr *) node)->CSR_work2;
 
         /* Compute C = B^T diag(w) A */
-        BTDA_fill_values(A, B, w, C);
+        BTDA_fill_values(Jg1, Jg2, w, C);
 
         /* Compute CT = C^T = A^T diag(w) B */
         AT_fill_values(C, CT, node->work->iwork);

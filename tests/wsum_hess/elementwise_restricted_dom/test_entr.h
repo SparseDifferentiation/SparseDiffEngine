@@ -18,6 +18,7 @@ const char *test_wsum_hess_entr(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *entr_node = new_entr(x);
     entr_node->forward(entr_node, u_vals);
+    jacobian_init(entr_node);
     wsum_hess_init(entr_node);
     entr_node->eval_wsum_hess(entr_node, w);
 

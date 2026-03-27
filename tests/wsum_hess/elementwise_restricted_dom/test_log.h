@@ -30,6 +30,7 @@ const char *test_wsum_hess_log(void)
     expr *x = new_variable(3, 1, 2, 7);
     expr *log_node = new_log(x);
     log_node->forward(log_node, u_vals);
+    jacobian_init(log_node);
     wsum_hess_init(log_node);
     log_node->eval_wsum_hess(log_node, w);
 

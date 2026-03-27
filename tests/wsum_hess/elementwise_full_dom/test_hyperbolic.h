@@ -25,6 +25,7 @@ const char *test_wsum_hess_sinh(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *sinh_node = new_sinh(x);
     sinh_node->forward(sinh_node, u_vals);
+    jacobian_init(sinh_node);
     wsum_hess_init(sinh_node);
     sinh_node->eval_wsum_hess(sinh_node, w);
 
@@ -60,6 +61,7 @@ const char *test_wsum_hess_tanh(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *tanh_node = new_tanh(x);
     tanh_node->forward(tanh_node, u_vals);
+    jacobian_init(tanh_node);
     wsum_hess_init(tanh_node);
     tanh_node->eval_wsum_hess(tanh_node, w);
 
@@ -97,6 +99,7 @@ const char *test_wsum_hess_asinh(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *asinh_node = new_asinh(x);
     asinh_node->forward(asinh_node, u_vals);
+    jacobian_init(asinh_node);
     wsum_hess_init(asinh_node);
     asinh_node->eval_wsum_hess(asinh_node, w);
 
@@ -135,6 +138,7 @@ const char *test_wsum_hess_atanh(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *atanh_node = new_atanh(x);
     atanh_node->forward(atanh_node, u_vals);
+    jacobian_init(atanh_node);
     wsum_hess_init(atanh_node);
     atanh_node->eval_wsum_hess(atanh_node, w);
 
