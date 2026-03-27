@@ -64,8 +64,8 @@ static bool is_affine(const expr *node)
 expr *new_variable(int d1, int d2, int var_id, int n_vars)
 {
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian, is_affine,
-              wsum_hess_init_impl, wsum_hess_eval, NULL);
+    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, wsum_hess_eval, NULL);
     node->var_id = var_id;
 
     return node;

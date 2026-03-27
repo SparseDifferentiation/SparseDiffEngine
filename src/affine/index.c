@@ -166,8 +166,9 @@ expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)
     index_expr *idx = (index_expr *) calloc(1, sizeof(index_expr));
     expr *node = &idx->base;
 
-    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
+              free_type_data);
 
     node->left = child;
     expr_retain(child);
