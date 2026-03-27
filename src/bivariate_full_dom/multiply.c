@@ -66,7 +66,8 @@ static void eval_jacobian(expr *node)
     x->eval_jacobian(x);
     y->eval_jacobian(y);
 
-    /* chain rule */
+    /* chain rule: the jacobian of h(x) = f(g1(x), g2(x))) is Jh = J_{f, 1} J_{g1} +
+     * J_{f, 2} J_{g2} */
     sum_scaled_csr_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
                                         y->value, x->value);
 }
@@ -126,6 +127,16 @@ static void wsum_hess_init_impl(expr *node)
     }
     else
     {
+        /* chain rule: the Hessian is in this case given by
+           wsum_hess = term1 + term1^T + term2 + term3 where
+
+           * term1 = J_{g2}^T diag(w) J_{g1}
+           * term2 = sum_k w_k g2_k H_{g1_k}
+           * term3 = sum_k w_k g1_k H_{g2_k}
+
+            The two last terms are nonzero only if g1 and g2 are nonlinear.
+        */
+
         /* both are linear operators */
         CSC_Matrix *A = ((linear_op_expr *) x)->A_csc;
         CSC_Matrix *B = ((linear_op_expr *) y)->A_csc;
