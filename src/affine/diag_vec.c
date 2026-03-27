@@ -34,7 +34,7 @@ static void forward(expr *node, const double *u)
     /* child's forward pass */
     x->forward(x, u);
 
-    /* zero-initialize output */
+    /* zero-initialize output, TODO: do we need to do this? */
     memset(node->value, 0, node->size * sizeof(double));
 
     /* place input elements on the diagonal */

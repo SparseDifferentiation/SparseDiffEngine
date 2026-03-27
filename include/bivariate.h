@@ -18,38 +18,11 @@
 #ifndef BIVARIATE_H
 #define BIVARIATE_H
 
-#include "expr.h"
-
-expr *new_elementwise_mult(expr *left, expr *right);
-expr *new_rel_entr_vector_args(expr *left, expr *right);
-expr *new_quad_over_lin(expr *left, expr *right);
-
-expr *new_rel_entr_first_arg_scalar(expr *left, expr *right);
-expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
-
-/* Matrix multiplication: Z = X @ Y */
-expr *new_matmul(expr *x, expr *y);
-
-/* Left matrix multiplication: A @ f(x) where A is a constant or parameter
- * sparse matrix. param_node is NULL for fixed constants. */
-expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
-
-/* Left matrix multiplication: A @ f(x) where A is a constant or parameter
- * dense matrix (row-major, m x n). Uses CBLAS for efficient computation. */
-expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
-                            const double *data);
-
-/* Right matrix multiplication: f(x) @ A where A is a constant or parameter
- * matrix. */
-expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
-
-expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
-                             const double *data);
-
-/* Scalar multiplication: a * f(x) where a comes from param_node */
-expr *new_scalar_mult(expr *param_node, expr *child);
-
-/* Vector elementwise multiplication: a ∘ f(x) where a comes from param_node */
-expr *new_vector_mult(expr *param_node, expr *child);
+/* Compatibility header — includes all bivariate-related declarations.
+ * Prefer including the specific header directly:
+ *   affine.h, bivariate_full_dom.h, bivariate_restricted_dom.h */
+#include "affine.h"
+#include "bivariate_full_dom.h"
+#include "bivariate_restricted_dom.h"
 
 #endif /* BIVARIATE_H */

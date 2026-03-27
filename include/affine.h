@@ -41,6 +41,28 @@ expr *new_reshape(expr *child, int d1, int d2);
 expr *new_broadcast(expr *child, int target_d1, int target_d2);
 expr *new_diag_vec(expr *child);
 expr *new_transpose(expr *child);
-expr *new_diag_vec(expr *child);
+
+/* Left matrix multiplication: A @ f(x) where A is a constant or parameter
+ * sparse matrix. param_node is NULL for fixed constants. */
+expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
+
+/* Left matrix multiplication: A @ f(x) where A is a constant or parameter
+ * dense matrix (row-major, m x n). Uses CBLAS for efficient computation. */
+expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
+                            const double *data);
+
+/* Right matrix multiplication: f(x) @ A where A is a constant or parameter
+ * matrix. */
+expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
+
+expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
+                             const double *data);
+
+/* Scalar multiplication: a * f(x) where a comes from param_node */
+expr *new_scalar_mult(expr *param_node, expr *child);
+
+/* Vector elementwise multiplication: a . f(x) where a comes from
+ * param_node */
+expr *new_vector_mult(expr *param_node, expr *child);
 
 #endif /* AFFINE_H */
