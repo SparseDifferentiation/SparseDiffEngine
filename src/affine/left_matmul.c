@@ -104,13 +104,13 @@ static void free_type_data(expr *node)
     lnode->param_source = NULL;
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     left_matmul_expr *lnode = (left_matmul_expr *) node;
 
     /* initialize child's jacobian and precompute sparsity of its CSC */
-    x->jacobian_init(x);
+    jacobian_init(x);
     lnode->Jchild_CSC = csr_to_csc_fill_sparsity(x->jacobian, node->work->iwork);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
@@ -136,11 +136,11 @@ static void eval_jacobian(expr *node)
     csc_to_csr_fill_values(J_CSC, node->jacobian, lnode->csc_to_csr_work);
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     /* initialize child's hessian */
     expr *x = node->left;
-    x->wsum_hess_init(x);
+    wsum_hess_init(x);
 
     /* allocate this node's hessian with the same sparsity as child's */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
@@ -220,8 +220,8 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
     left_matmul_expr *lnode =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
 
@@ -274,8 +274,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     left_matmul_expr *lnode =
         (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, free_type_data);
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
 

@@ -30,7 +30,7 @@ const char *test_wsum_hess_prod_axis_one_no_zeros(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
     double expected_x[12] = {/* Var 1 (row 0, col 0): [5, 3] (excludes col 0) */
@@ -97,7 +97,7 @@ const char *test_wsum_hess_prod_axis_one_one_zero(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
     double expected_x[18];
@@ -200,7 +200,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
     double expected_x[30];
@@ -350,7 +350,7 @@ const char *test_wsum_hess_prod_axis_one_2x2(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
-    p->wsum_hess_init(p);
+    wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
     /* Expected sparse structure (nnz = 4, each row has 1 nnz) */

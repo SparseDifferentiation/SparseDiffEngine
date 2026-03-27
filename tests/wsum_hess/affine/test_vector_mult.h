@@ -30,7 +30,7 @@ const char *test_wsum_hess_vector_mult_log_vector(void)
     y->forward(y, u_vals);
 
     /* Initialize and evaluate weighted Hessian with w = [1.0, 0.5, 0.25] */
-    y->wsum_hess_init(y);
+    wsum_hess_init(y);
     double w[3] = {1.0, 0.5, 0.25};
     y->eval_wsum_hess(y, w);
 
@@ -67,7 +67,7 @@ const char *test_wsum_hess_vector_mult_log_matrix(void)
     y->forward(y, u_vals);
 
     /* Initialize and evaluate weighted Hessian with w = [1.0, 1.0, 1.0, 1.0] */
-    y->wsum_hess_init(y);
+    wsum_hess_init(y);
     double w[4] = {1.0, 1.0, 1.0, 1.0};
     y->eval_wsum_hess(y, w);
 

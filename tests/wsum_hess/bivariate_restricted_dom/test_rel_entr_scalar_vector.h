@@ -16,7 +16,7 @@ const char *test_wsum_hess_rel_entr_scalar_vector(void)
     expr *node = new_rel_entr_first_arg_scalar(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
     int expected_p[5] = {0, 4, 6, 8, 10};

@@ -32,7 +32,7 @@ const char *test_jacobian_trace_variable(void)
     expr *trace_node = new_trace(x);
 
     trace_node->forward(trace_node, u_vals);
-    trace_node->jacobian_init(trace_node);
+    jacobian_init(trace_node);
     trace_node->eval_jacobian(trace_node);
 
     double expected_Ax[3] = {1.0, 1.0, 1.0};
@@ -77,7 +77,7 @@ const char *test_jacobian_trace_composite(void)
     expr *add_node = new_add(log_node, exp_node);
     expr *trace_node = new_trace(add_node);
 
-    trace_node->jacobian_init(trace_node);
+    jacobian_init(trace_node);
     trace_node->forward(trace_node, u_vals);
     trace_node->eval_jacobian(trace_node);
 

@@ -135,6 +135,9 @@ int main(void)
     mu_run_test(test_jacobian_exp_sum, tests_run);
     mu_run_test(test_jacobian_exp_sum_mult, tests_run);
     mu_run_test(test_jacobian_sin_cos, tests_run);
+    mu_run_test(test_jacobian_cos_sin_multiply, tests_run);
+    mu_run_test(test_jacobian_Ax_Bx_multiply, tests_run);
+    mu_run_test(test_jacobian_AX_BX_multiply, tests_run);
     mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_matrix, tests_run);

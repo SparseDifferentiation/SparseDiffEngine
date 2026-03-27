@@ -73,8 +73,8 @@ typedef struct expr
     CSR_Matrix *jacobian;
     CSR_Matrix *wsum_hess;
     forward_fn forward;
-    jacobian_init_fn jacobian_init;
-    wsum_hess_init_fn wsum_hess_init;
+    jacobian_init_fn jacobian_init_impl;
+    wsum_hess_init_fn wsum_hess_init_impl;
     eval_jacobian_fn eval_jacobian;
     wsum_hess_fn eval_wsum_hess;
 
@@ -98,6 +98,11 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
                wsum_hess_fn eval_wsum_hess, free_type_data_fn free_type_data);
 
 void free_expr(expr *node);
+
+/* Guarded init: skips if already initialized (safe for DAGs
+ * where a node may be visited through multiple parents). */
+void jacobian_init(expr *node);
+void wsum_hess_init(expr *node);
 
 /* Initialize CSC form of the Jacobian from the CSR Jacobian.
  * Must be called after jacobian_init. */

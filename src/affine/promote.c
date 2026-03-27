@@ -34,10 +34,10 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
-    x->jacobian_init(x);
+    jacobian_init(x);
 
     /* each output row copies the single row from child's jacobian */
     int nnz = node->size * x->jacobian->nnz;
@@ -72,9 +72,9 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
-    node->left->wsum_hess_init(node->left);
+    wsum_hess_init(node->left);
 
     /* same sparsity as child since we're summing weights */
     CSR_Matrix *child_hess = node->left->wsum_hess;
@@ -107,8 +107,8 @@ expr *new_promote(expr *child, int d1, int d2)
 {
     assert(child->size == 1);
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
     expr_retain(child);
 

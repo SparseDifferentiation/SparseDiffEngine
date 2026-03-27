@@ -14,7 +14,7 @@ const char *test_promote_scalar_jacobian(void)
     expr *var = new_variable(1, 1, 0, 1);
     expr *promote_node = new_promote(var, 3, 1);
     promote_node->forward(promote_node, u);
-    promote_node->jacobian_init(promote_node);
+    jacobian_init(promote_node);
     promote_node->eval_jacobian(promote_node);
 
     /* Jacobian is 3x1 with all 1s (each output depends on same input) */
@@ -46,7 +46,7 @@ const char *test_promote_scalar_to_matrix_jacobian(void)
     mu_assert("promote scalar->matrix forward failed",
               cmp_double_array(promote_node->value, expected_val, 6));
 
-    promote_node->jacobian_init(promote_node);
+    jacobian_init(promote_node);
     promote_node->eval_jacobian(promote_node);
 
     /* Jacobian is 6x1 with all 1s (each output depends on same scalar input) */

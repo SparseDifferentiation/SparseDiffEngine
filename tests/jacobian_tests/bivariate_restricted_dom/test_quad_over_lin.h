@@ -18,7 +18,7 @@ const char *test_quad_over_lin1(void)
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double expected_Ax[4] = {2.0 / 4.0, 4.0 / 4.0, 6.0 / 4.0, -14.0 / 16.0};
@@ -42,7 +42,7 @@ const char *test_quad_over_lin2(void)
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double expected_Ax[4] = {-14.0 / 16.0, 2.0 / 4.0, 4.0 / 4.0, 6.0 / 4.0};
@@ -79,7 +79,7 @@ const char *test_quad_over_lin3(void)
     double u_vals[8] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0};
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double expected_vals[4] = {71.0, 94.0, 117.0, -76.25};
@@ -119,7 +119,7 @@ const char *test_quad_over_lin4(void)
     double u_vals[8] = {0, 0, 4, 0, 0, 1.0, 2.0, 3.0};
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double expected_vals[4] = {-76.25, 71.0, 94.0, 117.0};
@@ -159,7 +159,7 @@ const char *test_quad_over_lin5(void)
     double u_vals[8] = {1, 2, 4, 3, 2, 1.0, 2.0, 3.0};
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double expected_vals[7] = {12, 36, -117, 36, 84, 114, 144};

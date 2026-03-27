@@ -49,7 +49,7 @@ static void forward(expr *node, const double *u)
     node->value[0] /= y->value[0];
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -169,7 +169,7 @@ static void eval_jacobian(expr *node)
     }
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -332,8 +332,8 @@ expr *new_quad_over_lin(expr *left, expr *right)
     }
 
     expr *node = (expr *) calloc(1, sizeof(expr));
-    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init, eval_jacobian,
-              is_affine, wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = left;
     node->right = right;
     expr_retain(left);

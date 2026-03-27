@@ -66,7 +66,7 @@ int check_jacobian(expr *node, const double *u, double h)
     int m = node->size;
     int n = node->n_vars;
 
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->forward(node, u);
     node->eval_jacobian(node);
 
@@ -117,7 +117,7 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
     double inv_2h = 1.0 / (2.0 * h);
 
     /* Initialize jacobian sparsity once, then forward */
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->forward(node, u);
 
     double *H = calloc((size_t) n * n, sizeof(double));
@@ -165,7 +165,7 @@ int check_wsum_hess(expr *node, const double *u, const double *w, double h)
     double *H_num = numerical_wsum_hess(node, u, w, h);
 
     /* Now compute analytical (reuses jacobian from numerical) */
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->forward(node, u);
     node->eval_jacobian(node);
     node->eval_wsum_hess(node, w);

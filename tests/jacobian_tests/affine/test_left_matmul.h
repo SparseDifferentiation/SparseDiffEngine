@@ -45,7 +45,7 @@ const char *test_jacobian_left_matmul_log(void)
     expr *A_log_x = new_left_matmul(NULL, log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
-    A_log_x->jacobian_init(A_log_x);
+    jacobian_init(A_log_x);
     A_log_x->eval_jacobian(A_log_x);
 
     /* Expected jacobian values: A @ diag(1/x) */
@@ -89,7 +89,7 @@ const char *test_jacobian_left_matmul_log_matrix(void)
     expr *A_log_x = new_left_matmul(NULL, log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
-    A_log_x->jacobian_init(A_log_x);
+    jacobian_init(A_log_x);
     A_log_x->eval_jacobian(A_log_x);
 
     /* Expected Jacobian: block-diagonal repeat of A scaled by diag(1./x) */

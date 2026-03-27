@@ -16,7 +16,7 @@ const char *test_jacobian_elementwise_mult_1(void)
     expr *node = new_elementwise_mult(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double vals[6] = {y->value[0], x->value[0], y->value[1],
@@ -41,7 +41,7 @@ const char *test_jacobian_elementwise_mult_2(void)
     expr *node = new_elementwise_mult(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double vals[6] = {x->value[0], y->value[0], x->value[1],
@@ -96,7 +96,7 @@ const char *test_jacobian_elementwise_mult_3(void)
     expr *node = new_elementwise_mult(Ax, By);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     /* Correct answer:
@@ -145,7 +145,7 @@ const char *test_jacobian_elementwise_mult_4(void)
     expr *node = new_elementwise_mult(Ax, Ax);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     /* Correct answer: 0 0 10 20 0  0 0 0 0 0

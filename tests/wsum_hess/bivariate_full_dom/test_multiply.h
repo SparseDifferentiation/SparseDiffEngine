@@ -22,7 +22,7 @@ const char *test_wsum_hess_multiply_1(void)
     expr *node = new_elementwise_mult(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
     int expected_p[13] = {0, 0, 0, 0, 1, 2, 3, 3, 3, 4, 5, 6, 6};
@@ -79,7 +79,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     mult_node->forward(mult_node, u_vals);
 
     /* Initialize and evaluate Hessian */
-    mult_node->wsum_hess_init(mult_node);
+    wsum_hess_init(mult_node);
     double w[5] = {0.50646339, 0.44756224, 0.67295241, 0.16424956, 0.03031469};
     mult_node->eval_wsum_hess(mult_node, w);
 
@@ -160,7 +160,7 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     mult_node->forward(mult_node, u_vals);
 
     /* Initialize Hessian structure */
-    mult_node->wsum_hess_init(mult_node);
+    wsum_hess_init(mult_node);
 
     /* Evaluate Hessian with weights */
     double w[4] = {1.0, 2.0, 3.0, 4.0};
@@ -208,7 +208,7 @@ const char *test_wsum_hess_multiply_2(void)
     expr *node = new_elementwise_mult(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
     int expected_p[13] = {0, 0, 0, 0, 1, 2, 3, 3, 3, 4, 5, 6, 6};

@@ -34,10 +34,10 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->value = (double *) calloc(d1 * d2, sizeof(double));
     node->var_id = NOT_A_VARIABLE;
     node->forward = forward;
-    node->jacobian_init = jacobian_init;
+    node->jacobian_init_impl = jacobian_init;
     node->eval_jacobian = eval_jacobian;
     node->is_affine = is_affine;
-    node->wsum_hess_init = wsum_hess_init;
+    node->wsum_hess_init_impl = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     node->free_type_data = free_type_data;
     node->work = (Expr_Work *) calloc(1, sizeof(Expr_Work));
@@ -89,6 +89,18 @@ void free_expr(expr *node)
 
     /* free the node itself */
     free(node);
+}
+
+void jacobian_init(expr *node)
+{
+    if (node == NULL || node->jacobian != NULL) return;
+    node->jacobian_init_impl(node);
+}
+
+void wsum_hess_init(expr *node)
+{
+    if (node == NULL || node->wsum_hess != NULL) return;
+    node->wsum_hess_init_impl(node);
 }
 
 void expr_retain(expr *node)

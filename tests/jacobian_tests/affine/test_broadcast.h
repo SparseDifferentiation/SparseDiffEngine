@@ -29,7 +29,7 @@ const char *test_broadcast_row_jacobian(void)
     expr *var = new_variable(1, 3, 0, 3);
     expr *bcast = new_broadcast(var, 2, 3);
     bcast->forward(bcast, u);
-    bcast->jacobian_init(bcast);
+    jacobian_init(bcast);
     bcast->eval_jacobian(bcast);
 
     /* Each variable affects 2 elements (m times) */
@@ -74,7 +74,7 @@ const char *test_broadcast_col_jacobian(void)
     expr *var = new_variable(3, 1, 0, 3);
     expr *bcast = new_broadcast(var, 3, 2);
     bcast->forward(bcast, u);
-    bcast->jacobian_init(bcast);
+    jacobian_init(bcast);
     bcast->eval_jacobian(bcast);
 
     /* Each variable affects 2 elements (n times) */
@@ -115,7 +115,7 @@ const char *test_broadcast_scalar_to_matrix_jacobian(void)
     expr *var = new_variable(1, 1, 0, 1);
     expr *bcast = new_broadcast(var, 2, 3);
     bcast->forward(bcast, u);
-    bcast->jacobian_init(bcast);
+    jacobian_init(bcast);
     bcast->eval_jacobian(bcast);
 
     /* All 6 elements depend on the single input variable */
@@ -147,7 +147,7 @@ const char *test_double_broadcast(void)
     expr *sum = new_add(bcast_x, bcast_b);
 
     sum->forward(sum, x_vals);
-    sum->jacobian_init(sum);
+    jacobian_init(sum);
     sum->eval_jacobian(sum);
 
     /* All 6 elements depend on the single input variable */

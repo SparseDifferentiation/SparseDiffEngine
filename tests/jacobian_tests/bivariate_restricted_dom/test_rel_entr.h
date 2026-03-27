@@ -16,7 +16,7 @@ const char *test_jacobian_rel_entr_vector_args_1(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double a = log(1.0 / 4.0) + 1.0;
@@ -47,7 +47,7 @@ const char *test_jacobian_rel_entr_vector_args_2(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double a = log(1.0 / 4.0) + 1.0;
@@ -81,7 +81,7 @@ const char *test_jacobian_rel_entr_matrix_args(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
-    node->jacobian_init(node);
+    jacobian_init(node);
     node->eval_jacobian(node);
 
     double dx0 = log(1.0 / 6.0) + 1.0;

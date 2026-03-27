@@ -45,10 +45,10 @@ static void forward(expr *node, const double *u)
     }
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
-    node->left->jacobian_init(node->left);
-    node->right->jacobian_init(node->right);
+    jacobian_init(node->left);
+    jacobian_init(node->right);
     node->work->dwork = (double *) malloc(2 * node->size * sizeof(double));
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
@@ -63,12 +63,15 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     expr *y = node->right;
 
+    x->eval_jacobian(x);
+    y->eval_jacobian(y);
+
     /* chain rule */
     sum_scaled_csr_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
                                         y->value, x->value);
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -214,8 +217,8 @@ expr *new_elementwise_mult(expr *left, expr *right)
         (elementwise_mult_expr *) calloc(1, sizeof(elementwise_mult_expr));
     expr *node = &mul_node->base;
 
-    init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init,
-              eval_jacobian, is_affine, wsum_hess_init, eval_wsum_hess,
+    init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,
+              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
               free_type_data);
     node->left = left;
     node->right = right;

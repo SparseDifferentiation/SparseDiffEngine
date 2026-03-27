@@ -21,7 +21,7 @@ const char *test_wsum_hess_rel_entr_1(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
     int expected_p[11] = {0, 0, 2, 4, 6, 6, 6, 8, 10, 12, 12};
@@ -52,7 +52,7 @@ const char *test_wsum_hess_rel_entr_2(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
     int expected_p[11] = {0, 0, 2, 4, 6, 6, 6, 8, 10, 12, 12};
@@ -83,7 +83,7 @@ const char *test_wsum_hess_rel_entr_matrix(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
-    node->wsum_hess_init(node);
+    wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
     int expected_p[13] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24};

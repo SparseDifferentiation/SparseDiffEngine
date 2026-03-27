@@ -27,7 +27,7 @@ static void forward(expr *node, const double *u)
     (void) u;
 }
 
-static void jacobian_init(expr *node)
+static void jacobian_init_impl(expr *node)
 {
     /* Zero jacobian: size x n_vars with 0 nonzeros. */
     node->jacobian = new_csr_matrix(node->size, node->n_vars, 0);
@@ -38,7 +38,7 @@ static void eval_jacobian(expr *node)
     (void) node;
 }
 
-static void wsum_hess_init(expr *node)
+static void wsum_hess_init_impl(expr *node)
 {
     /* Zero Hessian: n_vars x n_vars with 0 nonzeros. */
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
@@ -60,8 +60,8 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
 {
     parameter_expr *pnode = (parameter_expr *) calloc(1, sizeof(parameter_expr));
     expr *node = &pnode->base;
-    init_expr(node, d1, d2, n_vars, forward, jacobian_init, eval_jacobian, is_affine,
-              wsum_hess_init, eval_wsum_hess, NULL);
+    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
 
     pnode->param_id = param_id;
     pnode->has_been_refreshed = false;
