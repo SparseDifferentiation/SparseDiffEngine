@@ -28,12 +28,11 @@ struct int_double_pair;
 
 /* Type-specific expression structures that "inherit" from expr */
 
-/* Linear operator: y = A * x + b */
+/* Linear operator: y = A * x + b
+ * The matrix A is stored as node->jacobian (CSR). */
 typedef struct linear_op_expr
 {
     expr base;
-    CSC_Matrix *A_csc;
-    CSR_Matrix *A_csr;
     double *b; /* constant offset vector (NULL if no offset) */
 } linear_op_expr;
 

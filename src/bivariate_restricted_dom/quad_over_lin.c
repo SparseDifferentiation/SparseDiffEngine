@@ -81,13 +81,12 @@ static void jacobian_init_impl(expr *node)
     }
     else /* left node is not a variable (guaranteed to be a linear operator) */
     {
-        linear_op_expr *lin_x = (linear_op_expr *) x;
         node->work->dwork = (double *) malloc(x->size * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
-        int nonzero_cols = count_nonzero_cols(lin_x->A_csr, col_nz);
+        int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
         node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */
@@ -120,6 +119,13 @@ static void jacobian_init_impl(expr *node)
                 break;
             }
         }
+
+        /* prepare CSC form of child jacobian for chain rule.
+         * For a linear operator the values are constant, so fill
+         * them once here. */
+        jacobian_csc_init(x);
+        csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+                               x->work->csc_work);
     }
 }
 
@@ -151,8 +157,6 @@ static void eval_jacobian(expr *node)
     }
     else /* x is not a variable */
     {
-        CSC_Matrix *A_csc = ((linear_op_expr *) x)->A_csc;
-
         /* local jacobian */
         for (int j = 0; j < x->size; j++)
         {
@@ -160,7 +164,8 @@ static void eval_jacobian(expr *node)
         }
 
         /* chain rule (no derivative wrt y) using CSC format */
-        csc_matvec_fill_values(A_csc, node->work->dwork, node->jacobian);
+        csc_matvec_fill_values(x->work->jacobian_csc, node->work->dwork,
+                               node->jacobian);
 
         /* insert derivative wrt y at right place (for correctness this assumes
            that y does not appear in the numerator, but this will always be
