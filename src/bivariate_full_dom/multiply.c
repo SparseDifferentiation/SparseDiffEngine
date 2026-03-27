@@ -19,7 +19,6 @@
 #include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include <assert.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,8 +85,9 @@ static void wsum_hess_init_impl(expr *node)
     expr *x = node->left;
     expr *y = node->right;
 
-    /* both x and y are variables*/
-    if (x->var_id != NOT_A_VARIABLE)
+    /* both x and y are variables, and not the same */
+    if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
+        x->var_id != y->var_id)
     {
         assert(y->var_id != NOT_A_VARIABLE);
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
@@ -192,8 +192,9 @@ static void eval_wsum_hess(expr *node, const double *w)
     expr *x = node->left;
     expr *y = node->right;
 
-    /* both x and y are variables*/
-    if (x->var_id != NOT_A_VARIABLE)
+    /* both x and y are variables, and not the same */
+    if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
+        x->var_id != y->var_id)
     {
         memcpy(node->wsum_hess->x, w, node->size * sizeof(double));
         memcpy(node->wsum_hess->x + node->size, w, node->size * sizeof(double));
@@ -293,25 +294,6 @@ static bool is_affine(const expr *node)
 
 expr *new_elementwise_mult(expr *left, expr *right)
 {
-
-    /* for correctness x and y must be (1) different variables, or (2) both must be
-     * linear operators */
-    if (left->var_id != NOT_A_VARIABLE && right->var_id != NOT_A_VARIABLE &&
-        left->var_id == right->var_id)
-    {
-        fprintf(stderr, "Error: elementwise multiplication of a variable by itself "
-                        "not supported.\n");
-        exit(EXIT_FAILURE);
-    }
-    else if ((left->var_id != NOT_A_VARIABLE && right->var_id == NOT_A_VARIABLE) ||
-             (left->var_id == NOT_A_VARIABLE && right->var_id != NOT_A_VARIABLE))
-    {
-        fprintf(stderr, "Error: elementwise multiplication of a variable by a "
-                        "non-variable is not supported. (Both must be inserted "
-                        "as linear operators)\n");
-        exit(EXIT_FAILURE);
-    }
-
     elementwise_mult_expr *mul_node =
         (elementwise_mult_expr *) calloc(1, sizeof(elementwise_mult_expr));
     expr *node = &mul_node->base;
