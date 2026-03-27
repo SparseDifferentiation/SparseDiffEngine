@@ -64,7 +64,7 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
               wsum_hess_init, eval_wsum_hess, NULL);
 
     pnode->param_id = param_id;
-    pnode->has_been_refreshed = true;
+    pnode->has_been_refreshed = false;
 
     if (values != NULL)
     {
