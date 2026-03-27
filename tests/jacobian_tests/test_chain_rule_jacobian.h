@@ -35,3 +35,18 @@ const char *test_jacobian_exp_sum_mult(void)
     free_expr(exp_sum_xy);
     return 0;
 }
+
+const char *test_jacobian_sin_cos(void)
+{
+    double u_vals[5] = {0.5, 1.0, 1.5, 2.0, 2.5};
+
+    expr *x = new_variable(5, 1, 0, 5);
+    expr *cos_x = new_cos(x);
+    expr *sin_cos_x = new_sin(cos_x);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(sin_cos_x, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(sin_cos_x);
+    return 0;
+}
