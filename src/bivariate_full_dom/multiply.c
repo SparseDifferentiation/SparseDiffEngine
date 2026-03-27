@@ -24,6 +24,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Scatter-add src->x into dest using precomputed index map */
+static void accumulate_mapped(double *dest, const CSR_Matrix *src,
+                              const int *idx_map)
+{
+    for (int j = 0; j < src->nnz; j++)
+    {
+        dest[idx_map[j]] += src->x[j];
+    }
+}
+
 // ------------------------------------------------------------------------------
 // Implementation of elementwise multiplication when both arguments are vectors.
 // If one argument is a scalar variable, the broadcasting should be represented
@@ -156,21 +166,24 @@ static void wsum_hess_init_impl(expr *node)
         node->work->iwork = (int *) malloc(C->m * sizeof(int));
         CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
 
-        /* initialize wsum_hessians of children and allocate this node's wsum_hess
-           (nnz <= 2 * nnz(C) + x->wsum_hess->nnz + y->wsum_hess->nnz) */
+        /* initialize wsum_hessians of children */
         wsum_hess_init(x);
         wsum_hess_init(y);
-        int total_nnz_ub = 2 * C->nnz + x->wsum_hess->nnz + y->wsum_hess->nnz;
-        node->wsum_hess = new_csr_matrix(C->m, C->n, total_nnz_ub);
 
-        // TODO: not correct sparsity pattern
-        /* fill sparsity pattern Hessian = C + C^T */
-        sum_csr_matrices_fill_sparsity(C, CT, node->wsum_hess);
-
-        /* Allocate workspace for Hessian computation */
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         mul_node->CSR_work1 = C;
         mul_node->CSR_work2 = CT;
+
+        /* compute sparsity pattern of H = C + C^T + term2 + term3 (we also
+           fill index maps telling us where to accumulate each element of each
+           matrix in the sum) */
+        int *maps[4];
+        node->wsum_hess = sum_4_csr_fill_sparsity_and_idx_maps(C, CT, x->wsum_hess,
+                                                               y->wsum_hess, maps);
+        mul_node->idx_map_C = maps[0];
+        mul_node->idx_map_CT = maps[1];
+        mul_node->idx_map_Hx = maps[2];
+        mul_node->idx_map_Hy = maps[3];
     }
 }
 
@@ -220,21 +233,56 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSC_Matrix *Jg1 = x->work->jacobian_csc;
         CSC_Matrix *Jg2 = y->work->jacobian_csc;
 
-        // -----------------------------------------------------------------------
-        //  compute C = Jg2^T diag(w) Jg1, CT = C^T, and sum to get hess = C + CT
-        // -----------------------------------------------------------------------
-        CSR_Matrix *C = ((elementwise_mult_expr *) node)->CSR_work1;
-        CSR_Matrix *CT = ((elementwise_mult_expr *) node)->CSR_work2;
-        BTDA_fill_values(Jg1, Jg2, w, C);                     /* compute C  */
-        AT_fill_values(C, CT, node->work->iwork);             /* compute CT */
-        sum_csr_matrices_fill_values(C, CT, node->wsum_hess); /* hess = C + CT */
+        // ---------------------------------------------------------------
+        //                    compute C and CT
+        // ---------------------------------------------------------------
+        elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
+        CSR_Matrix *C = mul_node->CSR_work1;
+        CSR_Matrix *CT = mul_node->CSR_work2;
+        BTDA_fill_values(Jg1, Jg2, w, C);
+        AT_fill_values(C, CT, node->work->iwork);
+
+        // ---------------------------------------------------------------
+        //              compute term2 and term 3
+        // ---------------------------------------------------------------
+        if (!is_x_affine)
+        {
+            for (int i = 0; i < node->size; i++)
+            {
+                node->work->dwork[i] = w[i] * y->value[i];
+            }
+            x->eval_wsum_hess(x, node->work->dwork);
+        }
+
+        if (!is_y_affine)
+        {
+            for (int i = 0; i < node->size; i++)
+            {
+                node->work->dwork[i] = w[i] * x->value[i];
+            }
+            y->eval_wsum_hess(y, node->work->dwork);
+        }
+
+        // ---------------------------------------------------------------
+        //        compute H = C + C^T + term2 + term3
+        // ---------------------------------------------------------------
+        memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
+        accumulate_mapped(node->wsum_hess->x, C, mul_node->idx_map_C);
+        accumulate_mapped(node->wsum_hess->x, CT, mul_node->idx_map_CT);
+        accumulate_mapped(node->wsum_hess->x, x->wsum_hess, mul_node->idx_map_Hx);
+        accumulate_mapped(node->wsum_hess->x, y->wsum_hess, mul_node->idx_map_Hy);
     }
 }
 
 static void free_type_data(expr *node)
 {
-    free_csr_matrix(((elementwise_mult_expr *) node)->CSR_work1);
-    free_csr_matrix(((elementwise_mult_expr *) node)->CSR_work2);
+    elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
+    free_csr_matrix(mul_node->CSR_work1);
+    free_csr_matrix(mul_node->CSR_work2);
+    free(mul_node->idx_map_C);
+    free(mul_node->idx_map_CT);
+    free(mul_node->idx_map_Hx);
+    free(mul_node->idx_map_Hy);
 }
 
 static bool is_affine(const expr *node)
