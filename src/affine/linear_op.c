@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "utils/CSR_Matrix.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,6 +81,19 @@ static void eval_jacobian(expr *node)
     (void) node;
 }
 
+static void wsum_hess_init_impl(expr *node)
+{
+    /* Linear operator Hessian is always zero */
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
+}
+
+static void eval_wsum_hess(expr *node, const double *w)
+{
+    /* Linear operator Hessian is always zero - nothing to evaluate */
+    (void) node;
+    (void) w;
+}
+
 expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
 {
     assert(u->d2 == 1);
@@ -87,7 +101,7 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
     linear_op_expr *lin_node = (linear_op_expr *) calloc(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;
     init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, NULL, NULL, free_type_data);
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
 

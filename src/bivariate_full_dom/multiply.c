@@ -49,7 +49,6 @@ static void jacobian_init_impl(expr *node)
 {
     jacobian_init(node->left);
     jacobian_init(node->right);
-    node->work->dwork = (double *) malloc(2 * node->size * sizeof(double));
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
 
@@ -140,30 +139,38 @@ static void wsum_hess_init_impl(expr *node)
            right child nodes.
         */
 
+        /* used for computing weights to wsum_hess of children */
+        if (!x->is_affine(x) || !y->is_affine(y))
+        {
+            node->work->dwork = (double *) malloc(node->size * sizeof(double));
+        }
+
         /* prepare sparsity pattern of csc conversion */
         jacobian_csc_init(x);
         jacobian_csc_init(y);
-
-        /* both are linear operators */
         CSC_Matrix *Jg1 = x->work->jacobian_csc;
         CSC_Matrix *Jg2 = y->work->jacobian_csc;
 
-        /* Allocate workspace for Hessian computation */
-        elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
-        CSR_Matrix *C = BTA_alloc(Jg1, Jg2); /* C = Jg2^T diag(w) Jg1 */
+        /* compute sparsity of C and prepare CT */
+        CSR_Matrix *C = BTA_alloc(Jg1, Jg2);
         node->work->iwork = (int *) malloc(C->m * sizeof(int));
-
         CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
-        mul_node->CSR_work1 = C;
-        mul_node->CSR_work2 = CT;
 
-        /* Hessian is H = C + C^T where both are B->n x A->n, and can't be more than
-         * 2 * nnz(C) */
-        assert(C->m == node->n_vars && C->n == node->n_vars);
-        node->wsum_hess = new_csr_matrix(C->m, C->n, 2 * C->nnz);
+        /* initialize wsum_hessians of children and allocate this node's wsum_hess
+           (nnz <= 2 * nnz(C) + x->wsum_hess->nnz + y->wsum_hess->nnz) */
+        wsum_hess_init(x);
+        wsum_hess_init(y);
+        int total_nnz_ub = 2 * C->nnz + x->wsum_hess->nnz + y->wsum_hess->nnz;
+        node->wsum_hess = new_csr_matrix(C->m, C->n, total_nnz_ub);
 
+        // TODO: not correct sparsity pattern
         /* fill sparsity pattern Hessian = C + C^T */
         sum_csr_matrices_fill_sparsity(C, CT, node->wsum_hess);
+
+        /* Allocate workspace for Hessian computation */
+        elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
+        mul_node->CSR_work1 = C;
+        mul_node->CSR_work2 = CT;
     }
 }
 
@@ -180,6 +187,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
     else
     {
+        bool is_x_affine = x->is_affine(x);
+        bool is_y_affine = y->is_affine(y);
         // ----------------------------------------------------------------------
         //            convert Jacobians of children to CSC format
         //      (we only need to do this once if the child is affine)
@@ -191,7 +200,7 @@ static void eval_wsum_hess(expr *node, const double *w)
             csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
                                    x->work->csc_work);
 
-            if (x->is_affine(x))
+            if (is_x_affine)
             {
                 x->work->jacobian_csc_filled = true;
             }
@@ -202,7 +211,7 @@ static void eval_wsum_hess(expr *node, const double *w)
             csr_to_csc_fill_values(y->jacobian, y->work->jacobian_csc,
                                    y->work->csc_work);
 
-            if (y->is_affine(y))
+            if (is_y_affine)
             {
                 y->work->jacobian_csc_filled = true;
             }
