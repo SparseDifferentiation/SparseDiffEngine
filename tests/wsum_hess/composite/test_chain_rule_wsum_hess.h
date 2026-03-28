@@ -3,6 +3,7 @@
 #include "elementwise_full_dom.h"
 #include "minunit.h"
 #include "numerical_diff.h"
+#include "test_helpers.h"
 
 const char *test_wsum_hess_exp_sum(void)
 {
@@ -112,5 +113,88 @@ const char *test_wsum_hess_sin_cos(void)
               check_wsum_hess(sin_cos_x, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sin_cos_x);
+    return 0;
+}
+
+const char *test_wsum_hess_Ax_Bx_multiply(void)
+{
+    /* the first and last values are not used, but good to include them in test */
+    double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
+    double w[2] = {1.33, 2.1};
+
+    CSR_Matrix *A = new_csr_random(2, 2, 1.0);
+    CSR_Matrix *B = new_csr_random(2, 2, 1.0);
+    expr *x = new_variable(2, 1, 1, 4);
+    expr *Ax = new_left_matmul(x, A);
+    expr *Bx = new_left_matmul(x, B);
+    expr *multiply = new_elementwise_mult(Ax, Bx);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(multiply, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(multiply);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
+    return 0;
+}
+
+const char *test_wsum_hess_x_x_multiply(void)
+{
+    /* the first and last values are not used, but good to include them in test */
+    double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
+    double w[2] = {1.33, 2.1};
+    expr *x = new_variable(2, 1, 1, 4);
+    expr *multiply = new_elementwise_mult(x, x);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(multiply, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(multiply);
+    return 0;
+}
+
+const char *test_wsum_hess_AX_BX_multiply(void)
+{
+    double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
+    double w[4] = {1.1, 2.2, 3.3, 4.4};
+
+    CSR_Matrix *A = new_csr_random(2, 2, 1.0);
+    CSR_Matrix *B = new_csr_random(2, 2, 1.0);
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *AX = new_left_matmul(X, A);
+    expr *BX = new_left_matmul(X, B);
+    expr *multiply = new_elementwise_mult(new_sin(AX), new_cos(BX));
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(multiply, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(multiply);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
+    return 0;
+}
+
+const char *test_wsum_hess_multiply_deep_composite(void)
+{
+    double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
+    double w[4] = {1.1, 2.2, 3.3, 4.4};
+
+    CSR_Matrix *A = new_csr_random(2, 2, 1.0);
+    CSR_Matrix *B = new_csr_random(2, 2, 1.0);
+    expr *X = new_variable(2, 2, 0, 8);
+    expr *Y = new_variable(2, 2, 0, 8);
+    expr *AX = new_left_matmul(X, A);
+    expr *BY = new_left_matmul(Y, B);
+    expr *sin_AX = new_sin(AX);
+    expr *cos_BY = new_cos(BY);
+    expr *sin_AX_mult_sin_AX = new_elementwise_mult(sin_AX, sin_AX);
+    expr *multiply = new_elementwise_mult(sin_AX_mult_sin_AX, cos_BY);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(multiply, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(multiply);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
     return 0;
 }

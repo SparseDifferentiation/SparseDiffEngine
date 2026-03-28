@@ -21,6 +21,7 @@ const char *test_wsum_hess_rel_entr_1(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
@@ -52,6 +53,7 @@ const char *test_wsum_hess_rel_entr_2(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 
@@ -83,6 +85,7 @@ const char *test_wsum_hess_rel_entr_matrix(void)
     expr *node = new_rel_entr_vector_args(x, y);
 
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 

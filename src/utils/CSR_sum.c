@@ -20,6 +20,7 @@
 #include "utils/int_double_pair.h"
 #include "utils/utils.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
@@ -710,6 +711,78 @@ void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
  * iwork: workspace of size at least max(A->n, A->nnz)
  * idx_map: output index map, size at least A->nnz
  */
+CSR_Matrix *sum_4_csr_fill_sparsity_and_idx_maps(const CSR_Matrix *A,
+                                                 const CSR_Matrix *B,
+                                                 const CSR_Matrix *C,
+                                                 const CSR_Matrix *D,
+                                                 int *idx_maps[4])
+{
+    const CSR_Matrix *inputs[4] = {A, B, C, D};
+    int m = A->m;
+    int n = A->n;
+    int nnz_ub = A->nnz + B->nnz + C->nnz + D->nnz;
+
+    /* allocate output and index maps */
+    CSR_Matrix *out = new_csr_matrix(m, n, nnz_ub);
+    for (int k = 0; k < 4; k++)
+    {
+        idx_maps[k] = (int *) malloc(inputs[k]->nnz * sizeof(int));
+    }
+
+    /* 4-way sorted merge per row */
+    int ptrs[4], ends[4];
+    int nnz = 0;
+
+    for (int row = 0; row < m; row++)
+    {
+        out->p[row] = nnz;
+        for (int k = 0; k < 4; k++)
+        {
+            ptrs[k] = inputs[k]->p[row];
+            ends[k] = inputs[k]->p[row + 1];
+        }
+
+        for (;;)
+        {
+
+            /* find minimum column in the current row among the 4 inputs */
+            int min_col = -1;
+            for (int k = 0; k < 4; k++)
+            {
+                if (ptrs[k] < ends[k])
+                {
+                    int col = inputs[k]->i[ptrs[k]];
+                    if (min_col == -1 || col < min_col)
+                    {
+                        min_col = col;
+                    }
+                }
+            }
+
+            /* if no elements in the current row, the output row will be empty */
+            if (min_col == -1)
+            {
+                break;
+            }
+
+            /* insert min_col into output and update idx_maps */
+            out->i[nnz] = min_col;
+            for (int k = 0; k < 4; k++)
+            {
+                if (ptrs[k] < ends[k] && inputs[k]->i[ptrs[k]] == min_col)
+                {
+                    idx_maps[k][ptrs[k]++] = nnz;
+                }
+            }
+            nnz++;
+        }
+    }
+
+    out->p[m] = nnz;
+    out->nnz = nnz;
+    return out;
+}
+
 void sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
                                                             CSR_Matrix *C,
                                                             int spacing, int *iwork,

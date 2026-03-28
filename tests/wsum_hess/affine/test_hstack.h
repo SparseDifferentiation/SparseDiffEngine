@@ -135,6 +135,7 @@ const char *test_wsum_hess_hstack_matrix(void)
     expr *hstack_node = new_hstack(args, 4, 18);
 
     hstack_node->forward(hstack_node, u_vals);
+    jacobian_init(hstack_node);
     wsum_hess_init(hstack_node);
     hstack_node->eval_wsum_hess(hstack_node, w);
 

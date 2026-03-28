@@ -17,6 +17,7 @@ const char *test_wsum_hess_quad_over_lin_xy(void)
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, &w);
 
@@ -46,6 +47,7 @@ const char *test_wsum_hess_quad_over_lin_yx(void)
     expr *node = new_quad_over_lin(x, y);
 
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, &w);
 

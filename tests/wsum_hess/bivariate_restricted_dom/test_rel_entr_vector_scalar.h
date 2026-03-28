@@ -16,6 +16,7 @@ const char *test_wsum_hess_rel_entr_vector_scalar(void)
     expr *node = new_rel_entr_second_arg_scalar(x, y);
 
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, w);
 

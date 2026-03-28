@@ -30,6 +30,7 @@ const char *test_wsum_hess_quad_form(void)
 
     jacobian_init(node);
     node->forward(node, u_vals);
+    jacobian_init(node);
     wsum_hess_init(node);
     node->eval_wsum_hess(node, &w);
 

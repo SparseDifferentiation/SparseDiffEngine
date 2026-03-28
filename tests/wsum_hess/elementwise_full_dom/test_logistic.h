@@ -28,6 +28,7 @@ const char *test_wsum_hess_logistic(void)
     logistic_node->forward(logistic_node, u_vals);
     jacobian_init(logistic_node);
     logistic_node->eval_jacobian(logistic_node);
+    jacobian_init(logistic_node);
     wsum_hess_init(logistic_node);
     logistic_node->eval_wsum_hess(logistic_node, w);
 
