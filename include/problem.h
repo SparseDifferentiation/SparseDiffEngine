@@ -36,6 +36,8 @@ typedef struct
     int nnz_affine;
     int nnz_nonlinear; /* jacobian of nonlinear constraints */
     int nnz_hessian;
+    int n_vars;
+    int total_constraint_size;
 } Diff_engine_stats;
 
 typedef struct problem

@@ -51,7 +51,7 @@ void jacobian_csc_init(expr *node)
     }
     node->work->csc_work = (int *) malloc(node->n_vars * sizeof(int));
     node->work->jacobian_csc =
-        csr_to_csc_fill_sparsity(node->jacobian, node->work->csc_work);
+        csr_to_csc_alloc(node->jacobian, node->work->csc_work);
 }
 
 void free_expr(expr *node)

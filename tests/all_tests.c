@@ -137,6 +137,8 @@ int main(void)
     mu_run_test(test_jacobian_cos_sin_multiply, tests_run);
     mu_run_test(test_jacobian_Ax_Bx_multiply, tests_run);
     mu_run_test(test_jacobian_AX_BX_multiply, tests_run);
+    mu_run_test(test_jacobian_quad_form_Ax, tests_run);
+    mu_run_test(test_jacobian_quad_form_exp, tests_run);
     mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_const_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_const_scalar_mult_log_matrix, tests_run);
@@ -274,6 +276,9 @@ int main(void)
     mu_run_test(test_wsum_hess_x_x_multiply, tests_run);
     mu_run_test(test_wsum_hess_AX_BX_multiply, tests_run);
     mu_run_test(test_wsum_hess_multiply_deep_composite, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_Ax, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_sin_Ax, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_exp, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_cblas_ddot, tests_run);
@@ -283,8 +288,6 @@ int main(void)
     mu_run_test(test_transpose, tests_run);
     mu_run_test(test_AT_alloc_and_fill, tests_run);
     mu_run_test(test_kron_identity_csr, tests_run);
-    mu_run_test(test_csr_to_csc1, tests_run);
-    mu_run_test(test_csr_to_csc2, tests_run);
     mu_run_test(test_csr_to_csc_split, tests_run);
     mu_run_test(test_csc_to_csr_sparsity, tests_run);
     mu_run_test(test_csc_to_csr_values, tests_run);
