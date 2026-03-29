@@ -49,6 +49,9 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
  */
 void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C);
 
+/* Count nonzero columns of a CSC matrix */
+int count_nonzero_cols_csc(const CSC_Matrix *A);
+
 CSC_Matrix *csr_to_csc_fill_sparsity(const CSR_Matrix *A, int *iwork);
 void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
 

@@ -451,3 +451,16 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
         }
     }
 }
+
+int count_nonzero_cols_csc(const CSC_Matrix *A)
+{
+    int count = 0;
+    for (int j = 0; j < A->n; j++)
+    {
+        if (A->p[j + 1] > A->p[j])
+        {
+            count++;
+        }
+    }
+    return count;
+}

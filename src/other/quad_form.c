@@ -27,17 +27,44 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init_impl(expr *node)
 {
-    assert(node->left->var_id != NOT_A_VARIABLE);
-
     expr *x = node->left;
-    node->work->dwork = (double *) malloc(x->size * sizeof(double));
-    node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
-    node->jacobian->p[0] = 0;
-    node->jacobian->p[1] = x->size;
 
-    for (int j = 0; j < x->size; j++)
+    /* dwork stores the result of Q @ f(x) in the forward pass */
+    node->work->dwork = (double *) malloc(x->size * sizeof(double));
+
+    if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian->i[j] = x->var_id + j;
+        node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
+        node->jacobian->p[0] = 0;
+        node->jacobian->p[1] = x->size;
+
+        for (int j = 0; j < x->size; j++)
+        {
+            node->jacobian->i[j] = x->var_id + j;
+        }
+    }
+    else
+    {
+        /* chain rule: J = 2 * (Q @ f(x))^T * J_f */
+        jacobian_init(x);
+        jacobian_csc_init(x);
+        CSC_Matrix *J_csc = x->work->jacobian_csc;
+
+        /* allocate the right number of nnz */
+        int nnz = count_nonzero_cols_csc(J_csc);
+        node->jacobian = new_csr_matrix(1, node->n_vars, nnz);
+        node->jacobian->p[0] = 0;
+        node->jacobian->p[1] = nnz;
+
+        /* fill sparsity pattern */
+        int idx = 0;
+        for (int j = 0; j < J_csc->n; j++)
+        {
+            if (J_csc->p[j + 1] > J_csc->p[j])
+            {
+                node->jacobian->i[idx++] = j;
+            }
+        }
     }
 }
 
@@ -46,12 +73,41 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
 
-    // jacobian = 2 * Q * x
-    csr_matvec(Q, x->value, node->jacobian->x, 0);
-
-    for (int j = 0; j < x->size; j++)
+    if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian->x[j] *= 2.0;
+        /* jacobian = 2 * (Q @ x)^T */
+        csr_matvec(Q, x->value, node->jacobian->x, 0);
+
+        for (int j = 0; j < x->size; j++)
+        {
+            node->jacobian->x[j] *= 2.0;
+        }
+    }
+    else
+    {
+        /* jacobian = 2 * (Q @ f(x))^T @ J_f */
+        x->eval_jacobian(x);
+
+        if (!x->work->jacobian_csc_filled)
+        {
+            csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+                                   x->work->csc_work);
+
+            if (x->is_affine(x))
+            {
+                x->work->jacobian_csc_filled = true;
+            }
+        }
+
+        /* The jacobian has same values as the gradient, which is
+           J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
+        csc_matvec_fill_values(x->work->jacobian_csc, node->work->dwork,
+                               node->jacobian);
+
+        for (int j = 0; j < node->jacobian->nnz; j++)
+        {
+            node->jacobian->x[j] *= 2.0;
+        }
     }
 }
 
@@ -89,87 +145,6 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
-/*
-The following two functions are commented out. It supports the jacobian for
-quad_form(Ax, Q), but after reconsideration, I think we should treat this as
-quad_form(x, A.TQA) in the canonicalization so we don't need to support the chain
-rule here.
-static void jacobian_init_impl(expr *node)
-{
-    expr *x = node->left;
-    node->work->dwork = (double *) malloc(x->d1 * sizeof(double));
-
-    // if x is a variable
-    if (x->var_id != NOT_A_VARIABLE)
-    {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->d1);
-        node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = x->d1;
-
-        for (int j = 0; j < x->d1; j++)
-        {
-            node->jacobian->i[j] = x->var_id + j;
-        }
-    }
-    else // x is not a variable
-    {
-        // compute required allocation and allocate jacobian
-        bool *col_nz = (bool *) calloc(node->n_vars, sizeof(bool));
-        int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
-        node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
-
-        // precompute column indices
-        node->jacobian->nnz = 0;
-        for (int j = 0; j < node->n_vars; j++)
-        {
-            if (col_nz[j])
-            {
-                node->jacobian->i[node->jacobian->nnz] = j;
-                node->jacobian->nnz++;
-            }
-        }
-        assert(nonzero_cols == node->jacobian->nnz);
-        free(col_nz);
-
-        node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = node->jacobian->nnz;
-    }
-}
-
-
-static void eval_jacobian_old(expr *node)
-{
-    expr *x = node->left;
-    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
-
-    // if x is a variable
-    if (x->var_id != NOT_A_VARIABLE)
-    {
-        csr_matvec(Q, x->value, node->jacobian->x, 0);
-
-        for (int j = 0; j < x->d1; j++)
-        {
-            node->jacobian->x[j] *= 2.0;
-        }
-    }
-    else // x is not a variable
-    {
-        linear_op_expr *lin_x = (linear_op_expr *) x;
-
-        // local jacobian
-        csr_matvec(Q, x->value, node->work->dwork, 0);
-
-        for (int j = 0; j < x->d1; j++)
-        {
-            node->work->dwork[j] *= 2.0;
-        }
-
-        // chain rule using CSC format
-        csc_matvec_fill_values(lin_x->A_csc, node->work->dwork, node->jacobian);
-    }
-}
-*/
-
 static void free_type_data(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -180,6 +155,7 @@ static void free_type_data(expr *node)
 static bool is_affine(const expr *node)
 {
     (void) node;
+    /* TODO: it is affine if both children are constant */
     return false;
 }
 
