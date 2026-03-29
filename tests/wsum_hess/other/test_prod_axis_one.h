@@ -30,6 +30,7 @@ const char *test_wsum_hess_prod_axis_one_no_zeros(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
+    jacobian_init(p);
     wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
@@ -97,6 +98,7 @@ const char *test_wsum_hess_prod_axis_one_one_zero(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
+    jacobian_init(p);
     wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
@@ -200,6 +202,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
+    jacobian_init(p);
     wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 
@@ -350,6 +353,7 @@ const char *test_wsum_hess_prod_axis_one_2x2(void)
     expr *p = new_prod_axis_one(x);
 
     p->forward(p, u_vals);
+    jacobian_init(p);
     wsum_hess_init(p);
     p->eval_wsum_hess(p, w_vals);
 

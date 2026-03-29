@@ -40,12 +40,11 @@ typedef struct parameter_expr
     bool has_been_refreshed;
 } parameter_expr;
 
-/* Linear operator: y = A * x + b */
+/* Linear operator: y = A * x + b
+ * The matrix A is stored as node->jacobian (CSR). */
 typedef struct linear_op_expr
 {
     expr base;
-    CSC_Matrix *A_csc;
-    CSR_Matrix *A_csr;
     double *b; /* constant offset vector (NULL if no offset) */
 } linear_op_expr;
 
@@ -61,6 +60,7 @@ typedef struct quad_form_expr
 {
     expr base;
     CSR_Matrix *Q;
+    CSC_Matrix *QJf; /* Q * J_f in CSC (for chain rule hessian) */
 } quad_form_expr;
 
 /* Sum reduction along an axis */
@@ -110,8 +110,12 @@ typedef struct hstack_expr
 typedef struct elementwise_mult_expr
 {
     expr base;
-    CSR_Matrix *CSR_work1;
-    CSR_Matrix *CSR_work2;
+    CSR_Matrix *CSR_work1; /* C  = Jg2^T diag(w) Jg1 */
+    CSR_Matrix *CSR_work2; /* CT = C^T */
+    int *idx_map_C;        /* C[j]  -> wsum_hess pos */
+    int *idx_map_CT;       /* CT[j] -> wsum_hess pos */
+    int *idx_map_Hx;       /* x->wsum_hess[j] -> pos */
+    int *idx_map_Hy;       /* y->wsum_hess[j] -> pos */
 } elementwise_mult_expr;
 
 /* Left matrix multiplication: y = A * f(x) where f(x) is an expression. Note that

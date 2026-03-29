@@ -86,4 +86,15 @@ void sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
                                                             int spacing, int *iwork,
                                                             int *idx_map);
 
+/* 4-way sorted merge of CSR matrices A, B, C, D (same dimensions).
+ * Allocates and returns the output CSR with the union sparsity pattern.
+ * Allocates and fills idx_maps[0..3] (one per input, size input->nnz
+ * each) mapping each input entry to its position in the output.
+ * Caller owns the returned CSR and all 4 idx_map arrays. */
+CSR_Matrix *sum_4_csr_fill_sparsity_and_idx_maps(const CSR_Matrix *A,
+                                                 const CSR_Matrix *B,
+                                                 const CSR_Matrix *C,
+                                                 const CSR_Matrix *D,
+                                                 int *idx_maps[4]);
+
 #endif /* CSR_SUM_H */

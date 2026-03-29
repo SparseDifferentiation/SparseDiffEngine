@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "affine.h"
+#include "utils/CSR_Matrix.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,8 +29,8 @@ static void forward(expr *node, const double *u)
     /* child's forward pass */
     node->left->forward(node->left, u);
 
-    /* y = A * x */
-    csr_matvec(lin_node->A_csr, x->value, node->value, x->var_id);
+    /* y = A * x (A is stored as node->jacobian) */
+    csr_matvec(node->jacobian, x->value, node->value, x->var_id);
 
     /* y += b (if offset exists) */
     if (lin_node->b != NULL)
@@ -49,35 +50,36 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     linear_op_expr *lin_node = (linear_op_expr *) node;
-    /* memory pointing to by A_csr will be freed when the jacobian is freed,
-       so if the jacobian is not null we must not free A_csr. */
-
-    if (!node->jacobian)
-    {
-        free_csr_matrix(lin_node->A_csr);
-    }
-
-    free_csc_matrix(lin_node->A_csc);
-
     if (lin_node->b != NULL)
     {
         free(lin_node->b);
         lin_node->b = NULL;
     }
-
-    lin_node->A_csr = NULL;
-    lin_node->A_csc = NULL;
 }
 
 static void jacobian_init_impl(expr *node)
 {
-    node->jacobian = ((linear_op_expr *) node)->A_csr;
+    /* jacobian is set at construction time — nothing to do */
+    (void) node;
 }
 
 static void eval_jacobian(expr *node)
 {
     /* Linear operator jacobian never changes - nothing to evaluate */
     (void) node;
+}
+
+static void wsum_hess_init_impl(expr *node)
+{
+    /* Linear operator Hessian is always zero */
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
+}
+
+static void eval_wsum_hess(expr *node, const double *w)
+{
+    /* Linear operator Hessian is always zero - nothing to evaluate */
+    (void) node;
+    (void) w;
 }
 
 expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
@@ -87,14 +89,13 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
     linear_op_expr *lin_node = (linear_op_expr *) calloc(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;
     init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, NULL, NULL, free_type_data);
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
 
-    /* Initialize type-specific fields */
-    lin_node->A_csr = new_csr_matrix(A->m, A->n, A->nnz);
-    copy_csr_matrix(A, lin_node->A_csr);
-    lin_node->A_csc = csr_to_csc(A);
+    /* Store A directly as the jacobian (linear op jacobian is constant) */
+    node->jacobian = new_csr_matrix(A->m, A->n, A->nnz);
+    copy_csr_matrix(A, node->jacobian);
 
     /* Initialize offset (copy b if provided, otherwise NULL) */
     if (b != NULL)

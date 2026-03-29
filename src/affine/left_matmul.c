@@ -111,12 +111,12 @@ static void jacobian_init_impl(expr *node)
 
     /* initialize child's jacobian and precompute sparsity of its CSC */
     jacobian_init(x);
-    lnode->Jchild_CSC = csr_to_csc_fill_sparsity(x->jacobian, node->work->iwork);
+    lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian, node->work->iwork);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
                                                       lnode->n_blocks);
-    node->jacobian = csc_to_csr_fill_sparsity(lnode->J_CSC, lnode->csc_to_csr_work);
+    node->jacobian = csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work);
 }
 
 static void eval_jacobian(expr *node)

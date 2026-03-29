@@ -4,6 +4,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
+#include "other.h"
 #include "test_helpers.h"
 #include "utils/CSR_Matrix.h"
 
@@ -111,5 +112,61 @@ const char *test_jacobian_AX_BX_multiply(void)
     free_expr(multiply);
     free_csr_matrix(A);
     free_csr_matrix(B);
+    return 0;
+}
+
+const char *test_jacobian_quad_form_Ax(void)
+{
+    /* (Ax)^T Q (Ax) where Q is symmetric */
+    double u_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+
+    CSR_Matrix *A = new_csr_random(3, 4, 1.0);
+
+    /* Q = [1 2 0; 2 3 0; 0 0 4] */
+    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
+    int Qi[5] = {0, 1, 0, 1, 2};
+    int Qp[4] = {0, 2, 4, 5};
+    memcpy(Q->x, Qx, 5 * sizeof(double));
+    memcpy(Q->i, Qi, 5 * sizeof(int));
+    memcpy(Q->p, Qp, 4 * sizeof(int));
+
+    expr *x = new_variable(4, 1, 1, 6);
+    expr *Ax = new_left_matmul(NULL, x, A);
+    expr *sin_Ax = new_sin(Ax);
+    expr *node = new_quad_form(sin_Ax, Q);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    free_csr_matrix(A);
+    free_csr_matrix(Q);
+    return 0;
+}
+
+const char *test_jacobian_quad_form_exp(void)
+{
+    /* exp(x)^T Q exp(x) where Q is symmetric */
+    double u_vals[3] = {0.5, 1.0, 1.5};
+
+    /* Q = [1 2 0; 2 3 0; 0 0 4] */
+    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
+    int Qi[5] = {0, 1, 0, 1, 2};
+    int Qp[4] = {0, 2, 4, 5};
+    memcpy(Q->x, Qx, 5 * sizeof(double));
+    memcpy(Q->i, Qi, 5 * sizeof(int));
+    memcpy(Q->p, Qp, 4 * sizeof(int));
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *exp_x = new_exp(x);
+    expr *node = new_quad_form(exp_x, Q);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    free_csr_matrix(Q);
     return 0;
 }

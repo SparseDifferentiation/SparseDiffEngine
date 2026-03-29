@@ -18,6 +18,7 @@ const char *test_wsum_hess_sin(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *sin_node = new_sin(x);
     sin_node->forward(sin_node, u_vals);
+    jacobian_init(sin_node);
     wsum_hess_init(sin_node);
     sin_node->eval_wsum_hess(sin_node, w);
 
@@ -46,6 +47,7 @@ const char *test_wsum_hess_cos(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *cos_node = new_cos(x);
     cos_node->forward(cos_node, u_vals);
+    jacobian_init(cos_node);
     wsum_hess_init(cos_node);
     cos_node->eval_wsum_hess(cos_node, w);
 
@@ -74,6 +76,7 @@ const char *test_wsum_hess_tan(void)
     expr *x = new_variable(3, 1, 0, 3);
     expr *tan_node = new_tan(x);
     tan_node->forward(tan_node, u_vals);
+    jacobian_init(tan_node);
     wsum_hess_init(tan_node);
     tan_node->eval_wsum_hess(tan_node, w);
 
