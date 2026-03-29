@@ -58,10 +58,8 @@ int count_nonzero_cols_csc(const CSC_Matrix *A);
 CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork);
 void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
 
-
 /* convert from CSC to CSR format */
 CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork);
 void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
-
 
 #endif /* CSC_MATRIX_H */
