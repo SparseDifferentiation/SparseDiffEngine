@@ -288,8 +288,6 @@ int main(void)
     mu_run_test(test_transpose, tests_run);
     mu_run_test(test_AT_alloc_and_fill, tests_run);
     mu_run_test(test_kron_identity_csr, tests_run);
-    mu_run_test(test_csr_to_csc1, tests_run);
-    mu_run_test(test_csr_to_csc2, tests_run);
     mu_run_test(test_csr_to_csc_split, tests_run);
     mu_run_test(test_csc_to_csr_sparsity, tests_run);
     mu_run_test(test_csc_to_csr_values, tests_run);

@@ -99,8 +99,7 @@ static void eval_jacobian(expr *node)
 
         /* The jacobian has same values as the gradient, which is
            J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
-        csc_matvec_fill_values(x->work->jacobian_csc, node->work->dwork,
-                               node->jacobian);
+        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, node->jacobian);
 
         cblas_dscal(node->jacobian->nnz, 2.0, node->jacobian->x, 1);
     }
@@ -146,7 +145,7 @@ static void wsum_hess_init_impl(expr *node)
         CSC_Matrix *Jf = x->work->jacobian_csc;
 
         /* term1 = Jf^T W Jf = Jf^T B*/
-        CSC_Matrix *B = sym_csr_csc_multiply_fill_sparsity(Q, Jf);
+        CSC_Matrix *B = symBA_alloc(Q, Jf);
         qnode->QJf = B;
         node->work->hess_term1 = BTA_alloc(Jf, B);
 
@@ -194,7 +193,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSR_Matrix *term2 = node->work->hess_term2;
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
-        sym_csr_csc_multiply_fill_values(Q, Jf, QJf);
+        BA_fill_values(Q, Jf, QJf);
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */

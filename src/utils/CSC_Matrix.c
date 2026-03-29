@@ -202,54 +202,7 @@ void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
     }
 }
 
-CSC_Matrix *csr_to_csc(const CSR_Matrix *A)
-{
-    CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
-
-    int i, j;
-    int *count = malloc(A->n * sizeof(int));
-
-    memset(count, 0, A->n * sizeof(int));
-
-    // -------------------------------------------------------------------
-    //              compute nnz in each column of A
-    // -------------------------------------------------------------------
-    for (i = 0; i < A->m; ++i)
-    {
-        for (j = A->p[i]; j < A->p[i + 1]; ++j)
-        {
-            count[A->i[j]]++;
-        }
-    }
-
-    // ------------------------------------------------------------------
-    //                      compute column pointers
-    // ------------------------------------------------------------------
-    C->p[0] = 0;
-    for (i = 0; i < A->n; ++i)
-    {
-        C->p[i + 1] = C->p[i] + count[i];
-        count[i] = C->p[i];
-    }
-
-    // ------------------------------------------------------------------
-    //                         fill matrix
-    // ------------------------------------------------------------------
-    for (i = 0; i < A->m; ++i)
-    {
-        for (j = A->p[i]; j < A->p[i + 1]; ++j)
-        {
-            C->x[count[A->i[j]]] = A->x[j];
-            C->i[count[A->i[j]]] = i;
-            count[A->i[j]]++;
-        }
-    }
-
-    free(count);
-    return C;
-}
-
-CSC_Matrix *csr_to_csc_fill_sparsity(const CSR_Matrix *A, int *iwork)
+CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)
 {
     CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
 
@@ -312,7 +265,7 @@ void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
     }
 }
 
-CSR_Matrix *csc_to_csr_fill_sparsity(const CSC_Matrix *A, int *iwork)
+CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork)
 {
     CSR_Matrix *C = new_csr_matrix(A->m, A->n, A->nnz);
 
@@ -435,19 +388,14 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     return C;
 }
 
-void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C)
+void yTA_fill_values(const CSC_Matrix *A, const double *y, CSR_Matrix *C)
 {
-    /* Compute C = z^T * A where A is in CSC format
-     * C is a single-row CSR matrix with column indices pre-computed
-     * This fills in the values of C only
-     */
-
     for (int col = 0; col < A->n; col++)
     {
         double val = 0;
         for (int j = A->p[col]; j < A->p[col + 1]; j++)
         {
-            val += z[A->i[j]] * A->x[j];
+            val += y[A->i[j]] * A->x[j];
         }
 
         if (A->p[col + 1] - A->p[col] == 0) continue;
@@ -464,6 +412,7 @@ void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C)
     }
 }
 
+/* computes C = B^T * D * A in CSR */
 void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
                       CSR_Matrix *C)
 {
@@ -477,40 +426,62 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
             int nnz_bi = B->p[i + 1] - B->p[i];
             int nnz_aj = A->p[j + 1] - A->p[j];
 
-            double sum;
             if (d != NULL)
             {
-                sum = sparse_wdot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
-                                  A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
+                C->x[jj] = sparse_wdot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
+                                       A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
             }
             else
             {
-                sum = sparse_dot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
-                                 A->x + A->p[j], A->i + A->p[j], nnz_aj);
+                C->x[jj] = sparse_dot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
+                                      A->x + A->p[j], A->i + A->p[j], nnz_aj);
             }
-
-            C->x[jj] = sum;
         }
     }
 }
 
-CSC_Matrix *sym_csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q,
-                                               const CSC_Matrix *A)
+/* NOTE: an alternative marker-based approach (scatter A_{k,j} * Q[k,:]
+ * into column j of C using a marker array for position lookup) may be
+ * faster when Q is dense, since it touches each Q entry exactly once.
+ * The sparse_dot approach below is simpler but redundantly scans
+ * column j of A for each nonzero row of C. */
+void BA_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A, CSC_Matrix *C)
 {
-    /* Allocate B = Q * A (sparsity only). Q must be symmetric.
-     * Q is CSR (m x m), A is CSC (m x n), B is CSC (m x n).
+    /* fill values of C = Q * A, given the sparsity pattern of C. */
+    int i, j, ii;
+
+    /* for each column j of C */
+    for (j = 0; j < C->n; j++)
+    {
+        for (ii = C->p[j]; ii < C->p[j + 1]; ii++)
+        {
+            i = C->i[ii];
+            int nnz_q = Q->p[i + 1] - Q->p[i];
+            int nnz_a = A->p[j + 1] - A->p[j];
+
+            /* inner product between row i of Q and column j of A */
+            C->x[ii] = sparse_dot(Q->x + Q->p[i], Q->i + Q->p[i], nnz_q,
+                                  A->x + A->p[j], A->i + A->p[j], nnz_a);
+        }
+    }
+}
+
+CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
+{
+    /* Allocate C = B * A (sparsity only). B must be symmetric.
+     * B is CSR (m x m), A is CSC (m x n), C is CSC (m x n).
      *
-     * Column j of B is Q * a_j = sum_k A_{k,j} Q[:, k], so the nonzero
-     * rows of column j of B are the union of the nonzero rows of Q[:, k].
+     * Column j of C is B * a_j = sum_k A_{k,j} B[:, k], so the nonzero
+     * rows of column j of C are the union of the nonzero rows of B[:, k].
      *
-     * Since Q is symmetric, we can find the nonzero rows of Q[:, k] by
-     * finding the nonzero columns of Q in row k.
+     * Since B is symmetric, we can find the nonzero rows of B[:, k] by
+     * finding the nonzero columns of B in row k.
      *
      * We use a marker array to avoid duplicates: marker[l] stores the
      * last column j that registered l as nonzero, so checking
      * marker[l] != j avoids duplicates. */
 
-    int m = Q->m;
+    int m = B->m;
     int n = A->n;
     int i, j, k, jj, ii, ell;
 
@@ -521,11 +492,11 @@ CSC_Matrix *sym_csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q,
         marker[i] = -1;
     }
 
-    int *Bp = (int *) malloc((n + 1) * sizeof(int));
-    iVec *Bi = iVec_new(A->nnz);
-    Bp[0] = 0;
+    int *Cp = (int *) malloc((n + 1) * sizeof(int));
+    iVec *Ci = iVec_new(A->nnz);
+    Cp[0] = 0;
 
-    /* for each column j of B */
+    /* for each column j of C */
     for (j = 0; j < n; j++)
     {
         int col_nnz = 0;
@@ -535,66 +506,33 @@ CSC_Matrix *sym_csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q,
         {
             k = A->i[ii];
 
-            /* find nonzero rows ell of column k of Q */
-            for (jj = Q->p[k]; jj < Q->p[k + 1]; jj++)
+            /* find nonzero rows ell of column k of B */
+            for (jj = B->p[k]; jj < B->p[k + 1]; jj++)
             {
-                ell = Q->i[jj];
+                ell = B->i[jj];
                 if (marker[ell] != j)
                 {
                     marker[ell] = j;
-                    iVec_append(Bi, ell);
+                    iVec_append(Ci, ell);
                     col_nnz++;
                 }
             }
         }
 
-        Bp[j + 1] = Bp[j] + col_nnz;
+        Cp[j + 1] = Cp[j] + col_nnz;
     }
 
-    /* allocate B and copy the computed structure */
-    int total_nnz = Bp[n];
-    CSC_Matrix *B = new_csc_matrix(m, n, total_nnz);
-    memcpy(B->p, Bp, (n + 1) * sizeof(int));
-    memcpy(B->i, Bi->data, total_nnz * sizeof(int));
+    /* allocate C and copy the computed structure */
+    int total_nnz = Cp[n];
+    CSC_Matrix *C = new_csc_matrix(m, n, total_nnz);
+    memcpy(C->p, Cp, (n + 1) * sizeof(int));
+    memcpy(C->i, Ci->data, total_nnz * sizeof(int));
 
     free(marker);
-    free(Bp);
-    iVec_free(Bi);
+    free(Cp);
+    iVec_free(Ci);
 
-    return B;
-}
-
-/* NOTE: an alternative marker-based approach (scatter A_{k,j} * Q[k,:]
- * into column j of B using a marker array for position lookup) may be
- * faster when Q is dense, since it touches each Q entry exactly once.
- * The sparse_dot approach below is simpler but redundantly scans
- * column j of A for each nonzero row of B. */
-void sym_csr_csc_multiply_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A,
-                                      CSC_Matrix *B)
-{
-    /* Fill values of B = Q * A. Q must be symmetric.
-     * B must have sparsity from sym_csr_csc_multiply_fill_sparsity.
-     *
-     * B_{l,j} = sum_k Q_{l,k} * A_{k,j} = dot(Q[l,:], A[:,j]).
-     * Since Q is symmetric, row l of Q has the same entries as
-     * column l, so we iterate over row l of Q in CSR format. */
-
-    int i, j, ii;
-
-    /* for each column j of B */
-    for (j = 0; j < B->n; j++)
-    {
-        for (ii = B->p[j]; ii < B->p[j + 1]; ii++)
-        {
-            i = B->i[ii];
-            int nnz_q = Q->p[i + 1] - Q->p[i];
-            int nnz_a = A->p[j + 1] - A->p[j];
-
-            /* inner product between row i of Q and column j of A */
-            B->x[ii] = sparse_dot(Q->x + Q->p[i], Q->i + Q->p[i], nnz_q,
-                                  A->x + A->p[j], A->i + A->p[j], nnz_a);
-        }
-    }
+    return C;
 }
 
 int count_nonzero_cols_csc(const CSC_Matrix *A)

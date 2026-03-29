@@ -164,8 +164,7 @@ static void eval_jacobian(expr *node)
         }
 
         /* chain rule (no derivative wrt y) using CSC format */
-        csc_matvec_fill_values(x->work->jacobian_csc, node->work->dwork,
-                               node->jacobian);
+        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, node->jacobian);
 
         /* insert derivative wrt y at right place (for correctness this assumes
            that y does not appear in the numerator, but this will always be
