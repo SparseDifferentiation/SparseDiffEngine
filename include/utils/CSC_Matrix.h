@@ -51,12 +51,16 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
  */
 void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C);
 
-/* Allocate B = Q * A (sparsity only). Q is CSR, A is CSC, B is CSC. */
-CSC_Matrix *csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q, const CSC_Matrix *A);
+/* Allocate B = Q * A (sparsity only). Q must be symmetric.
+ * Q is CSR, A is CSC, B is CSC. */
+CSC_Matrix *sym_csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q,
+                                               const CSC_Matrix *A);
 
-/* Fill values of B = Q * A. B must have sparsity from above. */
-void csr_csc_multiply_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A,
-                                  CSC_Matrix *B);
+/* Fill values of B = Q * A. Q must be symmetric.
+ * B must have sparsity from sym_csr_csc_multiply_fill_sparsity. */
+void sym_csr_csc_multiply_fill_values(const CSR_Matrix *Q,
+                                      const CSC_Matrix *A,
+                                      CSC_Matrix *B);
 
 /* Count nonzero columns of a CSC matrix */
 int count_nonzero_cols_csc(const CSC_Matrix *A);

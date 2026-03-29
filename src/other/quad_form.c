@@ -146,7 +146,7 @@ static void wsum_hess_init_impl(expr *node)
         CSC_Matrix *Jf = x->work->jacobian_csc;
 
         /* term1 = Jf^T W Jf = Jf^T B*/
-        CSC_Matrix *B = csr_csc_multiply_fill_sparsity(Q, Jf);
+        CSC_Matrix *B = sym_csr_csc_multiply_fill_sparsity(Q, Jf);
         qnode->QJf = B;
         node->work->hess_term1 = BTA_alloc(Jf, B);
 
@@ -194,7 +194,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSR_Matrix *term2 = node->work->hess_term2;
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
-        csr_csc_multiply_fill_values(Q, Jf, QJf);
+        sym_csr_csc_multiply_fill_values(Q, Jf, QJf);
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */
