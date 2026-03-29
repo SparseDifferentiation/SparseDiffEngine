@@ -1,6 +1,8 @@
 #include "other.h"
 #include "subexpr.h"
 #include "utils/CSC_Matrix.h"
+#include "utils/CSR_sum.h"
+#include "utils/cblas_wrapper.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -115,33 +117,106 @@ static void wsum_hess_init_impl(expr *node)
 {
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
     expr *x = node->left;
-    CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
 
-    /* set global row pointers */
-    memcpy(H->p + x->var_id, Q->p, (x->size + 1) * sizeof(int));
-    for (int i = x->var_id + x->size + 1; i <= node->n_vars; i++)
+    if (x->var_id != NOT_A_VARIABLE)
     {
+        CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
 
-        H->p[i] = Q->nnz;
+        /* set global row pointers */
+        memcpy(H->p + x->var_id, Q->p, (x->size + 1) * sizeof(int));
+        for (int i = x->var_id + x->size + 1; i <= node->n_vars; i++)
+        {
+            H->p[i] = Q->nnz;
+        }
+
+        /* set global column indices */
+        for (int i = 0; i < Q->nnz; i++)
+        {
+            H->i[i] = Q->i[i] + x->var_id;
+        }
+
+        node->wsum_hess = H;
     }
-
-    /* set global column indices */
-    for (int i = 0; i < Q->nnz; i++)
+    else
     {
-        H->i[i] = Q->i[i] + x->var_id;
-    }
+        /* The hessian of h(x) = f(x)^T Q f(x) is term1 + term2 where
 
-    node->wsum_hess = H;
+            * term1 = J_f^T Q J_f
+            * term2 = sum_i (Qf(x))_i nabla^2 f_i.
+
+            To compute term1, we first compute B = Q J_f and then compute term1
+            = J_f^T B.
+        */
+
+        /* jacobian_csc_init(x) already called in jacobian_init */
+        quad_form_expr *qnode = (quad_form_expr *) node;
+        CSC_Matrix *Jf = x->work->jacobian_csc;
+
+        /* term1 = Jf^T W Jf = Jf^T B*/
+        CSC_Matrix *B = csr_csc_multiply_fill_sparsity(Q, Jf);
+        qnode->QJf = B;
+        node->work->hess_term1 = BTA_alloc(Jf, B);
+
+        /* term2 = sum_i (Qf(x))_i nabla^2 f_i */
+        wsum_hess_init(x);
+        node->work->hess_term2 = new_csr_copy_sparsity(x->wsum_hess);
+
+        /* hess = term1 + term2 */
+        int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
+        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
+        sum_csr_matrices_fill_sparsity(node->work->hess_term1,
+                                       node->work->hess_term2, node->wsum_hess);
+    }
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
-    double *H = node->wsum_hess->x;
+    expr *x = node->left;
     double two_w = 2.0 * w[0];
-    for (int i = 0; i < Q->nnz; i++)
+
+    if (x->var_id != NOT_A_VARIABLE)
     {
-        H[i] = two_w * Q->x[i];
+        /* TODO: do we want to compute this hessian only once (up to a scaling)?
+         * Maybe unnecessary optimization. */
+        double *H = node->wsum_hess->x;
+        for (int i = 0; i < Q->nnz; i++)
+        {
+            H[i] = two_w * Q->x[i];
+        }
+    }
+    else
+    {
+        /* fill the CSC representation of the Jacobian of the child */
+        CSC_Matrix *Jf = x->work->jacobian_csc;
+        if (!x->work->jacobian_csc_filled)
+        {
+            csr_to_csc_fill_values(x->jacobian, Jf, x->work->csc_work);
+
+            if (x->is_affine(x))
+            {
+                x->work->jacobian_csc_filled = true;
+            }
+        }
+
+        CSC_Matrix *QJf = ((quad_form_expr *) node)->QJf;
+        CSR_Matrix *term1 = node->work->hess_term1;
+        CSR_Matrix *term2 = node->work->hess_term2;
+
+        /* term1 = J_f^T Q J_f = J_f^T B  */
+        csr_csc_multiply_fill_values(Q, Jf, QJf);
+        BTDA_fill_values(Jf, QJf, NULL, term1);
+
+        /* term2 */
+        x->eval_wsum_hess(x, node->work->dwork);
+        memcpy(term2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
+
+        /* scale both terms by 2w */
+        cblas_dscal(term1->nnz, two_w, term1->x, 1);
+        cblas_dscal(term2->nnz, two_w, term2->x, 1);
+
+        /* sum the two terms */
+        sum_csr_matrices_fill_values(term1, term2, node->wsum_hess);
     }
 }
 
@@ -150,12 +225,17 @@ static void free_type_data(expr *node)
     quad_form_expr *qnode = (quad_form_expr *) node;
     free_csr_matrix(qnode->Q);
     qnode->Q = NULL;
+    if (qnode->QJf != NULL)
+    {
+        free_csc_matrix(qnode->QJf);
+        qnode->QJf = NULL;
+    }
 }
 
 static bool is_affine(const expr *node)
 {
     (void) node;
-    /* TODO: it is affine if both children are constant */
+    /* TODO: it is affine (constant) if both children are constant */
     return false;
 }
 

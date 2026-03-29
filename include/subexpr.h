@@ -48,6 +48,7 @@ typedef struct quad_form_expr
 {
     expr base;
     CSR_Matrix *Q;
+    CSC_Matrix *QJf; /* Q * J_f in CSC (for chain rule hessian) */
 } quad_form_expr;
 
 /* Sum reduction along an axis */

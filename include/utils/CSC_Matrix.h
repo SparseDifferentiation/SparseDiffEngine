@@ -37,10 +37,12 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A);
 /* Allocate sparsity pattern for C = B^T D A for diagonal D */
 CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B);
 
-/* Compute values for C = A^T D A. C must have precomputed sparsity pattern  */
+/* Compute values for C = A^T D A. C must have precomputed sparsity pattern.
+ * If d is NULL, D is treated as the identity (computes A^T A). */
 void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
 
-/* Compute values for C = B^T D A. C must have precomputed sparsity pattern  */
+/* Compute values for C = B^T D A. C must have precomputed sparsity pattern.
+ * If d is NULL, D is treated as the identity (computes B^T A). */
 void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
                       CSR_Matrix *C);
 
@@ -48,6 +50,13 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
  * C must have column indices pre-computed. Fills in values of C only.
  */
 void csc_matvec_fill_values(const CSC_Matrix *A, const double *z, CSR_Matrix *C);
+
+/* Allocate B = Q * A (sparsity only). Q is CSR, A is CSC, B is CSC. */
+CSC_Matrix *csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q, const CSC_Matrix *A);
+
+/* Fill values of B = Q * A. B must have sparsity from above. */
+void csr_csc_multiply_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A,
+                                  CSC_Matrix *B);
 
 /* Count nonzero columns of a CSC matrix */
 int count_nonzero_cols_csc(const CSC_Matrix *A);

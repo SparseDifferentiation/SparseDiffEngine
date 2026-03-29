@@ -111,6 +111,34 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
     return C;
 }
 
+static inline double sparse_dot(const double *a_x, const int *a_i, int a_nnz,
+                                const double *b_x, const int *b_i, int b_nnz)
+{
+    int ii = 0;
+    int jj = 0;
+    double sum = 0.0;
+
+    while (ii < a_nnz && jj < b_nnz)
+    {
+        if (a_i[ii] == b_i[jj])
+        {
+            sum += a_x[ii] * b_x[jj];
+            ii++;
+            jj++;
+        }
+        else if (a_i[ii] < b_i[jj])
+        {
+            ii++;
+        }
+        else
+        {
+            jj++;
+        }
+    }
+
+    return sum;
+}
+
 static inline double sparse_wdot(const double *a_x, const int *a_i, int a_nnz,
                                  const double *b_x, const int *b_i, int b_nnz,
                                  const double *d)
@@ -158,9 +186,17 @@ void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
                 int nnz_ai = A->p[ii + 1] - A->p[ii];
                 int nnz_aj = A->p[j + 1] - A->p[j];
 
-                /* compute Cij = weighted inner product of column i and column j */
-                double sum = sparse_wdot(A->x + A->p[ii], A->i + A->p[ii], nnz_ai,
-                                         A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
+                double sum;
+                if (d != NULL)
+                {
+                    sum = sparse_wdot(A->x + A->p[ii], A->i + A->p[ii], nnz_ai,
+                                      A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
+                }
+                else
+                {
+                    sum = sparse_dot(A->x + A->p[ii], A->i + A->p[ii], nnz_ai,
+                                     A->x + A->p[j], A->i + A->p[j], nnz_aj);
+                }
 
                 C->x[jj] = sum;
             }
@@ -443,13 +479,113 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
             int nnz_bi = B->p[i + 1] - B->p[i];
             int nnz_aj = A->p[j + 1] - A->p[j];
 
-            /* compute Cij = weighted inner product of col i of B and col j of A */
-            double sum = sparse_wdot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
-                                     A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
+            double sum;
+            if (d != NULL)
+            {
+                sum = sparse_wdot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
+                                  A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
+            }
+            else
+            {
+                sum = sparse_dot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
+                                 A->x + A->p[j], A->i + A->p[j], nnz_aj);
+            }
 
             C->x[jj] = sum;
         }
     }
+}
+
+CSC_Matrix *csr_csc_multiply_fill_sparsity(const CSR_Matrix *Q, const CSC_Matrix *A)
+{
+    /* Allocate B = Q * A (sparsity only).
+     * Q is CSR (m x m), A is CSC (m x n), B is CSC (m x n). */
+
+    int m = Q->m;
+    int n = A->n;
+
+    int *marker = (int *) malloc(m * sizeof(int));
+    memset(marker, -1, m * sizeof(int));
+
+    int *Bp = (int *) malloc((n + 1) * sizeof(int));
+    iVec *Bi = iVec_new(A->nnz);
+    Bp[0] = 0;
+
+    for (int j = 0; j < n; j++)
+    {
+        int col_nnz = 0;
+
+        for (int t = A->p[j]; t < A->p[j + 1]; t++)
+        {
+            int k = A->i[t];
+
+            for (int s = Q->p[k]; s < Q->p[k + 1]; s++)
+            {
+                int row = Q->i[s];
+                if (marker[row] != j)
+                {
+                    marker[row] = j;
+                    iVec_append(Bi, row);
+                    col_nnz++;
+                }
+            }
+        }
+
+        Bp[j + 1] = Bp[j] + col_nnz;
+    }
+
+    int total_nnz = Bp[n];
+    CSC_Matrix *B = new_csc_matrix(m, n, total_nnz);
+    memcpy(B->p, Bp, (n + 1) * sizeof(int));
+    memcpy(B->i, Bi->data, total_nnz * sizeof(int));
+
+    free(marker);
+    free(Bp);
+    iVec_free(Bi);
+
+    return B;
+}
+
+void csr_csc_multiply_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A,
+                                  CSC_Matrix *B)
+{
+    /* Fill values of B = Q * A. B must have sparsity from
+     * csr_csc_multiply_fill_sparsity. */
+
+    int m = Q->m;
+
+    int *marker = (int *) malloc(m * sizeof(int));
+    memset(marker, -1, m * sizeof(int));
+    memset(B->x, 0, B->nnz * sizeof(double));
+
+    for (int j = 0; j < B->n; j++)
+    {
+        /* map row index -> position in column j of B */
+        for (int t = B->p[j]; t < B->p[j + 1]; t++)
+        {
+            marker[B->i[t]] = t;
+        }
+
+        /* accumulate A_{k,j} * Q[k, :] */
+        for (int t = A->p[j]; t < A->p[j + 1]; t++)
+        {
+            int k = A->i[t];
+            double a_kj = A->x[t];
+
+            for (int s = Q->p[k]; s < Q->p[k + 1]; s++)
+            {
+                B->x[marker[Q->i[s]]] += a_kj * Q->x[s];
+            }
+        }
+
+        /* reset marker */
+        for (int t = B->p[j]; t < B->p[j + 1]; t++)
+        {
+            marker[B->i[t]] = -1;
+        }
+    }
+
+    free(marker);
 }
 
 int count_nonzero_cols_csc(const CSC_Matrix *A)
