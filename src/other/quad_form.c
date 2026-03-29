@@ -79,11 +79,7 @@ static void eval_jacobian(expr *node)
     {
         /* jacobian = 2 * (Q @ x)^T */
         csr_matvec(Q, x->value, node->jacobian->x, 0);
-
-        for (int j = 0; j < x->size; j++)
-        {
-            node->jacobian->x[j] *= 2.0;
-        }
+        cblas_dscal(x->size, 2.0, node->jacobian->x, 1);
     }
     else
     {
@@ -106,10 +102,7 @@ static void eval_jacobian(expr *node)
         csc_matvec_fill_values(x->work->jacobian_csc, node->work->dwork,
                                node->jacobian);
 
-        for (int j = 0; j < node->jacobian->nnz; j++)
-        {
-            node->jacobian->x[j] *= 2.0;
-        }
+        cblas_dscal(node->jacobian->nnz, 2.0, node->jacobian->x, 1);
     }
 }
 
@@ -179,11 +172,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     {
         /* TODO: do we want to compute this hessian only once (up to a scaling)?
          * Maybe unnecessary optimization. */
-        double *H = node->wsum_hess->x;
-        for (int i = 0; i < Q->nnz; i++)
-        {
-            H[i] = two_w * Q->x[i];
-        }
+        memcpy(node->wsum_hess->x, Q->x, Q->nnz * sizeof(double));
+        cblas_dscal(Q->nnz, two_w, node->wsum_hess->x, 1);
     }
     else
     {

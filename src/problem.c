@@ -65,6 +65,9 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->stats.time_forward_constraints = 0.0;
     prob->stats.nnz_affine = 0;
     prob->stats.nnz_nonlinear = 0;
+    prob->stats.nnz_hessian = 0;
+    prob->stats.n_vars = prob->n_vars;
+    prob->stats.total_constraint_size = prob->total_constraint_size;
 
     prob->verbose = verbose;
 
@@ -274,6 +277,9 @@ static inline void print_end_message(const Diff_engine_stats *stats)
            DIFF_ENGINE_VERSION);
 
     printf("\nProblem statistics:\n");
+    printf("  Number of variables:                    %d\n", stats->n_vars);
+    printf("  Number of constraints:                  %d\n",
+           stats->total_constraint_size);
     printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
     printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
