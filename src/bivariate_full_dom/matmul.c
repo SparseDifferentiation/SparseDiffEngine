@@ -448,27 +448,28 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     int n = g->d2;
     bool is_f_affine = f->is_affine(f);
     bool is_g_affine = g->is_affine(g);
+    CSC_Matrix *Jf = f->work->jacobian_csc;
+    CSC_Matrix *Jg = g->work->jacobian_csc;
 
     /* refresh child Jacobian CSC values (cache if affine) */
     if (!f->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_vals(f->jacobian, f->work->jacobian_csc, f->work->csc_work);
+        csr_to_csc_fill_vals(f->jacobian, Jf, f->work->csc_work);
         if (is_f_affine)
         {
             f->work->jacobian_csc_filled = true;
         }
     }
+
+    /* refresh child Jacobian CSC values (cache if affine) */
     if (!g->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_vals(g->jacobian, g->work->jacobian_csc, g->work->csc_work);
+        csr_to_csc_fill_vals(g->jacobian, Jg, g->work->csc_work);
         if (is_g_affine)
         {
             g->work->jacobian_csc_filled = true;
         }
     }
-
-    CSC_Matrix *Jf = f->work->jacobian_csc;
-    CSC_Matrix *Jg = g->work->jacobian_csc;
 
     /* compute C = J_f^T @ B(w) @ J_g */
     fill_cross_hessian_values(m, k, n, w, mnode->B);
@@ -479,18 +480,17 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* compute CT */
     AT_fill_vals(mnode->C, mnode->CT, node->work->iwork);
 
-    /* backpropagate weights and recurse into children */
+    /* compute Hessian of f */
     if (!is_f_affine)
     {
-        Y_kron_I_vec(m, k, n, g->value, w,
-                              node->work->dwork);
+        Y_kron_I_vec(m, k, n, g->value, w, node->work->dwork);
         f->eval_wsum_hess(f, node->work->dwork);
     }
 
+    /* compute Hessian of g */
     if (!is_g_affine)
     {
-        I_kron_XT_vec(m, k, n, f->value, w,
-                               node->work->dwork);
+        I_kron_XT_vec(m, k, n, f->value, w, node->work->dwork);
         g->eval_wsum_hess(g, node->work->dwork);
     }
 

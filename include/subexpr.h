@@ -141,12 +141,12 @@ typedef struct matmul_expr
     CSR_Matrix *term2_CSR; /* (I_n x X) @ J_g */
 
     /* Hessian workspace (composite only) */
-    CSR_Matrix *B;        /* cross-Hessian B(w), mk x kn */
+    CSR_Matrix *B;       /* cross-Hessian B(w), mk x kn */
     CSR_Matrix *BJg;     /* B @ J_g */
     CSC_Matrix *BJg_CSC; /* BJg in CSC */
     int *BJg_csc_work;   /* CSR-to-CSC workspace */
-    CSR_Matrix *C;        /* J_f^T @ B @ J_g */
-    CSR_Matrix *CT;       /* C^T */
+    CSR_Matrix *C;       /* J_f^T @ B @ J_g */
+    CSR_Matrix *CT;      /* C^T */
     int *idx_map_C;
     int *idx_map_CT;
     int *idx_map_Hf;

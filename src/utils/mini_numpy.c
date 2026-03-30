@@ -69,8 +69,7 @@ void mat_mat_mult(const double *X, const double *Y, double *Z, int m, int k, int
     }
 }
 
-void Y_kron_I_vec(int m, int k, int n, const double *Y, const double *w,
-                  double *v)
+void Y_kron_I_vec(int m, int k, int n, const double *Y, const double *w, double *v)
 {
     for (int j = 0; j < k; j++)
     {
@@ -86,8 +85,7 @@ void Y_kron_I_vec(int m, int k, int n, const double *Y, const double *w,
     }
 }
 
-void I_kron_XT_vec(int m, int k, int n, const double *X, const double *w,
-                   double *v)
+void I_kron_XT_vec(int m, int k, int n, const double *X, const double *w, double *v)
 {
     for (int col = 0; col < n; col++)
     {
