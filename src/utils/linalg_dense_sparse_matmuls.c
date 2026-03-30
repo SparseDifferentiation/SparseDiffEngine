@@ -221,6 +221,7 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J)
 void YT_kron_I_fill_vals(int m, int k, int n, const double *Y, const CSC_Matrix *J,
                          CSR_Matrix *C)
 {
+    (void) n;
     assert(C->m == m * n);
     /* C[i, j] = sum_l Y[l, blk] * J[blk_row + l*m, j]
      * where blk_row = i % m, blk = i / m */
@@ -309,6 +310,7 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J)
 void I_kron_X_fill_vals(int m, int k, int n, const double *X, const CSC_Matrix *J,
                         CSR_Matrix *C)
 {
+    (void) n;
     assert(C->m == m * n);
     /* C[i, j] = sum_l X[blk_row + l*m] * J[blk*k + l, j]
      * where blk = i / m, blk_row = i % m */
