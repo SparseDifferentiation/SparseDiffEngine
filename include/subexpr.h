@@ -171,19 +171,6 @@ typedef struct matmul_expr
     int *idx_map_Hg;
 } matmul_expr;
 
-/* Constant scalar multiplication: y = a * child where a is a constant double */
-typedef struct const_scalar_mult_expr
-{
-    expr base;
-    double a;
-} const_scalar_mult_expr;
-
-/* Constant vector elementwise multiplication: y = a \circ child for constant a */
-typedef struct const_vector_mult_expr
-{
-    expr base;
-    double *a; /* length equals node->size */
-} const_vector_mult_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr
