@@ -243,6 +243,10 @@ static void eval_jacobian_chain_rule(expr *node)
     sum_csr_fill_vals(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
 }
 
+// ------------------------------------------------------------------------------------
+// Hessian initialization and evaluation for the case where no chain rule is needed,
+// ie., when both children are different leaf variables.
+// ------------------------------------------------------------------------------------
 static void wsum_hess_init_no_chain_rule(expr *node)
 {
     expr *x = node->left;
@@ -319,58 +323,6 @@ static void wsum_hess_init_no_chain_rule(expr *node)
     assert(nnz == total_nnz);
 }
 
-static void wsum_hess_init_chain_rule(expr *node)
-{
-    expr *x = node->left;
-    expr *y = node->right;
-    matmul_expr *mnode = (matmul_expr *) node;
-    int m = x->d1;
-    int k = x->d2;
-    int n = y->d2;
-
-    jacobian_csc_init(x);
-    jacobian_csc_init(y);
-    CSC_Matrix *Jf = x->work->jacobian_csc;
-    CSC_Matrix *Jg = y->work->jacobian_csc;
-
-    /* build cross-Hessian B sparsity */
-    mnode->B = build_cross_hessian_sparsity(m, k, n);
-
-    /* C = J_f^T @ B @ J_g:
-     * step 1: BJ_g = B @ J_g */
-    mnode->BJ_g = csr_csc_matmul_alloc(mnode->B, Jg);
-    mnode->BJ_g_csc_work =
-        (int *) malloc(MAX(mnode->BJ_g->m, mnode->BJ_g->n) * sizeof(int));
-    mnode->BJ_g_CSC = csr_to_csc_alloc(mnode->BJ_g, mnode->BJ_g_csc_work);
-
-    /* step 2: C = J_f^T @ BJ_g via BTA (B^T D A with D=I) */
-    mnode->C = BTA_alloc(mnode->BJ_g_CSC, Jf);
-
-    /* C^T */
-    node->work->iwork = (int *) malloc(mnode->C->m * sizeof(int));
-    mnode->CT = AT_alloc(mnode->C, node->work->iwork);
-
-    /* allocate weight backprop workspace */
-    if (!x->is_affine(x) || !y->is_affine(y))
-    {
-        node->work->dwork =
-            (double *) malloc(MAX(x->size, y->size) * sizeof(double));
-    }
-
-    /* init child Hessians */
-    wsum_hess_init(x);
-    wsum_hess_init(y);
-
-    /* merge 4 sparsity patterns */
-    int *maps[4];
-    node->wsum_hess = sum_4_csr_fill_sparsity_and_idx_maps(
-        mnode->C, mnode->CT, x->wsum_hess, y->wsum_hess, maps);
-    mnode->idx_map_C = maps[0];
-    mnode->idx_map_CT = maps[1];
-    mnode->idx_map_Hf = maps[2];
-    mnode->idx_map_Hg = maps[3];
-}
-
 static void eval_wsum_hess_no_chain_rule(expr *node, const double *w)
 {
     expr *x = node->left;
@@ -426,6 +378,58 @@ static void eval_wsum_hess_no_chain_rule(expr *node, const double *w)
             }
         }
     }
+}
+
+static void wsum_hess_init_chain_rule(expr *node)
+{
+    expr *x = node->left;
+    expr *y = node->right;
+    matmul_expr *mnode = (matmul_expr *) node;
+    int m = x->d1;
+    int k = x->d2;
+    int n = y->d2;
+
+    jacobian_csc_init(x);
+    jacobian_csc_init(y);
+    CSC_Matrix *Jf = x->work->jacobian_csc;
+    CSC_Matrix *Jg = y->work->jacobian_csc;
+
+    /* build cross-Hessian B sparsity */
+    mnode->B = build_cross_hessian_sparsity(m, k, n);
+
+    /* C = J_f^T @ B @ J_g:
+     * step 1: BJ_g = B @ J_g */
+    mnode->BJ_g = csr_csc_matmul_alloc(mnode->B, Jg);
+    mnode->BJ_g_csc_work =
+        (int *) malloc(MAX(mnode->BJ_g->m, mnode->BJ_g->n) * sizeof(int));
+    mnode->BJ_g_CSC = csr_to_csc_alloc(mnode->BJ_g, mnode->BJ_g_csc_work);
+
+    /* step 2: C = J_f^T @ BJ_g via BTA (B^T D A with D=I) */
+    mnode->C = BTA_alloc(mnode->BJ_g_CSC, Jf);
+
+    /* C^T */
+    node->work->iwork = (int *) malloc(mnode->C->m * sizeof(int));
+    mnode->CT = AT_alloc(mnode->C, node->work->iwork);
+
+    /* allocate weight backprop workspace */
+    if (!x->is_affine(x) || !y->is_affine(y))
+    {
+        node->work->dwork =
+            (double *) malloc(MAX(x->size, y->size) * sizeof(double));
+    }
+
+    /* init child Hessians */
+    wsum_hess_init(x);
+    wsum_hess_init(y);
+
+    /* merge 4 sparsity patterns */
+    int *maps[4];
+    node->wsum_hess = sum_4_csr_fill_sparsity_and_idx_maps(
+        mnode->C, mnode->CT, x->wsum_hess, y->wsum_hess, maps);
+    mnode->idx_map_C = maps[0];
+    mnode->idx_map_CT = maps[1];
+    mnode->idx_map_Hf = maps[2];
+    mnode->idx_map_Hg = maps[3];
 }
 
 static void eval_wsum_hess_chain_rule(expr *node, const double *w)
