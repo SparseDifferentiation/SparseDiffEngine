@@ -285,6 +285,11 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_form_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_sin_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_exp, tests_run);
+    mu_run_test(test_wsum_hess_matmul_exp_exp, tests_run);
+    mu_run_test(test_wsum_hess_matmul_sin_cos, tests_run);
+    mu_run_test(test_wsum_hess_matmul_Ax_By, tests_run);
+    mu_run_test(test_wsum_hess_matmul_sin_Ax_cos_Bx, tests_run);
+    mu_run_test(test_wsum_hess_matmul_X_X, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_cblas_ddot, tests_run);

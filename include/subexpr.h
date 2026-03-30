@@ -132,13 +132,25 @@ typedef struct right_matmul_expr
 } right_matmul_expr;
 
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
- * may be composite expressions. Stores intermediate CSR results for the
- * Jacobian chain rule: J_Z = (Y^T x I_m) @ J_f + (I_n x X) @ J_g */
+ * may be composite expressions. */
 typedef struct matmul_expr
 {
     expr base;
-    CSR_Matrix *term1_CSR; /* (Y^T x I_m) @ J_left */
-    CSR_Matrix *term2_CSR; /* (I_n x X) @ J_right */
+    /* Jacobian workspace */
+    CSR_Matrix *term1_CSR; /* (Y^T x I_m) @ J_f */
+    CSR_Matrix *term2_CSR; /* (I_n x X) @ J_g */
+
+    /* Hessian workspace (composite only) */
+    CSR_Matrix *B;        /* cross-Hessian B(w), mk x kn */
+    CSR_Matrix *BJ_g;     /* B @ J_g */
+    CSC_Matrix *BJ_g_CSC; /* BJ_g in CSC */
+    int *BJ_g_csc_work;   /* CSR-to-CSC workspace */
+    CSR_Matrix *C;        /* J_f^T @ B @ J_g */
+    CSR_Matrix *CT;       /* C^T */
+    int *idx_map_C;
+    int *idx_map_CT;
+    int *idx_map_Hf;
+    int *idx_map_Hg;
 } matmul_expr;
 
 /* Constant scalar multiplication: y = a * child where a is a constant double */
