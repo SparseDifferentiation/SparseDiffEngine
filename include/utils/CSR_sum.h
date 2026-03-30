@@ -14,14 +14,12 @@ void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 
 /* Compute sparsity pattern of A + B where A, B, C are CSR matrices.
  * Fills C->p, C->i, and C->nnz; does not touch C->x. */
-void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
-                                    CSR_Matrix *C);
+void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 
 /* Fill only the values of C = A + B, assuming C's sparsity pattern (p and i)
  * is already filled and matches the union of A and B per row. Does not modify
  * C->p, C->i, or C->nnz. */
-void sum_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
-                                  CSR_Matrix *C);
+void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 
 /* Compute C = diag(d1) * A + diag(d2) * B where A, B, C are CSR matrices */
 void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,

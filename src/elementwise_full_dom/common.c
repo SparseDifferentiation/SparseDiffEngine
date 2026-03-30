@@ -102,8 +102,8 @@ void wsum_hess_init_elementwise(expr *node)
             /* wsum_hess = term1 + term2 */
             int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
             node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
-            sum_csr_matrices_fill_sparsity(node->work->hess_term1,
-                                           node->work->hess_term2, node->wsum_hess);
+            sum_csr_alloc(node->work->hess_term1, node->work->hess_term2,
+                          node->wsum_hess);
         }
     }
 }
@@ -155,8 +155,8 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
                    child->wsum_hess->nnz * sizeof(double));
 
             /* wsum_hess = term1 + term2 */
-            sum_csr_matrices_fill_values(node->work->hess_term1,
-                                         node->work->hess_term2, node->wsum_hess);
+            sum_csr_fill_values(node->work->hess_term1, node->work->hess_term2,
+                                node->wsum_hess);
         }
     }
 }

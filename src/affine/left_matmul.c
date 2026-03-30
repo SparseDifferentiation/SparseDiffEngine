@@ -17,7 +17,7 @@
  */
 #include "affine.h"
 #include "subexpr.h"
-#include "utils/matrix.h"
+#include "utils/dense_matrix.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

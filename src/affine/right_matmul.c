@@ -18,6 +18,7 @@
 #include "affine.h"
 #include "subexpr.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/dense_matrix.h"
 #include <stdlib.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
