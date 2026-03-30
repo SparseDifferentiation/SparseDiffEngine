@@ -17,6 +17,9 @@
  */
 #include "bivariate_full_dom.h"
 #include "subexpr.h"
+#include "utils/CSC_Matrix.h"
+#include "utils/CSR_sum.h"
+#include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/mini_numpy.h"
 #include <assert.h>
 #include <stdio.h>
@@ -57,51 +60,68 @@ static void jacobian_init_impl(expr *node)
     int m = x->d1;
     int k = x->d2;
     int n = y->d2;
-    int nnz = m * n * 2 * k;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
 
-    /* fill sparsity pattern */
-    int nnz_idx = 0;
-    for (int i = 0; i < node->size; i++)
+    if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
+        x->var_id != y->var_id)
     {
-        /* Convert flat index to (row, col) in Z */
-        int row = i % m;
-        int col = i / m;
+        /* both children are differentleaf variables */
+        int nnz = m * n * 2 * k;
+        node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
 
-        node->jacobian->p[i] = nnz_idx;
-
-        /* X has lower var_id */
-        if (x->var_id < y->var_id)
+        int nnz_idx = 0;
+        for (int i = 0; i < node->size; i++)
         {
-            /* sparsity pattern of kron(YT, I) for this row */
-            for (int j = 0; j < k; j++)
-            {
-                node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
-            }
+            int row = i % m;
+            int col = i / m;
 
-            /* sparsity pattern of kron(I, X) for this row */
-            for (int j = 0; j < k; j++)
+            node->jacobian->p[i] = nnz_idx;
+
+            if (x->var_id < y->var_id)
             {
-                node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
+                for (int j = 0; j < k; j++)
+                {
+                    node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
+                }
+                for (int j = 0; j < k; j++)
+                {
+                    node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
+                }
+            }
+            else
+            {
+                for (int j = 0; j < k; j++)
+                {
+                    node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
+                }
+                for (int j = 0; j < k; j++)
+                {
+                    node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
+                }
             }
         }
-        else /* Y has lower var_id */
-        {
-            /* sparsity pattern of kron(I, X) for this row */
-            for (int j = 0; j < k; j++)
-            {
-                node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
-            }
-
-            /* sparsity pattern of kron(YT, I) for this row */
-            for (int j = 0; j < k; j++)
-            {
-                node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
-            }
-        }
+        node->jacobian->p[node->size] = nnz_idx;
+        assert(nnz_idx == nnz);
     }
-    node->jacobian->p[node->size] = nnz_idx;
-    assert(nnz_idx == nnz);
+    else
+    {
+        /* chain rule: the jacobian of f(u) @ g(u) with f(u) and g(u) matrices
+           is term1 + term2 where term1 = (g(u)^T kron I) @ J_f and
+           term2 = (I kron f(u)) @ J_g. */
+        matmul_expr *mnode = (matmul_expr *) node;
+
+        jacobian_init(x);
+        jacobian_init(y);
+        jacobian_csc_init(x);
+        jacobian_csc_init(y);
+
+        mnode->term1_CSR = YT_kron_I_alloc(m, k, n, x->work->jacobian_csc);
+        mnode->term2_CSR = I_kron_X_alloc(m, k, n, y->work->jacobian_csc);
+
+        int max_nnz = mnode->term1_CSR->nnz + mnode->term2_CSR->nnz;
+        node->jacobian = new_csr_matrix(node->size, node->n_vars, max_nnz);
+        sum_csr_matrices_fill_sparsity(mnode->term1_CSR, mnode->term2_CSR,
+                                       node->jacobian);
+    }
 }
 
 static void eval_jacobian(expr *node)
@@ -112,37 +132,58 @@ static void eval_jacobian(expr *node)
     /* dimensions: X is m x k, Y is k x n, Z is m x n */
     int m = x->d1;
     int k = x->d2;
-    double *Jx = node->jacobian->x;
+    int n = y->d2;
 
-    /* fill values row-by-row */
-    for (int i = 0; i < node->size; i++)
+    if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
+        x->var_id != y->var_id)
     {
-        int row = i % m; /* row in Z */
-        int col = i / m; /* col in Z */
-        int pos = node->jacobian->p[i];
+        /* both children are different leaf variables */
+        double *Jx = node->jacobian->x;
 
-        if (x->var_id < y->var_id)
+        for (int i = 0; i < node->size; i++)
         {
-            /* contribution to this row from YT */
-            memcpy(Jx + pos, y->value + col * k, k * sizeof(double));
+            int row = i % m;
+            int col = i / m;
+            int pos = node->jacobian->p[i];
 
-            /* contribution to this row from X */
-            for (int j = 0; j < k; j++)
+            if (x->var_id < y->var_id)
             {
-                Jx[pos + k + j] = x->value[row + j * m];
+                memcpy(Jx + pos, y->value + col * k, k * sizeof(double));
+                for (int j = 0; j < k; j++)
+                {
+                    Jx[pos + k + j] = x->value[row + j * m];
+                }
+            }
+            else
+            {
+                for (int j = 0; j < k; j++)
+                {
+                    Jx[pos + j] = x->value[row + j * m];
+                }
+                memcpy(Jx + pos + k, y->value + col * k, k * sizeof(double));
             }
         }
-        else
-        {
-            /* contribution to this row from X */
-            for (int j = 0; j < k; j++)
-            {
-                Jx[pos + j] = x->value[row + j * m];
-            }
+    }
+    else
+    {
+        /* composite case */
+        matmul_expr *mnode = (matmul_expr *) node;
 
-            /* contribution to this row from YT */
-            memcpy(Jx + pos + k, y->value + col * k, k * sizeof(double));
-        }
+        x->eval_jacobian(x);
+        y->eval_jacobian(y);
+
+        CSC_Matrix *Jx_csc = x->work->jacobian_csc;
+        CSC_Matrix *Jy_csc = y->work->jacobian_csc;
+
+        /* refresh children's CSC values */
+        csr_to_csc_fill_values(x->jacobian, Jx_csc, x->work->csc_work);
+        csr_to_csc_fill_values(y->jacobian, Jy_csc, y->work->csc_work);
+
+        /* compute term1, term2, and sum */
+        YT_kron_I_fill_values(m, k, n, y->value, Jx_csc, mnode->term1_CSR);
+        I_kron_X_fill_values(m, k, n, x->value, Jy_csc, mnode->term2_CSR);
+        sum_csr_matrices_fill_values(mnode->term1_CSR, mnode->term2_CSR,
+                                     node->jacobian);
     }
 }
 
@@ -317,17 +358,8 @@ expr *new_matmul(expr *x, expr *y)
         exit(1);
     }
 
-    /* verify both are variables and not the same variable */
-    if (x->var_id == NOT_A_VARIABLE || y->var_id == NOT_A_VARIABLE ||
-        x->var_id == y->var_id)
-    {
-        fprintf(stderr, "Error in new_matmul: operands must be variables and not "
-                        "the same variable\n");
-        exit(1);
-    }
-
     /* Allocate the expression node */
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) calloc(1, sizeof(matmul_expr));
 
     /* Initialize with d1 = x->d1, d2 = y->d2 (result is m x n) */
     init_expr(node, x->d1, y->d2, x->n_vars, forward, jacobian_init_impl,

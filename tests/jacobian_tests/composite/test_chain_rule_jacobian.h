@@ -170,3 +170,102 @@ const char *test_jacobian_quad_form_exp(void)
     free_csr_matrix(Q);
     return 0;
 }
+
+const char *test_jacobian_matmul_exp_exp(void)
+{
+    /* Z = exp(X) @ exp(Y), X is 2x3, Y is 3x2 */
+    double u_vals[12] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2};
+
+    expr *X = new_variable(2, 3, 0, 12);
+    expr *Y = new_variable(3, 2, 6, 12);
+    expr *exp_X = new_exp(X);
+    expr *exp_Y = new_exp(Y);
+    expr *Z = new_matmul(exp_X, exp_Y);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    return 0;
+}
+
+const char *test_jacobian_matmul_sin_cos(void)
+{
+    /* Z = sin(X) @ cos(Y), X is 2x2, Y is 2x3 */
+    double u_vals[10] = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0};
+
+    expr *X = new_variable(2, 2, 0, 10);
+    expr *Y = new_variable(2, 3, 4, 10);
+    expr *sin_X = new_sin(X);
+    expr *cos_Y = new_cos(Y);
+    expr *Z = new_matmul(sin_X, cos_Y);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    return 0;
+}
+
+const char *test_jacobian_matmul_Ax_By(void)
+{
+    /* Z = (A @ X) @ (B @ Y) with constant matrices A, B */
+    double u_vals[10] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+
+    CSR_Matrix *A = new_csr_random(3, 2, 1.0);
+    CSR_Matrix *B = new_csr_random(2, 3, 1.0);
+
+    expr *X = new_variable(2, 2, 0, 10); /* 2x2, vars 0-3 */
+    expr *Y = new_variable(3, 2, 4, 10); /* 3x2, vars 4-9 */
+    expr *AX = new_left_matmul(X, A);    /* 3x2 */
+    expr *BY = new_left_matmul(Y, B);    /* 2x2 */
+    expr *Z = new_matmul(AX, BY);        /* 3x2 */
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
+    return 0;
+}
+
+const char *test_jacobian_matmul_sin_Ax_cos_Bx(void)
+{
+    /* Z = sin(A @ X) @ cos(B @ X), shared variable X */
+    double u_vals[6] = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0};
+
+    CSR_Matrix *A = new_csr_random(2, 3, 1.0);
+    CSR_Matrix *B = new_csr_random(2, 3, 1.0);
+
+    expr *X = new_variable(3, 2, 0, 6);     /* 3x2, vars 0-5 */
+    expr *AX = new_left_matmul(X, A);        /* 2x2 */
+    expr *BX = new_left_matmul(X, B);        /* 2x2 */
+    expr *sin_AX = new_sin(AX);              /* 2x2 */
+    expr *cos_BX = new_cos(BX);              /* 2x2 */
+    expr *Z = new_matmul(sin_AX, cos_BX);    /* 2x2 */
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    free_csr_matrix(A);
+    free_csr_matrix(B);
+    return 0;
+}
+
+const char *test_jacobian_matmul_X_X(void)
+{
+    /* Z = X @ X, same leaf variable as both children */
+    double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *Z = new_matmul(X, X); /* 2x2 */
+
+    mu_assert("check_jacobian failed",
+              check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    return 0;
+}
+
