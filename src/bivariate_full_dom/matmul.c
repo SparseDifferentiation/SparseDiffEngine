@@ -106,6 +106,25 @@ static void forward(expr *node, const double *u)
     mat_mat_mult(x->value, y->value, node->value, x->d1, x->d2, y->d2);
 }
 
+static void free_matmul_data(expr *node)
+{
+    matmul_expr *mnode = (matmul_expr *) node;
+    /* Jacobian workspace */
+    free_csr_matrix(mnode->term1_CSR);
+    free_csr_matrix(mnode->term2_CSR);
+    /* Hessian workspace */
+    free_csr_matrix(mnode->B);
+    free_csr_matrix(mnode->BJg);
+    free_csc_matrix(mnode->BJg_CSC);
+    free(mnode->BJg_csc_work);
+    free_csr_matrix(mnode->C);
+    free_csr_matrix(mnode->CT);
+    free(mnode->idx_map_C);
+    free(mnode->idx_map_CT);
+    free(mnode->idx_map_Hf);
+    free(mnode->idx_map_Hg);
+}
+
 static bool is_affine(const expr *node)
 {
     (void) node;
@@ -526,13 +545,13 @@ expr *new_matmul(expr *x, expr *y)
         init_expr(node, x->d1, y->d2, x->n_vars, forward,
                   jacobian_init_no_chain_rule, eval_jacobian_no_chain_rule,
                   is_affine, wsum_hess_init_no_chain_rule,
-                  eval_wsum_hess_no_chain_rule, NULL);
+                  eval_wsum_hess_no_chain_rule, free_matmul_data);
     }
     else
     {
         init_expr(node, x->d1, y->d2, x->n_vars, forward, jacobian_init_chain_rule,
                   eval_jacobian_chain_rule, is_affine, wsum_hess_init_chain_rule,
-                  eval_wsum_hess_chain_rule, NULL);
+                  eval_wsum_hess_chain_rule, free_matmul_data);
     }
 
     /* Set children */
