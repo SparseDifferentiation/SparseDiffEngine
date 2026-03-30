@@ -124,7 +124,7 @@ static void wsum_hess_init_impl(expr *node)
     {
         expr *child = hnode->args[i];
         copy_csr_matrix(H, hnode->CSR_work);
-        sum_csr_matrices_fill_sparsity(hnode->CSR_work, child->wsum_hess, H);
+        sum_csr_alloc(hnode->CSR_work, child->wsum_hess, H);
     }
 }
 
@@ -140,7 +140,7 @@ static void wsum_hess_eval(expr *node, const double *w)
         expr *child = hnode->args[i];
         child->eval_wsum_hess(child, w + row_offset);
         copy_csr_matrix(H, hnode->CSR_work);
-        sum_csr_matrices_fill_values(hnode->CSR_work, child->wsum_hess, H);
+        sum_csr_fill_values(hnode->CSR_work, child->wsum_hess, H);
         row_offset += child->size;
     }
 }

@@ -55,6 +55,7 @@
 #include "utils/test_csr_csc_conversion.h"
 #include "utils/test_csr_matrix.h"
 #include "utils/test_linalg_sparse_matmuls.h"
+#include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_const_scalar_mult.h"
@@ -139,6 +140,11 @@ int main(void)
     mu_run_test(test_jacobian_AX_BX_multiply, tests_run);
     mu_run_test(test_jacobian_quad_form_Ax, tests_run);
     mu_run_test(test_jacobian_quad_form_exp, tests_run);
+    mu_run_test(test_jacobian_matmul_exp_exp, tests_run);
+    mu_run_test(test_jacobian_matmul_sin_cos, tests_run);
+    mu_run_test(test_jacobian_matmul_Ax_By, tests_run);
+    mu_run_test(test_jacobian_matmul_sin_Ax_cos_Bx, tests_run);
+    mu_run_test(test_jacobian_matmul_X_X, tests_run);
     mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_const_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_const_scalar_mult_log_matrix, tests_run);
@@ -279,6 +285,11 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_form_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_sin_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_exp, tests_run);
+    mu_run_test(test_wsum_hess_matmul_exp_exp, tests_run);
+    mu_run_test(test_wsum_hess_matmul_sin_cos, tests_run);
+    mu_run_test(test_wsum_hess_matmul_Ax_By, tests_run);
+    mu_run_test(test_wsum_hess_matmul_sin_Ax_cos_Bx, tests_run);
+    mu_run_test(test_wsum_hess_matmul_X_X, tests_run);
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_cblas_ddot, tests_run);
@@ -318,6 +329,10 @@ int main(void)
     mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
     mu_run_test(test_dense_matrix_trans, tests_run);
     mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
+    mu_run_test(test_YT_kron_I, tests_run);
+    mu_run_test(test_YT_kron_I_larger, tests_run);
+    mu_run_test(test_I_kron_X, tests_run);
+    mu_run_test(test_I_kron_X_larger, tests_run);
 
     printf("\n--- Numerical Diff Tests ---\n");
     mu_run_test(test_check_jacobian_composite_exp, tests_run);

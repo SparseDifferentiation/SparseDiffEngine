@@ -156,8 +156,8 @@ static void wsum_hess_init_impl(expr *node)
         /* hess = term1 + term2 */
         int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
-        sum_csr_matrices_fill_sparsity(node->work->hess_term1,
-                                       node->work->hess_term2, node->wsum_hess);
+        sum_csr_alloc(node->work->hess_term1, node->work->hess_term2,
+                      node->wsum_hess);
     }
 }
 
@@ -205,7 +205,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         cblas_dscal(term2->nnz, two_w, term2->x, 1);
 
         /* sum the two terms */
-        sum_csr_matrices_fill_values(term1, term2, node->wsum_hess);
+        sum_csr_fill_values(term1, term2, node->wsum_hess);
     }
 }
 

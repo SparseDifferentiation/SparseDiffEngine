@@ -85,8 +85,7 @@ void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
     C->p[A->m] = C->nnz;
 }
 
-void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
-                                    CSR_Matrix *C)
+void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
 {
     /* A and B must be different from C */
     assert(A != C && B != C);
@@ -143,8 +142,7 @@ void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
     C->p[A->m] = C->nnz;
 }
 
-void sum_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
-                                  CSR_Matrix *C)
+void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
 {
     /* Assumes C->p and C->i already contain the sparsity pattern of A+B.
        Fills only C->x accordingly. */
@@ -573,13 +571,10 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
 void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
                          double *accumulator)
 {
-    /* don't forget to initialze accumulator to 0 before calling this */
-    for (int row = 0; row < A->m; row++)
+    /* don't forget to initialize accumulator to 0 before calling this */
+    for (int j = 0; j < A->nnz; j++)
     {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            accumulator[idx_map[j]] += A->x[j];
-        }
+        accumulator[idx_map[j]] += A->x[j];
     }
 }
 
