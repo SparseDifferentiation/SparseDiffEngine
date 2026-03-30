@@ -110,7 +110,7 @@ const char *test_block_left_multiply_two_blocks(void)
      * [0.0  1.0  1.0]
      */
     CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 2);
-    block_left_multiply_fill_values(A, J, C);
+    block_left_multiply_fill_vals(A, J, C);
 
     int expected_p2[4] = {0, 1, 2, 3};
     int expected_i2[3] = {0, 2, 3};

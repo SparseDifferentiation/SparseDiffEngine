@@ -215,7 +215,7 @@ void diag_csr_mult(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
     }
 }
 
-void diag_csr_mult_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
+void diag_csr_mult_fill_vals(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
 {
     memcpy(C->x, A->x, A->nnz * sizeof(double));
 
@@ -346,7 +346,7 @@ CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork)
     return AT;
 }
 
-void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
+void AT_fill_vals(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
 {
     /* Fill values of A^T given sparsity pattern is already computed */
     int i, j;
@@ -365,7 +365,7 @@ void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
 }
 
 /**/
-void csr_matvec_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C)
+void csr_matvec_fill_vals(const CSR_Matrix *AT, const double *z, CSR_Matrix *C)
 {
     int A_ncols = AT->m;
 

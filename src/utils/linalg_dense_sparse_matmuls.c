@@ -90,7 +90,7 @@ CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p)
     return C;
 }
 
-void I_kron_A_fill_values(const Matrix *A, const CSC_Matrix *J, CSC_Matrix *C)
+void I_kron_A_fill_vals(const Matrix *A, const CSC_Matrix *J, CSC_Matrix *C)
 {
     const Dense_Matrix *dm = (const Dense_Matrix *) A;
     int m = dm->base.m;
@@ -218,8 +218,8 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J)
     return C;
 }
 
-void YT_kron_I_fill_values(int m, int k, int n, const double *Y, const CSC_Matrix *J,
-                           CSR_Matrix *C)
+void YT_kron_I_fill_vals(int m, int k, int n, const double *Y, const CSC_Matrix *J,
+                         CSR_Matrix *C)
 {
     assert(C->m == m * n);
     /* C[i, j] = sum_l Y[l, blk] * J[blk_row + l*m, j]
@@ -306,8 +306,8 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J)
     return C;
 }
 
-void I_kron_X_fill_values(int m, int k, int n, const double *X, const CSC_Matrix *J,
-                          CSR_Matrix *C)
+void I_kron_X_fill_vals(int m, int k, int n, const double *X, const CSC_Matrix *J,
+                        CSR_Matrix *C)
 {
     assert(C->m == m * n);
     /* C[i, j] = sum_l X[blk_row + l*m] * J[blk*k + l, j]

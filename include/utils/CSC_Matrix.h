@@ -39,27 +39,27 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B);
 CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A);
 
 /* Compute values for C = A^T D A (null d corresponds to D as identity) */
-void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
+void ATDA_fill_vals(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
 
 /* Compute values for C = B^T D A (null d corresonds to D as identity) */
-void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
-                      CSR_Matrix *C);
+void BTDA_fill_vals(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
+                    CSR_Matrix *C);
 
 /* Fill values of C = BA. The matrix B does not have to be symmetric */
-void BA_fill_values(const CSR_Matrix *B, const CSC_Matrix *A, CSC_Matrix *C);
+void BA_fill_vals(const CSR_Matrix *B, const CSC_Matrix *A, CSC_Matrix *C);
 
 /* Fill values of C = x^T A. The matrix C must have filled sparsity. */
-void yTA_fill_values(const CSC_Matrix *A, const double *x, CSR_Matrix *C);
+void yTA_fill_vals(const CSC_Matrix *A, const double *x, CSR_Matrix *C);
 
 /* Count nonzero columns of a CSC matrix */
 int count_nonzero_cols_csc(const CSC_Matrix *A);
 
 /* convert from CSR to CSC format */
 CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork);
-void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
+void csr_to_csc_fill_vals(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
 
 /* convert from CSC to CSR format */
 CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork);
-void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
+void csc_to_csr_fill_vals(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
 
 #endif /* CSC_MATRIX_H */

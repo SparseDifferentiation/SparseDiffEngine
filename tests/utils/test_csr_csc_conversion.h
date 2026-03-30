@@ -8,7 +8,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 
-/* Test CSR to CSC conversion with fill_sparsity and fill_values */
+/* Test CSR to CSC conversion with fill_sparsity and fill_vals */
 const char *test_csr_to_csc_split(void)
 {
     /* Create a 4x5 CSR matrix A:
@@ -39,7 +39,7 @@ const char *test_csr_to_csc_split(void)
     mu_assert("C row indices incorrect", cmp_int_array(C->i, Ci_correct, 5));
 
     /* Now fill values */
-    csr_to_csc_fill_values(A, C, iwork);
+    csr_to_csc_fill_vals(A, C, iwork);
 
     /* Check values */
     double Cx_correct[5] = {1.0, 2.0, 3.0, 4.0, 1.0};
@@ -97,7 +97,7 @@ const char *test_csc_to_csr_sparsity(void)
     return 0;
 }
 
-/* Test CSC to CSR conversion with fill_values */
+/* Test CSC to CSR conversion with fill_vals */
 const char *test_csc_to_csr_values(void)
 {
     /* Create a 4x5 CSC matrix A */
@@ -116,7 +116,7 @@ const char *test_csc_to_csr_values(void)
     CSR_Matrix *C = csc_to_csr_alloc(A, iwork);
 
     /* Fill values */
-    csc_to_csr_fill_values(A, C, iwork);
+    csc_to_csr_fill_vals(A, C, iwork);
 
     /* Check values */
     double Cx_correct[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
@@ -149,12 +149,12 @@ const char *test_csr_csc_csr_roundtrip(void)
     /* Convert CSR to CSC */
     int *iwork_csc = (int *) malloc(A->n * sizeof(int));
     CSC_Matrix *B = csr_to_csc_alloc(A, iwork_csc);
-    csr_to_csc_fill_values(A, B, iwork_csc);
+    csr_to_csc_fill_vals(A, B, iwork_csc);
 
     /* Convert CSC back to CSR */
     int *iwork_csr = (int *) malloc(B->m * sizeof(int));
     CSR_Matrix *C = csc_to_csr_alloc(B, iwork_csr);
-    csc_to_csr_fill_values(B, C, iwork_csr);
+    csc_to_csr_fill_vals(B, C, iwork_csr);
 
     /* C should match A */
     mu_assert("Round-trip: vals incorrect", cmp_double_array(C->x, Ax, 8));

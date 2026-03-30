@@ -107,12 +107,16 @@ static bool is_affine(const expr *node)
     return false;
 }
 
-// ------------------------------------------------------------------------------
-// No chain rule: both children are different leaf variables
-// ------------------------------------------------------------------------------
-
+// --------------------------------------------------------------------------------
+//  Jacobian initialization and evaluation for the case when no chain rule is needed,
+//  ie., when both children are different leaf variables.
+// --------------------------------------------------------------------------------
 static void jacobian_init_no_chain_rule(expr *node)
 {
+    assert(node->left->var_id != NOT_A_VARIABLE &&
+           node->right->var_id != NOT_A_VARIABLE &&
+           node->left->var_id != node->right->var_id);
+
     expr *x = node->left;
     expr *y = node->right;
     int m = x->d1;
@@ -189,53 +193,54 @@ static void eval_jacobian_no_chain_rule(expr *node)
     }
 }
 
-// ------------------------------------------------------------------------------
-// Chain rule: at least one child is composite, or same variable
-// ------------------------------------------------------------------------------
-
+// ------------------------------------------------------------------------------------
+//  Jacobian initialization and evaluation for the case where chain rule is needed,
+//  ie., when at least one child is composite, or same variable. The jacobian of h(u)
+//  = f(u) @ g(u) where f is  m x k and g is k x n, is given by Jh = (g^T kron I_m)
+//  Jf + (I_n kron f) Jg . */
+// ------------------------------------------------------------------------------------
 static void jacobian_init_chain_rule(expr *node)
 {
-    expr *x = node->left;
-    expr *y = node->right;
+    expr *f = node->left;
+    expr *g = node->right;
     matmul_expr *mnode = (matmul_expr *) node;
-    int m = x->d1;
-    int k = x->d2;
-    int n = y->d2;
+    int m = f->d1;
+    int k = f->d2;
+    int n = g->d2;
 
-    jacobian_init(x);
-    jacobian_init(y);
-    jacobian_csc_init(x);
-    jacobian_csc_init(y);
+    /* initialize Jacobian of children */
+    jacobian_init(f);
+    jacobian_init(g);
+    jacobian_csc_init(f);
+    jacobian_csc_init(g);
 
-    mnode->term1_CSR = YT_kron_I_alloc(m, k, n, x->work->jacobian_csc);
-    mnode->term2_CSR = I_kron_X_alloc(m, k, n, y->work->jacobian_csc);
-
+    /* initialize term1, term2, and their sum */
+    mnode->term1_CSR = YT_kron_I_alloc(m, k, n, f->work->jacobian_csc);
+    mnode->term2_CSR = I_kron_X_alloc(m, k, n, g->work->jacobian_csc);
     int max_nnz = mnode->term1_CSR->nnz + mnode->term2_CSR->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, max_nnz);
-    sum_csr_matrices_fill_sparsity(mnode->term1_CSR, mnode->term2_CSR,
-                                   node->jacobian);
+    sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
 }
 
 static void eval_jacobian_chain_rule(expr *node)
 {
-    expr *x = node->left;
-    expr *y = node->right;
+    expr *f = node->left;
+    expr *g = node->right;
     matmul_expr *mnode = (matmul_expr *) node;
-    int m = x->d1;
-    int k = x->d2;
-    int n = y->d2;
+    int m = f->d1;
+    int k = f->d2;
+    int n = g->d2;
 
-    x->eval_jacobian(x);
-    y->eval_jacobian(y);
+    /* evaluate Jacobians of children */
+    f->eval_jacobian(f);
+    g->eval_jacobian(g);
+    csr_to_csc_fill_vals(f->jacobian, f->work->jacobian_csc, f->work->csc_work);
+    csr_to_csc_fill_vals(g->jacobian, g->work->jacobian_csc, g->work->csc_work);
 
-    /* refresh children's CSC values */
-    csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc, x->work->csc_work);
-    csr_to_csc_fill_values(y->jacobian, y->work->jacobian_csc, y->work->csc_work);
-
-    YT_kron_I_fill_values(m, k, n, y->value, x->work->jacobian_csc,
-                          mnode->term1_CSR);
-    I_kron_X_fill_values(m, k, n, x->value, y->work->jacobian_csc, mnode->term2_CSR);
-    sum_csr_matrices_fill_values(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
+    /* evaluate term1, term2, and their sum */
+    YT_kron_I_fill_vals(m, k, n, g->value, f->work->jacobian_csc, mnode->term1_CSR);
+    I_kron_X_fill_vals(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
+    sum_csr_fill_vals(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
 }
 
 static void wsum_hess_init_no_chain_rule(expr *node)
@@ -437,8 +442,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC values (cache if affine) */
     if (!x->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
-                               x->work->csc_work);
+        csr_to_csc_fill_vals(x->jacobian, x->work->jacobian_csc, x->work->csc_work);
         if (is_x_affine)
         {
             x->work->jacobian_csc_filled = true;
@@ -446,8 +450,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     }
     if (!y->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_values(y->jacobian, y->work->jacobian_csc,
-                               y->work->csc_work);
+        csr_to_csc_fill_vals(y->jacobian, y->work->jacobian_csc, y->work->csc_work);
         if (is_y_affine)
         {
             y->work->jacobian_csc_filled = true;
@@ -459,12 +462,12 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
 
     /* compute C = J_f^T @ B(w) @ J_g */
     fill_cross_hessian_values(m, k, n, w, mnode->B);
-    csr_csc_matmul_fill_values(mnode->B, Jg, mnode->BJ_g);
-    csr_to_csc_fill_values(mnode->BJ_g, mnode->BJ_g_CSC, mnode->BJ_g_csc_work);
-    BTDA_fill_values(mnode->BJ_g_CSC, Jf, NULL, mnode->C);
+    csr_csc_matmul_fill_vals(mnode->B, Jg, mnode->BJ_g);
+    csr_to_csc_fill_vals(mnode->BJ_g, mnode->BJ_g_CSC, mnode->BJ_g_csc_work);
+    BTDA_fill_vals(mnode->BJ_g_CSC, Jf, NULL, mnode->C);
 
     /* C^T */
-    AT_fill_values(mnode->C, mnode->CT, node->work->iwork);
+    AT_fill_vals(mnode->C, mnode->CT, node->work->iwork);
 
     /* backpropagate weights and recurse into children */
     if (!is_x_affine)

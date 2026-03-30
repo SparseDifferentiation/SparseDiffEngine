@@ -187,7 +187,7 @@ const char *test_csr_vecmat_values_sparse(void)
 
     CSR_Matrix *AT = transpose(A, iwork);
 
-    csr_matvec_fill_values(AT, z, C);
+    csr_matvec_fill_vals(AT, z, C);
 
     double Cx_correct[3] = {7.0, 22.0, 1.0};
 
@@ -412,7 +412,7 @@ const char *test_AT_alloc_and_fill(void)
     CSR_Matrix *AT = AT_alloc(A, iwork);
 
     /* Fill values of A^T */
-    AT_fill_values(A, AT, iwork);
+    AT_fill_vals(A, AT, iwork);
 
     /* Expected A^T:
      * [1.0  0.0  5.0]

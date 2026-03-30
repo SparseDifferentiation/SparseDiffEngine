@@ -37,7 +37,7 @@ static void sparse_block_left_mult_values(const Matrix *self, const CSC_Matrix *
                                           CSC_Matrix *C)
 {
     const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
-    block_left_multiply_fill_values(sm->csr, J, C);
+    block_left_multiply_fill_vals(sm->csr, J, C);
 }
 
 static void sparse_free(Matrix *self)
