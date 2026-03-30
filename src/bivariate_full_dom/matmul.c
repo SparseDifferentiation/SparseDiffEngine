@@ -175,7 +175,8 @@ static void eval_jacobian(expr *node)
         CSC_Matrix *Jx_csc = x->work->jacobian_csc;
         CSC_Matrix *Jy_csc = y->work->jacobian_csc;
 
-        /* refresh children's CSC values */
+        /* refresh children's CSC values (TODO: is this necessary in the sense that
+         * the kron infrastructure requires it?) */
         csr_to_csc_fill_values(x->jacobian, Jx_csc, x->work->csc_work);
         csr_to_csc_fill_values(y->jacobian, Jy_csc, y->work->csc_work);
 
