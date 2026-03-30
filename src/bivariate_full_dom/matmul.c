@@ -78,15 +78,6 @@ static void fill_cross_hessian_values(int m, int k, int n, const double *w,
     }
 }
 
-static void accumulate_mapped(double *dest, const CSR_Matrix *src,
-                              const int *idx_map)
-{
-    for (int j = 0; j < src->nnz; j++)
-    {
-        dest[idx_map[j]] += src->x[j];
-    }
-}
-
 // ------------------------------------------------------------------------------
 // Implementation of matrix multiplication: Z = X @ Y
 // where X is m x k and Y is k x n, producing Z which is m x n
@@ -515,10 +506,10 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
 
     /* accumulate H = C + C^T + H_f + H_g */
     memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-    accumulate_mapped(node->wsum_hess->x, mnode->C, mnode->idx_map_C);
-    accumulate_mapped(node->wsum_hess->x, mnode->CT, mnode->idx_map_CT);
-    accumulate_mapped(node->wsum_hess->x, f->wsum_hess, mnode->idx_map_Hf);
-    accumulate_mapped(node->wsum_hess->x, g->wsum_hess, mnode->idx_map_Hg);
+    idx_map_accumulator(mnode->C, mnode->idx_map_C, node->wsum_hess->x);
+    idx_map_accumulator(mnode->CT, mnode->idx_map_CT, node->wsum_hess->x);
+    idx_map_accumulator(f->wsum_hess, mnode->idx_map_Hf, node->wsum_hess->x);
+    idx_map_accumulator(g->wsum_hess, mnode->idx_map_Hg, node->wsum_hess->x);
 }
 
 expr *new_matmul(expr *x, expr *y)

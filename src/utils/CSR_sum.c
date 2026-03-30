@@ -571,13 +571,10 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
 void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
                          double *accumulator)
 {
-    /* don't forget to initialze accumulator to 0 before calling this */
-    for (int row = 0; row < A->m; row++)
+    /* don't forget to initialize accumulator to 0 before calling this */
+    for (int j = 0; j < A->nnz; j++)
     {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            accumulator[idx_map[j]] += A->x[j];
-        }
+        accumulator[idx_map[j]] += A->x[j];
     }
 }
 

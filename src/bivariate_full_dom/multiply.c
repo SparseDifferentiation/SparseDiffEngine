@@ -23,16 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Scatter-add src->x into dest using precomputed index map */
-static void accumulate_mapped(double *dest, const CSR_Matrix *src,
-                              const int *idx_map)
-{
-    for (int j = 0; j < src->nnz; j++)
-    {
-        dest[idx_map[j]] += src->x[j];
-    }
-}
-
 // ------------------------------------------------------------------------------
 // Implementation of elementwise multiplication when both arguments are vectors.
 // If one argument is a scalar variable, the broadcasting should be represented
@@ -267,10 +257,10 @@ static void eval_wsum_hess(expr *node, const double *w)
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
         memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-        accumulate_mapped(node->wsum_hess->x, C, mul_node->idx_map_C);
-        accumulate_mapped(node->wsum_hess->x, CT, mul_node->idx_map_CT);
-        accumulate_mapped(node->wsum_hess->x, x->wsum_hess, mul_node->idx_map_Hx);
-        accumulate_mapped(node->wsum_hess->x, y->wsum_hess, mul_node->idx_map_Hy);
+        idx_map_accumulator(C, mul_node->idx_map_C, node->wsum_hess->x);
+        idx_map_accumulator(CT, mul_node->idx_map_CT, node->wsum_hess->x);
+        idx_map_accumulator(x->wsum_hess, mul_node->idx_map_Hx, node->wsum_hess->x);
+        idx_map_accumulator(y->wsum_hess, mul_node->idx_map_Hy, node->wsum_hess->x);
     }
 }
 
