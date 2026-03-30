@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "utils/dense_matrix.h"
 #include "utils/cblas_wrapper.h"
-#include "utils/iVec.h"
-#include "utils/matrix.h"
+#include "utils/linalg_dense_sparse_matmuls.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,136 +41,6 @@ static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *
                 n, 0.0, y, m);
 }
 
-static CSC_Matrix *dense_block_left_mult_sparsity(const Matrix *A,
-                                                  const CSC_Matrix *J, int p)
-{
-    int m = A->m;
-    int n = A->n;
-    int i, j, jj, block, block_start, block_end, block_jj_start, row_offset;
-
-    int *Cp = (int *) malloc((J->n + 1) * sizeof(int));
-    iVec *Ci = iVec_new(J->n * m);
-    Cp[0] = 0;
-
-    /* for each column of J */
-    for (j = 0; j < J->n; j++)
-    {
-        /* if empty we continue */
-        if (J->p[j] == J->p[j + 1])
-        {
-            Cp[j + 1] = Cp[j];
-            continue;
-        }
-
-        /* process each of p blocks of rows in this column of J */
-        jj = J->p[j];
-        for (block = 0; block < p; block++)
-        {
-            // -----------------------------------------------------------------
-            //  find start and end indices of rows of J in this block
-            // -----------------------------------------------------------------
-            block_start = block * n;
-            block_end = block_start + n;
-            while (jj < J->p[j + 1] && J->i[jj] < block_start)
-            {
-                jj++;
-            }
-
-            block_jj_start = jj;
-            while (jj < J->p[j + 1] && J->i[jj] < block_end)
-            {
-                jj++;
-            }
-
-            /* if no entries in this block, continue */
-            if (jj == block_jj_start)
-            {
-                continue;
-            }
-
-            /* dense A: all m rows contribute */
-            row_offset = block * m;
-            for (i = 0; i < m; i++)
-            {
-                iVec_append(Ci, row_offset + i);
-            }
-        }
-        Cp[j + 1] = Ci->len;
-    }
-
-    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len);
-    memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
-    memcpy(C->i, Ci->data, Ci->len * sizeof(int));
-    free(Cp);
-    iVec_free(Ci);
-
-    return C;
-}
-
-static void dense_block_left_mult_values(const Matrix *A, const CSC_Matrix *J,
-                                         CSC_Matrix *C)
-{
-    const Dense_Matrix *dm = (const Dense_Matrix *) A;
-    int m = dm->base.m;
-    int n = dm->base.n;
-    int k = J->n;
-
-    int i, j, s, block, block_start, block_end, start, end;
-
-    double *j_dense = dm->work;
-
-    /* for each column of J (and C) */
-    for (j = 0; j < k; j++)
-    {
-        for (i = C->p[j]; i < C->p[j + 1]; i += m)
-        {
-            block = C->i[i] / m;
-            block_start = block * n;
-            block_end = block_start + n;
-
-            start = J->p[j];
-            end = J->p[j + 1];
-
-            while (start < J->p[j + 1] && J->i[start] < block_start)
-            {
-                start++;
-            }
-
-            while (end > start && J->i[end - 1] >= block_end)
-            {
-                end--;
-            }
-
-            int count = end - start;
-
-            if (count == 1)
-            {
-                /* Fast path: C column segment = val * A[:, row_in_block] */
-                int row_in_block = J->i[start] - block_start;
-                double val = J->x[start];
-                cblas_dcopy(m, dm->x + row_in_block, n, C->x + i, 1);
-                if (val != 1.0)
-                {
-                    cblas_dscal(m, val, C->x + i, 1);
-                }
-            }
-            else
-            {
-                /* scatter sparse J col into dense vector and then compute A @
-                 * j_dense */
-                memset(j_dense, 0, n * sizeof(double));
-                for (s = start; s < end; s++)
-                {
-                    j_dense[J->i[s] - block_start] = J->x[s];
-                }
-
-                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, dm->x, n,
-                            j_dense, 1, 0.0, C->x + i, 1);
-            }
-        }
-    }
-}
-
 static void dense_free(Matrix *A)
 {
     Dense_Matrix *dm = (Dense_Matrix *) A;
@@ -185,8 +55,8 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.m = m;
     dm->base.n = n;
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
-    dm->base.block_left_mult_sparsity = dense_block_left_mult_sparsity;
-    dm->base.block_left_mult_values = dense_block_left_mult_values;
+    dm->base.block_left_mult_sparsity = I_kron_A_alloc;
+    dm->base.block_left_mult_values = I_kron_A_fill_values;
     dm->base.free_fn = dense_free;
     dm->x = (double *) malloc(m * n * sizeof(double));
     memcpy(dm->x, data, m * n * sizeof(double));

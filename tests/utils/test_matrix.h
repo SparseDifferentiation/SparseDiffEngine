@@ -3,7 +3,7 @@
 
 #include "minunit.h"
 #include "test_helpers.h"
-#include "utils/matrix.h"
+#include "utils/dense_matrix.h"
 #include <stdlib.h>
 #include <string.h>
 
