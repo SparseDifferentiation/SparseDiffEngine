@@ -310,7 +310,7 @@ const char *test_wsum_hess_matmul_Ax_By(void)
     expr *Y = new_variable(3, 2, 4, 10);
     expr *AX = new_left_matmul(NULL, X, A); /* 3x2 */
     expr *BY = new_left_matmul(NULL, Y, B); /* 2x2 */
-    expr *Z = new_matmul(AX, BY);     /* 3x2 */
+    expr *Z = new_matmul(AX, BY);           /* 3x2 */
 
     mu_assert("check_wsum_hess failed",
               check_wsum_hess(Z, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));

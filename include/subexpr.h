@@ -171,7 +171,6 @@ typedef struct matmul_expr
     int *idx_map_Hg;
 } matmul_expr;
 
-
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr
 {

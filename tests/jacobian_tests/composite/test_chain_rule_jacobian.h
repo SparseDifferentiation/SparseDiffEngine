@@ -215,11 +215,11 @@ const char *test_jacobian_matmul_Ax_By(void)
     CSR_Matrix *A = new_csr_random(3, 2, 1.0);
     CSR_Matrix *B = new_csr_random(2, 3, 1.0);
 
-    expr *X = new_variable(2, 2, 0, 10); /* 2x2, vars 0-3 */
-    expr *Y = new_variable(3, 2, 4, 10); /* 3x2, vars 4-9 */
-    expr *AX = new_left_matmul(NULL, X, A);    /* 3x2 */
-    expr *BY = new_left_matmul(NULL, Y, B);    /* 2x2 */
-    expr *Z = new_matmul(AX, BY);        /* 3x2 */
+    expr *X = new_variable(2, 2, 0, 10);    /* 2x2, vars 0-3 */
+    expr *Y = new_variable(3, 2, 4, 10);    /* 3x2, vars 4-9 */
+    expr *AX = new_left_matmul(NULL, X, A); /* 3x2 */
+    expr *BY = new_left_matmul(NULL, Y, B); /* 2x2 */
+    expr *Z = new_matmul(AX, BY);           /* 3x2 */
 
     mu_assert("check_jacobian failed",
               check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
@@ -238,12 +238,12 @@ const char *test_jacobian_matmul_sin_Ax_cos_Bx(void)
     CSR_Matrix *A = new_csr_random(2, 3, 1.0);
     CSR_Matrix *B = new_csr_random(2, 3, 1.0);
 
-    expr *X = new_variable(3, 2, 0, 6);   /* 3x2, vars 0-5 */
-    expr *AX = new_left_matmul(NULL, X, A);     /* 2x2 */
-    expr *BX = new_left_matmul(NULL, X, B);     /* 2x2 */
-    expr *sin_AX = new_sin(AX);           /* 2x2 */
-    expr *cos_BX = new_cos(BX);           /* 2x2 */
-    expr *Z = new_matmul(sin_AX, cos_BX); /* 2x2 */
+    expr *X = new_variable(3, 2, 0, 6);     /* 3x2, vars 0-5 */
+    expr *AX = new_left_matmul(NULL, X, A); /* 2x2 */
+    expr *BX = new_left_matmul(NULL, X, B); /* 2x2 */
+    expr *sin_AX = new_sin(AX);             /* 2x2 */
+    expr *cos_BX = new_cos(BX);             /* 2x2 */
+    expr *Z = new_matmul(sin_AX, cos_BX);   /* 2x2 */
 
     mu_assert("check_jacobian failed",
               check_jacobian(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
