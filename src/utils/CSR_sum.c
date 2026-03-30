@@ -142,7 +142,7 @@ void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
     C->p[A->m] = C->nnz;
 }
 
-void sum_csr_fill_vals(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
+void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
 {
     /* Assumes C->p and C->i already contain the sparsity pattern of A+B.
        Fills only C->x accordingly. */
@@ -174,9 +174,9 @@ void sum_csr_fill_vals(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
     }
 }
 
-void sum_scaled_csr_matrices_fill_vals(const CSR_Matrix *A, const CSR_Matrix *B,
-                                       CSR_Matrix *C, const double *d1,
-                                       const double *d2)
+void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
+                                         CSR_Matrix *C, const double *d1,
+                                         const double *d2)
 {
     /* Assumes C->p and C->i already contain the sparsity pattern of A+B.
        Fills only C->x accordingly with scaling. */
@@ -437,7 +437,7 @@ void sum_block_of_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
 }
 
 /*
-void sum_block_of_rows_csr_fill_vals(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_block_of_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
                                        const int *idx_map)
 {
     memset(C->x, 0, C->nnz * sizeof(double));
@@ -683,7 +683,7 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
 }
 
 /*
-void sum_all_rows_csr_fill_vals(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
                                   const int *idx_map)
 {
     memset(C->x, 0, C->nnz * sizeof(double));

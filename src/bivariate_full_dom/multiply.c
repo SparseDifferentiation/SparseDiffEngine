@@ -65,8 +65,8 @@ static void eval_jacobian(expr *node)
 
     /* chain rule: the jacobian of h(x) = f(g1(x), g2(x))) is Jh = J_{f, 1} J_{g1} +
      * J_{f, 2} J_{g2} */
-    sum_scaled_csr_matrices_fill_vals(x->jacobian, y->jacobian, node->jacobian,
-                                      y->value, x->value);
+    sum_scaled_csr_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
+                                        y->value, x->value);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -200,8 +200,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         // ----------------------------------------------------------------------
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_vals(x->jacobian, x->work->jacobian_csc,
-                                 x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+                                   x->work->csc_work);
 
             if (is_x_affine)
             {
@@ -211,8 +211,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         if (!y->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_vals(y->jacobian, y->work->jacobian_csc,
-                                 y->work->csc_work);
+            csr_to_csc_fill_values(y->jacobian, y->work->jacobian_csc,
+                                   y->work->csc_work);
 
             if (is_y_affine)
             {
@@ -229,8 +229,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         CSR_Matrix *C = mul_node->CSR_work1;
         CSR_Matrix *CT = mul_node->CSR_work2;
-        BTDA_fill_vals(Jg1, Jg2, w, C);
-        AT_fill_vals(C, CT, node->work->iwork);
+        BTDA_fill_values(Jg1, Jg2, w, C);
+        AT_fill_values(C, CT, node->work->iwork);
 
         // ---------------------------------------------------------------
         //              compute term2 and term 3

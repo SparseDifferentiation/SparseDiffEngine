@@ -183,8 +183,8 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
     return C;
 }
 
-void block_left_multiply_fill_vals(const CSR_Matrix *A, const CSC_Matrix *J,
-                                   CSC_Matrix *C)
+void block_left_multiply_fill_values(const CSR_Matrix *A, const CSC_Matrix *J,
+                                     CSC_Matrix *C)
 {
     /* A is m x n, J is (n*p) x k, C is (m*p) x k */
     int m = A->m;
@@ -246,8 +246,8 @@ void block_left_multiply_fill_vals(const CSR_Matrix *A, const CSC_Matrix *J,
 }
 
 /* Fill values of C = A @ B where A is CSR, B is CSC. */
-void csr_csc_matmul_fill_vals(const CSR_Matrix *A, const CSC_Matrix *B,
-                              CSR_Matrix *C)
+void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
+                                CSR_Matrix *C)
 {
     for (int i = 0; i < A->m; i++)
     {

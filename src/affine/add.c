@@ -55,7 +55,7 @@ static void eval_jacobian(expr *node)
     node->right->eval_jacobian(node->right);
 
     /* sum children's jacobians */
-    sum_csr_fill_vals(node->left->jacobian, node->right->jacobian, node->jacobian);
+    sum_csr_fill_values(node->left->jacobian, node->right->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -79,8 +79,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->right->eval_wsum_hess(node->right, w);
 
     /* sum children's wsum_hess */
-    sum_csr_fill_vals(node->left->wsum_hess, node->right->wsum_hess,
-                      node->wsum_hess);
+    sum_csr_fill_values(node->left->wsum_hess, node->right->wsum_hess,
+                        node->wsum_hess);
 }
 
 static bool is_affine(const expr *node)

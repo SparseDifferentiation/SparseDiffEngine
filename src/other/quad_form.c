@@ -88,8 +88,8 @@ static void eval_jacobian(expr *node)
 
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_vals(x->jacobian, x->work->jacobian_csc,
-                                 x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+                                   x->work->csc_work);
 
             if (x->is_affine(x))
             {
@@ -99,7 +99,7 @@ static void eval_jacobian(expr *node)
 
         /* The jacobian has same values as the gradient, which is
            J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
-        yTA_fill_vals(x->work->jacobian_csc, node->work->dwork, node->jacobian);
+        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, node->jacobian);
 
         cblas_dscal(node->jacobian->nnz, 2.0, node->jacobian->x, 1);
     }
@@ -180,7 +180,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSC_Matrix *Jf = x->work->jacobian_csc;
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_vals(x->jacobian, Jf, x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian, Jf, x->work->csc_work);
 
             if (x->is_affine(x))
             {
@@ -193,8 +193,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSR_Matrix *term2 = node->work->hess_term2;
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
-        BA_fill_vals(Q, Jf, QJf);
-        BTDA_fill_vals(Jf, QJf, NULL, term1);
+        BA_fill_values(Q, Jf, QJf);
+        BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */
         x->eval_wsum_hess(x, node->work->dwork);
@@ -205,7 +205,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         cblas_dscal(term2->nnz, two_w, term2->x, 1);
 
         /* sum the two terms */
-        sum_csr_fill_vals(term1, term2, node->wsum_hess);
+        sum_csr_fill_values(term1, term2, node->wsum_hess);
     }
 }
 

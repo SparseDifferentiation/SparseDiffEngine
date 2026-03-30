@@ -106,11 +106,11 @@ static void eval_jacobian(expr *node)
 
     /* evaluate child's jacobian and convert to CSC */
     x->eval_jacobian(x);
-    csr_to_csc_fill_vals(x->jacobian, Jchild_CSC, node->work->iwork);
+    csr_to_csc_fill_values(x->jacobian, Jchild_CSC, node->work->iwork);
 
     /* compute this node's jacobian: */
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
-    csc_to_csr_fill_vals(J_CSC, node->jacobian, lnode->csc_to_csr_work);
+    csc_to_csr_fill_values(J_CSC, node->jacobian, lnode->csc_to_csr_work);
 }
 
 static void wsum_hess_init_impl(expr *node)

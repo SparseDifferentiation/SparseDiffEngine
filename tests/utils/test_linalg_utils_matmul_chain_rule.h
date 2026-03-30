@@ -8,7 +8,7 @@
 #include "utils/CSR_Matrix.h"
 #include "utils/linalg_dense_sparse_matmuls.h"
 
-/* Test YT_kron_I_alloc and YT_kron_I_fill_vals
+/* Test YT_kron_I_alloc and YT_kron_I_fill_values
  *
  * C = (Y^T kron I_m) @ J
  * m=2, k=2, n=2, p=3
@@ -57,7 +57,7 @@ const char *test_YT_kron_I(void)
     mu_assert("C row ptrs", cmp_int_array(C->p, exp_p, 5));
     mu_assert("C col indices", cmp_int_array(C->i, exp_i, 8));
 
-    YT_kron_I_fill_vals(m, k, n, Y, J, C);
+    YT_kron_I_fill_values(m, k, n, Y, J, C);
     mu_assert("C values", cmp_double_array(C->x, exp_x, 8));
 
     free_csr_matrix(C);
@@ -110,7 +110,7 @@ const char *test_YT_kron_I_larger(void)
     mu_assert("C2 row ptrs", cmp_int_array(C->p, exp_p, 10));
     mu_assert("C2 col indices", cmp_int_array(C->i, exp_i, 18));
 
-    YT_kron_I_fill_vals(m, k, n, Y, J, C);
+    YT_kron_I_fill_values(m, k, n, Y, J, C);
     mu_assert("C2 values", cmp_double_array(C->x, exp_x, 18));
 
     free_csr_matrix(C);
@@ -118,7 +118,7 @@ const char *test_YT_kron_I_larger(void)
     return NULL;
 }
 
-/* Test I_kron_X_alloc and I_kron_X_fill_vals
+/* Test I_kron_X_alloc and I_kron_X_fill_values
  *
  * C = (I_n kron X) @ J
  * m=2, k=2, n=2, p=3
@@ -167,7 +167,7 @@ const char *test_I_kron_X(void)
     mu_assert("C row ptrs", cmp_int_array(C->p, exp_p, 5));
     mu_assert("C col indices", cmp_int_array(C->i, exp_i, 10));
 
-    I_kron_X_fill_vals(m, k, n, X, J, C);
+    I_kron_X_fill_values(m, k, n, X, J, C);
     mu_assert("C values", cmp_double_array(C->x, exp_x, 10));
 
     free_csr_matrix(C);
@@ -219,7 +219,7 @@ const char *test_I_kron_X_larger(void)
     mu_assert("C2 row ptrs", cmp_int_array(C->p, exp_p, 7));
     mu_assert("C2 col indices", cmp_int_array(C->i, exp_i, 21));
 
-    I_kron_X_fill_vals(m, k, n, X, J, C);
+    I_kron_X_fill_values(m, k, n, X, J, C);
     mu_assert("C2 values", cmp_double_array(C->x, exp_x, 21));
 
     free_csr_matrix(C);

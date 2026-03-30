@@ -101,7 +101,7 @@ const char *test_ATA_alloc_random(void)
 
     double d[10] = {2, 8, 6, 2, 5, 1, 6, 9, 1, 3};
 
-    ATDA_fill_vals(A, d, C);
+    ATDA_fill_values(A, d, C);
 
     double Cx_correct[38] = {
         49.,  21.,  491., 56.,  240., 416., 144., 288., 56.,  98.,  56.,  21.,  9.,
@@ -139,7 +139,7 @@ const char *test_ATA_alloc_random2(void)
     double d[15] = {-0.6,  -0.23, -0.29, -1.36, 0.4,   0.36, 0.11, -0.13,
                     -1.32, -0.32, -0.24, -0.7,  -0.06, 0.5,  1.99};
 
-    ATDA_fill_vals(A, d, C);
+    ATDA_fill_values(A, d, C);
 
     double Cx_correct[17] = {-0.362232, -0.189896, 0.06656,   -0.228888, -0.025732,
                              -0.016146, 0.032857,  0.06656,   -1.004802, 0.1505,
@@ -198,7 +198,7 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
 
     /* Fill values with diagonal weights d */
     double d[4] = {1.0, 2.0, 3.0, 4.0};
-    BTDA_fill_vals(A, B, d, C);
+    BTDA_fill_values(A, B, d, C);
 
     double expected_x[3] = {37.0, 47.0, 108.0};
     mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 3));

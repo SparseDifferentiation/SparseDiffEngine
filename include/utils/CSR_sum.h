@@ -19,7 +19,7 @@ void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 /* Fill only the values of C = A + B, assuming C's sparsity pattern (p and i)
  * is already filled and matches the union of A and B per row. Does not modify
  * C->p, C->i, or C->nnz. */
-void sum_csr_fill_vals(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
+void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 
 /* Compute C = diag(d1) * A + diag(d2) * B where A, B, C are CSR matrices */
 void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,
@@ -28,7 +28,7 @@ void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matri
 /* Fill only the values of C = diag(d1) * A + diag(d2) * B, assuming C's sparsity
  * pattern (p and i) is already filled and matches the union of A and B per row.
  * Does not modify C->p, C->i, or C->nnz. */
-void sum_scaled_csr_matrices_fill_vals(const CSR_Matrix *A, const CSR_Matrix *B,
+void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
                                        CSR_Matrix *C, const double *d1,
                                        const double *d2);
 
@@ -41,7 +41,7 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
                                                 int *iwork, int *idx_map);
 
 /* Fill values of summed rows using precomputed idx_map and sparsity of C */
-// void sum_all_rows_csr_fill_vals(const CSR_Matrix *A, CSR_Matrix *C,
+// void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
 //                                  const int *idx_map);
 
 /* Fill accumulator for summing rows using precomputed idx_map for each nnz of A.

@@ -56,7 +56,7 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.n = n;
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
     dm->base.block_left_mult_sparsity = I_kron_A_alloc;
-    dm->base.block_left_mult_values = I_kron_A_fill_vals;
+    dm->base.block_left_mult_values = I_kron_A_fill_values;
     dm->base.free_fn = dense_free;
     dm->x = (double *) malloc(m * n * sizeof(double));
     memcpy(dm->x, data, m * n * sizeof(double));

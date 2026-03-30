@@ -168,7 +168,7 @@ static inline double sparse_wdot(const double *a_x, const int *a_i, int a_nnz,
     return sum;
 }
 
-void ATDA_fill_vals(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
+void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
 {
     int j, ii, jj;
     for (ii = 0; ii < C->m; ii++)
@@ -246,7 +246,7 @@ CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)
     return C;
 }
 
-void csr_to_csc_fill_vals(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
+void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
 {
     int i, j;
     int *count = iwork;
@@ -311,7 +311,7 @@ CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork)
     return C;
 }
 
-void csc_to_csr_fill_vals(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
+void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
 {
     int i, j;
     int *count = iwork;
@@ -388,7 +388,7 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     return C;
 }
 
-void yTA_fill_vals(const CSC_Matrix *A, const double *y, CSR_Matrix *C)
+void yTA_fill_values(const CSC_Matrix *A, const double *y, CSR_Matrix *C)
 {
     for (int col = 0; col < A->n; col++)
     {
@@ -413,8 +413,8 @@ void yTA_fill_vals(const CSC_Matrix *A, const double *y, CSR_Matrix *C)
 }
 
 /* computes C = B^T * D * A in CSR */
-void BTDA_fill_vals(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
-                    CSR_Matrix *C)
+void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
+                      CSR_Matrix *C)
 {
     int i, j, jj;
     for (i = 0; i < C->m; i++)
@@ -445,7 +445,7 @@ void BTDA_fill_vals(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
  * faster when Q is dense, since it touches each Q entry exactly once.
  * The sparse_dot approach below is simpler but redundantly scans
  * column j of A for each nonzero row of C. */
-void BA_fill_vals(const CSR_Matrix *Q, const CSC_Matrix *A, CSC_Matrix *C)
+void BA_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A, CSC_Matrix *C)
 {
     /* fill values of C = Q * A, given the sparsity pattern of C. */
     int i, j, ii;

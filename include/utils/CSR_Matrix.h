@@ -35,7 +35,7 @@ void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C);
 /* transpose functionality (iwork must be of size A->n) */
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork);
 CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork);
-void AT_fill_vals(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork);
+void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork);
 
 /* Build (I_p kron A) = blkdiag(A, A, ..., A) of size (p*A->m) x (p*A->n) */
 CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p);
@@ -49,7 +49,7 @@ void csr_matvec_wo_offset(const CSR_Matrix *A, const double *x, double *y);
 
 /* Computes values of the row matrix C = z^T A (column indices must have been
    pre-computed) and transposed matrix AT must be provided) */
-void csr_matvec_fill_vals(const CSR_Matrix *AT, const double *z, CSR_Matrix *C);
+void csr_matvec_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C);
 
 /* Insert value into CSR matrix A with just one row at col_idx. Assumes that A
 has enough space and that A does not have an element at col_idx. It does update
@@ -60,7 +60,7 @@ void csr_insert_value(CSR_Matrix *A, int col_idx, double value);
  * d must have length m
  * C must be pre-allocated with same dimensions as A */
 void diag_csr_mult(const double *d, const CSR_Matrix *A, CSR_Matrix *C);
-void diag_csr_mult_fill_vals(const double *d, const CSR_Matrix *A, CSR_Matrix *C);
+void diag_csr_mult_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C);
 
 /* Count number of columns with nonzero entries */
 int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz);

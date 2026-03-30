@@ -249,13 +249,14 @@ static void eval_jacobian_chain_rule(expr *node)
     /* evaluate Jacobians of children */
     f->eval_jacobian(f);
     g->eval_jacobian(g);
-    csr_to_csc_fill_vals(f->jacobian, f->work->jacobian_csc, f->work->csc_work);
-    csr_to_csc_fill_vals(g->jacobian, g->work->jacobian_csc, g->work->csc_work);
+    csr_to_csc_fill_values(f->jacobian, f->work->jacobian_csc, f->work->csc_work);
+    csr_to_csc_fill_values(g->jacobian, g->work->jacobian_csc, g->work->csc_work);
 
     /* evaluate term1, term2, and their sum */
-    YT_kron_I_fill_vals(m, k, n, g->value, f->work->jacobian_csc, mnode->term1_CSR);
-    I_kron_X_fill_vals(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
-    sum_csr_fill_vals(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
+    YT_kron_I_fill_values(m, k, n, g->value, f->work->jacobian_csc,
+                          mnode->term1_CSR);
+    I_kron_X_fill_values(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
+    sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
 }
 
 // ------------------------------------------------------------------------------------
@@ -464,7 +465,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC values (cache if affine) */
     if (!f->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_vals(f->jacobian, Jf, f->work->csc_work);
+        csr_to_csc_fill_values(f->jacobian, Jf, f->work->csc_work);
         if (is_f_affine)
         {
             f->work->jacobian_csc_filled = true;
@@ -474,7 +475,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC values (cache if affine) */
     if (!g->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_vals(g->jacobian, Jg, g->work->csc_work);
+        csr_to_csc_fill_values(g->jacobian, Jg, g->work->csc_work);
         if (is_g_affine)
         {
             g->work->jacobian_csc_filled = true;
@@ -483,12 +484,12 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
 
     /* compute C = J_f^T @ B(w) @ J_g */
     fill_cross_hessian_values(m, k, n, w, mnode->B);
-    csr_csc_matmul_fill_vals(mnode->B, Jg, mnode->BJg);
-    csr_to_csc_fill_vals(mnode->BJg, mnode->BJg_CSC, mnode->BJg_csc_work);
-    BTDA_fill_vals(mnode->BJg_CSC, Jf, NULL, mnode->C);
+    csr_csc_matmul_fill_values(mnode->B, Jg, mnode->BJg);
+    csr_to_csc_fill_values(mnode->BJg, mnode->BJg_CSC, mnode->BJg_csc_work);
+    BTDA_fill_values(mnode->BJg_CSC, Jf, NULL, mnode->C);
 
     /* compute CT */
-    AT_fill_vals(mnode->C, mnode->CT, node->work->iwork);
+    AT_fill_values(mnode->C, mnode->CT, node->work->iwork);
 
     /* compute Hessian of f */
     if (!is_f_affine)

@@ -124,7 +124,8 @@ static void jacobian_init_impl(expr *node)
          * For a linear operator the values are constant, so fill
          * them once here. */
         jacobian_csc_init(x);
-        csr_to_csc_fill_vals(x->jacobian, x->work->jacobian_csc, x->work->csc_work);
+        csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+                               x->work->csc_work);
     }
 }
 
@@ -163,7 +164,7 @@ static void eval_jacobian(expr *node)
         }
 
         /* chain rule (no derivative wrt y) using CSC format */
-        yTA_fill_vals(x->work->jacobian_csc, node->work->dwork, node->jacobian);
+        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, node->jacobian);
 
         /* insert derivative wrt y at right place (for correctness this assumes
            that y does not appear in the numerator, but this will always be
