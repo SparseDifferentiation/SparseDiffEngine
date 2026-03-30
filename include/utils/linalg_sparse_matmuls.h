@@ -18,21 +18,20 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
                                               const CSC_Matrix *J, int p);
 
 void block_left_multiply_fill_values(const CSR_Matrix *A, const CSC_Matrix *J,
-                                   CSC_Matrix *C);
+                                     CSC_Matrix *C);
 
 /* Compute y = kron(I_p, A) @ x where A is m x n and x is(n*p)-length vector.
    The output y is m*p-length vector corresponding to
    y = [A @ x1; A @ x2; ...; A @ xp] where x is divided into p blocks of n
    elements.
 */
-void block_left_multiply_vec(const CSR_Matrix *A, const double *x, double *y,
-                             int p);
+void block_left_multiply_vec(const CSR_Matrix *A, const double *x, double *y, int p);
 
 /* Fill values of C = A @ B where A is CSR, B is CSC.
  * C must have sparsity pattern already computed.
  */
 void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
-                              CSR_Matrix *C);
+                                CSR_Matrix *C);
 
 /* C = A @ B where A is CSR, B is CSC. Result C is CSR.
  * Allocates and precomputes sparsity pattern. No workspace required.

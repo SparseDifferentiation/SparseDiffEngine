@@ -29,8 +29,8 @@ void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matri
  * pattern (p and i) is already filled and matches the union of A and B per row.
  * Does not modify C->p, C->i, or C->nnz. */
 void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
-                                       CSR_Matrix *C, const double *d1,
-                                       const double *d2);
+                                         CSR_Matrix *C, const double *d1,
+                                         const double *d2);
 
 /* Sum all rows of A into a single row matrix C */
 void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,

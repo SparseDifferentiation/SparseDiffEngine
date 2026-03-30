@@ -43,7 +43,7 @@ void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
 
 /* Compute values for C = B^T D A (null d corresonds to D as identity) */
 void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
-                    CSR_Matrix *C);
+                      CSR_Matrix *C);
 
 /* Fill values of C = BA. The matrix B does not have to be symmetric */
 void BA_fill_values(const CSR_Matrix *B, const CSC_Matrix *A, CSC_Matrix *C);
