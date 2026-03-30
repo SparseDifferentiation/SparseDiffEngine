@@ -68,3 +68,37 @@ void mat_mat_mult(const double *X, const double *Y, double *Z, int m, int k, int
         }
     }
 }
+
+void Y_kron_I_vec(int m, int k, int n, const double *Y, const double *w,
+                  double *v)
+{
+    for (int j = 0; j < k; j++)
+    {
+        for (int row = 0; row < m; row++)
+        {
+            double sum = 0.0;
+            for (int col = 0; col < n; col++)
+            {
+                sum += Y[j + col * k] * w[row + col * m];
+            }
+            v[row + j * m] = sum;
+        }
+    }
+}
+
+void I_kron_XT_vec(int m, int k, int n, const double *X, const double *w,
+                   double *v)
+{
+    for (int col = 0; col < n; col++)
+    {
+        for (int j = 0; j < k; j++)
+        {
+            double sum = 0.0;
+            for (int row = 0; row < m; row++)
+            {
+                sum += X[row + j * m] * w[row + col * m];
+            }
+            v[j + col * k] = sum;
+        }
+    }
+}

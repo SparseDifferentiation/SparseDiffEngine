@@ -31,8 +31,13 @@
 
 // ------------------------------------------------------------------------------
 // Helpers for the cross-Hessian B(w) of the bilinear map X @ Y.
-// B is mk x kn with B[row + j*m, j + col*k] = w[row + col*m].
-// Each row has exactly n nonzeros.
+// B(w) is the mk x kn weighted cross-Hessian of the bilinear map Z = XY.
+// It captures d^2(w^T vec(Z)) / d(vec(X)) d(vec(Y)).
+//
+// Entry: B[row + j*m, j + col*k] = w[row + col*m].
+// Each row has exactly n nonzeros. All k block-rows (one per j) have
+// the same values (columns of W = reshape(w, m, n)), but at different
+// column positions (offset by j in the Y-variable indexing).
 // ------------------------------------------------------------------------------
 
 static CSR_Matrix *build_cross_hessian_sparsity(int m, int k, int n)
@@ -380,146 +385,121 @@ static void eval_wsum_hess_no_chain_rule(expr *node, const double *w)
     }
 }
 
+// ------------------------------------------------------------------------------------
+// Hessian chain rule for Z = f(u) @ g(u).
+// H = C + C^T + H_f(v_f) + H_g(v_g)  where:
+//
+//   C = J_f^T B(w) J_g     cross term (B is the weighted cross-Hessian)
+//   v_f = (Y kron I_m) w   backpropagated weights for left child
+//   v_g = (I_n kron X^T) w backpropagated weights for right child
+//   H_f(v_f), H_g(v_g)     child Hessians evaluated with transformed weights
+// ------------------------------------------------------------------------------------
 static void wsum_hess_init_chain_rule(expr *node)
 {
-    expr *x = node->left;
-    expr *y = node->right;
+    expr *f = node->left;
+    expr *g = node->right;
     matmul_expr *mnode = (matmul_expr *) node;
-    int m = x->d1;
-    int k = x->d2;
-    int n = y->d2;
+    int m = f->d1;
+    int k = f->d2;
+    int n = g->d2;
+    CSC_Matrix *Jf = f->work->jacobian_csc;
+    CSC_Matrix *Jg = g->work->jacobian_csc;
 
-    jacobian_csc_init(x);
-    jacobian_csc_init(y);
-    CSC_Matrix *Jf = x->work->jacobian_csc;
-    CSC_Matrix *Jg = y->work->jacobian_csc;
-
-    /* build cross-Hessian B sparsity */
+    /* initialize C = Jf^T @ B @ Jg = Jf^T @ (B @ Jg) */
     mnode->B = build_cross_hessian_sparsity(m, k, n);
+    mnode->BJg = csr_csc_matmul_alloc(mnode->B, Jg);
+    int max_alloc = MAX(mnode->BJg->m, mnode->BJg->n);
+    mnode->BJg_csc_work = (int *) malloc(max_alloc * sizeof(int));
+    mnode->BJg_CSC = csr_to_csc_alloc(mnode->BJg, mnode->BJg_csc_work);
+    mnode->C = BTA_alloc(mnode->BJg_CSC, Jf);
 
-    /* C = J_f^T @ B @ J_g:
-     * step 1: BJ_g = B @ J_g */
-    mnode->BJ_g = csr_csc_matmul_alloc(mnode->B, Jg);
-    mnode->BJ_g_csc_work =
-        (int *) malloc(MAX(mnode->BJ_g->m, mnode->BJ_g->n) * sizeof(int));
-    mnode->BJ_g_CSC = csr_to_csc_alloc(mnode->BJ_g, mnode->BJ_g_csc_work);
-
-    /* step 2: C = J_f^T @ BJ_g via BTA (B^T D A with D=I) */
-    mnode->C = BTA_alloc(mnode->BJ_g_CSC, Jf);
-
-    /* C^T */
+    /* initialize C^T */
     node->work->iwork = (int *) malloc(mnode->C->m * sizeof(int));
     mnode->CT = AT_alloc(mnode->C, node->work->iwork);
 
-    /* allocate weight backprop workspace */
-    if (!x->is_affine(x) || !y->is_affine(y))
-    {
-        node->work->dwork =
-            (double *) malloc(MAX(x->size, y->size) * sizeof(double));
-    }
+    /* initialize Hessians of children */
+    wsum_hess_init(f);
+    wsum_hess_init(g);
 
-    /* init child Hessians */
-    wsum_hess_init(x);
-    wsum_hess_init(y);
-
-    /* merge 4 sparsity patterns */
+    /* sum the four terms and fill idx maps */
     int *maps[4];
     node->wsum_hess = sum_4_csr_fill_sparsity_and_idx_maps(
-        mnode->C, mnode->CT, x->wsum_hess, y->wsum_hess, maps);
+        mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess, maps);
     mnode->idx_map_C = maps[0];
     mnode->idx_map_CT = maps[1];
     mnode->idx_map_Hf = maps[2];
     mnode->idx_map_Hg = maps[3];
+
+    /* allocate weight backprop workspace */
+    if (!f->is_affine(f) || !g->is_affine(g))
+    {
+        node->work->dwork =
+            (double *) malloc(MAX(f->size, g->size) * sizeof(double));
+    }
 }
 
 static void eval_wsum_hess_chain_rule(expr *node, const double *w)
 {
-    expr *x = node->left;
-    expr *y = node->right;
+    expr *f = node->left;
+    expr *g = node->right;
     matmul_expr *mnode = (matmul_expr *) node;
-    int m = x->d1;
-    int k = x->d2;
-    int n = y->d2;
-    bool is_x_affine = x->is_affine(x);
-    bool is_y_affine = y->is_affine(y);
+    int m = f->d1;
+    int k = f->d2;
+    int n = g->d2;
+    bool is_f_affine = f->is_affine(f);
+    bool is_g_affine = g->is_affine(g);
 
     /* refresh child Jacobian CSC values (cache if affine) */
-    if (!x->work->jacobian_csc_filled)
+    if (!f->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_vals(x->jacobian, x->work->jacobian_csc, x->work->csc_work);
-        if (is_x_affine)
+        csr_to_csc_fill_vals(f->jacobian, f->work->jacobian_csc, f->work->csc_work);
+        if (is_f_affine)
         {
-            x->work->jacobian_csc_filled = true;
+            f->work->jacobian_csc_filled = true;
         }
     }
-    if (!y->work->jacobian_csc_filled)
+    if (!g->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_vals(y->jacobian, y->work->jacobian_csc, y->work->csc_work);
-        if (is_y_affine)
+        csr_to_csc_fill_vals(g->jacobian, g->work->jacobian_csc, g->work->csc_work);
+        if (is_g_affine)
         {
-            y->work->jacobian_csc_filled = true;
+            g->work->jacobian_csc_filled = true;
         }
     }
 
-    CSC_Matrix *Jf = x->work->jacobian_csc;
-    CSC_Matrix *Jg = y->work->jacobian_csc;
+    CSC_Matrix *Jf = f->work->jacobian_csc;
+    CSC_Matrix *Jg = g->work->jacobian_csc;
 
     /* compute C = J_f^T @ B(w) @ J_g */
     fill_cross_hessian_values(m, k, n, w, mnode->B);
-    csr_csc_matmul_fill_vals(mnode->B, Jg, mnode->BJ_g);
-    csr_to_csc_fill_vals(mnode->BJ_g, mnode->BJ_g_CSC, mnode->BJ_g_csc_work);
-    BTDA_fill_vals(mnode->BJ_g_CSC, Jf, NULL, mnode->C);
+    csr_csc_matmul_fill_vals(mnode->B, Jg, mnode->BJg);
+    csr_to_csc_fill_vals(mnode->BJg, mnode->BJg_CSC, mnode->BJg_csc_work);
+    BTDA_fill_vals(mnode->BJg_CSC, Jf, NULL, mnode->C);
 
-    /* C^T */
+    /* compute CT */
     AT_fill_vals(mnode->C, mnode->CT, node->work->iwork);
 
     /* backpropagate weights and recurse into children */
-    if (!is_x_affine)
+    if (!is_f_affine)
     {
-        /* v_f = vec(W @ Y^T):
-         * v_f[row + j*m] = sum_col Y[j,col] * w[row + col*m] */
-        double *v_f = node->work->dwork;
-        for (int j = 0; j < k; j++)
-        {
-            for (int row = 0; row < m; row++)
-            {
-                double sum = 0.0;
-                for (int col = 0; col < n; col++)
-                {
-                    sum += y->value[j + col * k] * w[row + col * m];
-                }
-                v_f[row + j * m] = sum;
-            }
-        }
-        x->eval_wsum_hess(x, v_f);
+        Y_kron_I_vec(m, k, n, g->value, w,
+                              node->work->dwork);
+        f->eval_wsum_hess(f, node->work->dwork);
     }
 
-    if (!is_y_affine)
+    if (!is_g_affine)
     {
-        /* v_g = vec(X^T @ W):
-         * v_g[j + col*k] = sum_row X[row,j] * w[row + col*m] */
-        double *v_g = node->work->dwork;
-        for (int col = 0; col < n; col++)
-        {
-            for (int j = 0; j < k; j++)
-            {
-                double sum = 0.0;
-                for (int row = 0; row < m; row++)
-                {
-                    sum += x->value[row + j * m] * w[row + col * m];
-                }
-                v_g[j + col * k] = sum;
-            }
-        }
-        y->eval_wsum_hess(y, v_g);
+        I_kron_XT_vec(m, k, n, f->value, w,
+                               node->work->dwork);
+        g->eval_wsum_hess(g, node->work->dwork);
     }
 
     /* accumulate H = C + C^T + H_f + H_g */
     memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
     accumulate_mapped(node->wsum_hess->x, mnode->C, mnode->idx_map_C);
     accumulate_mapped(node->wsum_hess->x, mnode->CT, mnode->idx_map_CT);
-    accumulate_mapped(node->wsum_hess->x, x->wsum_hess, mnode->idx_map_Hf);
-    accumulate_mapped(node->wsum_hess->x, y->wsum_hess, mnode->idx_map_Hg);
+    accumulate_mapped(node->wsum_hess->x, f->wsum_hess, mnode->idx_map_Hf);
+    accumulate_mapped(node->wsum_hess->x, g->wsum_hess, mnode->idx_map_Hg);
 }
 
 expr *new_matmul(expr *x, expr *y)
@@ -541,17 +521,19 @@ expr *new_matmul(expr *x, expr *y)
     bool use_chain_rule = !(x->var_id != NOT_A_VARIABLE &&
                             y->var_id != NOT_A_VARIABLE && x->var_id != y->var_id);
 
-    jacobian_init_fn jac_init =
-        use_chain_rule ? jacobian_init_chain_rule : jacobian_init_no_chain_rule;
-    eval_jacobian_fn jac_eval =
-        use_chain_rule ? eval_jacobian_chain_rule : eval_jacobian_no_chain_rule;
-    wsum_hess_init_fn hess_init =
-        use_chain_rule ? wsum_hess_init_chain_rule : wsum_hess_init_no_chain_rule;
-    wsum_hess_fn hess_eval =
-        use_chain_rule ? eval_wsum_hess_chain_rule : eval_wsum_hess_no_chain_rule;
-
-    init_expr(node, x->d1, y->d2, x->n_vars, forward, jac_init, jac_eval, is_affine,
-              hess_init, hess_eval, NULL);
+    if (!use_chain_rule)
+    {
+        init_expr(node, x->d1, y->d2, x->n_vars, forward,
+                  jacobian_init_no_chain_rule, eval_jacobian_no_chain_rule,
+                  is_affine, wsum_hess_init_no_chain_rule,
+                  eval_wsum_hess_no_chain_rule, NULL);
+    }
+    else
+    {
+        init_expr(node, x->d1, y->d2, x->n_vars, forward, jacobian_init_chain_rule,
+                  eval_jacobian_chain_rule, is_affine, wsum_hess_init_chain_rule,
+                  eval_wsum_hess_chain_rule, NULL);
+    }
 
     /* Set children */
     node->left = x;
