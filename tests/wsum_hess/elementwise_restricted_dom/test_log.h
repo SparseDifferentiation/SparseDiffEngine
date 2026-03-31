@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "affine.h"
-#include "elementwise_full_dom.h"
-#include "elementwise_restricted_dom.h"
+#include "atoms/affine.h"
+#include "atoms/elementwise_full_dom.h"
+#include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"

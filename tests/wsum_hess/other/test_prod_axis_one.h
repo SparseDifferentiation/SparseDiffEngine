@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "atoms/non_elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "other.h"
 #include "test_helpers.h"
 
 const char *test_wsum_hess_prod_axis_one_no_zeros(void)

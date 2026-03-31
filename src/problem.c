@@ -455,13 +455,13 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     memset(H->x, 0, H->nnz * sizeof(double));
 
     /* accumulate objective function */
-    idx_map_accumulator(obj->wsum_hess, idx_map, H->x);
+    accumulator(obj->wsum_hess, idx_map, H->x);
     offset = obj->wsum_hess->nnz;
 
     /* accumulate constraint functions */
     for (int i = 0; i < prob->n_constraints; i++)
     {
-        idx_map_accumulator(constrs[i]->wsum_hess, idx_map + offset, H->x);
+        accumulator(constrs[i]->wsum_hess, idx_map + offset, H->x);
         offset += constrs[i]->wsum_hess->nnz;
     }
 

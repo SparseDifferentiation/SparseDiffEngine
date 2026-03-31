@@ -1,9 +1,9 @@
-#include "affine.h"
-#include "bivariate_full_dom.h"
-#include "elementwise_full_dom.h"
+#include "atoms/affine.h"
+#include "atoms/bivariate_full_dom.h"
+#include "atoms/elementwise_full_dom.h"
+#include "atoms/non_elementwise_full_dom.h"
 #include "minunit.h"
 #include "numerical_diff.h"
-#include "other.h"
 #include "test_helpers.h"
 
 const char *test_wsum_hess_exp_sum(void)

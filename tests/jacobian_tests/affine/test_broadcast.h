@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "affine.h"
+#include "atoms/affine.h"
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"

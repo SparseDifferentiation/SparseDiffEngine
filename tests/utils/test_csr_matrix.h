@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include "minunit.h"
+#include "old-code/old_CSR.h"
+#include "old-code/old_CSR_sum.h"
 #include "test_helpers.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/CSR_sum.h"
@@ -187,7 +189,7 @@ const char *test_csr_vecmat_values_sparse(void)
 
     CSR_Matrix *AT = transpose(A, iwork);
 
-    csr_matvec_fill_values(AT, z, C);
+    Ax_csr_fill_values(AT, z, C);
 
     double Cx_correct[3] = {7.0, 22.0, 1.0};
 
