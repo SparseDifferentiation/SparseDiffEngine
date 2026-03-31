@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "bivariate_full_dom.h"
+#include "atoms/bivariate_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"

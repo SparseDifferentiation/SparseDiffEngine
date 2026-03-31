@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "minunit.h"
+#include "old-code/old_affine.h"
 
 /* Include all test headers */
 #ifndef PROFILE_ONLY

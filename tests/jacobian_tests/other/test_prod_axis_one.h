@@ -1,9 +1,9 @@
 #include <stdio.h>
 
-#include "affine.h"
+#include "atoms/affine.h"
+#include "atoms/non_elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "other.h"
 #include "test_helpers.h"
 
 const char *test_jacobian_prod_axis_one(void)

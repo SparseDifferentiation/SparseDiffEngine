@@ -1,5 +1,5 @@
-#include "affine.h"
-#include "bivariate_restricted_dom.h"
+#include "atoms/affine.h"
+#include "atoms/bivariate_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"

@@ -2,7 +2,7 @@
 #ifndef TEST_TRANSPOSE_H
 #define TEST_TRANSPOSE_H
 
-#include "affine.h"
+#include "atoms/affine.h"
 #include "minunit.h"
 #include "test_helpers.h"
 #include <math.h>
