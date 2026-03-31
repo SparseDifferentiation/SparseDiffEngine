@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "atoms/non_elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "other.h"
 #include "test_helpers.h"
 
 /* Common setup: x is 4x1 variable, global index 2, total 8 vars */

@@ -1,7 +1,7 @@
 #include <string.h>
 
-#include "affine.h"
-#include "elementwise_full_dom.h"
+#include "atoms/affine.h"
+#include "atoms/elementwise_full_dom.h"
 #include "minunit.h"
 #include "numerical_diff.h"
 
