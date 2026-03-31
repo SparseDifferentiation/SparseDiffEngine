@@ -23,10 +23,8 @@ typedef struct CSC_Matrix
     int nnz;
 } CSC_Matrix;
 
-/* Allocate a new CSC matrix with given dimensions and nnz */
+/* constructor and destructor */
 CSC_Matrix *new_csc_matrix(int m, int n, int nnz);
-
-/* Free a CSC matrix */
 void free_csc_matrix(CSC_Matrix *matrix);
 
 /* Fill sparsity of C = A^T D A for diagonal D */

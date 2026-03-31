@@ -99,19 +99,18 @@ static void jacobian_init_impl(expr *node)
 
     if (axis == -1)
     {
-        sum_all_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, node->work->iwork, snode->idx_map);
+        sum_all_rows_csr_alloc(x->jacobian, node->jacobian, node->work->iwork,
+                               snode->idx_map);
     }
     else if (axis == 0)
     {
-        sum_block_of_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, x->d1, node->work->iwork, snode->idx_map);
+        sum_block_of_rows_csr_alloc(x->jacobian, node->jacobian, x->d1,
+                                    node->work->iwork, snode->idx_map);
     }
     else if (axis == 1)
     {
-        sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(
-            x->jacobian, node->jacobian, node->size, node->work->iwork,
-            snode->idx_map);
+        sum_evenly_spaced_rows_csr_alloc(x->jacobian, node->jacobian, node->size,
+                                         node->work->iwork, snode->idx_map);
     }
 }
 
@@ -125,8 +124,7 @@ static void eval_jacobian(expr *node)
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    idx_map_accumulator(x->jacobian, ((sum_expr *) node)->idx_map,
-                        node->jacobian->x);
+    accumulator(x->jacobian, ((sum_expr *) node)->idx_map, node->jacobian->x);
 }
 
 static void wsum_hess_init_impl(expr *node)

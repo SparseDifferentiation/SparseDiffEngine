@@ -434,8 +434,8 @@ static void wsum_hess_init_chain_rule(expr *node)
 
     /* sum the four terms and fill idx maps */
     int *maps[4];
-    node->wsum_hess = sum_4_csr_fill_sparsity_and_idx_maps(
-        mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess, maps);
+    node->wsum_hess =
+        sum_4_csr_alloc(mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess, maps);
     mnode->idx_map_C = maps[0];
     mnode->idx_map_CT = maps[1];
     mnode->idx_map_Hf = maps[2];
@@ -507,10 +507,10 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
 
     /* accumulate H = C + C^T + H_f + H_g */
     memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-    idx_map_accumulator(mnode->C, mnode->idx_map_C, node->wsum_hess->x);
-    idx_map_accumulator(mnode->CT, mnode->idx_map_CT, node->wsum_hess->x);
-    idx_map_accumulator(f->wsum_hess, mnode->idx_map_Hf, node->wsum_hess->x);
-    idx_map_accumulator(g->wsum_hess, mnode->idx_map_Hg, node->wsum_hess->x);
+    accumulator(mnode->C, mnode->idx_map_C, node->wsum_hess->x);
+    accumulator(mnode->CT, mnode->idx_map_CT, node->wsum_hess->x);
+    accumulator(f->wsum_hess, mnode->idx_map_Hf, node->wsum_hess->x);
+    accumulator(g->wsum_hess, mnode->idx_map_Hg, node->wsum_hess->x);
 }
 
 expr *new_matmul(expr *x, expr *y)

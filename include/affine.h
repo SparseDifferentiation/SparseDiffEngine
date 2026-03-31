@@ -22,8 +22,6 @@
 #include "subexpr.h"
 #include "utils/CSR_Matrix.h"
 
-expr *new_linear(expr *u, const CSR_Matrix *A, const double *b);
-
 expr *new_add(expr *left, expr *right);
 expr *new_neg(expr *child);
 

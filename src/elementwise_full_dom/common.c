@@ -49,7 +49,7 @@ void eval_jacobian_elementwise(expr *node)
         node->local_jacobian(node, node->work->local_jac_diag);
         memcpy(node->work->dwork, node->work->local_jac_diag,
                node->size * sizeof(double));
-        diag_csr_mult_fill_values(node->work->dwork, Jg, node->jacobian);
+        DA_fill_values(node->work->dwork, Jg, node->jacobian);
     }
 }
 

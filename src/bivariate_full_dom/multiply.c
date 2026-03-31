@@ -167,8 +167,7 @@ static void wsum_hess_init_impl(expr *node)
            fill index maps telling us where to accumulate each element of each
            matrix in the sum) */
         int *maps[4];
-        node->wsum_hess = sum_4_csr_fill_sparsity_and_idx_maps(C, CT, x->wsum_hess,
-                                                               y->wsum_hess, maps);
+        node->wsum_hess = sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps);
         mul_node->idx_map_C = maps[0];
         mul_node->idx_map_CT = maps[1];
         mul_node->idx_map_Hx = maps[2];
@@ -257,10 +256,10 @@ static void eval_wsum_hess(expr *node, const double *w)
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
         memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-        idx_map_accumulator(C, mul_node->idx_map_C, node->wsum_hess->x);
-        idx_map_accumulator(CT, mul_node->idx_map_CT, node->wsum_hess->x);
-        idx_map_accumulator(x->wsum_hess, mul_node->idx_map_Hx, node->wsum_hess->x);
-        idx_map_accumulator(y->wsum_hess, mul_node->idx_map_Hy, node->wsum_hess->x);
+        accumulator(C, mul_node->idx_map_C, node->wsum_hess->x);
+        accumulator(CT, mul_node->idx_map_CT, node->wsum_hess->x);
+        accumulator(x->wsum_hess, mul_node->idx_map_Hx, node->wsum_hess->x);
+        accumulator(y->wsum_hess, mul_node->idx_map_Hy, node->wsum_hess->x);
     }
 }
 

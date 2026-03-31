@@ -77,8 +77,8 @@ static void jacobian_init_impl(expr *node)
        rows), idx_map[j] gives the position in C->x where the value from A->x[j]
        should be accumulated. */
     tnode->idx_map = malloc(x->jacobian->nnz * sizeof(int));
-    sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(
-        A, node->jacobian, row_spacing, node->work->iwork, tnode->idx_map);
+    sum_spaced_rows_into_row_csr_alloc(A, node->jacobian, row_spacing,
+                                       node->work->iwork, tnode->idx_map);
 }
 
 static void eval_jacobian(expr *node)
@@ -91,8 +91,8 @@ static void eval_jacobian(expr *node)
 
     /* local jacobian */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    idx_map_accumulator_with_spacing(x->jacobian, tnode->idx_map, node->jacobian->x,
-                                     x->d1 + 1);
+    accumulator_with_spacing(x->jacobian, tnode->idx_map, node->jacobian->x,
+                             x->d1 + 1);
 }
 
 /* Placeholders for Hessian-related functions */

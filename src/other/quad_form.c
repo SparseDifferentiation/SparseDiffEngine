@@ -18,7 +18,7 @@ static void forward(expr *node, const double *u)
 
     /* local forward pass  */
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
-    csr_matvec(Q, x->value, node->work->dwork, 0);
+    Ax_csr(Q, x->value, node->work->dwork, 0);
     node->value[0] = 0.0;
 
     for (int i = 0; i < x->size; i++)
@@ -78,7 +78,7 @@ static void eval_jacobian(expr *node)
     if (x->var_id != NOT_A_VARIABLE)
     {
         /* jacobian = 2 * (Q @ x)^T */
-        csr_matvec(Q, x->value, node->jacobian->x, 0);
+        Ax_csr(Q, x->value, node->jacobian->x, 0);
         cblas_dscal(x->size, 2.0, node->jacobian->x, 1);
     }
     else

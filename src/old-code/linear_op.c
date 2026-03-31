@@ -15,7 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "affine.h"
+#include "old-code/old_affine.h"
+#include "subexpr.h"
 #include "utils/CSR_Matrix.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@ static void forward(expr *node, const double *u)
     node->left->forward(node->left, u);
 
     /* y = A * x (A is stored as node->jacobian) */
-    csr_matvec(node->jacobian, x->value, node->value, x->var_id);
+    Ax_csr(node->jacobian, x->value, node->value, x->var_id);
 
     /* y += b (if offset exists) */
     if (lin_node->b != NULL)
