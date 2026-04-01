@@ -194,7 +194,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
         BA_fill_values(Q, Jf, QJf);
-        BTDA_fill_values(Jf, QJf, NULL, term1);
+        BTDA_fill_values_matching_pairs(Jf, QJf, NULL, term1);
 
         /* term2 */
         x->eval_wsum_hess(x, node->work->dwork);

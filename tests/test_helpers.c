@@ -5,6 +5,7 @@
 
 #include "expr.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/Timer.h"
 
 #define EPSILON 1e-7
 
@@ -96,4 +97,41 @@ CSR_Matrix *new_csr_random(int m, int n, double density)
     free(tmp_i);
     free(tmp_x);
     return A;
+}
+
+void profile_expr(expr *node, double *x_vals, const char *label)
+{
+    Timer timer;
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    node->forward(node, x_vals);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("%s forward time:       %8.3f seconds\n", label,
+           GET_ELAPSED_SECONDS(timer));
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    jacobian_init(node);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("%s jacobian init time: %8.3f seconds\n", label,
+           GET_ELAPSED_SECONDS(timer));
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    node->eval_jacobian(node);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("%s jacobian eval time: %8.3f seconds\n", label,
+           GET_ELAPSED_SECONDS(timer));
+
+    double *w = (double *) malloc(node->size * sizeof(double));
+    for (int i = 0; i < node->size; i++)
+    {
+        w[i] = 1.0;
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    wsum_hess_init(node);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("%s hessian init time:  %8.3f seconds\n", label,
+           GET_ELAPSED_SECONDS(timer));
+
+    free(w);
 }

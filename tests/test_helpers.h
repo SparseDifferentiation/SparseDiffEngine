@@ -4,6 +4,9 @@
 #include "expr.h"
 #include "utils/CSR_Matrix.h"
 
+/* Profile forward, jacobian, and hessian passes with timing */
+void profile_expr(expr *node, double *x_vals, const char *label);
+
 /* Compare two double arrays directly
  * Returns 1 if all values match, 0 otherwise */
 int cmp_double_array(const double *actual, const double *expected, int size);

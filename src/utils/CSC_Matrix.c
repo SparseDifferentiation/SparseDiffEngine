@@ -270,6 +270,11 @@ void ATA_fill_matching_pairs(const CSC_Matrix *A, CSR_Matrix *C)
     mp->aj = aj_offsets->data;
     mp->rows = row_indices->data;
 
+    double mb = (double) mp->n_matches * 3 * sizeof(int) / (1024.0 * 1024.0);
+    printf("  ATA_fill_matching_pairs: n_entries=%d  n_matches=%d"
+           "  (%.1f MB)\n",
+           mp->n_entries, mp->n_matches, mb);
+
     C->match = mp;
 
     free(entry_ptrs);
@@ -278,12 +283,34 @@ void ATA_fill_matching_pairs(const CSC_Matrix *A, CSR_Matrix *C)
     free(row_indices);
 }
 
+__attribute__((noinline)) static void
+ATDA_matching_sym_copy(CSR_Matrix *C, int i, int jj, int j, int *cursor)
+{
+    while (C->i[cursor[j]] != i)
+    {
+        cursor[j]++;
+    }
+    C->x[jj] = C->x[cursor[j]];
+    cursor[j]++;
+}
+
+__attribute__((noinline)) static double
+ATDA_matching_dot(const double *xi, const double *xj, const double *d,
+                  const MatchPairs *mp, int e)
+{
+    double sum = 0.0;
+    for (int k = mp->p[e]; k < mp->p[e + 1]; k++)
+    {
+        sum += xi[mp->ai[k]] * xj[mp->aj[k]] * d[mp->rows[k]];
+    }
+    return sum;
+}
+
 void ATDA_fill_values_matching_pairs(const CSC_Matrix *A, const double *d,
                                      CSR_Matrix *C)
 {
     MatchPairs *mp = C->match;
 
-    /* todo: get rid of this malloc */
     int *cursor = (int *) malloc(C->m * sizeof(int));
     memcpy(cursor, C->p, C->m * sizeof(int));
 
@@ -298,24 +325,13 @@ void ATDA_fill_values_matching_pairs(const CSC_Matrix *A, const double *d,
 
             if (j < i)
             {
-                /* TODO: should profile this and the memset */
-                while (C->i[cursor[j]] != i)
-                {
-                    cursor[j]++;
-                }
-                C->x[jj] = C->x[cursor[j]];
-                cursor[j]++;
+                ATDA_matching_sym_copy(C, i, jj, j, cursor);
             }
             else
             {
-                double sum = 0.0;
                 const double *xi = A->x + A->p[i];
                 const double *xj = A->x + A->p[j];
-                for (int k = mp->p[e]; k < mp->p[e + 1]; k++)
-                {
-                    sum += xi[mp->ai[k]] * xj[mp->aj[k]] * d[mp->rows[k]];
-                }
-                C->x[jj] = sum;
+                C->x[jj] = ATDA_matching_dot(xi, xj, d, mp, e);
                 e++;
             }
         }
@@ -507,6 +523,9 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     free(Cp);
     iVec_free(Ci);
 
+    /* fill matching pairs */
+    BTA_fill_matching_pairs(A, B, C);
+
     return C;
 }
 
@@ -558,6 +577,105 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
                 C->x[jj] = sparse_dot(B->x + B->p[i], B->i + B->p[i], nnz_bi,
                                       A->x + A->p[j], A->i + A->p[j], nnz_aj);
             }
+        }
+    }
+}
+
+void BTA_fill_matching_pairs(const CSC_Matrix *A, const CSC_Matrix *B, CSR_Matrix *C)
+{
+    iVec *bi_offsets = iVec_new(C->nnz);
+    iVec *aj_offsets = iVec_new(C->nnz);
+    iVec *row_indices = iVec_new(C->nnz);
+    iVec *entry_ptrs = iVec_new(C->nnz + 1);
+    iVec_append(entry_ptrs, 0);
+
+    int i, j, ii, jj, kk;
+
+    for (i = 0; i < C->m; i++)
+    {
+        for (jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            j = C->i[jj];
+
+            ii = B->p[i];
+            kk = A->p[j];
+            while (ii < B->p[i + 1] && kk < A->p[j + 1])
+            {
+                if (B->i[ii] == A->i[kk])
+                {
+                    iVec_append(bi_offsets, ii - B->p[i]);
+                    iVec_append(aj_offsets, kk - A->p[j]);
+                    iVec_append(row_indices, B->i[ii]);
+                    ii++;
+                    kk++;
+                }
+                else if (B->i[ii] < A->i[kk])
+                {
+                    ii++;
+                }
+                else
+                {
+                    kk++;
+                }
+            }
+            iVec_append(entry_ptrs, bi_offsets->len);
+        }
+    }
+
+    MatchPairs *mp = (MatchPairs *) malloc(sizeof(MatchPairs));
+    mp->n_entries = entry_ptrs->len - 1;
+    mp->n_matches = bi_offsets->len;
+    mp->p = entry_ptrs->data;
+    mp->ai = bi_offsets->data;
+    mp->aj = aj_offsets->data;
+    mp->rows = row_indices->data;
+
+    double mb = (double) mp->n_matches * 3 * sizeof(int) / (1024.0 * 1024.0);
+    printf("  BTA_fill_matching_pairs: n_entries=%d  n_matches=%d"
+           "  (%.1f MB)\n",
+           mp->n_entries, mp->n_matches, mb);
+
+    C->match = mp;
+
+    free(entry_ptrs);
+    free(bi_offsets);
+    free(aj_offsets);
+    free(row_indices);
+}
+
+void BTDA_fill_values_matching_pairs(const CSC_Matrix *A, const CSC_Matrix *B,
+                                     const double *d, CSR_Matrix *C)
+{
+    MatchPairs *mp = C->match;
+
+    int i, j, jj;
+    int e = 0;
+
+    for (i = 0; i < C->m; i++)
+    {
+        for (jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            j = C->i[jj];
+
+            double sum = 0.0;
+            const double *xi = B->x + B->p[i];
+            const double *xj = A->x + A->p[j];
+            if (d != NULL)
+            {
+                for (int k = mp->p[e]; k < mp->p[e + 1]; k++)
+                {
+                    sum += xi[mp->ai[k]] * xj[mp->aj[k]] * d[mp->rows[k]];
+                }
+            }
+            else
+            {
+                for (int k = mp->p[e]; k < mp->p[e + 1]; k++)
+                {
+                    sum += xi[mp->ai[k]] * xj[mp->aj[k]];
+                }
+            }
+            C->x[jj] = sum;
+            e++;
         }
     }
 }

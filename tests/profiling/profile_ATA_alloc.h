@@ -104,3 +104,78 @@ const char *profile_ATDA_fill(void)
     free_csr_matrix(A_csr);
     return 0;
 }
+
+const char *profile_BTDA_fill(void)
+{
+    int m = 300;
+    int n_a = 300;
+    int n_b = 200;
+    double density = 0.05;
+    int n_iters = 80;
+
+    CSR_Matrix *A_csr = new_csr_random(m, n_a, density);
+    CSR_Matrix *B_csr = new_csr_random(m, n_b, density);
+
+    int *iwork_a = (int *) calloc(n_a, sizeof(int));
+    CSC_Matrix *A_csc = csr_to_csc_alloc(A_csr, iwork_a);
+    free(iwork_a);
+
+    int *iwork_b = (int *) calloc(n_b, sizeof(int));
+    CSC_Matrix *B_csc = csr_to_csc_alloc(B_csr, iwork_b);
+    free(iwork_b);
+
+    CSR_Matrix *C = BTA_alloc(A_csc, B_csc);
+
+    /* Random diagonal */
+    double *d = (double *) malloc(m * sizeof(double));
+    for (int i = 0; i < m; i++)
+    {
+        d[i] = 1.0 + 0.01 * i;
+    }
+
+    Timer timer;
+
+    /* Original BTDA_fill_values */
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    for (int iter = 0; iter < n_iters; iter++)
+    {
+        BTDA_fill_values(A_csc, B_csc, d, C);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("BTDA_fill_values              (%d iters): %8.3f s\n", n_iters,
+           GET_ELAPSED_SECONDS(timer));
+
+    /* Save reference values for verification */
+    double *ref = (double *) malloc(C->nnz * sizeof(double));
+    memcpy(ref, C->x, C->nnz * sizeof(double));
+
+    /* Precompute matching pairs */
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    BTA_fill_matching_pairs(A_csc, B_csc, C);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("BTA_fill_matching_pairs:                  %8.3f s\n",
+           GET_ELAPSED_SECONDS(timer));
+
+    /* Matching pairs version */
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    for (int iter = 0; iter < n_iters; iter++)
+    {
+        BTDA_fill_values_matching_pairs(A_csc, B_csc, d, C);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    printf("BTDA_fill_values_matching     (%d iters): %8.3f s\n", n_iters,
+           GET_ELAPSED_SECONDS(timer));
+
+    /* Verify all values match */
+    mu_assert("BTDA matching pairs values mismatch",
+              cmp_double_array(C->x, ref, C->nnz));
+    free(ref);
+
+    free(d);
+    free_csr_matrix(C);
+    free_csc_matrix(A_csc);
+    free_csc_matrix(B_csc);
+    free_csr_matrix(A_csr);
+    free_csr_matrix(B_csr);
+    return 0;
+}

@@ -486,7 +486,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     fill_cross_hessian_values(m, k, n, w, mnode->B);
     csr_csc_matmul_fill_values(mnode->B, Jg, mnode->BJg);
     csr_to_csc_fill_values(mnode->BJg, mnode->BJg_CSC, mnode->BJg_csc_work);
-    BTDA_fill_values(mnode->BJg_CSC, Jf, NULL, mnode->C);
+    BTDA_fill_values_matching_pairs(mnode->BJg_CSC, Jf, NULL, mnode->C);
 
     /* compute CT */
     AT_fill_values(mnode->C, mnode->CT, node->work->iwork);

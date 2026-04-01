@@ -128,8 +128,6 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
             }
 
             node->local_wsum_hess(node, node->work->dwork, w);
-            // ATDA_fill_values(child->work->jacobian_csc, node->work->dwork,
-            //                  node->wsum_hess);
             ATDA_fill_values_matching_pairs(child->work->jacobian_csc,
                                             node->work->dwork, node->wsum_hess);
         }

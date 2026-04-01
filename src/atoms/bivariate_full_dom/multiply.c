@@ -17,6 +17,7 @@
  */
 #include "atoms/bivariate_full_dom.h"
 #include "subexpr.h"
+#include "utils/CSC_Matrix.h"
 #include "utils/CSR_sum.h"
 #include <assert.h>
 #include <stdio.h>
@@ -228,7 +229,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         CSR_Matrix *C = mul_node->CSR_work1;
         CSR_Matrix *CT = mul_node->CSR_work2;
-        BTDA_fill_values(Jg1, Jg2, w, C);
+        BTDA_fill_values_matching_pairs(Jg1, Jg2, w, C);
         AT_fill_values(C, CT, node->work->iwork);
 
         // ---------------------------------------------------------------

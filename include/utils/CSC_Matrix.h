@@ -51,6 +51,14 @@ void ATDA_fill_values_matching_pairs(const CSC_Matrix *A, const double *d,
 void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
                       CSR_Matrix *C);
 
+/* Precompute matching pairs for B^T D A fill */
+void BTA_fill_matching_pairs(const CSC_Matrix *A, const CSC_Matrix *B,
+                             CSR_Matrix *C);
+
+/* Compute values for C = B^T D A using precomputed matching pairs */
+void BTDA_fill_values_matching_pairs(const CSC_Matrix *A, const CSC_Matrix *B,
+                                     const double *d, CSR_Matrix *C);
+
 /* Fill values of C = BA. The matrix B does not have to be symmetric */
 void BA_fill_values(const CSR_Matrix *B, const CSC_Matrix *A, CSC_Matrix *C);
 
