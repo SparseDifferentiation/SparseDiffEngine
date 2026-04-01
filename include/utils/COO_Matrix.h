@@ -2,6 +2,7 @@
 #define COO_MATRIX_H
 
 #include "CSR_Matrix.h"
+#include <stddef.h>
 
 /* COO (Coordinate) Sparse Matrix Format
  *
@@ -39,5 +40,9 @@ COO_Matrix *new_coo_matrix_lower_triangular(const CSR_Matrix *A);
 void refresh_lower_triangular_coo(COO_Matrix *coo, const double *vals);
 
 void free_coo_matrix(COO_Matrix *matrix);
+
+/* Returns total bytes used by rows, cols, x, value_map arrays
+   (0 if A is NULL) */
+size_t coo_memory_bytes(const COO_Matrix *A);
 
 #endif /* COO_MATRIX_H */

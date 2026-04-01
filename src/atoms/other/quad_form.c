@@ -33,10 +33,12 @@ static void jacobian_init_impl(expr *node)
 
     /* dwork stores the result of Q @ f(x) in the forward pass */
     node->work->dwork = (double *) malloc(x->size * sizeof(double));
+    node->memory_bytes += x->size * sizeof(double);
 
     if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
+        node->memory_bytes += csr_memory_bytes(node->jacobian);
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = x->size;
 
@@ -55,6 +57,7 @@ static void jacobian_init_impl(expr *node)
         /* allocate the right number of nnz */
         int nnz = count_nonzero_cols_csc(J_csc);
         node->jacobian = new_csr_matrix(1, node->n_vars, nnz);
+        node->memory_bytes += csr_memory_bytes(node->jacobian);
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = nnz;
 
@@ -113,6 +116,7 @@ static void wsum_hess_init_impl(expr *node)
     if (x->var_id != NOT_A_VARIABLE)
     {
         CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
+        node->memory_bytes += csr_memory_bytes(H);
 
         /* set global row pointers */
         memcpy(H->p + x->var_id, Q->p, (x->size + 1) * sizeof(int));
@@ -147,17 +151,21 @@ static void wsum_hess_init_impl(expr *node)
         /* term1 = Jf^T W Jf = Jf^T B*/
         CSC_Matrix *B = symBA_alloc(Q, Jf);
         qnode->QJf = B;
+        node->memory_bytes += csc_memory_bytes(B);
         node->work->hess_term1 = BTA_alloc(Jf, B);
+        node->memory_bytes += csr_memory_bytes(node->work->hess_term1);
 
         /* term2 = sum_i (Qf(x))_i nabla^2 f_i */
         wsum_hess_init(x);
         node->work->hess_term2 = new_csr_copy_sparsity(x->wsum_hess);
+        node->memory_bytes += csr_memory_bytes(node->work->hess_term2);
 
         /* hess = term1 + term2 */
         int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
         sum_csr_alloc(node->work->hess_term1, node->work->hess_term2,
                       node->wsum_hess);
+        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
     }
 }
 
@@ -241,6 +249,7 @@ expr *new_quad_form(expr *left, CSR_Matrix *Q)
 
     /* Set type-specific field */
     qnode->Q = new_csr_matrix(Q->m, Q->n, Q->nnz);
+    node->memory_bytes += csr_memory_bytes(qnode->Q);
     copy_csr_matrix(Q, qnode->Q);
     return node;
 }

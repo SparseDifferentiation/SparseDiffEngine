@@ -50,6 +50,7 @@ static void jacobian_init_vector_scalar(expr *node)
     assert(x->var_id != y->var_id);
 
     node->jacobian = new_csr_matrix(node->size, node->n_vars, 2 * node->size);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 
     if (x->var_id < y->var_id)
     {
@@ -104,6 +105,7 @@ static void wsum_hess_init_vector_scalar(expr *node)
     int var_id_y = y->var_id;
 
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 3 * node->size + 1);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
     CSR_Matrix *H = node->wsum_hess;
 
     if (var_id_x < var_id_y)

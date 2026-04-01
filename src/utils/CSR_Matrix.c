@@ -64,6 +64,14 @@ void free_csr_matrix(CSR_Matrix *matrix)
     }
 }
 
+size_t csr_memory_bytes(const CSR_Matrix *A)
+{
+    if (!A) return 0;
+    return (size_t)(A->m + 1) * sizeof(int)
+         + (size_t)A->nnz * sizeof(int)
+         + (size_t)A->nnz * sizeof(double);
+}
+
 void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C)
 {
     C->m = A->m;

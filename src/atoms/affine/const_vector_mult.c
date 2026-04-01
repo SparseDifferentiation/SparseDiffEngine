@@ -47,6 +47,7 @@ static void jacobian_init_impl(expr *node)
 
     /* same sparsity as child */
     node->jacobian = new_csr_copy_sparsity(x->jacobian);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -76,8 +77,10 @@ static void wsum_hess_init_impl(expr *node)
 
     /* same sparsity as child */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 
     node->work->dwork = (double *) malloc(node->size * sizeof(double));
+    node->memory_bytes += node->size * sizeof(double);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -123,6 +126,7 @@ expr *new_const_vector_mult(const double *a, expr *child)
 
     /* copy a vector */
     vnode->a = (double *) malloc(child->size * sizeof(double));
+    node->memory_bytes += child->size * sizeof(double);
     memcpy(vnode->a, a, child->size * sizeof(double));
 
     return node;

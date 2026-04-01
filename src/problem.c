@@ -68,6 +68,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->stats.nnz_hessian = 0;
     prob->stats.n_vars = prob->n_vars;
     prob->stats.total_constraint_size = prob->total_constraint_size;
+    prob->stats.memory_bytes = 0;
 
     prob->verbose = verbose;
 
@@ -267,6 +268,37 @@ void problem_init_derivatives(problem *prob)
     problem_init_hessian(prob);
 }
 
+/* NOTE: hstack children (stored in args[]) are not traversed here.
+   Their memory is counted at the hstack node itself but not at the
+   hstack children's subtrees. */
+static size_t sum_dag_memory(expr *node)
+{
+    if (node == NULL || node->visited) return 0;
+    node->visited = true;
+    size_t total = node->memory_bytes;
+    total += sum_dag_memory(node->left);
+    total += sum_dag_memory(node->right);
+    return total;
+}
+
+static void reset_visited(expr *node)
+{
+    if (node == NULL || !node->visited) return;
+    node->visited = false;
+    reset_visited(node->left);
+    reset_visited(node->right);
+}
+
+static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
+{
+    if (bytes < 1024)
+        snprintf(buf, buf_size, "%zu B", bytes);
+    else if (bytes < 1024 * 1024)
+        snprintf(buf, buf_size, "%.2f KB", (double) bytes / 1024.0);
+    else
+        snprintf(buf, buf_size, "%.2f MB", (double) bytes / (1024.0 * 1024.0));
+}
+
 static inline void print_end_message(const Diff_engine_stats *stats)
 {
     printf("\n"
@@ -283,6 +315,11 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
     printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
+
+    char mem_buf[64];
+    format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
+    printf("\nMemory:\n");
+    printf("  Total tracked allocations:       %12s\n", mem_buf);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
@@ -308,12 +345,33 @@ void free_problem(problem *prob)
 {
     if (prob == NULL) return;
 
+    /* Compute memory stats and print before freeing */
+    if (prob->verbose)
+    {
+        size_t mem = sum_dag_memory(prob->objective);
+        for (int i = 0; i < prob->n_constraints; i++)
+            mem += sum_dag_memory(prob->constraints[i]);
+        reset_visited(prob->objective);
+        for (int i = 0; i < prob->n_constraints; i++)
+            reset_visited(prob->constraints[i]);
+
+        /* problem-level allocations */
+        mem += csr_memory_bytes(prob->jacobian);
+        mem += csr_memory_bytes(prob->lagrange_hessian);
+        mem += coo_memory_bytes(prob->jacobian_coo);
+        mem += coo_memory_bytes(prob->lagrange_hessian_coo);
+
+        prob->stats.memory_bytes = mem;
+        print_end_message(&prob->stats);
+    }
+
     /* Free allocated arrays */
     free(prob->constraint_values);
     free(prob->gradient_values);
     free_csr_matrix(prob->jacobian);
     free_csr_matrix(prob->lagrange_hessian);
     free_coo_matrix(prob->jacobian_coo);
+    free_coo_matrix(prob->lagrange_hessian_coo);
     free(prob->hess_idx_map);
 
     /* Release expression references (decrements refcount) */
@@ -323,11 +381,6 @@ void free_problem(problem *prob)
         free_expr(prob->constraints[i]);
     }
     free(prob->constraints);
-
-    if (prob->verbose)
-    {
-        print_end_message(&prob->stats);
-    }
 
     /* Free problem struct */
     free(prob);

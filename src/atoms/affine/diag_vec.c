@@ -72,6 +72,7 @@ static void jacobian_init_impl(expr *node)
     J->p[node->size] = nnz;
 
     node->jacobian = J;
+    node->memory_bytes += csr_memory_bytes(J);
 }
 
 static void eval_jacobian(expr *node)
@@ -101,11 +102,13 @@ static void wsum_hess_init_impl(expr *node)
 
     /* workspace for extracting diagonal weights */
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
+    node->memory_bytes += x->size * sizeof(double);
 
     /* Copy child's Hessian structure (diag_vec is linear, so its own Hessian is
      * zero) */
     CSR_Matrix *Hx = x->wsum_hess;
     node->wsum_hess = new_csr_copy_sparsity(Hx);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

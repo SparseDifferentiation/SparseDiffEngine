@@ -53,6 +53,7 @@ static void jacobian_init_impl(expr *node)
 
     /* fill sparsity pattern */
     sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -80,6 +81,7 @@ static void wsum_hess_init_impl(expr *node)
     {
         assert(y->var_id != NOT_A_VARIABLE);
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
+        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 
         int i, var1_id, var2_id;
 
@@ -142,6 +144,7 @@ static void wsum_hess_init_impl(expr *node)
         if (!x->is_affine(x) || !y->is_affine(y))
         {
             node->work->dwork = (double *) malloc(node->size * sizeof(double));
+            node->memory_bytes += node->size * sizeof(double);
         }
 
         /* prepare sparsity pattern of csc conversion */
@@ -152,8 +155,11 @@ static void wsum_hess_init_impl(expr *node)
 
         /* compute sparsity of C and prepare CT */
         CSR_Matrix *C = BTA_alloc(Jg1, Jg2);
+        node->memory_bytes += csr_memory_bytes(C);
         node->work->iwork = (int *) malloc(C->m * sizeof(int));
+        node->memory_bytes += C->m * sizeof(int);
         CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
+        node->memory_bytes += csr_memory_bytes(CT);
 
         /* initialize wsum_hessians of children */
         wsum_hess_init(x);
@@ -168,10 +174,15 @@ static void wsum_hess_init_impl(expr *node)
            matrix in the sum) */
         int *maps[4];
         node->wsum_hess = sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps);
+        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
         mul_node->idx_map_C = maps[0];
+        node->memory_bytes += C->nnz * sizeof(int);
         mul_node->idx_map_CT = maps[1];
+        node->memory_bytes += CT->nnz * sizeof(int);
         mul_node->idx_map_Hx = maps[2];
+        node->memory_bytes += x->wsum_hess->nnz * sizeof(int);
         mul_node->idx_map_Hy = maps[3];
+        node->memory_bytes += y->wsum_hess->nnz * sizeof(int);
     }
 }
 

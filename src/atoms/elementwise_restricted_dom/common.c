@@ -6,6 +6,7 @@ void jacobian_init_restricted(expr *node)
     expr *child = node->left;
 
     node->jacobian = new_csr_matrix(node->size, node->n_vars, node->size);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
     for (int j = 0; j < node->size; j++)
     {
         node->jacobian->p[j] = j;
@@ -21,6 +22,7 @@ void wsum_hess_init_restricted(expr *node)
     int i;
 
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 
     for (i = 0; i < node->size; i++)
     {

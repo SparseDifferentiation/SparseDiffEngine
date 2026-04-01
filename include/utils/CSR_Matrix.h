@@ -1,6 +1,7 @@
 #ifndef CSR_MATRIX_H
 #define CSR_MATRIX_H
 #include <stdbool.h>
+#include <stddef.h>
 
 /* CSR (Compressed Sparse Row) Matrix Format
  *
@@ -48,6 +49,9 @@ void insert_idx(int idx, int *arr, int len);
 
 /* get value at position (row, col) in A */
 double csr_get_value(const CSR_Matrix *A, int row, int col);
+
+/* Returns total bytes used by p, i, x arrays (0 if A is NULL) */
+size_t csr_memory_bytes(const CSR_Matrix *A);
 
 /* Expand symmetric CSR matrix A to full matrix C. A is assumed to store
    only upper triangle. C must be pre-allocated with sufficient nnz */

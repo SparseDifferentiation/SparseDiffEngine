@@ -89,11 +89,14 @@ static void jacobian_init_impl(expr *node)
     /* initialize child's jacobian and precompute sparsity of its CSC */
     jacobian_init(x);
     lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian, node->work->iwork);
+    node->memory_bytes += csc_memory_bytes(lnode->Jchild_CSC);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
                                                       lnode->n_blocks);
+    node->memory_bytes += csc_memory_bytes(lnode->J_CSC);
     node->jacobian = csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -121,11 +124,13 @@ static void wsum_hess_init_impl(expr *node)
 
     /* allocate this node's hessian with the same sparsity as child's */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
     int dim = ((left_matmul_expr *) node)->AT->m * n_blocks;
     node->work->dwork = (double *) malloc(dim * sizeof(double));
+    node->memory_bytes += dim * sizeof(double);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -178,8 +183,11 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
        (requiring size node->n_vars) and for transposing A (requiring size A->n).
        csc_to_csr_work is used for converting J_CSC to CSR (requiring
        node->size) */
-    node->work->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
+    int iwork_count = MAX(A->n, node->n_vars);
+    node->work->iwork = (int *) malloc(iwork_count * sizeof(int));
+    node->memory_bytes += iwork_count * sizeof(int);
     lnode->csc_to_csr_work = (int *) malloc(node->size * sizeof(int));
+    node->memory_bytes += node->size * sizeof(int);
     lnode->n_blocks = n_blocks;
 
     /* store A and AT */
@@ -219,8 +227,11 @@ expr *new_left_matmul_dense(expr *u, int m, int n, const double *data)
     node->left = u;
     expr_retain(u);
 
-    node->work->iwork = (int *) malloc(MAX(n, node->n_vars) * sizeof(int));
+    int iwork_count = MAX(n, node->n_vars);
+    node->work->iwork = (int *) malloc(iwork_count * sizeof(int));
+    node->memory_bytes += iwork_count * sizeof(int);
     lnode->csc_to_csr_work = (int *) malloc(node->size * sizeof(int));
+    node->memory_bytes += node->size * sizeof(int);
     lnode->n_blocks = n_blocks;
 
     lnode->A = new_dense_matrix(m, n, data);

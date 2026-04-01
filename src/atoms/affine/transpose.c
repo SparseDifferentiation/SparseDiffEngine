@@ -46,6 +46,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(child);
     CSR_Matrix *Jc = child->jacobian;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, Jc->nnz);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 
     /* fill sparsity */
     CSR_Matrix *J = node->jacobian;
@@ -93,9 +94,11 @@ static void wsum_hess_init_impl(expr *node)
 
     /* same sparsity pattern as child */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 
     /* for computing Kw where K is the commutation matrix */
     node->work->dwork = (double *) malloc(node->size * sizeof(double));
+    node->memory_bytes += node->size * sizeof(double);
 }
 static void eval_wsum_hess(expr *node, const double *w)
 {

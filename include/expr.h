@@ -21,7 +21,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include <stdbool.h>
-#include <stddef.h>
+#include <stddef.h>  /* size_t */
 #include <string.h>
 
 #define JAC_IDXS_NOT_SET -1
@@ -63,6 +63,8 @@ typedef struct expr
     //                         general quantities
     // ------------------------------------------------------------------------
     int d1, d2, size, n_vars, refcount, var_id;
+    size_t memory_bytes;
+    bool visited;
     struct expr *left;
     struct expr *right;
 

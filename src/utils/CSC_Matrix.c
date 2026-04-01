@@ -57,6 +57,14 @@ void free_csc_matrix(CSC_Matrix *matrix)
     }
 }
 
+size_t csc_memory_bytes(const CSC_Matrix *A)
+{
+    if (!A) return 0;
+    return (size_t)(A->n + 1) * sizeof(int)
+         + (size_t)A->nnz * sizeof(int)
+         + (size_t)A->nnz * sizeof(double);
+}
+
 CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
 {
     /* A is m x n, A^T A is n x n */

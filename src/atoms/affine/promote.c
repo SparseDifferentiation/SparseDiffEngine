@@ -42,6 +42,7 @@ static void jacobian_init_impl(expr *node)
     /* each output row copies the single row from child's jacobian */
     int nnz = node->size * x->jacobian->nnz;
     node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 
     /* fill sparsity pattern */
     CSR_Matrix *J = node->jacobian;
@@ -79,6 +80,7 @@ static void wsum_hess_init_impl(expr *node)
     /* same sparsity as child since we're summing weights */
     CSR_Matrix *child_hess = node->left->wsum_hess;
     node->wsum_hess = new_csr_copy_sparsity(child_hess);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

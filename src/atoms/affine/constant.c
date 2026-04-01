@@ -31,6 +31,7 @@ static void jacobian_init_impl(expr *node)
     /* Constant jacobian is all zeros: size x n_vars with 0 nonzeros.
      * new_csr_matrix uses calloc for row pointers, so they're already 0. */
     node->jacobian = new_csr_matrix(node->size, node->n_vars, 0);
+    node->memory_bytes += csr_memory_bytes(node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -43,6 +44,7 @@ static void wsum_hess_init_impl(expr *node)
 {
     /* Constant Hessian is all zeros: n_vars x n_vars with 0 nonzeros. */
     node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
+    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
