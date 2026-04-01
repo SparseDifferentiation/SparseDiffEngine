@@ -16,7 +16,9 @@
  * limitations under the License.
  */
 #include "utils/CSC_Matrix.h"
+#include "utils/Timer.h"
 #include "utils/iVec.h"
+#include "utils/utils.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -168,38 +170,51 @@ static inline double sparse_wdot(const double *a_x, const int *a_i, int a_nnz,
     return sum;
 }
 
+static void ATDA_copy_symmetric(CSR_Matrix *C, int i, int jj, int j, int *cursor)
+{
+    while (C->i[cursor[j]] != i)
+    {
+        cursor[j]++;
+    }
+    C->x[jj] = C->x[cursor[j]];
+    cursor[j]++;
+}
+
 void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
 {
-    int j, ii, jj;
-    for (ii = 0; ii < C->m; ii++)
-    {
-        for (jj = C->p[ii]; jj < C->p[ii + 1]; jj++)
-        {
-            j = C->i[jj];
+    int *cursor = (int *) malloc(C->m * sizeof(int));
+    memcpy(cursor, C->p, C->m * sizeof(int));
 
-            if (j < ii)
+    for (int i = 0; i < C->m; i++)
+    {
+        for (int jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            int j = C->i[jj];
+
+            if (j < i)
             {
-                C->x[jj] = csr_get_value(C, j, ii);
+                ATDA_copy_symmetric(C, i, jj, j, cursor);
             }
             else
             {
-                int nnz_ai = A->p[ii + 1] - A->p[ii];
+                int nnz_ai = A->p[i + 1] - A->p[i];
                 int nnz_aj = A->p[j + 1] - A->p[j];
 
                 if (d != NULL)
                 {
                     C->x[jj] =
-                        sparse_wdot(A->x + A->p[ii], A->i + A->p[ii], nnz_ai,
+                        sparse_wdot(A->x + A->p[i], A->i + A->p[i], nnz_ai,
                                     A->x + A->p[j], A->i + A->p[j], nnz_aj, d);
                 }
                 else
                 {
-                    C->x[jj] = sparse_dot(A->x + A->p[ii], A->i + A->p[ii], nnz_ai,
+                    C->x[jj] = sparse_dot(A->x + A->p[i], A->i + A->p[i], nnz_ai,
                                           A->x + A->p[j], A->i + A->p[j], nnz_aj);
                 }
             }
         }
     }
+    free(cursor);
 }
 
 CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)

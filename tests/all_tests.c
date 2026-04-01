@@ -91,6 +91,7 @@
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
+#include "profiling/profile_ATA_alloc.h"
 #include "profiling/profile_left_matmul.h"
 #endif /* PROFILE_ONLY */
 
@@ -351,7 +352,9 @@ int main(void)
 
 #ifdef PROFILE_ONLY
     printf("\n--- Profiling Tests ---\n");
-    mu_run_test(profile_left_matmul, tests_run);
+    // mu_run_test(profile_left_matmul, tests_run);
+    mu_run_test(profile_matmul_lstsq, tests_run);
+    // mu_run_test(profile_ATA_alloc, tests_run);
 #endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);
