@@ -39,20 +39,18 @@ CSR_Matrix *new_csr_matrix(int m, int n, int nnz, size_t *mem)
 
 CSR_Matrix *new_csr(const CSR_Matrix *A, size_t *mem)
 {
-    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz, NULL);
+    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz, mem);
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
     memcpy(copy->x, A->x, A->nnz * sizeof(double));
-    if (mem) *mem += csr_memory_bytes(copy);
     return copy;
 }
 
 CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A, size_t *mem)
 {
-    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz, NULL);
+    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz, mem);
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
-    if (mem) *mem += csr_memory_bytes(copy);
     return copy;
 }
 
@@ -190,7 +188,7 @@ CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
 CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork, size_t *mem)
 {
     /* Allocate A^T and compute sparsity pattern without filling values */
-    CSR_Matrix *AT = new_csr_matrix(A->n, A->m, A->nnz, NULL);
+    CSR_Matrix *AT = new_csr_matrix(A->n, A->m, A->nnz, mem);
 
     int i, j;
     int *count = iwork;
@@ -229,7 +227,6 @@ CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork, size_t *mem)
         }
     }
 
-    if (mem) *mem += csr_memory_bytes(AT);
     return AT;
 }
 

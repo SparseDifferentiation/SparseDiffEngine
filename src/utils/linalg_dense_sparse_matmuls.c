@@ -197,7 +197,7 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J, size_t *me
     // ---------------------------------------------------------------
     //           replicate sparsity pattern across blocks
     // ---------------------------------------------------------------
-    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz, NULL);
+    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz, mem);
     int idx = 0;
     for (i = 0; i < m * n; i++)
     {
@@ -215,7 +215,6 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J, size_t *me
         iVec_free(pattern[blk_row]);
     }
     free(pattern);
-    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 
@@ -287,7 +286,7 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J, size_t *mem
 
     /* Step 2: replicate each block's pattern for all m rows
      *         within that block. */
-    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz, NULL);
+    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz, mem);
     int idx = 0;
     for (i = 0; i < m * n; i++)
     {
@@ -305,7 +304,6 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J, size_t *mem
         iVec_free(pattern[blk]);
     }
     free(pattern);
-    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 

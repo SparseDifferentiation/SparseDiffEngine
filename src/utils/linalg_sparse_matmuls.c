@@ -304,13 +304,12 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B,
         Cp[i + 1] = nnz;
     }
 
-    CSR_Matrix *C = new_csr_matrix(m, p, nnz, NULL);
+    CSR_Matrix *C = new_csr_matrix(m, p, nnz, mem);
     memcpy(C->p, Cp, (m + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
     free(Cp);
     iVec_free(Ci);
 
-    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 
