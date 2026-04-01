@@ -63,7 +63,7 @@ static void jacobian_init_impl(expr *node)
         total_nnz += A->p[row + 1] - A->p[row];
     }
 
-    node->jacobian = new_csr_matrix(1, node->n_vars, total_nnz, &node->memory_bytes);
+    node->jacobian = new_csr_matrix(1, node->n_vars, total_nnz, &node->bytes);
 
     // ---------------------------------------------------------------
     // fill sparsity pattern and idx_map
@@ -71,7 +71,7 @@ static void jacobian_init_impl(expr *node)
     trace_expr *tnode = (trace_expr *) node;
     int iwork_count = MAX(node->jacobian->n, total_nnz);
     node->work->iwork = malloc(iwork_count * sizeof(int));
-    node->memory_bytes += iwork_count * sizeof(int);
+    node->bytes += iwork_count * sizeof(int);
 
     /* the idx_map array maps each nonzero entry j in the original matrix A (from the
        selected, evenly spaced rows) to the corresponding index in the output row
@@ -79,7 +79,7 @@ static void jacobian_init_impl(expr *node)
        rows), idx_map[j] gives the position in C->x where the value from A->x[j]
        should be accumulated. */
     tnode->idx_map = malloc(x->jacobian->nnz * sizeof(int));
-    node->memory_bytes += x->jacobian->nnz * sizeof(int);
+    node->bytes += x->jacobian->nnz * sizeof(int);
     sum_spaced_rows_into_row_csr_alloc(A, node->jacobian, row_spacing,
                                        node->work->iwork, tnode->idx_map);
 }
@@ -107,13 +107,13 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
-    node->memory_bytes += x->size * sizeof(double);
+    node->bytes += x->size * sizeof(double);
 
     /* We copy over the sparsity pattern from the child. This also includes the
        contribution to wsum_hess of entries of the child that will always have
        zero weight in eval_wsum_hess. We do this for simplicity. But the Hessian
        can for sure be made more sophisticated. */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->memory_bytes);
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->bytes);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

@@ -14,8 +14,8 @@ void jacobian_init_elementwise(expr *node)
     /* if the variable is a child */
     if (child->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(node->size, node->n_vars, node->size,
-                                        &node->memory_bytes);
+        node->jacobian =
+            new_csr_matrix(node->size, node->n_vars, node->size, &node->bytes);
         for (int j = 0; j < node->size; j++)
         {
             node->jacobian->p[j] = j;
@@ -28,11 +28,11 @@ void jacobian_init_elementwise(expr *node)
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
         jacobian_init(child);
         CSR_Matrix *Jg = child->jacobian;
-        node->jacobian = new_csr_copy_sparsity(Jg, &node->memory_bytes);
+        node->jacobian = new_csr_copy_sparsity(Jg, &node->bytes);
         node->work->dwork = (double *) malloc(node->size * sizeof(double));
-        node->memory_bytes += node->size * sizeof(double);
+        node->bytes += node->size * sizeof(double);
         node->work->local_jac_diag = (double *) malloc(node->size * sizeof(double));
-        node->memory_bytes += node->size * sizeof(double);
+        node->bytes += node->size * sizeof(double);
     }
 }
 
@@ -65,8 +65,8 @@ void wsum_hess_init_elementwise(expr *node)
     /* if the variable is a child */
     if (id != NOT_A_VARIABLE)
     {
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, node->size,
-                                         &node->memory_bytes);
+        node->wsum_hess =
+            new_csr_matrix(node->n_vars, node->n_vars, node->size, &node->bytes);
 
         for (i = 0; i < node->size; i++)
         {
@@ -91,22 +91,22 @@ void wsum_hess_init_elementwise(expr *node)
 
         if (child->is_affine(child))
         {
-            node->wsum_hess = ATA_alloc(Jg, &node->memory_bytes);
+            node->wsum_hess = ATA_alloc(Jg, &node->bytes);
         }
         else
         {
             /* term1: Jg^T @ D @ Jg */
-            node->work->hess_term1 = ATA_alloc(Jg, &node->memory_bytes);
+            node->work->hess_term1 = ATA_alloc(Jg, &node->bytes);
 
             /* term2: child's Hessian */
             wsum_hess_init(child);
             CSR_Matrix *Hg = child->wsum_hess;
-            node->work->hess_term2 = new_csr_copy_sparsity(Hg, &node->memory_bytes);
+            node->work->hess_term2 = new_csr_copy_sparsity(Hg, &node->bytes);
 
             /* wsum_hess = term1 + term2 */
             int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
-            node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz,
-                                             &node->memory_bytes);
+            node->wsum_hess =
+                new_csr_matrix(node->n_vars, node->n_vars, max_nnz, &node->bytes);
             sum_csr_alloc(node->work->hess_term1, node->work->hess_term2,
                           node->wsum_hess);
         }

@@ -8,7 +8,7 @@
 /* C = (I_p kron A) @ J via the polymorphic Matrix interface.
  * A is dense m x n, J is (n*p) x k in CSC, C is (m*p) x k in CSC. */
 // TODO: maybe we can replace these with I_kron_X functionality?
-CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p);
+CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p, size_t *mem);
 void I_kron_A_fill_values(const Matrix *A, const CSC_Matrix *J, CSC_Matrix *C);
 
 /* Sparsity and values of C = (Y^T kron I_m) @ J where Y is k x n, J is (m*k) x p,

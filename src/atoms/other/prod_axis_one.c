@@ -64,7 +64,7 @@ static void jacobian_init_impl(expr *node)
     if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian =
-            new_csr_matrix(node->size, node->n_vars, x->size, &node->memory_bytes);
+            new_csr_matrix(node->size, node->n_vars, x->size, &node->bytes);
 
         /* set row pointers (each row has d2 nnzs) */
         for (int row = 0; row < x->d1; row++)
@@ -145,7 +145,7 @@ static void wsum_hess_init_impl(expr *node)
            the columns in that row (except the diagonal element). */
         int nnz = x->d1 * x->d2 * (x->d2 - 1);
         node->wsum_hess =
-            new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->memory_bytes);
+            new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->bytes);
         CSR_Matrix *H = node->wsum_hess;
 
         /* fill sparsity pattern */
@@ -390,11 +390,11 @@ expr *new_prod_axis_one(expr *child)
 
     /* allocate arrays to store per-row statistics */
     pnode->num_of_zeros = (int *) calloc(child->d1, sizeof(int));
-    node->memory_bytes += child->d1 * sizeof(int);
+    node->bytes += child->d1 * sizeof(int);
     pnode->zero_index = (int *) calloc(child->d1, sizeof(int));
-    node->memory_bytes += child->d1 * sizeof(int);
+    node->bytes += child->d1 * sizeof(int);
     pnode->prod_nonzero = (double *) calloc(child->d1, sizeof(double));
-    node->memory_bytes += child->d1 * sizeof(double);
+    node->bytes += child->d1 * sizeof(double);
 
     node->left = child;
     expr_retain(child);

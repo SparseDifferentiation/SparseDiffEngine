@@ -55,8 +55,7 @@ static void jacobian_init_impl(expr *node)
         nnz += hnode->args[i]->jacobian->nnz;
     }
 
-    node->jacobian =
-        new_csr_matrix(node->size, node->n_vars, nnz, &node->memory_bytes);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz, &node->bytes);
 
     /* precompute sparsity pattern of this node's jacobian */
     int row_offset = 0;
@@ -114,10 +113,8 @@ static void wsum_hess_init_impl(expr *node)
 
     /* worst-case scenario the nnz of node->wsum_hess is the sum of children's
        nnz */
-    node->wsum_hess =
-        new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->memory_bytes);
-    hnode->CSR_work =
-        new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->memory_bytes);
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->bytes);
+    hnode->CSR_work = new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->bytes);
 
     /* fill sparsity pattern */
     CSR_Matrix *H = node->wsum_hess;
@@ -196,7 +193,7 @@ expr *new_hstack(expr **args, int n_args, int n_vars)
 
     /* Set type-specific fields (deep copy args array) */
     hnode->args = (expr **) calloc(n_args, sizeof(expr *));
-    node->memory_bytes += n_args * sizeof(expr *);
+    node->bytes += n_args * sizeof(expr *);
     hnode->n_args = n_args;
     for (int i = 0; i < n_args; i++)
     {

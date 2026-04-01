@@ -64,8 +64,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     CSR_Matrix *Jx = x->jacobian;
-    CSR_Matrix *J =
-        new_csr_matrix(node->size, node->n_vars, Jx->nnz, &node->memory_bytes);
+    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz, &node->bytes);
 
     /* set sparsity pattern */
     J->p[0] = 0;
@@ -106,7 +105,7 @@ static void wsum_hess_init_impl(expr *node)
 
     /* for setting weight vector to evaluate hessian of child */
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
-    node->memory_bytes += x->size * sizeof(double);
+    node->bytes += x->size * sizeof(double);
 
     /* in the implementation of eval_wsum_hess we evaluate the
        child's hessian with a weight vector that has w[i] = 0
@@ -115,7 +114,7 @@ static void wsum_hess_init_impl(expr *node)
        structural zeros, but we do not try to exploit that sparsity
        right now. */
     CSR_Matrix *Hx = x->wsum_hess;
-    node->wsum_hess = new_csr_copy_sparsity(Hx, &node->memory_bytes);
+    node->wsum_hess = new_csr_copy_sparsity(Hx, &node->bytes);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -177,7 +176,7 @@ expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)
 
     /* copy indices */
     idx->indices = (int *) malloc(n_idxs * sizeof(int));
-    node->memory_bytes += n_idxs * sizeof(int);
+    node->bytes += n_idxs * sizeof(int);
     memcpy(idx->indices, indices, n_idxs * sizeof(int));
     idx->n_idxs = n_idxs;
 

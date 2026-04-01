@@ -59,7 +59,7 @@ static void jacobian_init_impl(expr *node)
     if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian =
-            new_csr_matrix(node->size, node->n_vars, x->size, &node->memory_bytes);
+            new_csr_matrix(node->size, node->n_vars, x->size, &node->bytes);
 
         /* set row pointers (each row has d1 nnzs) */
         for (int row = 0; row < x->d2; row++)
@@ -138,7 +138,7 @@ static void wsum_hess_init_impl(expr *node)
         /* Hessian has block diagonal structure: d2 blocks of size d1 x d1 */
         int nnz = x->d2 * x->d1 * x->d1;
         node->wsum_hess =
-            new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->memory_bytes);
+            new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->bytes);
         CSR_Matrix *H = node->wsum_hess;
 
         /* fill row pointers for the variable's rows (block diagonal) */
@@ -350,11 +350,11 @@ expr *new_prod_axis_zero(expr *child)
 
     /* allocate arrays to store per-column statistics */
     pnode->num_of_zeros = (int *) calloc(child->d2, sizeof(int));
-    node->memory_bytes += child->d2 * sizeof(int);
+    node->bytes += child->d2 * sizeof(int);
     pnode->zero_index = (int *) calloc(child->d2, sizeof(int));
-    node->memory_bytes += child->d2 * sizeof(int);
+    node->bytes += child->d2 * sizeof(int);
     pnode->prod_nonzero = (double *) calloc(child->d2, sizeof(double));
-    node->memory_bytes += child->d2 * sizeof(double);
+    node->bytes += child->d2 * sizeof(double);
 
     node->left = child;
     expr_retain(child);

@@ -28,7 +28,7 @@
  * C = (I_p kron A) @ J  via the polymorphic Matrix interface.
  * A is dense m x n, J is (n*p) x k CSC, C is (m*p) x k CSC.
  * --------------------------------------------------------------- */
-CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p)
+CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p, size_t *mem)
 {
     int m = A->m;
     int n = A->n;
@@ -81,7 +81,7 @@ CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p)
         Cp[j + 1] = Ci->len;
     }
 
-    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len, NULL);
+    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len, mem);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
     free(Cp);

@@ -33,7 +33,7 @@ CSR_Matrix *new_csr_matrix(int m, int n, int nnz, size_t *mem)
     matrix->m = m;
     matrix->n = n;
     matrix->nnz = nnz;
-    if (mem) *mem += csr_memory_bytes(matrix);
+    if (mem) *mem += csr_bytes(matrix);
     return matrix;
 }
 
@@ -65,7 +65,7 @@ void free_csr_matrix(CSR_Matrix *matrix)
     }
 }
 
-size_t csr_memory_bytes(const CSR_Matrix *A)
+size_t csr_bytes(const CSR_Matrix *A)
 {
     if (!A) return 0;
     return (size_t) (A->m + 1) * sizeof(int) + (size_t) A->nnz * sizeof(int) +

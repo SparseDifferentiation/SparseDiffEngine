@@ -38,7 +38,7 @@ typedef struct
     int nnz_hessian;
     int n_vars;
     int total_constraint_size;
-    size_t memory_bytes;
+    size_t bytes;
 } Diff_engine_stats;
 
 typedef struct problem

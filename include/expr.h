@@ -63,7 +63,7 @@ typedef struct expr
     //                         general quantities
     // ------------------------------------------------------------------------
     int d1, d2, size, n_vars, refcount, var_id;
-    size_t memory_bytes;
+    size_t bytes;
     bool visited;
     struct expr *left;
     struct expr *right;

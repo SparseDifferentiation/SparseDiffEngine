@@ -51,8 +51,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     CSR_Matrix *Jx = x->jacobian;
-    CSR_Matrix *J =
-        new_csr_matrix(node->size, node->n_vars, Jx->nnz, &node->memory_bytes);
+    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz, &node->bytes);
 
     /* Output has n^2 rows but only n diagonal positions are non-empty.
      * Diagonal position i is at row i*(n+1) in Fortran order. */
@@ -102,12 +101,12 @@ static void wsum_hess_init_impl(expr *node)
 
     /* workspace for extracting diagonal weights */
     node->work->dwork = (double *) calloc(x->size, sizeof(double));
-    node->memory_bytes += x->size * sizeof(double);
+    node->bytes += x->size * sizeof(double);
 
     /* Copy child's Hessian structure (diag_vec is linear, so its own Hessian is
      * zero) */
     CSR_Matrix *Hx = x->wsum_hess;
-    node->wsum_hess = new_csr_copy_sparsity(Hx, &node->memory_bytes);
+    node->wsum_hess = new_csr_copy_sparsity(Hx, &node->bytes);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

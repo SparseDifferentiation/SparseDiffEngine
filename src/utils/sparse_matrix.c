@@ -27,10 +27,11 @@ static void sparse_block_left_mult_vec(const Matrix *self, const double *x,
 }
 
 static CSC_Matrix *sparse_block_left_mult_sparsity(const Matrix *self,
-                                                   const CSC_Matrix *J, int p)
+                                                   const CSC_Matrix *J, int p,
+                                                   size_t *mem)
 {
     const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
-    return block_left_multiply_fill_sparsity(sm->csr, J, p);
+    return block_left_multiply_alloc(sm->csr, J, p, mem);
 }
 
 static void sparse_block_left_mult_values(const Matrix *self, const CSC_Matrix *J,

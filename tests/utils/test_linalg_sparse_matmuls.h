@@ -9,7 +9,7 @@
 #include "utils/CSR_Matrix.h"
 #include "utils/linalg_sparse_matmuls.h"
 
-/* Test block_left_multiply_fill_sparsity with simple case: single block */
+/* Test block_left_multiply_alloc with simple case: single block */
 const char *test_block_left_multiply_single_block(void)
 {
     /* A is 2x3 CSR:
@@ -38,7 +38,7 @@ const char *test_block_left_multiply_single_block(void)
     memcpy(J->p, Jp, 3 * sizeof(int));
 
     /* Compute C = A @ J1 (p=1 means just one block) */
-    CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
+    CSC_Matrix *C = block_left_multiply_alloc(A, J, 1, NULL);
 
     /* Expected C is 2x2:
      * C[0,0] = A[0,:] @ J[:,0] = 1.0 * 1.0 = 1.0 (row 0 has column 0, J col 0 has
@@ -60,7 +60,7 @@ const char *test_block_left_multiply_single_block(void)
     return NULL;
 }
 
-/* Test block_left_multiply_fill_sparsity with two blocks */
+/* Test block_left_multiply_alloc with two blocks */
 const char *test_block_left_multiply_two_blocks(void)
 {
     /* A is 2x2 CSR:
@@ -109,7 +109,7 @@ const char *test_block_left_multiply_two_blocks(void)
      * [0.0  0.0  0.0]
      * [0.0  1.0  1.0]
      */
-    CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 2);
+    CSC_Matrix *C = block_left_multiply_alloc(A, J, 2, NULL);
     block_left_multiply_fill_values(A, J, C);
 
     int expected_p2[4] = {0, 1, 2, 3};
@@ -127,7 +127,7 @@ const char *test_block_left_multiply_two_blocks(void)
     return NULL;
 }
 
-/* Test block_left_multiply_fill_sparsity with all zero column in J */
+/* Test block_left_multiply_alloc with all zero column in J */
 const char *test_block_left_multiply_zero_column(void)
 {
     /* A is 2x2 CSR (identity) */
@@ -151,7 +151,7 @@ const char *test_block_left_multiply_zero_column(void)
     memcpy(J->i, Ji, 1 * sizeof(int));
     memcpy(J->p, Jp, 3 * sizeof(int));
 
-    CSC_Matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
+    CSC_Matrix *C = block_left_multiply_alloc(A, J, 1, NULL);
 
     int expected_p3[3] = {0, 1, 1};
     int expected_i3[1] = {0};

@@ -108,7 +108,7 @@ void free_coo_matrix(COO_Matrix *matrix)
     }
 }
 
-size_t coo_memory_bytes(const COO_Matrix *A)
+size_t coo_bytes(const COO_Matrix *A)
 {
     if (!A) return 0;
     size_t bytes = (size_t) A->nnz * sizeof(int)       /* rows */

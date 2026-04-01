@@ -138,8 +138,7 @@ static void jacobian_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int nnz = m * n * 2 * k;
-    node->jacobian =
-        new_csr_matrix(node->size, node->n_vars, nnz, &node->memory_bytes);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz, &node->bytes);
 
     int nnz_idx = 0;
     for (int i = 0; i < node->size; i++)
@@ -231,13 +230,10 @@ static void jacobian_init_chain_rule(expr *node)
     jacobian_csc_init(g);
 
     /* initialize term1, term2, and their sum */
-    mnode->term1_CSR =
-        YT_kron_I_alloc(m, k, n, f->work->jacobian_csc, &node->memory_bytes);
-    mnode->term2_CSR =
-        I_kron_X_alloc(m, k, n, g->work->jacobian_csc, &node->memory_bytes);
+    mnode->term1_CSR = YT_kron_I_alloc(m, k, n, f->work->jacobian_csc, &node->bytes);
+    mnode->term2_CSR = I_kron_X_alloc(m, k, n, g->work->jacobian_csc, &node->bytes);
     int max_nnz = mnode->term1_CSR->nnz + mnode->term2_CSR->nnz;
-    node->jacobian =
-        new_csr_matrix(node->size, node->n_vars, max_nnz, &node->memory_bytes);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, max_nnz, &node->bytes);
     sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
 }
 
@@ -276,7 +272,7 @@ static void wsum_hess_init_no_chain_rule(expr *node)
     int n = y->d2;
     int total_nnz = 2 * m * k * n;
     node->wsum_hess =
-        new_csr_matrix(node->n_vars, node->n_vars, total_nnz, &node->memory_bytes);
+        new_csr_matrix(node->n_vars, node->n_vars, total_nnz, &node->bytes);
     int nnz = 0;
     int *Hi = node->wsum_hess->i;
     int *Hp = node->wsum_hess->p;
@@ -422,19 +418,18 @@ static void wsum_hess_init_chain_rule(expr *node)
     CSC_Matrix *Jg = g->work->jacobian_csc;
 
     /* initialize C = Jf^T @ B @ Jg = Jf^T @ (B @ Jg) */
-    mnode->B = build_cross_hessian_sparsity(m, k, n, &node->memory_bytes);
-    mnode->BJg = csr_csc_matmul_alloc(mnode->B, Jg, &node->memory_bytes);
+    mnode->B = build_cross_hessian_sparsity(m, k, n, &node->bytes);
+    mnode->BJg = csr_csc_matmul_alloc(mnode->B, Jg, &node->bytes);
     int max_alloc = MAX(mnode->BJg->m, mnode->BJg->n);
     mnode->BJg_csc_work = (int *) malloc(max_alloc * sizeof(int));
-    node->memory_bytes += max_alloc * sizeof(int);
-    mnode->BJg_CSC =
-        csr_to_csc_alloc(mnode->BJg, mnode->BJg_csc_work, &node->memory_bytes);
-    mnode->C = BTA_alloc(mnode->BJg_CSC, Jf, &node->memory_bytes);
+    node->bytes += max_alloc * sizeof(int);
+    mnode->BJg_CSC = csr_to_csc_alloc(mnode->BJg, mnode->BJg_csc_work, &node->bytes);
+    mnode->C = BTA_alloc(mnode->BJg_CSC, Jf, &node->bytes);
 
     /* initialize C^T */
     node->work->iwork = (int *) malloc(mnode->C->m * sizeof(int));
-    node->memory_bytes += mnode->C->m * sizeof(int);
-    mnode->CT = AT_alloc(mnode->C, node->work->iwork, &node->memory_bytes);
+    node->bytes += mnode->C->m * sizeof(int);
+    mnode->CT = AT_alloc(mnode->C, node->work->iwork, &node->bytes);
 
     /* initialize Hessians of children */
     wsum_hess_init(f);
@@ -443,7 +438,7 @@ static void wsum_hess_init_chain_rule(expr *node)
     /* sum the four terms and fill idx maps */
     int *maps[4];
     node->wsum_hess = sum_4_csr_alloc(mnode->C, mnode->CT, f->wsum_hess,
-                                      g->wsum_hess, maps, &node->memory_bytes);
+                                      g->wsum_hess, maps, &node->bytes);
     mnode->idx_map_C = maps[0];
     mnode->idx_map_CT = maps[1];
     mnode->idx_map_Hf = maps[2];
@@ -454,7 +449,7 @@ static void wsum_hess_init_chain_rule(expr *node)
     {
         node->work->dwork =
             (double *) malloc(MAX(f->size, g->size) * sizeof(double));
-        node->memory_bytes += MAX(f->size, g->size) * sizeof(double);
+        node->bytes += MAX(f->size, g->size) * sizeof(double);
     }
 }
 

@@ -93,7 +93,7 @@ static void jacobian_init_impl(expr *node)
     }
 
     node->jacobian =
-        new_csr_matrix(node->size, node->n_vars, total_nnz, &node->memory_bytes);
+        new_csr_matrix(node->size, node->n_vars, total_nnz, &node->bytes);
 
     // ---------------------------------------------------------------------
     //                 fill sparsity pattern
@@ -192,11 +192,11 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* Same sparsity as child - weights get summed */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->memory_bytes);
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->bytes);
 
     /* allocate space for weight vector */
     node->work->dwork = malloc(node->size * sizeof(double));
-    node->memory_bytes += node->size * sizeof(double);
+    node->bytes += node->size * sizeof(double);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

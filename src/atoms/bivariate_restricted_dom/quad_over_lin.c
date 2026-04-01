@@ -57,8 +57,7 @@ static void jacobian_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian =
-            new_csr_matrix(1, node->n_vars, x->size + 1, &node->memory_bytes);
+        node->jacobian = new_csr_matrix(1, node->n_vars, x->size + 1, &node->bytes);
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = x->size + 1;
 
@@ -83,14 +82,14 @@ static void jacobian_init_impl(expr *node)
     else /* left node is not a variable (guaranteed to be a linear operator) */
     {
         node->work->dwork = (double *) malloc(x->size * sizeof(double));
-        node->memory_bytes += x->size * sizeof(double);
+        node->bytes += x->size * sizeof(double);
 
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) calloc(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
         int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
         node->jacobian =
-            new_csr_matrix(1, node->n_vars, nonzero_cols + 1, &node->memory_bytes);
+            new_csr_matrix(1, node->n_vars, nonzero_cols + 1, &node->bytes);
 
         /* precompute column indices */
         node->jacobian->nnz = 0;
@@ -114,7 +113,7 @@ static void jacobian_init_impl(expr *node)
 
         /* find position where y should be inserted */
         node->work->iwork = (int *) malloc(sizeof(int));
-        node->memory_bytes += sizeof(int);
+        node->bytes += sizeof(int);
         for (int j = 0; j < node->jacobian->nnz; j++)
         {
             if (node->jacobian->i[j] == y->var_id)
@@ -188,7 +187,7 @@ static void wsum_hess_init_impl(expr *node)
     if (x->var_id != NOT_A_VARIABLE)
     {
         node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1,
-                                         &node->memory_bytes);
+                                         &node->bytes);
         CSR_Matrix *H = node->wsum_hess;
 
         /* if x has lower idx than y*/

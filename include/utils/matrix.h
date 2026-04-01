@@ -28,7 +28,7 @@ typedef struct Matrix
     void (*block_left_mult_vec)(const struct Matrix *self, const double *x,
                                 double *y, int p);
     CSC_Matrix *(*block_left_mult_sparsity)(const struct Matrix *self,
-                                            const CSC_Matrix *J, int p);
+                                            const CSC_Matrix *J, int p, size_t *mem);
     void (*block_left_mult_values)(const struct Matrix *self, const CSC_Matrix *J,
                                    CSC_Matrix *C);
     void (*free_fn)(struct Matrix *self);

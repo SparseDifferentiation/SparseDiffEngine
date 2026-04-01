@@ -14,8 +14,8 @@
     * Mathematically it corresponds to  C = [A @ J1; A @ J2; ...; A @ Jp],
       where J = [J1; J2; ...; Jp]
 */
-CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
-                                              const CSC_Matrix *J, int p);
+CSC_Matrix *block_left_multiply_alloc(const CSR_Matrix *A, const CSC_Matrix *J,
+                                      int p, size_t *mem);
 
 void block_left_multiply_fill_values(const CSR_Matrix *A, const CSC_Matrix *J,
                                      CSC_Matrix *C);

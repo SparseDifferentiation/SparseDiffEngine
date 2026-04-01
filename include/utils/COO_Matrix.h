@@ -43,6 +43,6 @@ void free_coo_matrix(COO_Matrix *matrix);
 
 /* Returns total bytes used by rows, cols, x, value_map arrays
    (0 if A is NULL) */
-size_t coo_memory_bytes(const COO_Matrix *A);
+size_t coo_bytes(const COO_Matrix *A);
 
 #endif /* COO_MATRIX_H */

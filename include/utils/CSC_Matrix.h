@@ -63,6 +63,6 @@ CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork, size_t *mem);
 void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
 
 /* Returns total bytes used by p, i, x arrays (0 if A is NULL) */
-size_t csc_memory_bytes(const CSC_Matrix *A);
+size_t csc_bytes(const CSC_Matrix *A);
 
 #endif /* CSC_MATRIX_H */

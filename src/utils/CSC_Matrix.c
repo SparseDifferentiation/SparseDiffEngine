@@ -43,7 +43,7 @@ CSC_Matrix *new_csc_matrix(int m, int n, int nnz, size_t *mem)
     matrix->n = n;
     matrix->nnz = nnz;
 
-    if (mem) *mem += csc_memory_bytes(matrix);
+    if (mem) *mem += csc_bytes(matrix);
     return matrix;
 }
 
@@ -58,7 +58,7 @@ void free_csc_matrix(CSC_Matrix *matrix)
     }
 }
 
-size_t csc_memory_bytes(const CSC_Matrix *A)
+size_t csc_bytes(const CSC_Matrix *A)
 {
     if (!A) return 0;
     return (size_t) (A->n + 1) * sizeof(int) + (size_t) A->nnz * sizeof(int) +

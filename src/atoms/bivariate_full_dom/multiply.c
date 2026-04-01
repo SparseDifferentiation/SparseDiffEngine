@@ -49,8 +49,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(node->left);
     jacobian_init(node->right);
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian =
-        new_csr_matrix(node->size, node->n_vars, nnz_max, &node->memory_bytes);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max, &node->bytes);
 
     /* fill sparsity pattern */
     sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
@@ -80,8 +79,8 @@ static void wsum_hess_init_impl(expr *node)
         x->var_id != y->var_id)
     {
         assert(y->var_id != NOT_A_VARIABLE);
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size,
-                                         &node->memory_bytes);
+        node->wsum_hess =
+            new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size, &node->bytes);
 
         int i, var1_id, var2_id;
 
@@ -144,7 +143,7 @@ static void wsum_hess_init_impl(expr *node)
         if (!x->is_affine(x) || !y->is_affine(y))
         {
             node->work->dwork = (double *) malloc(node->size * sizeof(double));
-            node->memory_bytes += node->size * sizeof(double);
+            node->bytes += node->size * sizeof(double);
         }
 
         /* prepare sparsity pattern of csc conversion */
@@ -154,10 +153,10 @@ static void wsum_hess_init_impl(expr *node)
         CSC_Matrix *Jg2 = y->work->jacobian_csc;
 
         /* compute sparsity of C and prepare CT */
-        CSR_Matrix *C = BTA_alloc(Jg1, Jg2, &node->memory_bytes);
+        CSR_Matrix *C = BTA_alloc(Jg1, Jg2, &node->bytes);
         node->work->iwork = (int *) malloc(C->m * sizeof(int));
-        node->memory_bytes += C->m * sizeof(int);
-        CSR_Matrix *CT = AT_alloc(C, node->work->iwork, &node->memory_bytes);
+        node->bytes += C->m * sizeof(int);
+        CSR_Matrix *CT = AT_alloc(C, node->work->iwork, &node->bytes);
 
         /* initialize wsum_hessians of children */
         wsum_hess_init(x);
@@ -171,8 +170,8 @@ static void wsum_hess_init_impl(expr *node)
            fill index maps telling us where to accumulate each element of each
            matrix in the sum) */
         int *maps[4];
-        node->wsum_hess = sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps,
-                                          &node->memory_bytes);
+        node->wsum_hess =
+            sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps, &node->bytes);
         mul_node->idx_map_C = maps[0];
         mul_node->idx_map_CT = maps[1];
         mul_node->idx_map_Hx = maps[2];

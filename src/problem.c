@@ -68,7 +68,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->stats.nnz_hessian = 0;
     prob->stats.n_vars = prob->n_vars;
     prob->stats.total_constraint_size = prob->total_constraint_size;
-    prob->stats.memory_bytes = 0;
+    prob->stats.bytes = 0;
 
     prob->verbose = verbose;
 
@@ -276,7 +276,7 @@ static size_t sum_dag_memory(expr *node)
 {
     if (node == NULL || node->visited) return 0;
     node->visited = true;
-    size_t total = node->memory_bytes;
+    size_t total = node->bytes;
     total += sum_dag_memory(node->left);
     total += sum_dag_memory(node->right);
     return total;
@@ -318,7 +318,7 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
 
     char mem_buf[64];
-    format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
+    format_memory(stats->bytes, mem_buf, sizeof(mem_buf));
     printf("\nMemory:\n");
     printf("  Total tracked allocations:       %12s\n", mem_buf);
 
@@ -357,12 +357,12 @@ void free_problem(problem *prob)
             reset_visited(prob->constraints[i]);
 
         /* problem-level allocations */
-        mem += csr_memory_bytes(prob->jacobian);
-        mem += csr_memory_bytes(prob->lagrange_hessian);
-        mem += coo_memory_bytes(prob->jacobian_coo);
-        mem += coo_memory_bytes(prob->lagrange_hessian_coo);
+        mem += csr_bytes(prob->jacobian);
+        mem += csr_bytes(prob->lagrange_hessian);
+        mem += coo_bytes(prob->jacobian_coo);
+        mem += coo_bytes(prob->lagrange_hessian_coo);
 
-        prob->stats.memory_bytes = mem;
+        prob->stats.bytes = mem;
         print_end_message(&prob->stats);
     }
 

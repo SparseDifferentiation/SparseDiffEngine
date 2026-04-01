@@ -42,8 +42,7 @@ static void jacobian_init_impl(expr *node)
 
     /* we never have to store more than the sum of children's nnz */
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian =
-        new_csr_matrix(node->size, node->n_vars, nnz_max, &node->memory_bytes);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max, &node->bytes);
 
     /* fill sparsity pattern  */
     sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
@@ -68,7 +67,7 @@ static void wsum_hess_init_impl(expr *node)
     /* we never have to store more than the sum of children's nnz */
     int nnz_max = node->left->wsum_hess->nnz + node->right->wsum_hess->nnz;
     node->wsum_hess =
-        new_csr_matrix(node->n_vars, node->n_vars, nnz_max, &node->memory_bytes);
+        new_csr_matrix(node->n_vars, node->n_vars, nnz_max, &node->bytes);
 
     /* fill sparsity pattern of hessian */
     sum_csr_alloc(node->left->wsum_hess, node->right->wsum_hess, node->wsum_hess);

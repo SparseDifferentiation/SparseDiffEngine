@@ -103,8 +103,8 @@ static inline double sparse_dot_offset(const double *a_x, const int *a_idx,
     return sum;
 }
 
-CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
-                                              const CSC_Matrix *J, int p)
+CSC_Matrix *block_left_multiply_alloc(const CSR_Matrix *A, const CSC_Matrix *J,
+                                      int p, size_t *mem)
 {
     /* A is m x n, J is (n*p) x k, C is (m*p) x k */
     int m = A->m;
@@ -174,7 +174,7 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
         Cp[j + 1] = Ci->len;
     }
 
-    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len, NULL);
+    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len, mem);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
     free(Cp);
