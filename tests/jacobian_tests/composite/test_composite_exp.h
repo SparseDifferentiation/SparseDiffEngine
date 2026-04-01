@@ -11,7 +11,7 @@ const char *test_jacobian_composite_exp(void)
 {
     double u_vals[6] = {0, 0, 1, 2, 3, 0};
 
-    CSR_Matrix *A = new_csr_matrix(2, 6, 6);
+    CSR_Matrix *A = new_csr_matrix(2, 6, 6, NULL);
     double Ax[6] = {3, 2, 1, 2, 1, 1};
     int Ai[6] = {2, 3, 4, 2, 3, 4};
     int Ap[3] = {0, 3, 6};
@@ -46,7 +46,7 @@ const char *test_jacobian_composite_exp_add(void)
 {
     double u_vals[7] = {0, 0, 1, 1, 1, 2, 2};
 
-    CSR_Matrix *A = new_csr_matrix(3, 7, 9);
+    CSR_Matrix *A = new_csr_matrix(3, 7, 9, NULL);
     double Ax[9] = {1, 1, 1, 2, 2, 2, 3, 3, 3};
     int Ai[9] = {2, 3, 4, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 3, 6, 9};
@@ -54,7 +54,7 @@ const char *test_jacobian_composite_exp_add(void)
     memcpy(A->i, Ai, 9 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
 
-    CSR_Matrix *B = new_csr_matrix(3, 7, 6);
+    CSR_Matrix *B = new_csr_matrix(3, 7, 6, NULL);
     double Bx[6] = {1, 1, 2, 2, 3, 3};
     int Bi[6] = {5, 6, 5, 6, 5, 6};
     int Bp[4] = {0, 2, 4, 6};

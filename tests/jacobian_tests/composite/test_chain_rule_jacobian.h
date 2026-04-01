@@ -123,7 +123,7 @@ const char *test_jacobian_quad_form_Ax(void)
     CSR_Matrix *A = new_csr_random(3, 4, 1.0);
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] */
-    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_Matrix *Q = new_csr_matrix(3, 3, 5, NULL);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};
@@ -151,7 +151,7 @@ const char *test_jacobian_quad_form_exp(void)
     double u_vals[3] = {0.5, 1.0, 1.5};
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] */
-    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_Matrix *Q = new_csr_matrix(3, 3, 5, NULL);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};

@@ -17,7 +17,7 @@ const char *test_wsum_hess_quad_form(void)
      * [0 3 4 1]
      * [0 0 1 6]
      */
-    CSR_Matrix *Q = new_csr_matrix(4, 4, 10);
+    CSR_Matrix *Q = new_csr_matrix(4, 4, 10, NULL);
     double Qx[10] = {1.0, 2.0, 2.0, 5.0, 3.0, 3.0, 4.0, 1.0, 1.0, 6.0};
     int Qi[10] = {0, 1, 0, 1, 2, 1, 2, 3, 2, 3};
     int Qp[5] = {0, 2, 5, 8, 10};

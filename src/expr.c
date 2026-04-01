@@ -34,7 +34,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->memory_bytes = 0;
     node->visited = false;
     node->value = (double *) calloc(d1 * d2, sizeof(double));
-    node->memory_bytes += (size_t)(d1 * d2) * sizeof(double);
+    node->memory_bytes += (size_t) (d1 * d2) * sizeof(double);
     node->var_id = NOT_A_VARIABLE;
     node->forward = forward;
     node->jacobian_init_impl = jacobian_init;
@@ -53,10 +53,9 @@ void jacobian_csc_init(expr *node)
         return;
     }
     node->work->csc_work = (int *) malloc(node->n_vars * sizeof(int));
-    node->memory_bytes += (size_t)node->n_vars * sizeof(int);
+    node->memory_bytes += (size_t) node->n_vars * sizeof(int);
     node->work->jacobian_csc =
-        csr_to_csc_alloc(node->jacobian, node->work->csc_work);
-    node->memory_bytes += csc_memory_bytes(node->work->jacobian_csc);
+        csr_to_csc_alloc(node->jacobian, node->work->csc_work, &node->memory_bytes);
 }
 
 void free_expr(expr *node)

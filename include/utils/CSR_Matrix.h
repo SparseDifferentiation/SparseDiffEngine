@@ -23,16 +23,17 @@ typedef struct CSR_Matrix
     int nnz;
 } CSR_Matrix;
 
-/* constructors and destructors */
-CSR_Matrix *new_csr_matrix(int m, int n, int nnz);
-CSR_Matrix *new_csr(const CSR_Matrix *A);
-CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A);
+/* constructors and destructors.
+   If mem is non-NULL, *mem is incremented by the bytes allocated. */
+CSR_Matrix *new_csr_matrix(int m, int n, int nnz, size_t *mem);
+CSR_Matrix *new_csr(const CSR_Matrix *A, size_t *mem);
+CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A, size_t *mem);
 void free_csr_matrix(CSR_Matrix *matrix);
 void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C);
 
 /* transpose functionality (iwork must be of size A->n) */
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork);
-CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork);
+CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork, size_t *mem);
 void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork);
 
 /* computes dense y = Ax */

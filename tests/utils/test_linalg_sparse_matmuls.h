@@ -16,7 +16,7 @@ const char *test_block_left_multiply_single_block(void)
      * [1.0  0.0  0.0]
      * [0.0  1.0  1.0]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 3, 3);
+    CSR_Matrix *A = new_csr_matrix(2, 3, 3, NULL);
     double Ax[3] = {1.0, 1.0, 1.0};
     int Ai[3] = {0, 1, 2};
     int Ap[3] = {0, 1, 3};
@@ -29,7 +29,7 @@ const char *test_block_left_multiply_single_block(void)
      * [1.0  0.0]
      * [0.0  1.0]
      */
-    CSC_Matrix *J = new_csc_matrix(3, 2, 3);
+    CSC_Matrix *J = new_csc_matrix(3, 2, 3, NULL);
     double Jx[3] = {1.0, 1.0, 1.0};
     int Ji[3] = {0, 1, 2};
     int Jp[3] = {0, 2, 3};
@@ -67,7 +67,7 @@ const char *test_block_left_multiply_two_blocks(void)
      * [1.0  0.0]
      * [0.0  1.0]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 2, 2);
+    CSR_Matrix *A = new_csr_matrix(2, 2, 2, NULL);
     double Ax[2] = {1.0, 1.0};
     int Ai[2] = {0, 1};
     int Ap[3] = {0, 1, 2};
@@ -88,7 +88,7 @@ const char *test_block_left_multiply_two_blocks(void)
      * [0.0  1.0  0.0]
      * [0.0  0.0  1.0]
      */
-    CSC_Matrix *J = new_csc_matrix(4, 3, 3);
+    CSC_Matrix *J = new_csc_matrix(4, 3, 3, NULL);
     double Jx[3] = {1.0, 1.0, 1.0};
     int Ji[3] = {0, 2, 3};
     int Jp[4] = {0, 1, 2, 3};
@@ -131,7 +131,7 @@ const char *test_block_left_multiply_two_blocks(void)
 const char *test_block_left_multiply_zero_column(void)
 {
     /* A is 2x2 CSR (identity) */
-    CSR_Matrix *A = new_csr_matrix(2, 2, 2);
+    CSR_Matrix *A = new_csr_matrix(2, 2, 2, NULL);
     double Ax[2] = {1.0, 1.0};
     int Ai[2] = {0, 1};
     int Ap[3] = {0, 1, 2};
@@ -143,7 +143,7 @@ const char *test_block_left_multiply_zero_column(void)
      * [1.0  0.0]
      * [0.0  0.0]
      */
-    CSC_Matrix *J = new_csc_matrix(2, 2, 1);
+    CSC_Matrix *J = new_csc_matrix(2, 2, 1, NULL);
     double Jx[1] = {1.0};
     int Ji[1] = {0};
     int Jp[3] = {0, 1, 1}; /* Column 0 has one nonzero, column 1 is empty */
@@ -174,7 +174,7 @@ const char *test_csr_csc_matmul_alloc_basic(void)
      * [0.0  1.0]
      * [1.0  1.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 2, 4);
+    CSR_Matrix *A = new_csr_matrix(3, 2, 4, NULL);
     double Ax[4] = {1.0, 1.0, 1.0, 1.0};
     int Ai[4] = {0, 1, 0, 1};
     int Ap[4] = {0, 1, 2, 4};
@@ -186,7 +186,7 @@ const char *test_csr_csc_matmul_alloc_basic(void)
      * [1.0  0.0  1.0]
      * [0.0  1.0  1.0]
      */
-    CSC_Matrix *B = new_csc_matrix(2, 3, 4);
+    CSC_Matrix *B = new_csc_matrix(2, 3, 4, NULL);
     double Bx[4] = {1.0, 1.0, 1.0, 1.0};
     int Bi[4] = {0, 1, 0, 1};
     int Bp[4] = {0, 1, 2, 4};
@@ -199,7 +199,7 @@ const char *test_csr_csc_matmul_alloc_basic(void)
      *      [0, 1, 1],
      *      [1, 1, 2]]
      */
-    CSR_Matrix *C = csr_csc_matmul_alloc(A, B);
+    CSR_Matrix *C = csr_csc_matmul_alloc(A, B, NULL);
 
     int expected_p4[4] = {0, 2, 4, 7};
     int expected_i4[7] = {0, 2, 1, 2, 0, 1, 2};
@@ -221,7 +221,7 @@ const char *test_csr_csc_matmul_alloc_sparse(void)
      * [1.0  0.0  0.0]
      * [0.0  0.0  1.0]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 3, 2);
+    CSR_Matrix *A = new_csr_matrix(2, 3, 2, NULL);
     double Ax[2] = {1.0, 1.0};
     int Ai[2] = {0, 2};
     int Ap[3] = {0, 1, 2};
@@ -234,7 +234,7 @@ const char *test_csr_csc_matmul_alloc_sparse(void)
      * [0.0  0.0]
      * [0.0  1.0]
      */
-    CSC_Matrix *B = new_csc_matrix(3, 2, 2);
+    CSC_Matrix *B = new_csc_matrix(3, 2, 2, NULL);
     double Bx[2] = {1.0, 1.0};
     int Bi[2] = {0, 2};
     int Bp[3] = {0, 1, 2};
@@ -246,7 +246,7 @@ const char *test_csr_csc_matmul_alloc_sparse(void)
      * C = [[1, 0],
      *      [0, 1]]
      */
-    CSR_Matrix *C = csr_csc_matmul_alloc(A, B);
+    CSR_Matrix *C = csr_csc_matmul_alloc(A, B, NULL);
 
     int expected_p5[3] = {0, 1, 2};
     int expected_i5[2] = {0, 1};
@@ -268,7 +268,7 @@ const char *test_block_left_multiply_vec_single_block(void)
      * [1.0  0.0  2.0]
      * [0.0  3.0  0.0]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 3, 3);
+    CSR_Matrix *A = new_csr_matrix(2, 3, 3, NULL);
     double Ax[3] = {1.0, 3.0, 2.0};
     int Ai[3] = {0, 1, 2};
     int Ap[3] = {0, 2, 3};
@@ -300,7 +300,7 @@ const char *test_block_left_multiply_vec_two_blocks(void)
      * [1.0  2.0  0.0]
      * [0.0  3.0  4.0]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 3, 4);
+    CSR_Matrix *A = new_csr_matrix(2, 3, 4, NULL);
     double Ax[4] = {1.0, 2.0, 3.0, 4.0};
     int Ai[4] = {0, 1, 1, 2};
     int Ap[3] = {0, 2, 4};
@@ -335,7 +335,7 @@ const char *test_block_left_multiply_vec_sparse(void)
      * [0.0  0.0  3.0  0.0]
      * [0.0  0.0  0.0  4.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 4, 3);
+    CSR_Matrix *A = new_csr_matrix(3, 4, 3, NULL);
     double Ax[3] = {2.0, 3.0, 4.0};
     int Ai[3] = {0, 2, 3};
     int Ap[4] = {0, 1, 2, 3};
@@ -369,7 +369,7 @@ const char *test_block_left_multiply_vec_three_blocks(void)
      * [1.0  2.0]
      * [3.0  4.0]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 2, 4);
+    CSR_Matrix *A = new_csr_matrix(2, 2, 4, NULL);
     double Ax[4] = {1.0, 2.0, 3.0, 4.0};
     int Ai[4] = {0, 1, 0, 1};
     int Ap[3] = {0, 2, 4};

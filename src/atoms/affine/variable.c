@@ -26,8 +26,8 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init_impl(expr *node)
 {
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, node->size);
-    node->memory_bytes += csr_memory_bytes(node->jacobian);
+    node->jacobian =
+        new_csr_matrix(node->size, node->n_vars, node->size, &node->memory_bytes);
     for (int j = 0; j < node->size; j++)
     {
         node->jacobian->p[j] = j;
@@ -46,8 +46,8 @@ static void eval_jacobian(expr *node)
 static void wsum_hess_init_impl(expr *node)
 {
     /* Variables have zero Hessian */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
-    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+    node->wsum_hess =
+        new_csr_matrix(node->n_vars, node->n_vars, 0, &node->memory_bytes);
 }
 
 static void wsum_hess_eval(expr *node, const double *w)

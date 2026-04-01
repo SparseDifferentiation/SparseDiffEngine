@@ -63,8 +63,7 @@ static void jacobian_init_impl(expr *node)
         total_nnz += A->p[row + 1] - A->p[row];
     }
 
-    node->jacobian = new_csr_matrix(1, node->n_vars, total_nnz);
-    node->memory_bytes += csr_memory_bytes(node->jacobian);
+    node->jacobian = new_csr_matrix(1, node->n_vars, total_nnz, &node->memory_bytes);
 
     // ---------------------------------------------------------------
     // fill sparsity pattern and idx_map
@@ -114,8 +113,7 @@ static void wsum_hess_init_impl(expr *node)
        contribution to wsum_hess of entries of the child that will always have
        zero weight in eval_wsum_hess. We do this for simplicity. But the Hessian
        can for sure be made more sophisticated. */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
-    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->memory_bytes);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

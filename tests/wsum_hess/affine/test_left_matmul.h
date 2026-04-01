@@ -54,7 +54,7 @@ const char *test_wsum_hess_left_matmul(void)
     expr *x = new_variable(3, 1, 0, 3);
 
     /* Create sparse matrix A in CSR format */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7, NULL);
     int A_p[5] = {0, 2, 4, 6, 7};
     int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
     double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
@@ -99,7 +99,7 @@ const char *test_wsum_hess_left_matmul_exp_composite(void)
     expr *x = new_variable(3, 1, 0, 3);
 
     /* Create B matrix (3x3 all ones) */
-    CSR_Matrix *B = new_csr_matrix(3, 3, 9);
+    CSR_Matrix *B = new_csr_matrix(3, 3, 9, NULL);
     int B_p[4] = {0, 3, 6, 9};
     int B_i[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     double B_x[9] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
@@ -108,7 +108,7 @@ const char *test_wsum_hess_left_matmul_exp_composite(void)
     memcpy(B->x, B_x, 9 * sizeof(double));
 
     /* Create A matrix */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7, NULL);
     int A_p[5] = {0, 2, 4, 6, 7};
     int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
     double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
@@ -161,7 +161,7 @@ const char *test_wsum_hess_left_matmul_matrix(void)
     expr *x = new_variable(3, 2, 0, 6);
 
     /* Create sparse matrix A in CSR format */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 7);
+    CSR_Matrix *A = new_csr_matrix(4, 3, 7, NULL);
     int A_p[5] = {0, 2, 4, 6, 7};
     int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
     double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};

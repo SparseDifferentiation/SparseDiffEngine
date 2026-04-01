@@ -87,8 +87,8 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     /* we never have to store more than the child's nnz */
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
-    node->memory_bytes += csr_memory_bytes(node->jacobian);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz,
+                                    &node->memory_bytes);
     int iwork_count = MAX(node->jacobian->n, x->jacobian->nnz);
     node->work->iwork = malloc(iwork_count * sizeof(int));
     node->memory_bytes += iwork_count * sizeof(int);
@@ -137,8 +137,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* we never have to store more than the child's nnz */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
-    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->memory_bytes);
     node->work->dwork = malloc(x->size * sizeof(double));
     node->memory_bytes += x->size * sizeof(double);
 }

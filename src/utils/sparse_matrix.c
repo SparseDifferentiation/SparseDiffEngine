@@ -56,7 +56,7 @@ Matrix *new_sparse_matrix(const CSR_Matrix *A)
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
     sm->base.block_left_mult_values = sparse_block_left_mult_values;
     sm->base.free_fn = sparse_free;
-    sm->csr = new_csr(A);
+    sm->csr = new_csr(A, NULL);
     return &sm->base;
 }
 

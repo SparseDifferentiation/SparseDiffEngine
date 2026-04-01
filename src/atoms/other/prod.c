@@ -53,8 +53,8 @@ static void jacobian_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
-        node->memory_bytes += csr_memory_bytes(node->jacobian);
+        node->jacobian =
+            new_csr_matrix(1, node->n_vars, x->size, &node->memory_bytes);
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = x->size;
         for (int j = 0; j < x->size; j++)
@@ -114,8 +114,8 @@ static void wsum_hess_init_impl(expr *node)
         /* allocate n_vars x n_vars CSR matrix with dense block */
         int block_size = x->size;
         int nnz = block_size * block_size;
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
-        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+        node->wsum_hess =
+            new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->memory_bytes);
 
         /* fill row pointers for the dense block */
         for (int i = 0; i < block_size; i++)

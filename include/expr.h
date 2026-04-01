@@ -21,7 +21,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include <stdbool.h>
-#include <stddef.h>  /* size_t */
+#include <stddef.h> /* size_t */
 #include <string.h>
 
 #define JAC_IDXS_NOT_SET -1

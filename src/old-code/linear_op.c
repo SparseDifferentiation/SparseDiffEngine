@@ -73,7 +73,7 @@ static void eval_jacobian(expr *node)
 static void wsum_hess_init_impl(expr *node)
 {
     /* Linear operator Hessian is always zero */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0, NULL);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -95,7 +95,7 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
     expr_retain(u);
 
     /* Store A directly as the jacobian (linear op jacobian is constant) */
-    node->jacobian = new_csr_matrix(A->m, A->n, A->nnz);
+    node->jacobian = new_csr_matrix(A->m, A->n, A->nnz, NULL);
     copy_csr_matrix(A, node->jacobian);
 
     /* Initialize offset (copy b if provided, otherwise NULL) */

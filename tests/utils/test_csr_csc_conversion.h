@@ -17,7 +17,7 @@ const char *test_csr_to_csc_split(void)
      * [0.0  2.0  0.0  0.0  0.0]
      * [0.0  0.0  0.0  4.0  0.0]
      */
-    CSR_Matrix *A = new_csr_matrix(4, 5, 5);
+    CSR_Matrix *A = new_csr_matrix(4, 5, 5, NULL);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
     int Ai[5] = {0, 4, 2, 1, 3};
     int Ap[5] = {0, 2, 3, 4, 5};
@@ -29,7 +29,7 @@ const char *test_csr_to_csc_split(void)
     int *iwork = (int *) malloc(A->n * sizeof(int));
 
     /* First, fill sparsity pattern */
-    CSC_Matrix *C = csr_to_csc_alloc(A, iwork);
+    CSC_Matrix *C = csr_to_csc_alloc(A, iwork, NULL);
 
     /* Check sparsity pattern */
     int Cp_correct[6] = {0, 1, 2, 3, 4, 5};
@@ -62,7 +62,7 @@ const char *test_csc_to_csr_sparsity(void)
      * [0.0  4.0  0.0  0.0  0.0]
      * [0.0  0.0  0.0  5.0  0.0]
      */
-    CSC_Matrix *A = new_csc_matrix(4, 5, 5);
+    CSC_Matrix *A = new_csc_matrix(4, 5, 5, NULL);
     double Ax[5] = {1.0, 4.0, 3.0, 5.0, 2.0};
     int Ai[5] = {0, 2, 1, 3, 0};
     int Ap[6] = {0, 1, 2, 3, 4, 5};
@@ -74,7 +74,7 @@ const char *test_csc_to_csr_sparsity(void)
     int *iwork = (int *) malloc(A->m * sizeof(int));
 
     /* Fill sparsity pattern */
-    CSR_Matrix *C = csc_to_csr_alloc(A, iwork);
+    CSR_Matrix *C = csc_to_csr_alloc(A, iwork, NULL);
 
     /* Expected CSR format:
      * Row 0: [1.0 at col 0, 2.0 at col 4]
@@ -101,7 +101,7 @@ const char *test_csc_to_csr_sparsity(void)
 const char *test_csc_to_csr_values(void)
 {
     /* Create a 4x5 CSC matrix A */
-    CSC_Matrix *A = new_csc_matrix(4, 5, 5);
+    CSC_Matrix *A = new_csc_matrix(4, 5, 5, NULL);
     double Ax[5] = {1.0, 4.0, 3.0, 5.0, 2.0};
     int Ai[5] = {0, 2, 1, 3, 0};
     int Ap[6] = {0, 1, 2, 3, 4, 5};
@@ -113,7 +113,7 @@ const char *test_csc_to_csr_values(void)
     int *iwork = (int *) malloc(A->m * sizeof(int));
 
     /* Fill sparsity pattern */
-    CSR_Matrix *C = csc_to_csr_alloc(A, iwork);
+    CSR_Matrix *C = csc_to_csr_alloc(A, iwork, NULL);
 
     /* Fill values */
     csc_to_csr_fill_values(A, C, iwork);
@@ -138,7 +138,7 @@ const char *test_csr_csc_csr_roundtrip(void)
      * [0.0  4.0  5.0  0.0]
      * [6.0  0.0  7.0  8.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 4, 8);
+    CSR_Matrix *A = new_csr_matrix(3, 4, 8, NULL);
     double Ax[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     int Ai[8] = {0, 1, 3, 1, 2, 0, 2, 3};
     int Ap[4] = {0, 3, 5, 8};
@@ -148,12 +148,12 @@ const char *test_csr_csc_csr_roundtrip(void)
 
     /* Convert CSR to CSC */
     int *iwork_csc = (int *) malloc(A->n * sizeof(int));
-    CSC_Matrix *B = csr_to_csc_alloc(A, iwork_csc);
+    CSC_Matrix *B = csr_to_csc_alloc(A, iwork_csc, NULL);
     csr_to_csc_fill_values(A, B, iwork_csc);
 
     /* Convert CSC back to CSR */
     int *iwork_csr = (int *) malloc(B->m * sizeof(int));
-    CSR_Matrix *C = csc_to_csr_alloc(B, iwork_csr);
+    CSR_Matrix *C = csc_to_csr_alloc(B, iwork_csr, NULL);
     csc_to_csr_fill_values(B, C, iwork_csr);
 
     /* C should match A */

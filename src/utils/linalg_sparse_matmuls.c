@@ -174,7 +174,7 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
         Cp[j + 1] = Ci->len;
     }
 
-    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len);
+    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len, NULL);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
     free(Cp);
@@ -269,7 +269,8 @@ void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
 
 /* C = A @ B where A is CSR (m x n), B is CSC (n x p). Result C is CSR (m x p)
   with precomputed sparsity pattern */
-CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
+CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B,
+                                 size_t *mem)
 {
     int m = A->m;
     int p = B->n;
@@ -303,12 +304,13 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
         Cp[i + 1] = nnz;
     }
 
-    CSR_Matrix *C = new_csr_matrix(m, p, nnz);
+    CSR_Matrix *C = new_csr_matrix(m, p, nnz, NULL);
     memcpy(C->p, Cp, (m + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
     free(Cp);
     iVec_free(Ci);
 
+    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 

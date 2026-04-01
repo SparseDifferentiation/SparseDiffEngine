@@ -13,7 +13,7 @@ const char *test_csr_to_coo(void)
      * [0.0  3.0  4.0]
      * [5.0  0.0  6.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 3, 6);
+    CSR_Matrix *A = new_csr_matrix(3, 3, 6, NULL);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {0, 1, 1, 2, 0, 2};
     int Ap[4] = {0, 2, 4, 6};
@@ -48,7 +48,7 @@ const char *test_csr_to_coo_lower_triangular(void)
      * [2  5  6]
      * [3  6  9]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 3, 9);
+    CSR_Matrix *A = new_csr_matrix(3, 3, 9, NULL);
     int Ap[4] = {0, 3, 6, 9};
     int Ai[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     double Ax[9] = {1, 2, 3, 2, 5, 6, 3, 6, 9};
@@ -81,7 +81,7 @@ const char *test_csr_to_coo_lower_triangular(void)
 
 const char *test_refresh_lower_triangular_coo(void)
 {
-    CSR_Matrix *A = new_csr_matrix(3, 3, 9);
+    CSR_Matrix *A = new_csr_matrix(3, 3, 9, NULL);
     int Ap[4] = {0, 3, 6, 9};
     int Ai[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     double Ax[9] = {1, 2, 3, 2, 5, 6, 3, 6, 9};

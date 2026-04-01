@@ -28,7 +28,7 @@ CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p)
     int n = A->n;
     int nnz = A->nnz;
 
-    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p, NULL);
 
     int nnz_cursor = 0;
     for (int block = 0; block < p; block++)
@@ -63,7 +63,7 @@ CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p)
     int n = A->n;
     int nnz = A->nnz;
 
-    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p, NULL);
 
     int nnz_cursor = 0;
     for (int row_block = 0; row_block < m; row_block++)

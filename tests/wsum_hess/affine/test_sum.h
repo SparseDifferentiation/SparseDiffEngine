@@ -16,7 +16,7 @@ const char *test_wsum_hess_sum_exp_linear(void)
     double Ax[6] = {1, 1, 2, 3, 1, -1};
     int Ai[6] = {0, 1, 0, 1, 0, 1};
     int Ap[4] = {0, 2, 4, 6};
-    CSR_Matrix *A = new_csr_matrix(3, 2, 6);
+    CSR_Matrix *A = new_csr_matrix(3, 2, 6, NULL);
     memcpy(A->x, Ax, 6 * sizeof(double));
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));

@@ -64,7 +64,8 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     CSR_Matrix *Jx = x->jacobian;
-    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
+    CSR_Matrix *J =
+        new_csr_matrix(node->size, node->n_vars, Jx->nnz, &node->memory_bytes);
 
     /* set sparsity pattern */
     J->p[0] = 0;
@@ -78,7 +79,6 @@ static void jacobian_init_impl(expr *node)
 
     J->nnz = J->p[idx->n_idxs];
     node->jacobian = J;
-    node->memory_bytes += csr_memory_bytes(J);
 }
 
 static void eval_jacobian(expr *node)
@@ -115,8 +115,7 @@ static void wsum_hess_init_impl(expr *node)
        structural zeros, but we do not try to exploit that sparsity
        right now. */
     CSR_Matrix *Hx = x->wsum_hess;
-    node->wsum_hess = new_csr_copy_sparsity(Hx);
-    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+    node->wsum_hess = new_csr_copy_sparsity(Hx, &node->memory_bytes);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

@@ -87,7 +87,7 @@ CSR_Matrix *new_csr_random(int m, int n, double density)
     }
     tmp_p[m] = nnz;
 
-    CSR_Matrix *A = new_csr_matrix(m, n, nnz);
+    CSR_Matrix *A = new_csr_matrix(m, n, nnz, NULL);
     memcpy(A->p, tmp_p, ((size_t) m + 1) * sizeof(int));
     memcpy(A->i, tmp_i, (size_t) nnz * sizeof(int));
     memcpy(A->x, tmp_x, (size_t) nnz * sizeof(double));

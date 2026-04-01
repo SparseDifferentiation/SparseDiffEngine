@@ -49,11 +49,11 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(node->left);
     jacobian_init(node->right);
     int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
+    node->jacobian =
+        new_csr_matrix(node->size, node->n_vars, nnz_max, &node->memory_bytes);
 
     /* fill sparsity pattern */
     sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
-    node->memory_bytes += csr_memory_bytes(node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -80,8 +80,8 @@ static void wsum_hess_init_impl(expr *node)
         x->var_id != y->var_id)
     {
         assert(y->var_id != NOT_A_VARIABLE);
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
-        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size,
+                                         &node->memory_bytes);
 
         int i, var1_id, var2_id;
 
@@ -154,12 +154,10 @@ static void wsum_hess_init_impl(expr *node)
         CSC_Matrix *Jg2 = y->work->jacobian_csc;
 
         /* compute sparsity of C and prepare CT */
-        CSR_Matrix *C = BTA_alloc(Jg1, Jg2);
-        node->memory_bytes += csr_memory_bytes(C);
+        CSR_Matrix *C = BTA_alloc(Jg1, Jg2, &node->memory_bytes);
         node->work->iwork = (int *) malloc(C->m * sizeof(int));
         node->memory_bytes += C->m * sizeof(int);
-        CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
-        node->memory_bytes += csr_memory_bytes(CT);
+        CSR_Matrix *CT = AT_alloc(C, node->work->iwork, &node->memory_bytes);
 
         /* initialize wsum_hessians of children */
         wsum_hess_init(x);
@@ -173,16 +171,12 @@ static void wsum_hess_init_impl(expr *node)
            fill index maps telling us where to accumulate each element of each
            matrix in the sum) */
         int *maps[4];
-        node->wsum_hess = sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps);
-        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+        node->wsum_hess = sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps,
+                                          &node->memory_bytes);
         mul_node->idx_map_C = maps[0];
-        node->memory_bytes += C->nnz * sizeof(int);
         mul_node->idx_map_CT = maps[1];
-        node->memory_bytes += CT->nnz * sizeof(int);
         mul_node->idx_map_Hx = maps[2];
-        node->memory_bytes += x->wsum_hess->nnz * sizeof(int);
         mul_node->idx_map_Hy = maps[3];
-        node->memory_bytes += y->wsum_hess->nnz * sizeof(int);
     }
 }
 

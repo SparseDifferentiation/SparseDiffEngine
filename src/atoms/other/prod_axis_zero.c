@@ -58,8 +58,8 @@ static void jacobian_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(node->size, node->n_vars, x->size);
-        node->memory_bytes += csr_memory_bytes(node->jacobian);
+        node->jacobian =
+            new_csr_matrix(node->size, node->n_vars, x->size, &node->memory_bytes);
 
         /* set row pointers (each row has d1 nnzs) */
         for (int row = 0; row < x->d2; row++)
@@ -137,8 +137,8 @@ static void wsum_hess_init_impl(expr *node)
     {
         /* Hessian has block diagonal structure: d2 blocks of size d1 x d1 */
         int nnz = x->d2 * x->d1 * x->d1;
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
-        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+        node->wsum_hess =
+            new_csr_matrix(node->n_vars, node->n_vars, nnz, &node->memory_bytes);
         CSR_Matrix *H = node->wsum_hess;
 
         /* fill row pointers for the variable's rows (block diagonal) */

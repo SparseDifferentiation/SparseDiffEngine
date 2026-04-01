@@ -14,7 +14,7 @@ const char *test_quad_form(void)
     // Q = [1 2 0; 2 3 0; 0 0 4]
     double u_vals[5] = {0, 0, 1, 2, 3};
     expr *x = new_variable(3, 1, 2, 5);
-    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_Matrix *Q = new_csr_matrix(3, 3, 5, NULL);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};
@@ -51,7 +51,7 @@ src/other/quad_form.c. const char *test_quad_form2(void)
     //         1 0 0 2 0 1]
 double u_vals[6] = {1, 2, 3, 4, 5, 6};
 expr *u = new_variable(6, 1, 0, 6);
-CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+CSR_Matrix *Q = new_csr_matrix(3, 3, 5, NULL);
 double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
 int Qi[5] = {0, 1, 0, 1, 2};
 int Qp[4] = {0, 2, 4, 5};
@@ -59,7 +59,7 @@ memcpy(Q->x, Qx, 5 * sizeof(double));
 memcpy(Q->i, Qi, 5 * sizeof(int));
 memcpy(Q->p, Qp, 4 * sizeof(int));
 
-CSR_Matrix *A = new_csr_matrix(3, 6, 10);
+CSR_Matrix *A = new_csr_matrix(3, 6, 10, NULL);
 double Ax[10] = {1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6, 1.0, 2.0, 1.0};
 int Ai[10] = {0, 2, 3, 4, 2, 3, 4, 0, 3, 5};
 int Ap[4] = {0, 4, 7, 10};

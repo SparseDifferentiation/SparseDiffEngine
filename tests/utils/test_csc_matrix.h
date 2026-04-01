@@ -21,14 +21,14 @@
  */
 const char *test_ATA_alloc_simple(void)
 {
-    CSC_Matrix *A = new_csc_matrix(4, 3, 6);
+    CSC_Matrix *A = new_csc_matrix(4, 3, 6, NULL);
     int Ap[4] = {0, 2, 3, 6};
     int Ai[5] = {0, 2, 1, 2, 1};
     memcpy(A->p, Ap, 4 * sizeof(int));
     memcpy(A->i, Ai, 5 * sizeof(int));
 
     /* Compute C = A^T A */
-    CSR_Matrix *C = ATA_alloc(A);
+    CSR_Matrix *C = ATA_alloc(A, NULL);
     int expected_p[4] = {0, 2, 3, 5};
     int expected_i[5] = {0, 2, 1, 0, 2};
 
@@ -58,12 +58,12 @@ const char *test_ATA_alloc_simple(void)
 const char *test_ATA_alloc_diagonal_like(void)
 {
     /* Create A in CSC format (3 rows, 4 cols, 4 nonzeros) */
-    CSC_Matrix *A = new_csc_matrix(3, 4, 4);
+    CSC_Matrix *A = new_csc_matrix(3, 4, 4, NULL);
     int Ap[5] = {0, 1, 2, 3, 4};
     int Ai[4] = {0, 1, 2, 0};
     memcpy(A->p, Ap, 5 * sizeof(int));
     memcpy(A->i, Ai, 4 * sizeof(int));
-    CSR_Matrix *C = ATA_alloc(A);
+    CSR_Matrix *C = ATA_alloc(A, NULL);
 
     int expected_p[5] = {0, 2, 3, 4, 6};
     int expected_i[6] = {0, 3, 1, 2, 0, 3};
@@ -81,14 +81,14 @@ const char *test_ATA_alloc_diagonal_like(void)
 const char *test_ATA_alloc_random(void)
 {
     /* Create A in CSC format  */
-    CSC_Matrix *A = new_csc_matrix(10, 15, 15);
+    CSC_Matrix *A = new_csc_matrix(10, 15, 15, NULL);
     int Ap[16] = {0, 1, 1, 1, 1, 4, 5, 6, 7, 8, 9, 11, 11, 11, 13, 15};
     int Ai[15] = {5, 0, 6, 9, 0, 5, 1, 3, 6, 0, 6, 3, 6, 6, 8};
     double Ax[15] = {7, 4, 8, 5, 7, 3, 7, 8, 5, 4, 8, 8, 3, 6, 5};
     memcpy(A->p, Ap, 16 * sizeof(int));
     memcpy(A->i, Ai, 15 * sizeof(int));
     memcpy(A->x, Ax, 15 * sizeof(double));
-    CSR_Matrix *C = ATA_alloc(A);
+    CSR_Matrix *C = ATA_alloc(A, NULL);
 
     int expected_p[16] = {0, 2, 2, 2, 2, 8, 11, 13, 14, 16, 21, 27, 27, 27, 33, 38};
     int expected_i[38] = {0,  6, 4,  5, 9,  10, 13, 14, 4, 5,  10, 0,  6,
@@ -120,7 +120,7 @@ const char *test_ATA_alloc_random2(void)
     /* Create A in CSC format  */
     int m = 15;
     int n = 10;
-    CSC_Matrix *A = new_csc_matrix(m, n, 15);
+    CSC_Matrix *A = new_csc_matrix(m, n, 15, NULL);
     int Ap[11] = {0, 2, 4, 6, 6, 9, 12, 12, 14, 14, 15};
     int Ai[15] = {9, 12, 3, 4, 1, 6, 4, 8, 13, 1, 3, 7, 5, 13, 6};
     double Ax[15] = {0.99, 0.9,  0.51, 0.64, 0.39, 0.29, 0.26, 0.91,
@@ -128,7 +128,7 @@ const char *test_ATA_alloc_random2(void)
     memcpy(A->p, Ap, 11 * sizeof(int));
     memcpy(A->i, Ai, 15 * sizeof(int));
     memcpy(A->x, Ax, 15 * sizeof(double));
-    CSR_Matrix *C = ATA_alloc(A);
+    CSR_Matrix *C = ATA_alloc(A, NULL);
 
     int expected_p[11] = {0, 1, 4, 7, 7, 10, 13, 13, 15, 15, 17};
     int expected_i[17] = {0, 1, 4, 5, 2, 5, 9, 1, 4, 7, 1, 2, 5, 4, 7, 2, 9};
@@ -162,7 +162,7 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
      */
     int m = 4;
     int n = 3;
-    CSC_Matrix *A = new_csc_matrix(m, n, 6);
+    CSC_Matrix *A = new_csc_matrix(m, n, 6, NULL);
     int Ap_A[4] = {0, 2, 4, 6};
     int Ai_A[6] = {0, 2, 1, 3, 0, 2};
     double Ax_A[6] = {1.0, 4.0, 3.0, 6.0, 2.0, 5.0};
@@ -177,7 +177,7 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
      * [0.0  4.0]
      */
     int p = 2;
-    CSC_Matrix *B = new_csc_matrix(m, p, 4);
+    CSC_Matrix *B = new_csc_matrix(m, p, 4, NULL);
     int Bp[3] = {0, 2, 4};
     int Bi[4] = {0, 2, 1, 3};
     double Bx[4] = {1.0, 3.0, 2.0, 4.0};
@@ -186,7 +186,7 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
     memcpy(B->x, Bx, 4 * sizeof(double));
 
     /* Allocate C = B^T A (should be 2x3) */
-    CSR_Matrix *C = BTA_alloc(A, B);
+    CSR_Matrix *C = BTA_alloc(A, B, NULL);
 
     /* Sparsity pattern check before filling values */
     int expected_p[3] = {0, 2, 3};

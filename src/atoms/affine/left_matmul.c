@@ -88,15 +88,15 @@ static void jacobian_init_impl(expr *node)
 
     /* initialize child's jacobian and precompute sparsity of its CSC */
     jacobian_init(x);
-    lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian, node->work->iwork);
-    node->memory_bytes += csc_memory_bytes(lnode->Jchild_CSC);
+    lnode->Jchild_CSC =
+        csr_to_csc_alloc(x->jacobian, node->work->iwork, &node->memory_bytes);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
                                                       lnode->n_blocks);
     node->memory_bytes += csc_memory_bytes(lnode->J_CSC);
-    node->jacobian = csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work);
-    node->memory_bytes += csr_memory_bytes(node->jacobian);
+    node->jacobian =
+        csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work, &node->memory_bytes);
 }
 
 static void eval_jacobian(expr *node)
@@ -123,8 +123,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* allocate this node's hessian with the same sparsity as child's */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
-    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess, &node->memory_bytes);
 
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;

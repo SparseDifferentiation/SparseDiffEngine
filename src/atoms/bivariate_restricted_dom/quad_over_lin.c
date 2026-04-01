@@ -57,8 +57,8 @@ static void jacobian_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->size + 1);
-        node->memory_bytes += csr_memory_bytes(node->jacobian);
+        node->jacobian =
+            new_csr_matrix(1, node->n_vars, x->size + 1, &node->memory_bytes);
         node->jacobian->p[0] = 0;
         node->jacobian->p[1] = x->size + 1;
 
@@ -89,8 +89,8 @@ static void jacobian_init_impl(expr *node)
         bool *col_nz = (bool *) calloc(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
         int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
-        node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
-        node->memory_bytes += csr_memory_bytes(node->jacobian);
+        node->jacobian =
+            new_csr_matrix(1, node->n_vars, nonzero_cols + 1, &node->memory_bytes);
 
         /* precompute column indices */
         node->jacobian->nnz = 0;
@@ -187,9 +187,8 @@ static void wsum_hess_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->wsum_hess =
-            new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
-        node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1,
+                                         &node->memory_bytes);
         CSR_Matrix *H = node->wsum_hess;
 
         /* if x has lower idx than y*/

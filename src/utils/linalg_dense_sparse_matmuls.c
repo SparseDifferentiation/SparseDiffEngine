@@ -81,7 +81,7 @@ CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p)
         Cp[j + 1] = Ci->len;
     }
 
-    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len);
+    CSC_Matrix *C = new_csc_matrix(m * p, J->n, Ci->len, NULL);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
     free(Cp);
@@ -157,7 +157,7 @@ void I_kron_A_fill_values(const Matrix *A, const CSC_Matrix *J, CSC_Matrix *C)
  * C = (Y^T kron I_m) @ J
  * Y is k x n (col-major), J is (m*k) x p CSC, C is (m*n) x p CSR
  * --------------------------------------------------------------- */
-CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J)
+CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J, size_t *mem)
 {
     (void) k;
     /* C has n blocks of m rows.  All rows at the same position within
@@ -197,7 +197,7 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J)
     // ---------------------------------------------------------------
     //           replicate sparsity pattern across blocks
     // ---------------------------------------------------------------
-    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz);
+    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz, NULL);
     int idx = 0;
     for (i = 0; i < m * n; i++)
     {
@@ -215,6 +215,7 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J)
         iVec_free(pattern[blk_row]);
     }
     free(pattern);
+    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 
@@ -255,7 +256,7 @@ void YT_kron_I_fill_values(int m, int k, int n, const double *Y, const CSC_Matri
     }
 }
 
-CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J)
+CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J, size_t *mem)
 {
     /* Step 1: for each block, find which columns of J have any
      *         nonzero in row range [blk*k, blk*k + k). */
@@ -286,7 +287,7 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J)
 
     /* Step 2: replicate each block's pattern for all m rows
      *         within that block. */
-    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz);
+    CSR_Matrix *C = new_csr_matrix(m * n, J->n, total_nnz, NULL);
     int idx = 0;
     for (i = 0; i < m * n; i++)
     {
@@ -304,6 +305,7 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J)
         iVec_free(pattern[blk]);
     }
     free(pattern);
+    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 

@@ -52,7 +52,7 @@ const char *test_dense_matrix_mult_vec_blocks(void)
 const char *test_sparse_vs_dense_mult_vec(void)
 {
     /* Build CSR for A = [1 2 3; 4 5 6] */
-    CSR_Matrix *csr = new_csr_matrix(2, 3, 6);
+    CSR_Matrix *csr = new_csr_matrix(2, 3, 6, NULL);
     int Ap[3] = {0, 3, 6};
     int Ai[6] = {0, 1, 2, 0, 1, 2};
     double Ax[6] = {1, 2, 3, 4, 5, 6};
@@ -104,7 +104,7 @@ const char *test_dense_matrix_trans(void)
    A = [1 2; 3 4], x = [1; 2; 3; 4], p = 2 */
 const char *test_sparse_vs_dense_mult_vec_blocks(void)
 {
-    CSR_Matrix *csr = new_csr_matrix(2, 2, 4);
+    CSR_Matrix *csr = new_csr_matrix(2, 2, 4, NULL);
     int Ap[3] = {0, 2, 4};
     int Ai[4] = {0, 1, 0, 1};
     double Ax[4] = {1, 2, 3, 4};

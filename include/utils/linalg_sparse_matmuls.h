@@ -36,6 +36,7 @@ void csr_csc_matmul_fill_values(const CSR_Matrix *A, const CSC_Matrix *B,
 /* C = A @ B where A is CSR, B is CSC. Result C is CSR.
  * Allocates and precomputes sparsity pattern. No workspace required.
  */
-CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B);
+CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B,
+                                 size_t *mem);
 
 #endif /* LINALG_H */

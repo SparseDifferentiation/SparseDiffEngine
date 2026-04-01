@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
+CSC_Matrix *new_csc_matrix(int m, int n, int nnz, size_t *mem)
 {
     CSC_Matrix *matrix = (CSC_Matrix *) malloc(sizeof(CSC_Matrix));
     if (!matrix) return NULL;
@@ -43,6 +43,7 @@ CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
     matrix->n = n;
     matrix->nnz = nnz;
 
+    if (mem) *mem += csc_memory_bytes(matrix);
     return matrix;
 }
 
@@ -60,12 +61,11 @@ void free_csc_matrix(CSC_Matrix *matrix)
 size_t csc_memory_bytes(const CSC_Matrix *A)
 {
     if (!A) return 0;
-    return (size_t)(A->n + 1) * sizeof(int)
-         + (size_t)A->nnz * sizeof(int)
-         + (size_t)A->nnz * sizeof(double);
+    return (size_t) (A->n + 1) * sizeof(int) + (size_t) A->nnz * sizeof(int) +
+           (size_t) A->nnz * sizeof(double);
 }
 
-CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
+CSR_Matrix *ATA_alloc(const CSC_Matrix *A, size_t *mem)
 {
     /* A is m x n, A^T A is n x n */
     int n = A->n;
@@ -109,13 +109,14 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
     }
 
     /* Allocate C and symmetrize it */
-    CSR_Matrix *C = new_csr_matrix(n, n, nnz);
+    CSR_Matrix *C = new_csr_matrix(n, n, nnz, NULL);
     symmetrize_csr(Cp, Ci->data, n, C);
 
     /* free workspace */
     free(Cp);
     iVec_free(Ci);
 
+    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 
@@ -210,9 +211,9 @@ void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
     }
 }
 
-CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)
+CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork, size_t *mem)
 {
-    CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
+    CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz, NULL);
 
     int i, j;
     int *count = iwork;
@@ -251,6 +252,7 @@ CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)
         }
     }
 
+    if (mem) *mem += csc_memory_bytes(C);
     return C;
 }
 
@@ -273,9 +275,9 @@ void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
     }
 }
 
-CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork)
+CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork, size_t *mem)
 {
-    CSR_Matrix *C = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_Matrix *C = new_csr_matrix(A->m, A->n, A->nnz, NULL);
 
     int i, j;
     int *count = iwork;
@@ -316,6 +318,7 @@ CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork)
         }
     }
 
+    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 
@@ -339,7 +342,7 @@ void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
     }
 }
 
-CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
+CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B, size_t *mem)
 {
     /* A is m x n, B is m x p, C = B^T A is p x n */
     int n = A->n;
@@ -385,7 +388,7 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     }
 
     /* Allocate C */
-    CSR_Matrix *C = new_csr_matrix(p, n, nnz);
+    CSR_Matrix *C = new_csr_matrix(p, n, nnz, NULL);
     memcpy(C->p, Cp, (p + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
 
@@ -393,6 +396,7 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     free(Cp);
     iVec_free(Ci);
 
+    if (mem) *mem += csr_memory_bytes(C);
     return C;
 }
 
@@ -474,7 +478,7 @@ void BA_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A, CSC_Matrix *C)
     }
 }
 
-CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
+CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A, size_t *mem)
 {
     /* Allocate C = B * A (sparsity only). B must be symmetric.
      * B is CSR (m x m), A is CSC (m x n), C is CSC (m x n).
@@ -532,7 +536,7 @@ CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
 
     /* allocate C and copy the computed structure */
     int total_nnz = Cp[n];
-    CSC_Matrix *C = new_csc_matrix(m, n, total_nnz);
+    CSC_Matrix *C = new_csc_matrix(m, n, total_nnz, NULL);
     memcpy(C->p, Cp, (n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, total_nnz * sizeof(int));
 
@@ -540,6 +544,7 @@ CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
     free(Cp);
     iVec_free(Ci);
 
+    if (mem) *mem += csc_memory_bytes(C);
     return C;
 }
 

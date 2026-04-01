@@ -34,7 +34,7 @@ const char *test_YT_kron_I(void)
     int m = 2, k = 2, n = 2;
 
     /* J is 4x3 CSC */
-    CSC_Matrix *J = new_csc_matrix(4, 3, 5);
+    CSC_Matrix *J = new_csc_matrix(4, 3, 5, NULL);
     int Jp[4] = {0, 2, 3, 5};
     int Ji[5] = {0, 2, 1, 0, 3};
     double Jx[5] = {1.0, 3.0, 1.0, 2.0, 1.0};
@@ -45,7 +45,7 @@ const char *test_YT_kron_I(void)
     /* Y col-major: Y[0,0]=1, Y[1,0]=2, Y[0,1]=3, Y[1,1]=4 */
     double Y[4] = {1.0, 2.0, 3.0, 4.0};
 
-    CSR_Matrix *C = YT_kron_I_alloc(m, k, n, J);
+    CSR_Matrix *C = YT_kron_I_alloc(m, k, n, J, NULL);
 
     /* Expected CSR (from scipy) */
     int exp_p[5] = {0, 2, 4, 6, 8};
@@ -86,7 +86,7 @@ const char *test_YT_kron_I_larger(void)
     int m = 3, k = 2, n = 3;
 
     /* J is 6x4 CSC */
-    CSC_Matrix *J = new_csc_matrix(6, 4, 8);
+    CSC_Matrix *J = new_csc_matrix(6, 4, 8, NULL);
     int Jp[5] = {0, 2, 4, 6, 8};
     int Ji[8] = {0, 3, 2, 4, 1, 5, 0, 3};
     double Jx[8] = {1.0, 2.0, 3.0, 1.0, 1.0, 4.0, 2.0, 1.0};
@@ -97,7 +97,7 @@ const char *test_YT_kron_I_larger(void)
     /* Y col-major */
     double Y[6] = {1.0, 3.0, 0.5, 1.0, 2.0, 0.5};
 
-    CSR_Matrix *C = YT_kron_I_alloc(m, k, n, J);
+    CSR_Matrix *C = YT_kron_I_alloc(m, k, n, J, NULL);
 
     /* Expected CSR (from scipy) */
     int exp_p[10] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
@@ -144,7 +144,7 @@ const char *test_I_kron_X(void)
     int m = 2, k = 2, n = 2;
 
     /* J is 4x3 CSC */
-    CSC_Matrix *J = new_csc_matrix(4, 3, 5);
+    CSC_Matrix *J = new_csc_matrix(4, 3, 5, NULL);
     int Jp[4] = {0, 2, 3, 5};
     int Ji[5] = {0, 2, 1, 0, 3};
     double Jx[5] = {1.0, 3.0, 1.0, 2.0, 1.0};
@@ -155,7 +155,7 @@ const char *test_I_kron_X(void)
     /* X col-major */
     double X[4] = {1.0, 2.0, 3.0, 4.0};
 
-    CSR_Matrix *C = I_kron_X_alloc(m, k, n, J);
+    CSR_Matrix *C = I_kron_X_alloc(m, k, n, J, NULL);
 
     /* Expected CSR */
     int exp_p[5] = {0, 3, 6, 8, 10};
@@ -195,7 +195,7 @@ const char *test_I_kron_X_larger(void)
     int m = 3, k = 2, n = 2;
 
     /* J is 4x4 CSC */
-    CSC_Matrix *J = new_csc_matrix(4, 4, 7);
+    CSC_Matrix *J = new_csc_matrix(4, 4, 7, NULL);
     int Jp[5] = {0, 2, 3, 5, 7};
     int Ji[7] = {0, 3, 1, 1, 2, 0, 3};
     double Jx[7] = {1.0, 2.0, 3.0, 1.0, 4.0, 2.0, 1.0};
@@ -206,7 +206,7 @@ const char *test_I_kron_X_larger(void)
     /* X col-major */
     double X[6] = {1.0, 2.0, 3.0, 0.5, 1.0, 0.5};
 
-    CSR_Matrix *C = I_kron_X_alloc(m, k, n, J);
+    CSR_Matrix *C = I_kron_X_alloc(m, k, n, J, NULL);
 
     /* Expected CSR */
     int exp_p[7] = {0, 4, 8, 12, 15, 18, 21};

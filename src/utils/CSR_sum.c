@@ -361,7 +361,7 @@ void sum_all_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C, int *iwork,
  */
 CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
                             const CSR_Matrix *C, const CSR_Matrix *D,
-                            int *idx_maps[4])
+                            int *idx_maps[4], size_t *mem)
 {
     const CSR_Matrix *inputs[4] = {A, B, C, D};
     int m = A->m;
@@ -369,10 +369,11 @@ CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
     int nnz_ub = A->nnz + B->nnz + C->nnz + D->nnz;
 
     /* allocate output and index maps */
-    CSR_Matrix *out = new_csr_matrix(m, n, nnz_ub);
+    CSR_Matrix *out = new_csr_matrix(m, n, nnz_ub, mem);
     for (int k = 0; k < 4; k++)
     {
         idx_maps[k] = (int *) malloc(inputs[k]->nnz * sizeof(int));
+        if (mem) *mem += (size_t) inputs[k]->nnz * sizeof(int);
     }
 
     /* 4-way sorted merge per row */

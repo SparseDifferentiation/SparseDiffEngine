@@ -46,7 +46,7 @@ void sum_spaced_rows_into_row_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
 /* Compute sparsity pattern of out = A + B + C + D */
 CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
                             const CSR_Matrix *C, const CSR_Matrix *D,
-                            int *idx_maps[4]);
+                            int *idx_maps[4], size_t *mem);
 // ------------------------------------------------------------------------------------
 
 /* Accumulates values from A according to map. Must memset to zero before calling. */

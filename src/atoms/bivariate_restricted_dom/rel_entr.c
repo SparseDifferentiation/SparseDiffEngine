@@ -44,8 +44,8 @@ static void forward_vector_args(expr *node, const double *u)
 
 static void jacobian_init_vectors_args(expr *node)
 {
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, 2 * node->size);
-    node->memory_bytes += csr_memory_bytes(node->jacobian);
+    node->jacobian = new_csr_matrix(node->size, node->n_vars, 2 * node->size,
+                                    &node->memory_bytes);
 
     expr *x = node->left;
     expr *y = node->right;
@@ -101,8 +101,8 @@ static void eval_jacobian_vector_args(expr *node)
 
 static void wsum_hess_init_vector_args(expr *node)
 {
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->size);
-    node->memory_bytes += csr_memory_bytes(node->wsum_hess);
+    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->size,
+                                     &node->memory_bytes);
     expr *x = node->left;
     expr *y = node->right;
 

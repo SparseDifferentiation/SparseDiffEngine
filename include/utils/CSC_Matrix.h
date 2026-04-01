@@ -24,18 +24,19 @@ typedef struct CSC_Matrix
     int nnz;
 } CSC_Matrix;
 
-/* constructor and destructor */
-CSC_Matrix *new_csc_matrix(int m, int n, int nnz);
+/* constructor and destructor.
+   If mem is non-NULL, *mem is incremented by the bytes allocated. */
+CSC_Matrix *new_csc_matrix(int m, int n, int nnz, size_t *mem);
 void free_csc_matrix(CSC_Matrix *matrix);
 
 /* Fill sparsity of C = A^T D A for diagonal D */
-CSR_Matrix *ATA_alloc(const CSC_Matrix *A);
+CSR_Matrix *ATA_alloc(const CSC_Matrix *A, size_t *mem);
 
 /* Fill sparsity of C = B^T D A for diagonal D */
-CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B);
+CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B, size_t *mem);
 
 /* Fill sparsity of C = BA, where B is symmetric. */
-CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A);
+CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A, size_t *mem);
 
 /* Compute values for C = A^T D A (null d corresponds to D as identity) */
 void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
@@ -54,11 +55,11 @@ void yTA_fill_values(const CSC_Matrix *A, const double *x, CSR_Matrix *C);
 int count_nonzero_cols_csc(const CSC_Matrix *A);
 
 /* convert from CSR to CSC format */
-CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork);
+CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork, size_t *mem);
 void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork);
 
 /* convert from CSC to CSR format */
-CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork);
+CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork, size_t *mem);
 void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork);
 
 /* Returns total bytes used by p, i, x arrays (0 if A is NULL) */

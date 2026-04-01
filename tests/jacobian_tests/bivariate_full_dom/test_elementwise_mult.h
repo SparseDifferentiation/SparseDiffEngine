@@ -66,7 +66,7 @@ const char *test_jacobian_elementwise_mult_3(void)
          0 0 1 1 3 0 0 0 0 0
          0 0 1 -1 1 0 0 0 0 0]
     */
-    CSR_Matrix *A = new_csr_matrix(3, 10, 9);
+    CSR_Matrix *A = new_csr_matrix(3, 10, 9, NULL);
     double Ax_vals[9] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
     int Ai[9] = {2, 3, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 5, 8};
@@ -80,7 +80,7 @@ const char *test_jacobian_elementwise_mult_3(void)
          0 0 0 0 0 0 0 1 -2 1]
 
     */
-    CSR_Matrix *B = new_csr_matrix(3, 10, 9);
+    CSR_Matrix *B = new_csr_matrix(3, 10, 9, NULL);
     double Bx_vals[9] = {1.0, 3.0, 1.0, 1.0, 4.0, 1.0, -2.0, 1.0};
     int Bi[9] = {7, 8, 7, 8, 9, 7, 8, 9};
     int Bp[4] = {0, 2, 5, 8};
@@ -131,7 +131,7 @@ const char *test_jacobian_elementwise_mult_4(void)
          0 0 1 1 3 0 0 0 0 0
          0 0 1 -1 1 0 0 0 0 0]
     */
-    CSR_Matrix *A = new_csr_matrix(3, 10, 9);
+    CSR_Matrix *A = new_csr_matrix(3, 10, 9, NULL);
     double Ax_vals[9] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
     int Ai[9] = {2, 3, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 5, 8};
