@@ -355,6 +355,7 @@ int main(void)
     // mu_run_test(profile_left_matmul, tests_run);
     mu_run_test(profile_matmul_lstsq, tests_run);
     // mu_run_test(profile_ATA_alloc, tests_run);
+    mu_run_test(profile_ATDA_fill, tests_run);
 #endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);

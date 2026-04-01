@@ -110,6 +110,9 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
     free(Cp);
     iVec_free(Ci);
 
+    /* fill matching pairs */
+    ATA_fill_matching_pairs(A, C);
+
     return C;
 }
 
@@ -214,6 +217,110 @@ void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
             }
         }
     }
+    free(cursor);
+}
+
+void ATA_fill_matching_pairs(const CSC_Matrix *A, CSR_Matrix *C)
+{
+    iVec *ai_offsets = iVec_new(C->nnz);
+    iVec *aj_offsets = iVec_new(C->nnz);
+    iVec *row_indices = iVec_new(C->nnz);
+    iVec *entry_ptrs = iVec_new(C->nnz / 2 + 1);
+    iVec_append(entry_ptrs, 0);
+
+    int i, j, ii, jj, kk;
+
+    for (i = 0; i < C->m; i++)
+    {
+        for (jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            j = C->i[jj];
+            if (j < i) continue;
+
+            ii = A->p[i];
+            kk = A->p[j];
+            while (ii < A->p[i + 1] && kk < A->p[j + 1])
+            {
+                if (A->i[ii] == A->i[kk])
+                {
+                    iVec_append(ai_offsets, ii - A->p[i]);
+                    iVec_append(aj_offsets, kk - A->p[j]);
+                    iVec_append(row_indices, A->i[ii]);
+                    ii++;
+                    kk++;
+                }
+                else if (A->i[ii] < A->i[kk])
+                {
+                    ii++;
+                }
+                else
+                {
+                    kk++;
+                }
+            }
+            iVec_append(entry_ptrs, ai_offsets->len);
+        }
+    }
+
+    MatchPairs *mp = (MatchPairs *) malloc(sizeof(MatchPairs));
+    mp->n_entries = entry_ptrs->len - 1;
+    mp->n_matches = ai_offsets->len;
+    mp->p = entry_ptrs->data;
+    mp->ai = ai_offsets->data;
+    mp->aj = aj_offsets->data;
+    mp->rows = row_indices->data;
+
+    C->match = mp;
+
+    free(entry_ptrs);
+    free(ai_offsets);
+    free(aj_offsets);
+    free(row_indices);
+}
+
+void ATDA_fill_values_matching_pairs(const CSC_Matrix *A, const double *d,
+                                     CSR_Matrix *C)
+{
+    MatchPairs *mp = C->match;
+
+    /* todo: get rid of this malloc */
+    int *cursor = (int *) malloc(C->m * sizeof(int));
+    memcpy(cursor, C->p, C->m * sizeof(int));
+
+    int i, j, jj;
+    int e = 0;
+
+    for (i = 0; i < C->m; i++)
+    {
+        for (jj = C->p[i]; jj < C->p[i + 1]; jj++)
+        {
+            j = C->i[jj];
+
+            if (j < i)
+            {
+                /* TODO: should profile this and the memset */
+                while (C->i[cursor[j]] != i)
+                {
+                    cursor[j]++;
+                }
+                C->x[jj] = C->x[cursor[j]];
+                cursor[j]++;
+            }
+            else
+            {
+                double sum = 0.0;
+                const double *xi = A->x + A->p[i];
+                const double *xj = A->x + A->p[j];
+                for (int k = mp->p[e]; k < mp->p[e + 1]; k++)
+                {
+                    sum += xi[mp->ai[k]] * xj[mp->aj[k]] * d[mp->rows[k]];
+                }
+                C->x[jj] = sum;
+                e++;
+            }
+        }
+    }
+
     free(cursor);
 }
 

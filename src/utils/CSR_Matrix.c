@@ -33,6 +33,7 @@ CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
     matrix->m = m;
     matrix->n = n;
     matrix->nnz = nnz;
+    matrix->match = NULL;
     return matrix;
 }
 
@@ -60,6 +61,14 @@ void free_csr_matrix(CSR_Matrix *matrix)
         free(matrix->p);
         free(matrix->i);
         free(matrix->x);
+        if (matrix->match)
+        {
+            free(matrix->match->p);
+            free(matrix->match->ai);
+            free(matrix->match->aj);
+            free(matrix->match->rows);
+            free(matrix->match);
+        }
         free(matrix);
     }
 }

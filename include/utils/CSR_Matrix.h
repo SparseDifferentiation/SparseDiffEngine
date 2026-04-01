@@ -2,6 +2,20 @@
 #define CSR_MATRIX_H
 #include <stdbool.h>
 
+/* Precomputed matching pairs for A^T D A fill.
+ * For upper-triangle entry e of C, matches are at p[e]..p[e+1]:
+ *   A->x[A->p[i] + ai[k]] * A->x[A->p[j] + aj[k]] * d[rows[k]]
+ */
+typedef struct MatchPairs
+{
+    int *p;
+    int *ai;
+    int *aj;
+    int *rows;
+    int n_entries;
+    int n_matches;
+} MatchPairs;
+
 /* CSR (Compressed Sparse Row) Matrix Format
  *
  * For an m x n matrix with nnz nonzeros:
@@ -20,6 +34,7 @@ typedef struct CSR_Matrix
     int m;
     int n;
     int nnz;
+    MatchPairs *match;
 } CSR_Matrix;
 
 /* constructors and destructors */

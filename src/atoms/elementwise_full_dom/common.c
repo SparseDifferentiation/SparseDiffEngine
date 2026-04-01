@@ -128,8 +128,10 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
             }
 
             node->local_wsum_hess(node, node->work->dwork, w);
-            ATDA_fill_values(child->work->jacobian_csc, node->work->dwork,
-                             node->wsum_hess);
+            // ATDA_fill_values(child->work->jacobian_csc, node->work->dwork,
+            //                  node->wsum_hess);
+            ATDA_fill_values_matching_pairs(child->work->jacobian_csc,
+                                            node->work->dwork, node->wsum_hess);
         }
         else
         {
@@ -139,8 +141,9 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
 
             /* term1: Jg^T @ D @ Jg */
             node->local_wsum_hess(node, node->work->dwork, w);
-            ATDA_fill_values(child->work->jacobian_csc, node->work->dwork,
-                             node->work->hess_term1);
+            ATDA_fill_values_matching_pairs(child->work->jacobian_csc,
+                                            node->work->dwork,
+                                            node->work->hess_term1);
 
             /* term2: child Hessian with weight Jf^T w */
             memcpy(node->work->dwork, node->work->local_jac_diag,

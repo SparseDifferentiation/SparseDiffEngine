@@ -36,8 +36,16 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B);
 /* Fill sparsity of C = BA, where B is symmetric. */
 CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A);
 
-/* Compute values for C = A^T D A (null d corresponds to D as identity) */
+/* Compute values for C = A^T D A (null d corresponds to D as identity)
+   TODO: does D null ever happen? */
 void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C);
+
+/* Precompute matching pairs for A^T D A fill */
+void ATA_fill_matching_pairs(const CSC_Matrix *A, CSR_Matrix *C);
+
+/* Compute values for C = A^T D A using precomputed matching pairs */
+void ATDA_fill_values_matching_pairs(const CSC_Matrix *A, const double *d,
+                                     CSR_Matrix *C);
 
 /* Compute values for C = B^T D A (null d corresonds to D as identity) */
 void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
