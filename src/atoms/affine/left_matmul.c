@@ -46,6 +46,7 @@
     vector-valued or matrix-valued.
 */
 
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 
 static void forward(expr *node, const double *u)
@@ -125,7 +126,7 @@ static void wsum_hess_init_impl(expr *node)
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
     int dim = ((left_matmul_expr *) node)->AT->m * n_blocks;
-    node->work->dwork = (double *) malloc(dim * sizeof(double));
+    node->work->dwork = (double *) SP_MALLOC(dim * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -167,7 +168,7 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
 
     /* Allocate the type-specific struct */
     left_matmul_expr *lnode =
-        (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
+        (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
@@ -178,8 +179,8 @@ expr *new_left_matmul(expr *u, const CSR_Matrix *A)
        (requiring size node->n_vars) and for transposing A (requiring size A->n).
        csc_to_csr_work is used for converting J_CSC to CSR (requiring
        node->size) */
-    node->work->iwork = (int *) malloc(MAX(A->n, node->n_vars) * sizeof(int));
-    lnode->csc_to_csr_work = (int *) malloc(node->size * sizeof(int));
+    node->work->iwork = (int *) SP_MALLOC(MAX(A->n, node->n_vars) * sizeof(int));
+    lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
     /* store A and AT */
@@ -212,15 +213,15 @@ expr *new_left_matmul_dense(expr *u, int m, int n, const double *data)
     }
 
     left_matmul_expr *lnode =
-        (left_matmul_expr *) calloc(1, sizeof(left_matmul_expr));
+        (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
 
-    node->work->iwork = (int *) malloc(MAX(n, node->n_vars) * sizeof(int));
-    lnode->csc_to_csr_work = (int *) malloc(node->size * sizeof(int));
+    node->work->iwork = (int *) SP_MALLOC(MAX(n, node->n_vars) * sizeof(int));
+    lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
     lnode->A = new_dense_matrix(m, n, data);

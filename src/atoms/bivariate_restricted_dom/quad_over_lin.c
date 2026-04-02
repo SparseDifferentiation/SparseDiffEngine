@@ -18,6 +18,7 @@
 #include "atoms/bivariate_restricted_dom.h"
 #include "subexpr.h"
 #include "utils/CSC_Matrix.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -81,10 +82,10 @@ static void jacobian_init_impl(expr *node)
     }
     else /* left node is not a variable (guaranteed to be a linear operator) */
     {
-        node->work->dwork = (double *) malloc(x->size * sizeof(double));
+        node->work->dwork = (double *) SP_MALLOC(x->size * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
-        bool *col_nz = (bool *) calloc(
+        bool *col_nz = (bool *) SP_CALLOC(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
         int nonzero_cols = count_nonzero_cols(x->jacobian, col_nz);
         node->jacobian = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
@@ -110,7 +111,7 @@ static void jacobian_init_impl(expr *node)
         node->jacobian->p[1] = node->jacobian->nnz;
 
         /* find position where y should be inserted */
-        node->work->iwork = (int *) malloc(sizeof(int));
+        node->work->iwork = (int *) SP_MALLOC(sizeof(int));
         for (int j = 0; j < node->jacobian->nnz; j++)
         {
             if (node->jacobian->i[j] == y->var_id)
@@ -335,7 +336,7 @@ expr *new_quad_over_lin(expr *left, expr *right)
         exit(EXIT_FAILURE);
     }
 
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = left;

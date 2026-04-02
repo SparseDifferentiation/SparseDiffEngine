@@ -1,4 +1,5 @@
 #include "atoms/non_elementwise_full_dom.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -338,7 +339,7 @@ static void free_type_data(expr *node)
 /* TODO: refactor to remove diagonal entry as nonzero since it's always zero */
 expr *new_prod_axis_zero(expr *child)
 {
-    prod_axis *pnode = (prod_axis *) calloc(1, sizeof(prod_axis));
+    prod_axis *pnode = (prod_axis *) SP_CALLOC(1, sizeof(prod_axis));
     expr *node = &pnode->base;
 
     /* output is always a row vector 1 x d2 - TODO: is that correct? */
@@ -347,9 +348,9 @@ expr *new_prod_axis_zero(expr *child)
               free_type_data);
 
     /* allocate arrays to store per-column statistics */
-    pnode->num_of_zeros = (int *) calloc(child->d2, sizeof(int));
-    pnode->zero_index = (int *) calloc(child->d2, sizeof(int));
-    pnode->prod_nonzero = (double *) calloc(child->d2, sizeof(double));
+    pnode->num_of_zeros = (int *) SP_CALLOC(child->d2, sizeof(int));
+    pnode->zero_index = (int *) SP_CALLOC(child->d2, sizeof(int));
+    pnode->prod_nonzero = (double *) SP_CALLOC(child->d2, sizeof(double));
 
     node->left = child;
     expr_retain(child);

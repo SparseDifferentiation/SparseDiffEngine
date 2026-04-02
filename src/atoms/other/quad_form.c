@@ -3,6 +3,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_sum.h"
 #include "utils/cblas_wrapper.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -32,7 +33,7 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
 
     /* dwork stores the result of Q @ f(x) in the forward pass */
-    node->work->dwork = (double *) malloc(x->size * sizeof(double));
+    node->work->dwork = (double *) SP_MALLOC(x->size * sizeof(double));
 
     if (x->var_id != NOT_A_VARIABLE)
     {
@@ -231,7 +232,7 @@ static bool is_affine(const expr *node)
 expr *new_quad_form(expr *left, CSR_Matrix *Q)
 {
     assert(left->d1 == 1 || left->d2 == 1); /* left must be a vector */
-    quad_form_expr *qnode = (quad_form_expr *) calloc(1, sizeof(quad_form_expr));
+    quad_form_expr *qnode = (quad_form_expr *) SP_CALLOC(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
     init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,

@@ -18,6 +18,7 @@
 #include "atoms/bivariate_full_dom.h"
 #include "subexpr.h"
 #include "utils/CSR_sum.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -141,7 +142,7 @@ static void wsum_hess_init_impl(expr *node)
         /* used for computing weights to wsum_hess of children */
         if (!x->is_affine(x) || !y->is_affine(y))
         {
-            node->work->dwork = (double *) malloc(node->size * sizeof(double));
+            node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
         }
 
         /* prepare sparsity pattern of csc conversion */
@@ -152,7 +153,7 @@ static void wsum_hess_init_impl(expr *node)
 
         /* compute sparsity of C and prepare CT */
         CSR_Matrix *C = BTA_alloc(Jg1, Jg2);
-        node->work->iwork = (int *) malloc(C->m * sizeof(int));
+        node->work->iwork = (int *) SP_MALLOC(C->m * sizeof(int));
         CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
 
         /* initialize wsum_hessians of children */
@@ -283,7 +284,7 @@ static bool is_affine(const expr *node)
 expr *new_elementwise_mult(expr *left, expr *right)
 {
     elementwise_mult_expr *mul_node =
-        (elementwise_mult_expr *) calloc(1, sizeof(elementwise_mult_expr));
+        (elementwise_mult_expr *) SP_CALLOC(1, sizeof(elementwise_mult_expr));
     expr *node = &mul_node->base;
 
     init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,

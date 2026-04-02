@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 
@@ -34,7 +35,7 @@ expr *new_vstack(expr **args, int n_args, int n_vars)
         assert(args[i]->d2 == args[0]->d2);
     }
 
-    expr **transposed = (expr **) malloc(n_args * sizeof(expr *));
+    expr **transposed = (expr **) SP_MALLOC(n_args * sizeof(expr *));
     for (int i = 0; i < n_args; i++)
     {
         transposed[i] = new_transpose(args[i]);

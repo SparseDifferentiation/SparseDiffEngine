@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
+#include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,7 +78,7 @@ static void wsum_hess_init_impl(expr *node)
     /* same sparsity as child */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
-    node->work->dwork = (double *) malloc(node->size * sizeof(double));
+    node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -112,7 +113,7 @@ static bool is_affine(const expr *node)
 expr *new_const_vector_mult(const double *a, expr *child)
 {
     const_vector_mult_expr *vnode =
-        (const_vector_mult_expr *) calloc(1, sizeof(const_vector_mult_expr));
+        (const_vector_mult_expr *) SP_CALLOC(1, sizeof(const_vector_mult_expr));
     expr *node = &vnode->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
@@ -122,7 +123,7 @@ expr *new_const_vector_mult(const double *a, expr *child)
     expr_retain(child);
 
     /* copy a vector */
-    vnode->a = (double *) malloc(child->size * sizeof(double));
+    vnode->a = (double *) SP_MALLOC(child->size * sizeof(double));
     memcpy(vnode->a, a, child->size * sizeof(double));
 
     return node;

@@ -20,6 +20,7 @@
 #include "utils/cblas_wrapper.h"
 #include "utils/dense_matrix.h"
 #include "utils/iVec.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +35,7 @@ CSC_Matrix *I_kron_A_alloc(const Matrix *A, const CSC_Matrix *J, int p)
     int n = A->n;
     int i, j, jj, block, block_start, block_end, block_jj_start, row_offset;
 
-    int *Cp = (int *) malloc((J->n + 1) * sizeof(int));
+    int *Cp = (int *) SP_MALLOC((J->n + 1) * sizeof(int));
     iVec *Ci = iVec_new(J->n * m);
     Cp[0] = 0;
 
@@ -173,7 +174,7 @@ CSR_Matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_Matrix *J)
     // ---------------------------------------------------------------
     //           build sparsity pattern per blk_row
     // ---------------------------------------------------------------
-    iVec **pattern = (iVec **) malloc(m * sizeof(iVec *));
+    iVec **pattern = (iVec **) SP_MALLOC(m * sizeof(iVec *));
     total_nnz = 0;
     for (blk_row = 0; blk_row < m; blk_row++)
     {
@@ -261,7 +262,7 @@ CSR_Matrix *I_kron_X_alloc(int m, int k, int n, const CSC_Matrix *J)
      *         nonzero in row range [blk*k, blk*k + k). */
     int i, j, ii, blk;
 
-    iVec **pattern = (iVec **) malloc(n * sizeof(iVec *));
+    iVec **pattern = (iVec **) SP_MALLOC(n * sizeof(iVec *));
     int total_nnz = 0;
     for (blk = 0; blk < n; blk++)
     {

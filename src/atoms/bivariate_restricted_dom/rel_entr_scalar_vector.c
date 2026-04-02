@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/bivariate_restricted_dom.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -217,7 +218,7 @@ static bool is_affine(const expr *node)
 expr *new_rel_entr_first_arg_scalar(expr *left, expr *right)
 {
     assert(left->d1 == 1 && left->d2 == 1);
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     init_expr(node, right->d1, right->d2, left->n_vars, forward_scalar_vector,
               jacobian_init_scalar_vector, eval_jacobian_scalar_vector, is_affine,
               wsum_hess_init_scalar_vector, eval_wsum_hess_scalar_vector, NULL);
