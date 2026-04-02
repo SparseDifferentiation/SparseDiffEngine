@@ -18,6 +18,7 @@
 #include "atoms/affine.h"
 
 #include "utils/CSR_Matrix.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
@@ -28,7 +29,7 @@ expr *new_right_matmul(expr *u, const CSR_Matrix *A)
 {
     /* We can express right matmul using left matmul and transpose:
        u @ A = (A^T @ u^T)^T. */
-    int *work_transpose = (int *) malloc(A->n * sizeof(int));
+    int *work_transpose = (int *) SP_MALLOC(A->n * sizeof(int));
     CSR_Matrix *AT = transpose(A, work_transpose);
 
     expr *u_transpose = new_transpose(u);
@@ -44,7 +45,7 @@ expr *new_right_matmul_dense(expr *u, int m, int n, const double *data)
 {
     /* We express: u @ A = (A^T @ u^T)^T
        A is m x n, so A^T is n x m. */
-    double *AT = (double *) malloc(n * m * sizeof(double));
+    double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
     for (int i = 0; i < m; i++)
     {
         for (int j = 0; j < n; j++)

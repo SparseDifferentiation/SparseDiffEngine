@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -60,7 +61,7 @@ static bool is_affine(const expr *node)
 
 expr *new_constant(int d1, int d2, int n_vars, const double *values)
 {
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     memcpy(node->value, values, node->size * sizeof(double));

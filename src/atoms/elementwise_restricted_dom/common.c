@@ -1,4 +1,5 @@
 #include "atoms/elementwise_restricted_dom.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 
 void jacobian_init_restricted(expr *node)
@@ -42,7 +43,7 @@ bool is_affine_restricted(const expr *node)
 
 expr *new_restricted(expr *child)
 {
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     if (!node) return NULL;
 
     init_expr(node, child->d1, child->d2, child->n_vars, NULL,

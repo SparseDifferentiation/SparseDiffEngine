@@ -18,6 +18,7 @@
 #include "utils/dense_matrix.h"
 #include "utils/cblas_wrapper.h"
 #include "utils/linalg_dense_sparse_matmuls.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,16 +52,16 @@ static void dense_free(Matrix *A)
 
 Matrix *new_dense_matrix(int m, int n, const double *data)
 {
-    Dense_Matrix *dm = (Dense_Matrix *) calloc(1, sizeof(Dense_Matrix));
+    Dense_Matrix *dm = (Dense_Matrix *) SP_CALLOC(1, sizeof(Dense_Matrix));
     dm->base.m = m;
     dm->base.n = n;
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
     dm->base.block_left_mult_sparsity = I_kron_A_alloc;
     dm->base.block_left_mult_values = I_kron_A_fill_values;
     dm->base.free_fn = dense_free;
-    dm->x = (double *) malloc(m * n * sizeof(double));
+    dm->x = (double *) SP_MALLOC(m * n * sizeof(double));
     memcpy(dm->x, data, m * n * sizeof(double));
-    dm->work = (double *) malloc(n * sizeof(double));
+    dm->work = (double *) SP_MALLOC(n * sizeof(double));
     return &dm->base;
 }
 
@@ -68,7 +69,7 @@ Matrix *dense_matrix_trans(const Dense_Matrix *A)
 {
     int m = A->base.m;
     int n = A->base.n;
-    double *AT_x = (double *) malloc(m * n * sizeof(double));
+    double *AT_x = (double *) SP_MALLOC(m * n * sizeof(double));
 
     for (int i = 0; i < m; i++)
     {

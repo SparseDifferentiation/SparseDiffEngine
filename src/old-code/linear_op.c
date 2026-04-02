@@ -18,6 +18,7 @@
 #include "old-code/old_affine.h"
 #include "subexpr.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,7 +88,8 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
 {
     assert(u->d2 == 1);
     /* Allocate the type-specific struct */
-    linear_op_expr *lin_node = (linear_op_expr *) calloc(1, sizeof(linear_op_expr));
+    linear_op_expr *lin_node =
+        (linear_op_expr *) SP_CALLOC(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;
     init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
@@ -101,7 +103,7 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
     /* Initialize offset (copy b if provided, otherwise NULL) */
     if (b != NULL)
     {
-        lin_node->b = (double *) malloc(A->m * sizeof(double));
+        lin_node->b = (double *) SP_MALLOC(A->m * sizeof(double));
         memcpy(lin_node->b, b, A->m * sizeof(double));
     }
     else

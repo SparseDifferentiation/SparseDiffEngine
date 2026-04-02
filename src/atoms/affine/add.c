@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "utils/CSR_sum.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +92,7 @@ static bool is_affine(const expr *node)
 expr *new_add(expr *left, expr *right)
 {
     assert(left->d1 == right->d1 && left->d2 == right->d2);
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = left;

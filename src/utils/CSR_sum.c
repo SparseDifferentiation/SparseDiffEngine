@@ -18,6 +18,7 @@
 #include "utils/CSR_sum.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -372,7 +373,7 @@ CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
     CSR_Matrix *out = new_csr_matrix(m, n, nnz_ub);
     for (int k = 0; k < 4; k++)
     {
-        idx_maps[k] = (int *) malloc(inputs[k]->nnz * sizeof(int));
+        idx_maps[k] = (int *) SP_MALLOC(inputs[k]->nnz * sizeof(int));
     }
 
     /* 4-way sorted merge per row */
