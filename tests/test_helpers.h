@@ -16,4 +16,13 @@ int cmp_int_array(const int *actual, const int *expected, int size);
  * in [0, 1]. Nonzero values are standard Gaussian (Box-Muller). */
 CSR_Matrix *new_csr_random(int m, int n, double density);
 
+/* Allocate and fill an array of `size` doubles with uniform random
+ * values in [-0.5, 0.5].  Caller owns the returned pointer. */
+double *new_random_dense_data(int size);
+
+/* Run the full profiling pipeline (forward, jacobian init/eval,
+ * hessian init/eval) on `e` with variable values `u`, printing
+ * timing results prefixed by `label`. */
+void profile_expr(expr *e, const double *u, const char *label);
+
 #endif /* TEST_HELPERS_H */
