@@ -272,11 +272,17 @@ void problem_init_derivatives(problem *prob)
 static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
 {
     if (bytes < 1024)
+    {
         snprintf(buf, buf_size, "%zu B", bytes);
+    }
     else if (bytes < 1024 * 1024)
+    {
         snprintf(buf, buf_size, "%.2f KB", (double) bytes / 1024.0);
+    }
     else
+    {
         snprintf(buf, buf_size, "%.2f MB", (double) bytes / (1024.0 * 1024.0));
+    }
 }
 
 static inline void print_end_message(const Diff_engine_stats *stats)
@@ -295,11 +301,9 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
     printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
-
     char mem_buf[64];
     format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
-    printf("\nMemory:\n");
-    printf("  Total tracked allocations:       %12s\n", mem_buf);
+    printf("  Allocated memory:                       %s\n", mem_buf);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
