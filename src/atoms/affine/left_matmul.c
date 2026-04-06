@@ -170,7 +170,19 @@ static void refresh_sparse_left(left_matmul_expr *lnode)
 {
     Sparse_Matrix *sm_A = (Sparse_Matrix *) lnode->A;
     Sparse_Matrix *sm_AT = (Sparse_Matrix *) lnode->AT;
-    lnode->A->update_values(lnode->A, lnode->param_source->value);
+    CSR_Matrix *csr = sm_A->csr;
+    const double *vals = lnode->param_source->value;
+    int d1 = lnode->param_source->d1;
+
+    /* Parameter values are column-major; extract into CSR data order */
+    for (int row = 0; row < csr->m; row++)
+    {
+        for (int k = csr->p[row]; k < csr->p[row + 1]; k++)
+        {
+            int col = csr->i[k];
+            csr->x[k] = vals[col * d1 + row];
+        }
+    }
     /* Recompute AT values from A */
     AT_fill_values(sm_A->csr, sm_AT->csr, lnode->base.work->iwork);
 }
@@ -178,16 +190,19 @@ static void refresh_sparse_left(left_matmul_expr *lnode)
 static void refresh_dense_left(left_matmul_expr *lnode)
 {
     Dense_Matrix *dm_A = (Dense_Matrix *) lnode->A;
+    Dense_Matrix *dm_AT = (Dense_Matrix *) lnode->AT;
     int m = dm_A->base.m;
     int n = dm_A->base.n;
-    lnode->A->update_values(lnode->A, lnode->param_source->value);
-    /* Recompute AT data (transpose of row-major A) */
-    Dense_Matrix *dm_AT = (Dense_Matrix *) lnode->AT;
+    const double *vals = lnode->param_source->value;
+
+    /* Column-major A is row-major AT; copy directly into AT */
+    memcpy(dm_AT->x, vals, m * n * sizeof(double));
+    /* Transpose AT to get row-major A */
     for (int i = 0; i < m; i++)
     {
         for (int j = 0; j < n; j++)
         {
-            dm_AT->x[j * m + i] = dm_A->x[i * n + j];
+            dm_A->x[i * n + j] = dm_AT->x[j * m + i];
         }
     }
 }

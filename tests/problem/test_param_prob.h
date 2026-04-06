@@ -164,14 +164,14 @@ const char *test_param_vector_mult_problem(void)
  * Test 3: left_param_matmul in constraint
  *
  * Problem: minimize sum(x), subject to A @ x, x size 2, A is 2x2
- *   A is a 2x2 matrix parameter (param_id=0, size=4, CSR data order)
- *   A = [[1,2],[3,4]] → CSR data order theta = [1,2,3,4]
+ *   A is a 2x2 matrix parameter (param_id=0, size=4, column-major order)
+ *   A = [[1,2],[3,4]] → column-major theta = [1,3,2,4]
  *
  * At x=[1,2]:
  *   constraint_values = [1*1+2*2, 3*1+4*2] = [5, 11]
  *   jacobian = [[1,2],[3,4]]
  *
- * After update A = [[5,6],[7,8]] → theta = [5,6,7,8]:
+ * After update A = [[5,6],[7,8]] → column-major theta = [5,7,6,8]:
  *   constraint_values = [5*1+6*2, 7*1+8*2] = [17, 23]
  *   jacobian = [[5,6],[7,8]]
  */
@@ -208,8 +208,8 @@ const char *test_param_left_matmul_problem(void)
     problem_register_params(prob, param_nodes, 1);
     problem_init_derivatives(prob);
 
-    /* Set A = [[1,2],[3,4]], CSR data order: [1,2,3,4] */
-    double theta[4] = {1.0, 2.0, 3.0, 4.0};
+    /* Set A = [[1,2],[3,4]], column-major: [1,3,2,4] */
+    double theta[4] = {1.0, 3.0, 2.0, 4.0};
     problem_update_params(prob, theta);
 
     double u[2] = {1.0, 2.0};
@@ -233,8 +233,8 @@ const char *test_param_left_matmul_problem(void)
     double expected_x[4] = {1.0, 2.0, 3.0, 4.0};
     mu_assert("jac->x wrong (A1)", cmp_double_array(jac->x, expected_x, 4));
 
-    /* Update A = [[5,6],[7,8]], CSR data order: [5,6,7,8] */
-    double theta2[4] = {5.0, 6.0, 7.0, 8.0};
+    /* Update A = [[5,6],[7,8]], column-major: [5,7,6,8] */
+    double theta2[4] = {5.0, 7.0, 6.0, 8.0};
     problem_update_params(prob, theta2);
 
     problem_constraint_forward(prob, u);
@@ -256,14 +256,14 @@ const char *test_param_left_matmul_problem(void)
  * Test 4: right_param_matmul in constraint
  *
  * Problem: minimize sum(x), subject to x @ A, x size 1x2, A is 2x2
- *   A is a 2x2 matrix parameter (param_id=0, size=4, CSR data order)
- *   A = [[1,2],[3,4]] → CSR data order theta = [1,2,3,4]
+ *   A is a 2x2 matrix parameter (param_id=0, size=4, column-major order)
+ *   A = [[1,2],[3,4]] → column-major theta = [1,3,2,4]
  *
  * At x=[1,2]:
  *   constraint_values = [1*1+2*3, 1*2+2*4] = [7, 10]
  *   jacobian = [[1,3],[2,4]] = A^T
  *
- * After update A = [[5,6],[7,8]] → theta = [5,6,7,8]:
+ * After update A = [[5,6],[7,8]] → column-major theta = [5,7,6,8]:
  *   constraint_values = [1*5+2*7, 1*6+2*8] = [19, 22]
  *   jacobian = [[5,7],[6,8]] = A^T
  */
@@ -300,8 +300,8 @@ const char *test_param_right_matmul_problem(void)
     problem_register_params(prob, param_nodes, 1);
     problem_init_derivatives(prob);
 
-    /* Set A = [[1,2],[3,4]], CSR data order: [1,2,3,4] */
-    double theta[4] = {1.0, 2.0, 3.0, 4.0};
+    /* Set A = [[1,2],[3,4]], column-major: [1,3,2,4] */
+    double theta[4] = {1.0, 3.0, 2.0, 4.0};
     problem_update_params(prob, theta);
 
     double u[2] = {1.0, 2.0};
@@ -325,8 +325,8 @@ const char *test_param_right_matmul_problem(void)
     double expected_x[4] = {1.0, 3.0, 2.0, 4.0};
     mu_assert("jac->x wrong (A1)", cmp_double_array(jac->x, expected_x, 4));
 
-    /* Update A = [[5,6],[7,8]], CSR data order: [5,6,7,8] */
-    double theta2[4] = {5.0, 6.0, 7.0, 8.0};
+    /* Update A = [[5,6],[7,8]], column-major: [5,7,6,8] */
+    double theta2[4] = {5.0, 7.0, 6.0, 8.0};
     problem_update_params(prob, theta2);
 
     problem_constraint_forward(prob, u);
@@ -419,6 +419,139 @@ const char *test_param_fixed_skip_in_update(void)
     double expected_grad2[2] = {7.0, 6.0};
     mu_assert("gradient wrong (b=5)",
               cmp_double_array(prob->gradient_values, expected_grad2, 2));
+
+    free_problem(prob);
+
+    return 0;
+}
+
+/*
+ * Test 6: left_param_matmul with rectangular 3x2 matrix
+ *
+ * Problem: minimize sum(x), subject to A @ x, x size 2, A is 3x2
+ *   A = [[1,2],[3,4],[5,6]] → column-major theta = [1,3,5,2,4,6]
+ *
+ * At x=[1,2]:
+ *   constraint_values = [1+4, 3+8, 5+12] = [5, 11, 17]
+ *   jacobian = [[1,2],[3,4],[5,6]]
+ */
+const char *test_param_left_matmul_rectangular(void)
+{
+    int n_vars = 2;
+
+    /* Objective: sum(x) */
+    expr *x_obj = new_variable(2, 1, 0, n_vars);
+    expr *objective = new_sum(x_obj, -1);
+
+    /* Constraint: A @ x, A is 3x2 */
+    expr *x_con = new_variable(2, 1, 0, n_vars);
+    expr *A_param = new_parameter(3, 2, 0, n_vars, NULL);
+
+    /* Dense 3x2 CSR */
+    CSR_Matrix *A = new_csr_matrix(3, 2, 6);
+    int Ap[4] = {0, 2, 4, 6};
+    int Ai[6] = {0, 1, 0, 1, 0, 1};
+    double Ax[6] = {0, 0, 0, 0, 0, 0};
+    memcpy(A->p, Ap, 4 * sizeof(int));
+    memcpy(A->i, Ai, 6 * sizeof(int));
+    memcpy(A->x, Ax, 6 * sizeof(double));
+
+    expr *constraint = new_left_matmul(A_param, x_con, A);
+    free_csr_matrix(A);
+
+    expr *constraints[1] = {constraint};
+
+    problem *prob = new_problem(objective, constraints, 1, false);
+
+    expr *param_nodes[1] = {A_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* Set A = [[1,2],[3,4],[5,6]], column-major: [1,3,5,2,4,6] */
+    double theta[6] = {1.0, 3.0, 5.0, 2.0, 4.0, 6.0};
+    problem_update_params(prob, theta);
+
+    double u[2] = {1.0, 2.0};
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    double expected_cv[3] = {5.0, 11.0, 17.0};
+    mu_assert("rect constraint values wrong",
+              cmp_double_array(prob->constraint_values, expected_cv, 3));
+
+    CSR_Matrix *jac = prob->jacobian;
+    double expected_x[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    mu_assert("rect jac->x wrong", cmp_double_array(jac->x, expected_x, 6));
+
+    free_problem(prob);
+
+    return 0;
+}
+
+/*
+ * Test 7: left_param_matmul with sparse matrix (structural zeros)
+ *
+ * Problem: minimize sum(x), subject to A @ x, x size 3, A is 3x3 sparse
+ *   A = [[1, 0, 2],
+ *        [0, 3, 0],
+ *        [4, 0, 5]]
+ *   CSR: p=[0,2,3,5], i=[0,2, 1, 0,2], nnz=5
+ *   Column-major theta (full 9 values): [1,0,4, 0,3,0, 2,0,5]
+ *
+ * At x=[1,2,3]:
+ *   constraint_values = [1+6, 6, 4+15] = [7, 6, 19]
+ *   jacobian = A
+ */
+const char *test_param_left_matmul_sparse(void)
+{
+    int n_vars = 3;
+
+    /* Objective: sum(x) */
+    expr *x_obj = new_variable(3, 1, 0, n_vars);
+    expr *objective = new_sum(x_obj, -1);
+
+    /* Constraint: A @ x, A is 3x3 sparse */
+    expr *x_con = new_variable(3, 1, 0, n_vars);
+    expr *A_param = new_parameter(3, 3, 0, n_vars, NULL);
+
+    CSR_Matrix *A = new_csr_matrix(3, 3, 5);
+    int Ap[4] = {0, 2, 3, 5};
+    int Ai[5] = {0, 2, 1, 0, 2};
+    double Ax[5] = {0, 0, 0, 0, 0};
+    memcpy(A->p, Ap, 4 * sizeof(int));
+    memcpy(A->i, Ai, 5 * sizeof(int));
+    memcpy(A->x, Ax, 5 * sizeof(double));
+
+    expr *constraint = new_left_matmul(A_param, x_con, A);
+    free_csr_matrix(A);
+
+    expr *constraints[1] = {constraint};
+
+    problem *prob = new_problem(objective, constraints, 1, false);
+
+    expr *param_nodes[1] = {A_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* A = [[1,0,2],[0,3,0],[4,0,5]], column-major: [1,0,4, 0,3,0, 2,0,5] */
+    double theta[9] = {1.0, 0.0, 4.0, 0.0, 3.0, 0.0, 2.0, 0.0, 5.0};
+    problem_update_params(prob, theta);
+
+    double u[3] = {1.0, 2.0, 3.0};
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    double expected_cv[3] = {7.0, 6.0, 19.0};
+    mu_assert("sparse constraint values wrong",
+              cmp_double_array(prob->constraint_values, expected_cv, 3));
+
+    CSR_Matrix *jac = prob->jacobian;
+    mu_assert("sparse jac nnz wrong", jac->nnz == 5);
+
+    /* CSR data order: row0=[1,2], row1=[3], row2=[4,5] */
+    double expected_x[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    mu_assert("sparse jac->x wrong",
+              cmp_double_array(jac->x, expected_x, 5));
 
     free_problem(prob);
 

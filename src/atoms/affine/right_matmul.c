@@ -40,8 +40,19 @@ static void refresh_sparse_right(left_matmul_expr *lnode)
 {
     Sparse_Matrix *sm_AT_inner = (Sparse_Matrix *) lnode->A;
     Sparse_Matrix *sm_A_inner = (Sparse_Matrix *) lnode->AT;
-    /* lnode->AT holds the original A; update its values from param */
-    lnode->AT->update_values(lnode->AT, lnode->param_source->value);
+    CSR_Matrix *csr_A = sm_A_inner->csr;
+    const double *vals = lnode->param_source->value;
+    int d1 = lnode->param_source->d1;
+
+    /* Parameter values are column-major; extract into CSR data order */
+    for (int row = 0; row < csr_A->m; row++)
+    {
+        for (int k = csr_A->p[row]; k < csr_A->p[row + 1]; k++)
+        {
+            int col = csr_A->i[k];
+            csr_A->x[k] = vals[col * d1 + row];
+        }
+    }
     /* Recompute A^T (lnode->A) from A (lnode->AT) */
     AT_fill_values(sm_A_inner->csr, sm_AT_inner->csr, lnode->base.work->iwork);
 }
@@ -50,16 +61,19 @@ static void refresh_dense_right(left_matmul_expr *lnode)
 {
     Dense_Matrix *dm_AT_inner = (Dense_Matrix *) lnode->A;
     Dense_Matrix *dm_A_inner = (Dense_Matrix *) lnode->AT;
-    int m_orig = dm_A_inner->base.m; /* original A is m x n */
+    int m_orig = dm_A_inner->base.m;
     int n_orig = dm_A_inner->base.n;
-    /* Update original A (inner's AT) from param values */
-    lnode->AT->update_values(lnode->AT, lnode->param_source->value);
-    /* Recompute A^T (inner's A) from A */
+    const double *vals = lnode->param_source->value;
+
+    /* Column-major A is row-major AT; copy directly into inner A (= A^T) */
+    memcpy(dm_AT_inner->x, vals, m_orig * n_orig * sizeof(double));
+    /* Transpose to get row-major A (inner's AT = original A) */
     for (int i = 0; i < m_orig; i++)
     {
         for (int j = 0; j < n_orig; j++)
         {
-            dm_AT_inner->x[j * m_orig + i] = dm_A_inner->x[i * n_orig + j];
+            dm_A_inner->x[i * n_orig + j] =
+                dm_AT_inner->x[j * m_orig + i];
         }
     }
 }
