@@ -550,8 +550,7 @@ const char *test_param_left_matmul_sparse(void)
 
     /* CSR data order: row0=[1,2], row1=[3], row2=[4,5] */
     double expected_x[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
-    mu_assert("sparse jac->x wrong",
-              cmp_double_array(jac->x, expected_x, 5));
+    mu_assert("sparse jac->x wrong", cmp_double_array(jac->x, expected_x, 5));
 
     free_problem(prob);
 

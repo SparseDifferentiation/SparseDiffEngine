@@ -72,8 +72,7 @@ static void refresh_dense_right(left_matmul_expr *lnode)
     {
         for (int j = 0; j < n_orig; j++)
         {
-            dm_A_inner->x[i * n_orig + j] =
-                dm_AT_inner->x[j * m_orig + i];
+            dm_A_inner->x[i * n_orig + j] = dm_AT_inner->x[j * m_orig + i];
         }
     }
 }
