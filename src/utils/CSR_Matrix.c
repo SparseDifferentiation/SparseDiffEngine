@@ -17,6 +17,7 @@
  */
 #include "utils/CSR_Matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -26,10 +27,10 @@
 
 CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
 {
-    CSR_Matrix *matrix = (CSR_Matrix *) malloc(sizeof(CSR_Matrix));
-    matrix->p = (int *) calloc(m + 1, sizeof(int));
-    matrix->i = (int *) calloc(nnz, sizeof(int));
-    matrix->x = (double *) malloc(nnz * sizeof(double));
+    CSR_Matrix *matrix = (CSR_Matrix *) SP_MALLOC(sizeof(CSR_Matrix));
+    matrix->p = (int *) SP_CALLOC(m + 1, sizeof(int));
+    matrix->i = (int *) SP_CALLOC(nnz, sizeof(int));
+    matrix->x = (double *) SP_MALLOC(nnz * sizeof(double));
     matrix->m = m;
     matrix->n = n;
     matrix->nnz = nnz;
@@ -257,7 +258,7 @@ void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_Matrix *C)
     int i, j, col;
 
     /* Count entries per row */
-    int *counts = (int *) calloc(m, sizeof(int));
+    int *counts = (int *) SP_CALLOC(m, sizeof(int));
     for (i = 0; i < m; i++)
     {
         for (j = Ap[i]; j < Ap[i + 1]; j++)

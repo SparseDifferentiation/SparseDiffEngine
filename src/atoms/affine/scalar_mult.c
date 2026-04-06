@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,7 +107,7 @@ static void free_type_data(expr *node)
 expr *new_scalar_mult(expr *param_node, expr *child)
 {
     scalar_mult_expr *mult_node =
-        (scalar_mult_expr *) calloc(1, sizeof(scalar_mult_expr));
+        (scalar_mult_expr *) SP_CALLOC(1, sizeof(scalar_mult_expr));
     expr *node = &mult_node->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,

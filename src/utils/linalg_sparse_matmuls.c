@@ -18,6 +18,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/iVec.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -113,7 +114,7 @@ CSC_Matrix *block_left_multiply_fill_sparsity(const CSR_Matrix *A,
         row_offset;
 
     /* allocate column pointers and an estimate of row indices */
-    int *Cp = (int *) malloc((J->n + 1) * sizeof(int));
+    int *Cp = (int *) SP_MALLOC((J->n + 1) * sizeof(int));
     iVec *Ci = iVec_new(J->n * m);
     Cp[0] = 0;
 
@@ -276,7 +277,7 @@ CSR_Matrix *csr_csc_matmul_alloc(const CSR_Matrix *A, const CSC_Matrix *B)
 
     int len_a, len_b;
 
-    int *Cp = (int *) malloc((m + 1) * sizeof(int));
+    int *Cp = (int *) SP_MALLOC((m + 1) * sizeof(int));
     iVec *Ci = iVec_new(m);
 
     Cp[0] = 0;

@@ -18,6 +18,7 @@
 #include "expr.h"
 #include "utils/CSC_Matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,7 +32,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->size = d1 * d2;
     node->n_vars = n_vars;
     node->refcount = 0;
-    node->value = (double *) calloc(d1 * d2, sizeof(double));
+    node->value = (double *) SP_CALLOC(d1 * d2, sizeof(double));
     node->var_id = NOT_A_VARIABLE;
     node->forward = forward;
     node->jacobian_init_impl = jacobian_init;
@@ -40,7 +41,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->wsum_hess_init_impl = wsum_hess_init;
     node->eval_wsum_hess = eval_wsum_hess;
     node->free_type_data = free_type_data;
-    node->work = (Expr_Work *) calloc(1, sizeof(Expr_Work));
+    node->work = (Expr_Work *) SP_CALLOC(1, sizeof(Expr_Work));
 }
 
 void jacobian_csc_init(expr *node)
@@ -49,7 +50,7 @@ void jacobian_csc_init(expr *node)
     {
         return;
     }
-    node->work->csc_work = (int *) malloc(node->n_vars * sizeof(int));
+    node->work->csc_work = (int *) SP_MALLOC(node->n_vars * sizeof(int));
     node->work->jacobian_csc =
         csr_to_csc_alloc(node->jacobian, node->work->csc_work);
 }

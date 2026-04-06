@@ -18,6 +18,7 @@
 #include "problem.h"
 #include "subexpr.h"
 #include "utils/CSR_sum.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdio.h>
@@ -30,7 +31,8 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
-    problem *prob = (problem *) calloc(1, sizeof(problem));
+    g_allocated_bytes = 0;
+    problem *prob = (problem *) SP_CALLOC(1, sizeof(problem));
     if (!prob) return NULL;
 
     /* objective */
@@ -44,7 +46,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->n_constraints = n_constraints;
     if (n_constraints > 0)
     {
-        prob->constraints = (expr **) malloc(n_constraints * sizeof(expr *));
+        prob->constraints = (expr **) SP_MALLOC(n_constraints * sizeof(expr *));
         for (int i = 0; i < n_constraints; i++)
         {
             prob->constraints[i] = constraints[i];
@@ -55,8 +57,8 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
 
     /* allocation */
     prob->constraint_values =
-        (double *) calloc(prob->total_constraint_size, sizeof(double));
-    prob->gradient_values = (double *) calloc(prob->n_vars, sizeof(double));
+        (double *) SP_CALLOC(prob->total_constraint_size, sizeof(double));
+    prob->gradient_values = (double *) SP_CALLOC(prob->n_vars, sizeof(double));
 
     /* Initialize statistics */
     prob->stats.time_init_derivatives = 0.0;
@@ -232,8 +234,8 @@ void problem_init_hessian(problem *prob)
     prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
     memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
     prob->stats.nnz_hessian = nnz;
-    prob->hess_idx_map = (int *) malloc(nnz * sizeof(int));
-    int *iwork = (int *) malloc(MAX(nnz, prob->n_vars) * sizeof(int));
+    prob->hess_idx_map = (int *) SP_MALLOC(nnz * sizeof(int));
+    int *iwork = (int *) SP_MALLOC(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
     free(iwork);
 
@@ -268,6 +270,22 @@ void problem_init_derivatives(problem *prob)
     problem_init_hessian(prob);
 }
 
+static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
+{
+    if (bytes < 1024)
+    {
+        snprintf(buf, buf_size, "%zu B", bytes);
+    }
+    else if (bytes < 1024 * 1024)
+    {
+        snprintf(buf, buf_size, "%.2f KB", (double) bytes / 1024.0);
+    }
+    else
+    {
+        snprintf(buf, buf_size, "%.2f MB", (double) bytes / (1024.0 * 1024.0));
+    }
+}
+
 static inline void print_end_message(const Diff_engine_stats *stats)
 {
     printf("\n"
@@ -284,6 +302,9 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
     printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
+    char mem_buf[64];
+    format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
+    printf("  Allocated memory:                       %s\n", mem_buf);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
@@ -309,6 +330,12 @@ void free_problem(problem *prob)
 {
     if (prob == NULL) return;
 
+    if (prob->verbose)
+    {
+        prob->stats.memory_bytes = g_allocated_bytes;
+        print_end_message(&prob->stats);
+    }
+
     /* Free param_nodes array (weak refs, don't free the nodes) */
     free(prob->param_nodes);
 
@@ -318,6 +345,7 @@ void free_problem(problem *prob)
     free_csr_matrix(prob->jacobian);
     free_csr_matrix(prob->lagrange_hessian);
     free_coo_matrix(prob->jacobian_coo);
+    free_coo_matrix(prob->lagrange_hessian_coo);
     free(prob->hess_idx_map);
 
     /* Release expression references (decrements refcount) */
@@ -328,11 +356,6 @@ void free_problem(problem *prob)
     }
     free(prob->constraints);
 
-    if (prob->verbose)
-    {
-        print_end_message(&prob->stats);
-    }
-
     /* Free problem struct */
     free(prob);
 }
@@ -340,7 +363,7 @@ void free_problem(problem *prob)
 void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)
 {
     prob->n_param_nodes = n_param_nodes;
-    prob->param_nodes = (expr **) malloc(n_param_nodes * sizeof(expr *));
+    prob->param_nodes = (expr **) SP_MALLOC(n_param_nodes * sizeof(expr *));
     memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
 
     prob->total_parameter_size = 0;

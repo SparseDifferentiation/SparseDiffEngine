@@ -23,6 +23,7 @@
 #include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/mini_numpy.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdio.h>
@@ -420,12 +421,12 @@ static void wsum_hess_init_chain_rule(expr *node)
     mnode->B = build_cross_hessian_sparsity(m, k, n);
     mnode->BJg = csr_csc_matmul_alloc(mnode->B, Jg);
     int max_alloc = MAX(mnode->BJg->m, mnode->BJg->n);
-    mnode->BJg_csc_work = (int *) malloc(max_alloc * sizeof(int));
+    mnode->BJg_csc_work = (int *) SP_MALLOC(max_alloc * sizeof(int));
     mnode->BJg_CSC = csr_to_csc_alloc(mnode->BJg, mnode->BJg_csc_work);
     mnode->C = BTA_alloc(mnode->BJg_CSC, Jf);
 
     /* initialize C^T */
-    node->work->iwork = (int *) malloc(mnode->C->m * sizeof(int));
+    node->work->iwork = (int *) SP_MALLOC(mnode->C->m * sizeof(int));
     mnode->CT = AT_alloc(mnode->C, node->work->iwork);
 
     /* initialize Hessians of children */
@@ -445,7 +446,7 @@ static void wsum_hess_init_chain_rule(expr *node)
     if (!f->is_affine(f) || !g->is_affine(g))
     {
         node->work->dwork =
-            (double *) malloc(MAX(f->size, g->size) * sizeof(double));
+            (double *) SP_MALLOC(MAX(f->size, g->size) * sizeof(double));
     }
 }
 
@@ -526,7 +527,7 @@ expr *new_matmul(expr *x, expr *y)
     }
 
     /* Allocate the expression node */
-    expr *node = (expr *) calloc(1, sizeof(matmul_expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(matmul_expr));
 
     /* Choose no-chain-rule or chain-rule function pointers */
     bool use_chain_rule = !(x->var_id != NOT_A_VARIABLE &&

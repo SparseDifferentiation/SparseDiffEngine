@@ -1,5 +1,6 @@
 #include "atoms/elementwise_full_dom.h"
 #include "subexpr.h"
+#include "utils/tracked_alloc.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -43,7 +44,7 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_power(expr *child, double p)
 {
     /* Allocate the type-specific struct */
-    power_expr *pnode = (power_expr *) calloc(1, sizeof(power_expr));
+    power_expr *pnode = (power_expr *) SP_CALLOC(1, sizeof(power_expr));
     expr *node = &pnode->base;
     init_elementwise(node, child);
     node->forward = forward;

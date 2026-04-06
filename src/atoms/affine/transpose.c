@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,7 +96,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
 
     /* for computing Kw where K is the commutation matrix */
-    node->work->dwork = (double *) malloc(node->size * sizeof(double));
+    node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
 }
 static void eval_wsum_hess(expr *node, const double *w)
 {
@@ -126,7 +127,7 @@ static bool is_affine(const expr *node)
 
 expr *new_transpose(expr *child)
 {
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     init_expr(node, child->d2, child->d1, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;

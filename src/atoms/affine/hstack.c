@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "utils/CSR_sum.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -185,14 +186,14 @@ expr *new_hstack(expr **args, int n_args, int n_vars)
     }
 
     /* Allocate the type-specific struct */
-    hstack_expr *hnode = (hstack_expr *) calloc(1, sizeof(hstack_expr));
+    hstack_expr *hnode = (hstack_expr *) SP_CALLOC(1, sizeof(hstack_expr));
     expr *node = &hnode->base;
     init_expr(node, args[0]->d1, d2, n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, wsum_hess_eval,
               free_type_data);
 
     /* Set type-specific fields (deep copy args array) */
-    hnode->args = (expr **) calloc(n_args, sizeof(expr *));
+    hnode->args = (expr **) SP_CALLOC(n_args, sizeof(expr *));
     hnode->n_args = n_args;
     for (int i = 0; i < n_args; i++)
     {

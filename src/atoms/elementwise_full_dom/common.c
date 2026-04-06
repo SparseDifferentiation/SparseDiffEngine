@@ -3,6 +3,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/CSR_sum.h"
+#include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,8 +29,9 @@ void jacobian_init_elementwise(expr *node)
         jacobian_init(child);
         CSR_Matrix *Jg = child->jacobian;
         node->jacobian = new_csr_copy_sparsity(Jg);
-        node->work->dwork = (double *) malloc(node->size * sizeof(double));
-        node->work->local_jac_diag = (double *) malloc(node->size * sizeof(double));
+        node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
+        node->work->local_jac_diag =
+            (double *) SP_MALLOC(node->size * sizeof(double));
     }
 }
 
@@ -182,7 +184,7 @@ void init_elementwise(expr *node, expr *child)
 
 expr *new_elementwise(expr *child)
 {
-    expr *node = (expr *) calloc(1, sizeof(expr));
+    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
     if (!node) return NULL;
 
     init_elementwise(node, child);
