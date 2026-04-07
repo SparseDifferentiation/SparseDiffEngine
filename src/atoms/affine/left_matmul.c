@@ -51,14 +51,11 @@
 
 static void refresh_param_values(left_matmul_expr *lnode)
 {
-    if (lnode->param_source == NULL)
+    if (lnode->param_source == NULL || !lnode->base.needs_parameter_refresh)
     {
         return;
     }
-    if (!lnode->base.needs_parameter_refresh)
-    {
-        return;
-    }
+
     lnode->base.needs_parameter_refresh = false;
     lnode->refresh_param_values(lnode);
 }
