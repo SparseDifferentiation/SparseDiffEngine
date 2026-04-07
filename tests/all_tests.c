@@ -356,6 +356,7 @@ int main(void)
     mu_run_test(test_param_right_matmul_problem, tests_run);
     mu_run_test(test_param_left_matmul_rectangular, tests_run);
     mu_run_test(test_param_right_matmul_rectangular, tests_run);
+    mu_run_test(test_param_shared_left_matmul_problem, tests_run);
     mu_run_test(test_param_fixed_skip_in_update, tests_run);
 #endif /* PROFILE_ONLY */
 
