@@ -56,11 +56,11 @@ static void refresh_param_values(left_matmul_expr *lnode)
         return;
     }
     parameter_expr *param = (parameter_expr *) lnode->param_source;
-    if (param->has_been_refreshed)
+    if (!param->needs_refresh)
     {
         return;
     }
-    param->has_been_refreshed = true;
+    param->needs_refresh = false;
     lnode->refresh_param_values(lnode);
 }
 
@@ -168,23 +168,11 @@ static void eval_wsum_hess(expr *node, const double *w)
 
 static void refresh_sparse_left(left_matmul_expr *lnode)
 {
-    Sparse_Matrix *sm_A = (Sparse_Matrix *) lnode->A;
-    Sparse_Matrix *sm_AT = (Sparse_Matrix *) lnode->AT;
-    CSR_Matrix *A = sm_A->csr;
-    const double *param_vals = lnode->param_source->value;
-    int d1 = lnode->param_source->d1;
-
-    /* Parameter values are column-major; extract into CSR data order */
-    for (int i = 0; i < A->m; i++)
-    {
-        for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
-        {
-            int j = A->i[jj];
-            A->x[jj] = param_vals[j * d1 + i];
-        }
-    }
-    /* Recompute AT values from A */
-    AT_fill_values(sm_A->csr, sm_AT->csr, lnode->base.work->iwork);
+    (void) lnode;
+    fprintf(stderr,
+            "Error in refresh_sparse_left: parameter for a sparse matrix not "
+            "supported \n");
+    exit(1);
 }
 
 static void refresh_dense_left(left_matmul_expr *lnode)
@@ -198,7 +186,7 @@ static void refresh_dense_left(left_matmul_expr *lnode)
        In this diffengine, we store A in row-major order. Hence, param->vals
        actually corresponds to the transpose of A, and we transpose AT to get A. */
     memcpy(dm_AT->x, lnode->param_source->value, m * n * sizeof(double));
-    A_transpose(dm_A->x, dm_AT->x, m, n);
+    A_transpose(dm_A->x, dm_AT->x, n, m);
 }
 
 expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
@@ -252,6 +240,11 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
     lnode->param_source = param_node;
     if (param_node != NULL)
     {
+
+        fprintf(stderr, "Error in new_left_matmul: parameter for a sparse matrix "
+                        "not supported \n");
+        exit(1);
+
         expr_retain(param_node);
         lnode->refresh_param_values = refresh_sparse_left;
     }

@@ -20,6 +20,7 @@
 #include "utils/CSR_Matrix.h"
 #include "utils/dense_matrix.h"
 #include "utils/tracked_alloc.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
@@ -38,23 +39,11 @@
    So: update lnode->AT from param values, then recompute lnode->A. */
 static void refresh_sparse_right(left_matmul_expr *lnode)
 {
-    Sparse_Matrix *sm_AT_inner = (Sparse_Matrix *) lnode->A;
-    Sparse_Matrix *sm_A_inner = (Sparse_Matrix *) lnode->AT;
-    CSR_Matrix *csr_A = sm_A_inner->csr;
-    const double *vals = lnode->param_source->value;
-    int d1 = lnode->param_source->d1;
-
-    /* Parameter values are column-major; extract into CSR data order */
-    for (int row = 0; row < csr_A->m; row++)
-    {
-        for (int k = csr_A->p[row]; k < csr_A->p[row + 1]; k++)
-        {
-            int col = csr_A->i[k];
-            csr_A->x[k] = vals[col * d1 + row];
-        }
-    }
-    /* Recompute A^T (lnode->A) from A (lnode->AT) */
-    AT_fill_values(sm_A_inner->csr, sm_AT_inner->csr, lnode->base.work->iwork);
+    (void) lnode;
+    fprintf(stderr,
+            "Error in refresh_sparse_right: parameter for a sparse matrix not "
+            "supported \n");
+    exit(1);
 }
 
 static void refresh_dense_right(left_matmul_expr *lnode)
@@ -87,6 +76,11 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
        left_matmul */
     if (param_node != NULL)
     {
+
+        fprintf(stderr, "Error in new_right_matmul: parameter for a sparse matrix "
+                        "not supported \n");
+        exit(1);
+
         left_matmul_expr *lnode = (left_matmul_expr *) left_matmul;
         lnode->param_source = param_node;
         expr_retain(param_node);

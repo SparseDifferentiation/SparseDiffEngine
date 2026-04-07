@@ -37,7 +37,9 @@ typedef struct parameter_expr
 {
     expr base;
     int param_id;
-    bool has_been_refreshed;
+    /* Set to true by problem_update_params(), cleared by
+       refresh_param_values() after propagating new values. */
+    bool needs_refresh;
 } parameter_expr;
 
 /* Linear operator: y = A * x + b
