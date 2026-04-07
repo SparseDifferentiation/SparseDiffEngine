@@ -20,6 +20,7 @@
 #include "utils/CSR_Matrix.h"
 #include "utils/dense_matrix.h"
 #include "utils/tracked_alloc.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
@@ -38,30 +39,27 @@
    So: update lnode->AT from param values, then recompute lnode->A. */
 static void refresh_sparse_right(left_matmul_expr *lnode)
 {
-    Sparse_Matrix *sm_AT_inner = (Sparse_Matrix *) lnode->A;
-    Sparse_Matrix *sm_A_inner = (Sparse_Matrix *) lnode->AT;
-    /* lnode->AT holds the original A; update its values from param */
-    lnode->AT->update_values(lnode->AT, lnode->param_source->value);
-    /* Recompute A^T (lnode->A) from A (lnode->AT) */
-    AT_fill_values(sm_A_inner->csr, sm_AT_inner->csr, lnode->base.work->iwork);
+    (void) lnode;
+    fprintf(stderr,
+            "Error in refresh_sparse_right: parameter for a sparse matrix not "
+            "supported \n");
+    exit(1);
 }
 
 static void refresh_dense_right(left_matmul_expr *lnode)
 {
-    Dense_Matrix *dm_AT_inner = (Dense_Matrix *) lnode->A;
-    Dense_Matrix *dm_A_inner = (Dense_Matrix *) lnode->AT;
-    int m_orig = dm_A_inner->base.m; /* original A is m x n */
-    int n_orig = dm_A_inner->base.n;
-    /* Update original A (inner's AT) from param values */
-    lnode->AT->update_values(lnode->AT, lnode->param_source->value);
-    /* Recompute A^T (inner's A) from A */
-    for (int i = 0; i < m_orig; i++)
-    {
-        for (int j = 0; j < n_orig; j++)
-        {
-            dm_AT_inner->x[j * m_orig + i] = dm_A_inner->x[i * n_orig + j];
-        }
-    }
+    /* This left_matmul_expr node corresponds to left multiplication with B = AT,
+       where A is the original (m x n) matrix given to the right_matmul function.
+       Furthermore, lnode->param_source->value corresponds to the column-major
+       version of A, which is BT (an m x n matrix) */
+
+    Dense_Matrix *B = (Dense_Matrix *) lnode->AT;
+    Dense_Matrix *BT = (Dense_Matrix *) lnode->A;
+    int m = B->base.n;
+    int n = B->base.m;
+
+    memcpy(BT->x, lnode->param_source->value, m * n * sizeof(double));
+    A_transpose(B->x, BT->x, m, n);
 }
 
 expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
@@ -78,6 +76,11 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
        left_matmul */
     if (param_node != NULL)
     {
+
+        fprintf(stderr, "Error in new_right_matmul: parameter for a sparse matrix "
+                        "not supported \n");
+        exit(1);
+
         left_matmul_expr *lnode = (left_matmul_expr *) left_matmul;
         lnode->param_source = param_node;
         expr_retain(param_node);
@@ -94,16 +97,9 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
                              const double *data)
 {
-    /* We express: u @ A = (A^T @ u^T)^T
-       A is m x n, so A^T is n x m. */
+    /* We express: u @ A = (A^T @ u^T)^T. A is m x n, so A^T is n x m. */
     double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            AT[j * m + i] = data[i * n + j];
-        }
-    }
+    A_transpose(AT, data, m, n);
 
     expr *u_transpose = new_transpose(u);
     expr *left_matmul_node = new_left_matmul_dense(NULL, u_transpose, n, m, AT);

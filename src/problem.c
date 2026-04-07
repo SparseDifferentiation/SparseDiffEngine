@@ -382,7 +382,7 @@ void problem_update_params(problem *prob, const double *theta)
         if (param->param_id == PARAM_FIXED) continue;
         int offset = param->param_id;
         memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
-        param->has_been_refreshed = false;
+        param->needs_refresh = true;
     }
 
     /* Force re-evaluation of affine Jacobians on next call */
