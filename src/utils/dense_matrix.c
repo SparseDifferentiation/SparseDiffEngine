@@ -78,15 +78,20 @@ Matrix *dense_matrix_trans(const Dense_Matrix *A)
     int n = A->base.n;
     double *AT_x = (double *) SP_MALLOC(m * n * sizeof(double));
 
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            AT_x[j * m + i] = A->x[i * n + j];
-        }
-    }
+    A_transpose(AT_x, A->x, m, n);
 
     Matrix *result = new_dense_matrix(n, m, AT_x);
     free(AT_x);
     return result;
+}
+
+void A_transpose(double *AT, const double *A, int m, int n)
+{
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            AT[j * m + i] = A[i * n + j];
+        }
+    }
 }

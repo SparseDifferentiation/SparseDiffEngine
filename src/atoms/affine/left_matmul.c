@@ -193,18 +193,12 @@ static void refresh_dense_left(left_matmul_expr *lnode)
     Dense_Matrix *dm_AT = (Dense_Matrix *) lnode->AT;
     int m = dm_A->base.m;
     int n = dm_A->base.n;
-    const double *vals = lnode->param_source->value;
 
-    /* Column-major A is row-major AT; copy directly into AT */
-    memcpy(dm_AT->x, vals, m * n * sizeof(double));
-    /* Transpose AT to get row-major A */
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            dm_A->x[i * n + j] = dm_AT->x[j * m + i];
-        }
-    }
+    /* The parameter represents the A in left_matmul_dense(A, x) in column-major.
+       In this diffengine, we store A in row-major order. Hence, param->vals
+       actually corresponds to the transpose of A, and we transpose AT to get A. */
+    memcpy(dm_AT->x, lnode->param_source->value, m * n * sizeof(double));
+    A_transpose(dm_A->x, dm_AT->x, m, n);
 }
 
 expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
