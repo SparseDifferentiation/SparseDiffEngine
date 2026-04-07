@@ -37,15 +37,6 @@
 /* Refresh for sparse right_matmul: param stores A in CSR data order.
    Inner left_matmul: lnode->A = AT (transposed), lnode->AT = A (original).
    So: update lnode->AT from param values, then recompute lnode->A. */
-static void refresh_sparse_right(left_matmul_expr *lnode)
-{
-    (void) lnode;
-    fprintf(stderr,
-            "Error in refresh_sparse_right: parameter for a sparse matrix not "
-            "supported \n");
-    exit(1);
-}
-
 static void refresh_dense_right(left_matmul_expr *lnode)
 {
     /* This left_matmul_expr node corresponds to left multiplication with B = AT,
@@ -76,15 +67,9 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
        left_matmul */
     if (param_node != NULL)
     {
-
         fprintf(stderr, "Error in new_right_matmul: parameter for a sparse matrix "
                         "not supported \n");
         exit(1);
-
-        left_matmul_expr *lnode = (left_matmul_expr *) left_matmul;
-        lnode->param_source = param_node;
-        expr_retain(param_node);
-        lnode->refresh_param_values = refresh_sparse_right;
     }
 
     expr *node = new_transpose(left_matmul);

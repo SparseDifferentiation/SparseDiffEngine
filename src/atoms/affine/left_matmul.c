@@ -165,15 +165,6 @@ static void eval_wsum_hess(expr *node, const double *w)
            node->wsum_hess->nnz * sizeof(double));
 }
 
-static void refresh_sparse_left(left_matmul_expr *lnode)
-{
-    (void) lnode;
-    fprintf(stderr,
-            "Error in refresh_sparse_left: parameter for a sparse matrix not "
-            "supported \n");
-    exit(1);
-}
-
 static void refresh_dense_left(left_matmul_expr *lnode)
 {
     Dense_Matrix *dm_A = (Dense_Matrix *) lnode->A;
@@ -239,13 +230,9 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
     lnode->param_source = param_node;
     if (param_node != NULL)
     {
-
         fprintf(stderr, "Error in new_left_matmul: parameter for a sparse matrix "
                         "not supported \n");
         exit(1);
-
-        expr_retain(param_node);
-        lnode->refresh_param_values = refresh_sparse_left;
     }
 
     return node;
