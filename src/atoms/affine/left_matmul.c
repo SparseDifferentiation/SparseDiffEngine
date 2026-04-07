@@ -55,12 +55,11 @@ static void refresh_param_values(left_matmul_expr *lnode)
     {
         return;
     }
-    parameter_expr *param = (parameter_expr *) lnode->param_source;
-    if (!param->needs_refresh)
+    if (!lnode->base.needs_parameter_refresh)
     {
         return;
     }
-    param->needs_refresh = false;
+    lnode->base.needs_parameter_refresh = false;
     lnode->refresh_param_values(lnode);
 }
 

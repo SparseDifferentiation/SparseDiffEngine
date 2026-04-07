@@ -382,7 +382,13 @@ void problem_update_params(problem *prob, const double *theta)
         if (param->param_id == PARAM_FIXED) continue;
         int offset = param->param_id;
         memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
-        param->needs_refresh = true;
+    }
+
+    /* Propagate needs_parameter_refresh to all expressions */
+    expr_set_needs_refresh(prob->objective);
+    for (int i = 0; i < prob->n_constraints; i++)
+    {
+        expr_set_needs_refresh(prob->constraints[i]);
     }
 
     /* Force re-evaluation of affine Jacobians on next call */
