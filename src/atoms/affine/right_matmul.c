@@ -59,22 +59,18 @@ static void refresh_sparse_right(left_matmul_expr *lnode)
 
 static void refresh_dense_right(left_matmul_expr *lnode)
 {
-    Dense_Matrix *dm_AT_inner = (Dense_Matrix *) lnode->A;
-    Dense_Matrix *dm_A_inner = (Dense_Matrix *) lnode->AT;
-    int m_orig = dm_A_inner->base.m;
-    int n_orig = dm_A_inner->base.n;
-    const double *vals = lnode->param_source->value;
+    /* This left_matmul_expr node corresponds to left multiplication with B = AT,
+       where A is the original (m x n) matrix given to the right_matmul function.
+       Furthermore, lnode->param_source->value corresponds to the column-major
+       version of A, which is BT (an m x n matrix) */
 
-    /* Column-major A is row-major AT; copy directly into inner A (= A^T) */
-    memcpy(dm_AT_inner->x, vals, m_orig * n_orig * sizeof(double));
-    /* Transpose to get row-major A (inner's AT = original A) */
-    for (int i = 0; i < m_orig; i++)
-    {
-        for (int j = 0; j < n_orig; j++)
-        {
-            dm_A_inner->x[i * n_orig + j] = dm_AT_inner->x[j * m_orig + i];
-        }
-    }
+    Dense_Matrix *B = (Dense_Matrix *) lnode->AT;
+    Dense_Matrix *BT = (Dense_Matrix *) lnode->A;
+    int m = B->base.n;
+    int n = B->base.m;
+
+    memcpy(BT->x, lnode->param_source->value, m * n * sizeof(double));
+    A_transpose(B->x, BT->x, m, n);
 }
 
 expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
@@ -107,16 +103,9 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
                              const double *data)
 {
-    /* We express: u @ A = (A^T @ u^T)^T
-       A is m x n, so A^T is n x m. */
+    /* We express: u @ A = (A^T @ u^T)^T. A is m x n, so A^T is n x m. */
     double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            AT[j * m + i] = data[i * n + j];
-        }
-    }
+    A_transpose(AT, data, m, n);
 
     expr *u_transpose = new_transpose(u);
     expr *left_matmul_node = new_left_matmul_dense(NULL, u_transpose, n, m, AT);

@@ -170,17 +170,17 @@ static void refresh_sparse_left(left_matmul_expr *lnode)
 {
     Sparse_Matrix *sm_A = (Sparse_Matrix *) lnode->A;
     Sparse_Matrix *sm_AT = (Sparse_Matrix *) lnode->AT;
-    CSR_Matrix *csr = sm_A->csr;
-    const double *vals = lnode->param_source->value;
+    CSR_Matrix *A = sm_A->csr;
+    const double *param_vals = lnode->param_source->value;
     int d1 = lnode->param_source->d1;
 
     /* Parameter values are column-major; extract into CSR data order */
-    for (int row = 0; row < csr->m; row++)
+    for (int i = 0; i < A->m; i++)
     {
-        for (int k = csr->p[row]; k < csr->p[row + 1]; k++)
+        for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
         {
-            int col = csr->i[k];
-            csr->x[k] = vals[col * d1 + row];
+            int j = A->i[jj];
+            A->x[jj] = param_vals[j * d1 + i];
         }
     }
     /* Recompute AT values from A */
