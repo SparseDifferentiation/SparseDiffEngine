@@ -340,4 +340,64 @@ const char *test_param_left_matmul_rectangular(void)
     return 0;
 }
 
+const char *test_param_right_matmul_rectangular(void)
+{
+    int n = 2;
+
+    /* minimize sum(x) subject to xA = ?, with A parameter (2x3) */
+    expr *x = new_variable(1, 2, 0, n);
+    expr *objective = new_sum(x, -1);
+    expr *A_param = new_parameter(2, 3, 0, n, NULL);
+
+    /* dense 2x3 matrix */
+    double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    expr *constraint = new_right_matmul_dense(A_param, x, 2, 3, Ax);
+    expr *constraints[1] = {constraint};
+    problem *prob = new_problem(objective, constraints, 1, false);
+
+    /* register parameters and fill sparsity patterns */
+    expr *param_nodes[1] = {A_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* point for evaluating and utilities for test */
+    double x_vals[2] = {1.0, 2.0};
+    int Ap[4] = {0, 2, 4, 6};
+    int Ai[6] = {0, 1, 0, 1, 0, 1};
+
+    /* test 1: initial jacobian */
+    problem_constraint_forward(prob, x_vals);
+    double constrs[3] = {9.0, 12.0, 15.0};
+    problem_jacobian(prob);
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 3));
+    mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 4));
+    mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 6));
+    double jac_x[6] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0};
+    mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
+
+    /* test 2: A = [[7,8,9],[10,11,12]] (column-major [7,10,8,11,9,12]) */
+    double theta[6] = {7.0, 10.0, 8.0, 11.0, 9.0, 12.0};
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    constrs[0] = 27.0;
+    constrs[1] = 30.0;
+    constrs[2] = 33.0;
+    jac_x[0] = 7.0;
+    jac_x[1] = 10.0;
+    jac_x[2] = 8.0;
+    jac_x[3] = 11.0;
+    jac_x[4] = 9.0;
+    jac_x[5] = 12.0;
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 3));
+    mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
+    mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 4));
+    mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 6));
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 3));
+
+    free_problem(prob);
+
+    return 0;
+}
+
 #endif /* TEST_PARAM_PROB_H */
