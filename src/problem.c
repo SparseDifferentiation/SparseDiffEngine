@@ -375,6 +375,14 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
 
 void problem_update_params(problem *prob, const double *theta)
 {
+    /* raise error if there are no parameters */
+    if (prob->n_param_nodes == 0)
+    {
+        fprintf(stderr, "Error: No parameters registered. This is a bug and should "
+                        "be reported.\n");
+        exit(1);
+    }
+
     for (int i = 0; i < prob->n_param_nodes; i++)
     {
         expr *pnode = prob->param_nodes[i];
