@@ -28,7 +28,17 @@
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
-    const double *a = ((vector_mult_expr *) node)->param_source->value;
+    vector_mult_expr *vnode = (vector_mult_expr *) node;
+
+    /* Refresh param_source expression tree if parameters changed.*/
+    if (node->needs_parameter_refresh)
+    {
+        /* pass NULL to forward: constant param_source never depends on u */
+        vnode->param_source->forward(vnode->param_source, NULL);
+        node->needs_parameter_refresh = false;
+    }
+
+    const double *a = vnode->param_source->value;
 
     /* child's forward pass */
     child->forward(child, u);

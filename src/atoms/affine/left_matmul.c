@@ -63,6 +63,14 @@ static void refresh_param_values(left_matmul_expr *lnode)
 static void forward(expr *node, const double *u)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
+
+    /* Refresh param_source expression tree if parameters changed.*/
+    if (lnode->param_source != NULL && lnode->base.needs_parameter_refresh)
+    {
+        /* pass NULL to forward: constant param_source never depends on u */
+        lnode->param_source->forward(lnode->param_source, NULL);
+    }
+
     refresh_param_values(lnode);
 
     expr *x = node->left;
