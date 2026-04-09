@@ -134,7 +134,6 @@ expr *new_vector_mult(expr *param_node, expr *child)
 
     vnode->param_source = param_node;
     expr_retain(param_node);
-    //node->needs_parameter_refresh = true;
 
     return node;
 }
