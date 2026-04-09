@@ -138,7 +138,7 @@ const char *test_jacobian_left_matmul_exp_composite(void)
     expr *A_exp_Bx = new_left_matmul(NULL, exp_Bx, A);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(A_exp_Bx, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian_num(A_exp_Bx, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_csr_matrix(A);
     free_csr_matrix(B);

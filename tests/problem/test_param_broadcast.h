@@ -8,6 +8,7 @@
 #include "atoms/affine.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "problem.h"
 #include "subexpr.h"
 #include "test_helpers.h"
@@ -36,6 +37,9 @@ const char *test_constant_broadcast_vector_mult(void)
     double jac_x[6] = {1.0, 1.0, 2.0, 2.0, 3.0, 3.0};
     mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 6));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_problem(prob);
     return 0;
@@ -66,6 +70,9 @@ const char *test_constant_promote_vector_mult(void)
     double jac_x[6] = {3.0, 3.0, 3.0, 3.0, 3.0, 3.0};
     mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 6));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_problem(prob);
     return 0;
@@ -99,6 +106,9 @@ const char *test_param_broadcast_vector_mult(void)
     mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 6));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
 
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+
     /* second iteration after updating parameter */
     double theta[3] = {5.0, 4.0, 3.0};
     problem_update_params(prob, theta);
@@ -106,8 +116,12 @@ const char *test_param_broadcast_vector_mult(void)
     problem_jacobian(prob);
     double updated_constrs[6] = {5.0, 10.0, 12.0, 16.0, 15.0, 18.0};
     double updated_jac_x[6] = {5.0, 5.0, 4.0, 4.0, 3.0, 3.0};
-    mu_assert("vals fail", cmp_double_array(prob->constraint_values, updated_constrs, 6));
+    mu_assert("vals fail",
+              cmp_double_array(prob->constraint_values, updated_constrs, 6));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, updated_jac_x, 6));
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_problem(prob);
     return 0;
@@ -141,6 +155,9 @@ const char *test_param_promote_vector_mult(void)
     mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 6));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
 
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+
     /* second iteration after updating parameter */
     double theta = 5.0;
     problem_update_params(prob, &theta);
@@ -148,8 +165,12 @@ const char *test_param_promote_vector_mult(void)
     problem_jacobian(prob);
     double updated_constrs[6] = {5.0, 10.0, 15.0, 20.0, 25.0, 30.0};
     double updated_jac_x[6] = {5.0, 5.0, 5.0, 5.0, 5.0, 5.0};
-    mu_assert("vals fail", cmp_double_array(prob->constraint_values, updated_constrs, 6));
+    mu_assert("vals fail",
+              cmp_double_array(prob->constraint_values, updated_constrs, 6));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, updated_jac_x, 6));
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_problem(prob);
     return 0;

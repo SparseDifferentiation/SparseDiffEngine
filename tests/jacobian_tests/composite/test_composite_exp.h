@@ -71,7 +71,7 @@ const char *test_jacobian_composite_exp_add(void)
     expr *sum = new_add(exp_Ax, exp_By);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(sum, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian_num(sum, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sum);
     free_csr_matrix(A);

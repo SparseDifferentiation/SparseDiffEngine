@@ -58,6 +58,53 @@ const char *test_param_scalar_mult_problem(void)
     return 0;
 }
 
+const char *test_param_scalar_mult_problem_with_constant(void)
+{
+    int n = 2;
+
+    /* minimize a * (sum(log(x)) + c), with a parameter, c = 4 constant */
+    expr *x = new_variable(2, 1, 0, n);
+    expr *log_x = new_log(x);
+    double theta[1] = {3.0};
+    double c_val = 4.0;
+    expr *a_param = new_parameter(1, 1, 0, n, theta);
+    expr *c = new_parameter(1, 1, PARAM_FIXED, n, &c_val);
+    expr *scaled = new_scalar_mult(a_param, new_add(new_sum(log_x, -1), c));
+    expr *objective = new_sum(scaled, -1);
+    problem *prob = new_problem(objective, NULL, 0, false);
+
+    /* register parameters and fill sparsity patterns */
+    expr *param_nodes[1] = {a_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* point for evaluating */
+    double x_vals[2] = {1.0, 2.0};
+
+    /* test 1: a=3 */
+    double obj_val = problem_objective_forward(prob, x_vals);
+    problem_gradient(prob);
+    double expected_obj = 3.0 * (log(2.0) + 4.0);
+    mu_assert("vals fail", fabs(obj_val - expected_obj) < 1e-10);
+    double grad[2] = {3.0, 1.5};
+    mu_assert("vals fail", cmp_double_array(prob->gradient_values, grad, 2));
+
+    /* test 2: a=5 */
+    theta[0] = 5.0;
+    problem_update_params(prob, theta);
+    obj_val = problem_objective_forward(prob, x_vals);
+    problem_gradient(prob);
+    expected_obj = 5.0 * (log(2.0) + 4.0);
+    mu_assert("vals fail", fabs(obj_val - expected_obj) < 1e-10);
+    grad[0] = 5.0;
+    grad[1] = 2.5;
+    mu_assert("vals fail", cmp_double_array(prob->gradient_values, grad, 2));
+
+    free_problem(prob);
+
+    return 0;
+}
+
 const char *test_param_vector_mult_problem(void)
 {
     int n = 2;
@@ -148,7 +195,10 @@ const char *test_param_left_matmul_problem(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 4));
 
     /* test 2: A = [[1,2],[3,4]] (column-major [1,3,2,4]) */
-    theta[0] = 1.0; theta[1] = 3.0; theta[2] = 2.0; theta[3] = 4.0;
+    theta[0] = 1.0;
+    theta[1] = 3.0;
+    theta[2] = 2.0;
+    theta[3] = 4.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -321,8 +371,12 @@ const char *test_param_left_matmul_rectangular(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 6));
 
     /* test 2: A = [[7,8],[9,10],[11,12]] (column-major [7,9,11,8,10,12]) */
-    theta[0] = 7.0; theta[1] = 9.0; theta[2] = 11.0;
-    theta[3] = 8.0; theta[4] = 10.0; theta[5] = 12.0;
+    theta[0] = 7.0;
+    theta[1] = 9.0;
+    theta[2] = 11.0;
+    theta[3] = 8.0;
+    theta[4] = 10.0;
+    theta[5] = 12.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -383,8 +437,12 @@ const char *test_param_right_matmul_rectangular(void)
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
 
     /* test 2: A = [[7,8,9],[10,11,12]] (column-major [7,10,8,11,9,12]) */
-    theta[0] = 7.0; theta[1] = 10.0; theta[2] = 8.0;
-    theta[3] = 11.0; theta[4] = 9.0; theta[5] = 12.0;
+    theta[0] = 7.0;
+    theta[1] = 10.0;
+    theta[2] = 8.0;
+    theta[3] = 11.0;
+    theta[4] = 9.0;
+    theta[5] = 12.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -447,7 +505,10 @@ const char *test_param_shared_left_matmul_problem(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 8));
 
     /* test 2: A = [[1,2],[3,4]] (column-major [1,3,2,4]) */
-    theta[0] = 1.0; theta[1] = 3.0; theta[2] = 2.0; theta[3] = 4.0;
+    theta[0] = 1.0;
+    theta[1] = 3.0;
+    theta[2] = 2.0;
+    theta[3] = 4.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
