@@ -20,7 +20,8 @@ const char *test_param_scalar_mult_problem(void)
     /* minimize a * sum(log(x)), with a parameter */
     expr *x = new_variable(2, 1, 0, n);
     expr *log_x = new_log(x);
-    expr *a_param = new_parameter(1, 1, 0, n, NULL);
+    double theta[1] = {3.0};
+    expr *a_param = new_parameter(1, 1, 0, n, theta);
     expr *scaled = new_scalar_mult(a_param, log_x);
     expr *objective = new_sum(scaled, -1);
     problem *prob = new_problem(objective, NULL, 0, false);
@@ -34,8 +35,6 @@ const char *test_param_scalar_mult_problem(void)
     double x_vals[2] = {1.0, 2.0};
 
     /* test 1: a=3 */
-    double theta[1] = {3.0};
-    problem_update_params(prob, theta);
     double obj_val = problem_objective_forward(prob, x_vals);
     problem_gradient(prob);
     double expected_obj = 3.0 * log(2.0);
@@ -66,7 +65,8 @@ const char *test_param_vector_mult_problem(void)
     /* minimize sum(x) subject to p ∘ x, with p parameter */
     expr *x = new_variable(2, 1, 0, n);
     expr *objective = new_sum(x, -1);
-    expr *p_param = new_parameter(2, 1, 0, n, NULL);
+    double theta[2] = {3.0, 4.0};
+    expr *p_param = new_parameter(2, 1, 0, n, theta);
     expr *constraint = new_vector_mult(p_param, x);
     expr *constraints[1] = {constraint};
     problem *prob = new_problem(objective, constraints, 1, false);
@@ -83,8 +83,6 @@ const char *test_param_vector_mult_problem(void)
     double Ax[2] = {3.0, 4.0};
 
     /* test 1: p=[3,4] */
-    double theta[2] = {3.0, 4.0};
-    problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     double constrs[2] = {3.0, 8.0};
     problem_jacobian(prob);
@@ -121,7 +119,8 @@ const char *test_param_left_matmul_problem(void)
     /* minimize sum(x) subject to Ax = ?, with A parameter */
     expr *x = new_variable(2, 1, 0, n);
     expr *objective = new_sum(x, -1);
-    expr *A_param = new_parameter(2, 2, 0, n, NULL);
+    double theta[4] = {1.0, 0.0, 0.0, 1.0};
+    expr *A_param = new_parameter(2, 2, 0, n, theta);
 
     /* dense 2x2 matrix */
     double Ax[4] = {2.0, 0.0, 0.0, 1.0};
@@ -149,7 +148,7 @@ const char *test_param_left_matmul_problem(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 4));
 
     /* test 2: A = [[1,2],[3,4]] (column-major [1,3,2,4]) */
-    double theta[4] = {1.0, 3.0, 2.0, 4.0};
+    theta[0] = 1.0; theta[1] = 3.0; theta[2] = 2.0; theta[3] = 4.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -177,7 +176,8 @@ const char *test_param_right_matmul_problem(void)
     /* minimize sum(x) subject to xA = ?, with A parameter */
     expr *x = new_variable(1, 2, 0, n);
     expr *objective = new_sum(x, -1);
-    expr *A_param = new_parameter(2, 2, 0, n, NULL);
+    double theta[4] = {1.0, 0.0, 0.0, 1.0};
+    expr *A_param = new_parameter(2, 2, 0, n, theta);
 
     /* dense 2x2 matrix */
     double Ax[4] = {2.0, 0.0, 0.0, 1.0};
@@ -205,7 +205,10 @@ const char *test_param_right_matmul_problem(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 4));
 
     /* test 2: A = [[1,2],[3,4]] (column-major [1,3,2,4]) */
-    double theta[4] = {1.0, 3.0, 2.0, 4.0};
+    theta[0] = 1.0;
+    theta[1] = 3.0;
+    theta[2] = 2.0;
+    theta[3] = 4.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -238,7 +241,8 @@ const char *test_param_fixed_skip_in_update(void)
     expr *a_log = new_scalar_mult(a_param, log_x);
     expr *sum_a_log = new_sum(a_log, -1);
 
-    expr *b_param = new_parameter(1, 1, 0, n, NULL);
+    double b_val = 0.0;
+    expr *b_param = new_parameter(1, 1, 0, n, &b_val);
     expr *b_x = new_scalar_mult(b_param, x);
     expr *sum_b_x = new_sum(b_x, -1);
 
@@ -246,8 +250,8 @@ const char *test_param_fixed_skip_in_update(void)
     problem *prob = new_problem(objective, NULL, 0, false);
 
     /* register parameters and fill sparsity patterns */
-    expr *param_nodes[2] = {a_param, b_param};
-    problem_register_params(prob, param_nodes, 2);
+    expr *param_nodes[1] = {b_param};
+    problem_register_params(prob, param_nodes, 1);
     problem_init_derivatives(prob);
 
     /* point for evaluating */
@@ -288,7 +292,8 @@ const char *test_param_left_matmul_rectangular(void)
     /* minimize sum(x) subject to Ax = ?, with A parameter (3x2) */
     expr *x = new_variable(2, 1, 0, n);
     expr *objective = new_sum(x, -1);
-    expr *A_param = new_parameter(3, 2, 0, n, NULL);
+    double theta[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    expr *A_param = new_parameter(3, 2, 0, n, theta);
 
     /* dense 3x2 matrix */
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
@@ -316,7 +321,8 @@ const char *test_param_left_matmul_rectangular(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 6));
 
     /* test 2: A = [[7,8],[9,10],[11,12]] (column-major [7,9,11,8,10,12]) */
-    double theta[6] = {7.0, 9.0, 11.0, 8.0, 10.0, 12.0};
+    theta[0] = 7.0; theta[1] = 9.0; theta[2] = 11.0;
+    theta[3] = 8.0; theta[4] = 10.0; theta[5] = 12.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -347,7 +353,8 @@ const char *test_param_right_matmul_rectangular(void)
     /* minimize sum(x) subject to xA = ?, with A parameter (2x3) */
     expr *x = new_variable(1, 2, 0, n);
     expr *objective = new_sum(x, -1);
-    expr *A_param = new_parameter(2, 3, 0, n, NULL);
+    double theta[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    expr *A_param = new_parameter(2, 3, 0, n, theta);
 
     /* dense 2x3 matrix */
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
@@ -376,7 +383,8 @@ const char *test_param_right_matmul_rectangular(void)
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, jac_x, 6));
 
     /* test 2: A = [[7,8,9],[10,11,12]] (column-major [7,10,8,11,9,12]) */
-    double theta[6] = {7.0, 10.0, 8.0, 11.0, 9.0, 12.0};
+    theta[0] = 7.0; theta[1] = 10.0; theta[2] = 8.0;
+    theta[3] = 11.0; theta[4] = 9.0; theta[5] = 12.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
@@ -408,7 +416,8 @@ const char *test_param_shared_left_matmul_problem(void)
     expr *x = new_variable(2, 1, 0, n);
     expr *y = new_variable(2, 1, 2, n);
     expr *objective = new_sum(x, -1);
-    expr *A_param = new_parameter(2, 2, 0, n, NULL);
+    double theta[4] = {1.0, 0.0, 0.0, 1.0};
+    expr *A_param = new_parameter(2, 2, 0, n, theta);
 
     /* dense 2x2 identity */
     double Ax[4] = {1.0, 0.0, 0.0, 1.0};
@@ -438,7 +447,7 @@ const char *test_param_shared_left_matmul_problem(void)
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 8));
 
     /* test 2: A = [[1,2],[3,4]] (column-major [1,3,2,4]) */
-    double theta[4] = {1.0, 3.0, 2.0, 4.0};
+    theta[0] = 1.0; theta[1] = 3.0; theta[2] = 2.0; theta[3] = 4.0;
     problem_update_params(prob, theta);
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);

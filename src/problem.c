@@ -369,6 +369,9 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
     prob->total_parameter_size = 0;
     for (int i = 0; i < n_param_nodes; i++)
     {
+        // TODO do we need to skip fixed params? maybe we adopt the convention
+        // that we don't ever register fixed params?
+        if (((parameter_expr *) param_nodes[i])->param_id == PARAM_FIXED) continue;
         prob->total_parameter_size += param_nodes[i]->size;
     }
 }

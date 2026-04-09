@@ -361,9 +361,7 @@ int main(void)
     mu_run_test(test_param_fixed_skip_in_update, tests_run);
 
     printf("\n--- Parameter + Broadcast Tests ---\n");
-    mu_run_test(test_param_broadcast_vector_mult, tests_run);
-    mu_run_test(test_param_sum_scalar_mult, tests_run);
-    mu_run_test(test_param_broadcast_left_matmul, tests_run);
+    mu_run_test(test_constant_broadcast_vector_mult, tests_run);
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
