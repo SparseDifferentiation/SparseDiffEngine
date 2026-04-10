@@ -18,6 +18,7 @@
 #include "atoms/affine.h"
 #include "subexpr.h"
 #include "utils/tracked_alloc.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -63,13 +64,16 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
     expr *node = &pnode->base;
     init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
-
+    
+    // TODO we should assert that the values array has the correct size.
     pnode->param_id = param_id;
 
-    if (values != NULL)
+    if (values == NULL)
     {
-        memcpy(node->value, values, node->size * sizeof(double));
+        fprintf(stderr, "Parameter values should always be set, this is a bug and"
+                        " should be reported\n");
+        exit(1);
     }
-
+    memcpy(node->value, values, node->size * sizeof(double));
     return node;
 }

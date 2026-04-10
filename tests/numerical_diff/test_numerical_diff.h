@@ -22,7 +22,7 @@ const char *test_check_jacobian_composite_exp(void)
     expr *exp_node = new_exp(Au);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(exp_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian_num(exp_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_node);
     free_csr_matrix(A);

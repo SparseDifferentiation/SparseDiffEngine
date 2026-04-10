@@ -61,7 +61,7 @@ double *numerical_jacobian(expr *node, const double *u, double h)
     return J;
 }
 
-int check_jacobian(expr *node, const double *u, double h)
+int check_jacobian_num(expr *node, const double *u, double h)
 {
     int m = node->size;
     int n = node->n_vars;

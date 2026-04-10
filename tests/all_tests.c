@@ -49,6 +49,7 @@
 #include "jacobian_tests/other/test_prod_axis_zero.h"
 #include "jacobian_tests/other/test_quad_form.h"
 #include "numerical_diff/test_numerical_diff.h"
+#include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_cblas.h"
@@ -358,6 +359,15 @@ int main(void)
     mu_run_test(test_param_right_matmul_rectangular, tests_run);
     mu_run_test(test_param_shared_left_matmul_problem, tests_run);
     mu_run_test(test_param_fixed_skip_in_update, tests_run);
+    mu_run_test(test_param_scalar_mult_problem_with_constant, tests_run);
+
+    printf("\n--- Parameter + Broadcast Tests ---\n");
+    mu_run_test(test_constant_broadcast_vector_mult, tests_run);
+    mu_run_test(test_constant_promote_vector_mult, tests_run);
+    mu_run_test(test_param_broadcast_vector_mult, tests_run);
+    mu_run_test(test_param_promote_vector_mult, tests_run);
+    mu_run_test(test_const_sum_scalar_mult, tests_run);
+    mu_run_test(test_param_sum_scalar_mult, tests_run);
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
