@@ -238,7 +238,7 @@ const char *test_param_sum_scalar_mult(void)
 
     mu_assert("check_jacobian failed",
               check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
-    
+
     /* second iteration after updating parameter */
     double theta[3] = {5.0, 4.0, 3.0};
     problem_update_params(prob, theta);

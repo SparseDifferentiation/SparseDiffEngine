@@ -372,7 +372,8 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
 
         if (((parameter_expr *) param_nodes[i])->param_id == PARAM_FIXED)
         {
-            fprintf(stderr, "can this ever happen? \n");
+            fprintf(stderr, "can this ever happen? please report to developers if "
+                            "this happens \n");
             exit(1);
         }
 
@@ -400,7 +401,8 @@ void problem_update_params(problem *prob, const double *theta)
 
         if (param->param_id == PARAM_FIXED)
         {
-            fprintf(stderr, "can this ever happen? \n");
+            fprintf(stderr, "can this ever happen? please report to developers if "
+                            "this happens \n");
             exit(1);
         }
 
