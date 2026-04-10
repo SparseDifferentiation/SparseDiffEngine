@@ -32,7 +32,7 @@ static void forward(expr *node, const double *u)
 
     /* call forward for param_source expr tree
      ex: broadcast(param) or promote(const)*/
-    snode->param_source->forward(snode->param_source, NULL);
+    // snode->param_source->forward(snode->param_source, NULL);
 
     double a = snode->param_source->value[0];
 
