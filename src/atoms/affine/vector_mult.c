@@ -30,9 +30,14 @@ static void forward(expr *node, const double *u)
     expr *child = node->left;
     vector_mult_expr *vnode = (vector_mult_expr *) node;
 
-    /* call forward for param_source expr tree
-     ex: broadcast(param) or promote(const)*/
-    vnode->param_source->forward(vnode->param_source, NULL);
+    /* call forward for param_source expr tree (this extra logic is needed
+       in case the parameter is a broadcast or promote node which needs to refresh
+       its values) */
+    if (vnode->base.needs_parameter_refresh)
+    {
+        vnode->param_source->forward(vnode->param_source, NULL);
+        vnode->base.needs_parameter_refresh = false;
+    }
 
     const double *a = vnode->param_source->value;
 
@@ -134,6 +139,9 @@ expr *new_vector_mult(expr *param_node, expr *child)
 
     vnode->param_source = param_node;
     expr_retain(param_node);
+
+    /* special case for handling broadcasting of constants correctly */
+    vnode->base.needs_parameter_refresh = true;
 
     return node;
 }

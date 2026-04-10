@@ -64,9 +64,7 @@ static void forward(expr *node, const double *u)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
 
-    /* Always call forward on param_source if it exists */
-    /* Should we also adopt a convention that left_matmul always
-       points to a param_source, even if its constant? */
+    /* call forward on param_source if it exists and needs refresh */
     if (lnode->param_source != NULL && lnode->base.needs_parameter_refresh)
     {
         lnode->param_source->forward(lnode->param_source, NULL);
