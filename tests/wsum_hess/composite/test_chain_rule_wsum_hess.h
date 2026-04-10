@@ -126,8 +126,8 @@ const char *test_wsum_hess_Ax_Bx_multiply(void)
     CSR_Matrix *A = new_csr_random(2, 2, 1.0);
     CSR_Matrix *B = new_csr_random(2, 2, 1.0);
     expr *x = new_variable(2, 1, 1, 4);
-    expr *Ax = new_left_matmul(x, A);
-    expr *Bx = new_left_matmul(x, B);
+    expr *Ax = new_left_matmul(NULL, x, A);
+    expr *Bx = new_left_matmul(NULL, x, B);
     expr *multiply = new_elementwise_mult(Ax, Bx);
 
     mu_assert("check_wsum_hess failed",
@@ -162,8 +162,8 @@ const char *test_wsum_hess_AX_BX_multiply(void)
     CSR_Matrix *A = new_csr_random(2, 2, 1.0);
     CSR_Matrix *B = new_csr_random(2, 2, 1.0);
     expr *X = new_variable(2, 2, 0, 4);
-    expr *AX = new_left_matmul(X, A);
-    expr *BX = new_left_matmul(X, B);
+    expr *AX = new_left_matmul(NULL, X, A);
+    expr *BX = new_left_matmul(NULL, X, B);
     expr *multiply = new_elementwise_mult(new_sin(AX), new_cos(BX));
 
     mu_assert("check_wsum_hess failed",
@@ -184,8 +184,8 @@ const char *test_wsum_hess_multiply_deep_composite(void)
     CSR_Matrix *B = new_csr_random(2, 2, 1.0);
     expr *X = new_variable(2, 2, 0, 8);
     expr *Y = new_variable(2, 2, 0, 8);
-    expr *AX = new_left_matmul(X, A);
-    expr *BY = new_left_matmul(Y, B);
+    expr *AX = new_left_matmul(NULL, X, A);
+    expr *BY = new_left_matmul(NULL, Y, B);
     expr *sin_AX = new_sin(AX);
     expr *cos_BY = new_cos(BY);
     expr *sin_AX_mult_sin_AX = new_elementwise_mult(sin_AX, sin_AX);
@@ -217,7 +217,7 @@ const char *test_wsum_hess_quad_form_Ax(void)
     memcpy(Q->p, Qp, 4 * sizeof(int));
 
     expr *x = new_variable(4, 1, 1, 6);
-    expr *Ax = new_left_matmul(x, A);
+    expr *Ax = new_left_matmul(NULL, x, A);
     expr *node = new_quad_form(Ax, Q);
 
     mu_assert("check_wsum_hess failed",
@@ -246,7 +246,7 @@ const char *test_wsum_hess_quad_form_sin_Ax(void)
     memcpy(Q->p, Qp, 4 * sizeof(int));
 
     expr *x = new_variable(4, 1, 1, 6);
-    expr *Ax = new_left_matmul(x, A);
+    expr *Ax = new_left_matmul(NULL, x, A);
     expr *sin_Ax = new_sin(Ax);
     expr *node = new_quad_form(sin_Ax, Q);
 
@@ -308,9 +308,9 @@ const char *test_wsum_hess_matmul_Ax_By(void)
 
     expr *X = new_variable(2, 2, 0, 10);
     expr *Y = new_variable(3, 2, 4, 10);
-    expr *AX = new_left_matmul(X, A); /* 3x2 */
-    expr *BY = new_left_matmul(Y, B); /* 2x2 */
-    expr *Z = new_matmul(AX, BY);     /* 3x2 */
+    expr *AX = new_left_matmul(NULL, X, A); /* 3x2 */
+    expr *BY = new_left_matmul(NULL, Y, B); /* 2x2 */
+    expr *Z = new_matmul(AX, BY);           /* 3x2 */
 
     mu_assert("check_wsum_hess failed",
               check_wsum_hess(Z, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
@@ -331,8 +331,8 @@ const char *test_wsum_hess_matmul_sin_Ax_cos_Bx(void)
     CSR_Matrix *B = new_csr_random(2, 3, 1.0);
 
     expr *X = new_variable(3, 2, 0, 6);
-    expr *AX = new_left_matmul(X, A); /* 2x2 */
-    expr *BX = new_left_matmul(X, B); /* 2x2 */
+    expr *AX = new_left_matmul(NULL, X, A); /* 2x2 */
+    expr *BX = new_left_matmul(NULL, X, B); /* 2x2 */
     expr *sin_AX = new_sin(AX);
     expr *cos_BX = new_cos(BX);
     expr *Z = new_matmul(sin_AX, cos_BX); /* 2x2 */

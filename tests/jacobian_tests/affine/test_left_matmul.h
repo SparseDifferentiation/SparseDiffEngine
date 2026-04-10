@@ -42,7 +42,7 @@ const char *test_jacobian_left_matmul_log(void)
     memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(log_x, A);
+    expr *A_log_x = new_left_matmul(NULL, log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
     jacobian_init(A_log_x);
@@ -86,7 +86,7 @@ const char *test_jacobian_left_matmul_log_matrix(void)
     memcpy(A->x, A_x, 7 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *A_log_x = new_left_matmul(log_x, A);
+    expr *A_log_x = new_left_matmul(NULL, log_x, A);
 
     A_log_x->forward(A_log_x, x_vals);
     jacobian_init(A_log_x);
@@ -135,10 +135,10 @@ const char *test_jacobian_left_matmul_exp_composite(void)
 
     expr *Bx = new_linear(x, B, NULL);
     expr *exp_Bx = new_exp(Bx);
-    expr *A_exp_Bx = new_left_matmul(exp_Bx, A);
+    expr *A_exp_Bx = new_left_matmul(NULL, exp_Bx, A);
 
     mu_assert("check_jacobian failed",
-              check_jacobian(A_exp_Bx, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+              check_jacobian_num(A_exp_Bx, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_csr_matrix(A);
     free_csr_matrix(B);

@@ -26,7 +26,18 @@
 /* Forward declaration */
 struct int_double_pair;
 
+/* Parameter ID for fixed constants (not updatable) */
+#define PARAM_FIXED -1
+
 /* Type-specific expression structures that "inherit" from expr */
+
+/* Unified constant/parameter node. Constants use param_id == PARAM_FIXED.
+ * Updatable parameters use param_id >= 0 (offset into global theta). */
+typedef struct parameter_expr
+{
+    expr base;
+    int param_id;
+} parameter_expr;
 
 /* Linear operator: y = A * x + b
  * The matrix A is stored as node->jacobian (CSR). */
@@ -118,18 +129,24 @@ typedef struct left_matmul_expr
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *csc_to_csr_work;
+    expr *param_source;
+    void (*refresh_param_values)(struct left_matmul_expr *);
 } left_matmul_expr;
 
-/* Right matrix multiplication: y = f(x) * A where f(x) is an expression.
- * f(x) has shape p x n, A has shape n x q, output y has shape p x q.
- * Uses vec(y) = B * vec(f(x)) where B = A^T kron I_p. */
-typedef struct right_matmul_expr
+/* Scalar multiplication: y = a * child where a comes from param_source */
+typedef struct scalar_mult_expr
 {
     expr base;
-    CSR_Matrix *B;  /* B = A^T kron I_p */
-    CSR_Matrix *BT; /* B^T for backpropagating Hessian weights */
-    CSC_Matrix *CSC_work;
-} right_matmul_expr;
+    expr *param_source;
+} scalar_mult_expr;
+
+/* Vector elementwise multiplication: y = a \circ child where a comes from
+ * param_source */
+typedef struct vector_mult_expr
+{
+    expr base;
+    expr *param_source;
+} vector_mult_expr;
 
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
  * may be composite expressions. */
@@ -152,20 +169,6 @@ typedef struct matmul_expr
     int *idx_map_Hf;
     int *idx_map_Hg;
 } matmul_expr;
-
-/* Constant scalar multiplication: y = a * child where a is a constant double */
-typedef struct const_scalar_mult_expr
-{
-    expr base;
-    double a;
-} const_scalar_mult_expr;
-
-/* Constant vector elementwise multiplication: y = a \circ child for constant a */
-typedef struct const_vector_mult_expr
-{
-    expr base;
-    double *a; /* length equals node->size */
-} const_vector_mult_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr

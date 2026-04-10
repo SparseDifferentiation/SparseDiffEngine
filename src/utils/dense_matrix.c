@@ -42,6 +42,12 @@ static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *
                 n, 0.0, y, m);
 }
 
+static void dense_update_values(Matrix *self, const double *new_values)
+{
+    Dense_Matrix *dm = (Dense_Matrix *) self;
+    memcpy(dm->x, new_values, dm->base.m * dm->base.n * sizeof(double));
+}
+
 static void dense_free(Matrix *A)
 {
     Dense_Matrix *dm = (Dense_Matrix *) A;
@@ -58,6 +64,7 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
     dm->base.block_left_mult_sparsity = I_kron_A_alloc;
     dm->base.block_left_mult_values = I_kron_A_fill_values;
+    dm->base.update_values = dense_update_values;
     dm->base.free_fn = dense_free;
     dm->x = (double *) SP_MALLOC(m * n * sizeof(double));
     memcpy(dm->x, data, m * n * sizeof(double));
@@ -71,15 +78,20 @@ Matrix *dense_matrix_trans(const Dense_Matrix *A)
     int n = A->base.n;
     double *AT_x = (double *) SP_MALLOC(m * n * sizeof(double));
 
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            AT_x[j * m + i] = A->x[i * n + j];
-        }
-    }
+    A_transpose(AT_x, A->x, m, n);
 
     Matrix *result = new_dense_matrix(n, m, AT_x);
     free(AT_x);
     return result;
+}
+
+void A_transpose(double *AT, const double *A, int m, int n)
+{
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            AT[j * m + i] = A[i * n + j];
+        }
+    }
 }

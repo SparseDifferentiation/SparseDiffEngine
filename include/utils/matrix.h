@@ -31,6 +31,7 @@ typedef struct Matrix
                                             const CSC_Matrix *J, int p);
     void (*block_left_mult_values)(const struct Matrix *self, const CSC_Matrix *J,
                                    CSC_Matrix *C);
+    void (*update_values)(struct Matrix *self, const double *new_values);
     void (*free_fn)(struct Matrix *self);
 } Matrix;
 

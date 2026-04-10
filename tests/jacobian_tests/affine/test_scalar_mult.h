@@ -5,11 +5,12 @@
 #include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 
-/* Test: y = a * log(x) where a is a scalar constant */
+/* Test: y = a * log(x) where a is a scalar parameter */
 
-const char *test_jacobian_const_scalar_mult_log_vector(void)
+const char *test_jacobian_scalar_mult_log_vector(void)
 {
     /* Create variable x: [1.0, 2.0, 4.0] with 3 elements */
     double u_vals[3] = {1.0, 2.0, 4.0};
@@ -19,8 +20,9 @@ const char *test_jacobian_const_scalar_mult_log_vector(void)
     expr *log_node = new_log(x);
 
     /* Create scalar mult node: y = 2.5 * log(x) */
-    double a = 2.5;
-    expr *y = new_const_scalar_mult(a, log_node);
+    double a_val = 2.5;
+    expr *a_param = new_parameter(1, 1, PARAM_FIXED, 3, &a_val);
+    expr *y = new_scalar_mult(a_param, log_node);
 
     /* Forward pass */
     y->forward(y, u_vals);
@@ -45,7 +47,7 @@ const char *test_jacobian_const_scalar_mult_log_vector(void)
     return 0;
 }
 
-const char *test_jacobian_const_scalar_mult_log_matrix(void)
+const char *test_jacobian_scalar_mult_log_matrix(void)
 {
     /* Create variable x as 2x2 matrix: [[1.0, 2.0], [4.0, 8.0]] */
     double u_vals[4] = {1.0, 2.0, 4.0, 8.0};
@@ -55,8 +57,9 @@ const char *test_jacobian_const_scalar_mult_log_matrix(void)
     expr *log_node = new_log(x);
 
     /* Create scalar mult node: y = 3.0 * log(x) */
-    double a = 3.0;
-    expr *y = new_const_scalar_mult(a, log_node);
+    double a_val = 3.0;
+    expr *a_param = new_parameter(1, 1, PARAM_FIXED, 4, &a_val);
+    expr *y = new_scalar_mult(a_param, log_node);
 
     /* Forward pass */
     y->forward(y, u_vals);

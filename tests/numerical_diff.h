@@ -13,7 +13,7 @@ double *numerical_jacobian(expr *node, const double *u, double h);
 /* Evaluate analytical Jacobian, compute numerical Jacobian,
  * and compare. Returns 1 on match, 0 on mismatch.
  * Prints diagnostic on first failing entry. */
-int check_jacobian(expr *node, const double *u, double h);
+int check_jacobian_num(expr *node, const double *u, double h);
 
 /* Compute dense numerical weighted-sum Hessian via central
  * differences on the gradient g(u) = J(u)^T w.

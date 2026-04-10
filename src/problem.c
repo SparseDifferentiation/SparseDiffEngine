@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "problem.h"
+#include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
@@ -335,6 +336,9 @@ void free_problem(problem *prob)
         print_end_message(&prob->stats);
     }
 
+    /* Free param_nodes array (weak refs, don't free the nodes) */
+    free(prob->param_nodes);
+
     /* Free allocated arrays */
     free(prob->constraint_values);
     free(prob->gradient_values);
@@ -354,6 +358,68 @@ void free_problem(problem *prob)
 
     /* Free problem struct */
     free(prob);
+}
+
+void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)
+{
+    prob->n_param_nodes = n_param_nodes;
+    prob->param_nodes = (expr **) SP_MALLOC(n_param_nodes * sizeof(expr *));
+    memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
+
+    prob->total_parameter_size = 0;
+    for (int i = 0; i < n_param_nodes; i++)
+    {
+
+        if (((parameter_expr *) param_nodes[i])->param_id == PARAM_FIXED)
+        {
+            fprintf(stderr, "can this ever happen? please report to developers if "
+                            "this happens \n");
+            exit(1);
+        }
+
+        // TODO do we need to skip fixed params? maybe we adopt the convention
+        // that we don't ever register fixed params?
+        if (((parameter_expr *) param_nodes[i])->param_id == PARAM_FIXED) continue;
+        prob->total_parameter_size += param_nodes[i]->size;
+    }
+}
+
+void problem_update_params(problem *prob, const double *theta)
+{
+    /* raise error if there are no parameters */
+    if (prob->n_param_nodes == 0)
+    {
+        fprintf(stderr, "Error: No parameters registered. This is a bug and should "
+                        "be reported.\n");
+        exit(1);
+    }
+
+    for (int i = 0; i < prob->n_param_nodes; i++)
+    {
+        expr *pnode = prob->param_nodes[i];
+        parameter_expr *param = (parameter_expr *) pnode;
+
+        if (param->param_id == PARAM_FIXED)
+        {
+            fprintf(stderr, "can this ever happen? please report to developers if "
+                            "this happens \n");
+            exit(1);
+        }
+
+        if (param->param_id == PARAM_FIXED) continue;
+        int offset = param->param_id;
+        memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
+    }
+
+    /* Propagate needs_parameter_refresh to all expressions */
+    expr_set_needs_refresh(prob->objective);
+    for (int i = 0; i < prob->n_constraints; i++)
+    {
+        expr_set_needs_refresh(prob->constraints[i]);
+    }
+
+    /* Force re-evaluation of affine Jacobians on next call */
+    prob->jacobian_called = false;
 }
 
 double problem_objective_forward(problem *prob, const double *u)

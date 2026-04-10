@@ -21,7 +21,7 @@ const char *test_jacobian_transpose(void)
 
     // X = [1 2; 3 4] (columnwise: x = [1 3 2 4])
     expr *X = new_variable(2, 2, 0, 4);
-    expr *AX = new_left_matmul(X, A);
+    expr *AX = new_left_matmul(NULL, X, A);
     expr *transpose_AX = new_transpose(AX);
     double u[4] = {1, 3, 2, 4};
     transpose_AX->forward(transpose_AX, u);

@@ -31,7 +31,7 @@ const char *profile_left_matmul(void)
     }
     A->p[n] = n * n;
 
-    expr *AX = new_left_matmul(X, A);
+    expr *AX = new_left_matmul(NULL, X, A);
 
     double *x_vals = (double *) malloc(n * n * sizeof(double));
     for (int i = 0; i < n * n; i++)

@@ -33,7 +33,7 @@ const char *test_wsum_hess_right_matmul(void)
     memcpy(A->x, A_x, 4 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *log_x_A = new_right_matmul(log_x, A);
+    expr *log_x_A = new_right_matmul(NULL, log_x, A);
 
     log_x_A->forward(log_x_A, x_vals);
     jacobian_init(log_x_A);
@@ -83,7 +83,7 @@ const char *test_wsum_hess_right_matmul_vector(void)
     memcpy(A->x, A_x, 4 * sizeof(double));
 
     expr *log_x = new_log(x);
-    expr *log_x_A = new_right_matmul(log_x, A);
+    expr *log_x_A = new_right_matmul(NULL, log_x, A);
 
     log_x_A->forward(log_x_A, x_vals);
     jacobian_init(log_x_A);

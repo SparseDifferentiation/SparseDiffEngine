@@ -18,24 +18,36 @@
 #include "atoms/affine.h"
 #include "subexpr.h"
 #include "utils/tracked_alloc.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Constant vector elementwise multiplication: y = a \circ child */
+/* Scalar multiplication: y = a * child where a comes from param_source */
 
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
-    const double *a = ((const_vector_mult_expr *) node)->a;
+    scalar_mult_expr *snode = (scalar_mult_expr *) node;
+
+    /* call forward for param_source expr tree (this extra logic is needed
+       in case the parameter is a broadcast or promote node which needs to refresh
+       its values) */
+    if (snode->base.needs_parameter_refresh)
+    {
+        snode->param_source->forward(snode->param_source, NULL);
+        snode->base.needs_parameter_refresh = false;
+    }
+
+    double a = snode->param_source->value[0];
 
     /* child's forward pass */
     child->forward(child, u);
 
-    /* local forward pass: elementwise multiply by a */
+    /* local forward pass: multiply each element by scalar a */
     for (int i = 0; i < node->size; i++)
     {
-        node->value[i] = a[i] * child->value[i];
+        node->value[i] = a * child->value[i];
     }
 }
 
@@ -52,19 +64,16 @@ static void jacobian_init_impl(expr *node)
 
 static void eval_jacobian(expr *node)
 {
-    expr *x = node->left;
-    const double *a = ((const_vector_mult_expr *) node)->a;
+    expr *child = node->left;
+    double a = ((scalar_mult_expr *) node)->param_source->value[0];
 
-    /* evaluate x */
-    x->eval_jacobian(x);
+    /* evaluate child */
+    child->eval_jacobian(child);
 
-    /* row-wise scale child's jacobian */
-    for (int i = 0; i < node->size; i++)
+    /* scale child's jacobian */
+    for (int j = 0; j < child->jacobian->nnz; j++)
     {
-        for (int j = x->jacobian->p[i]; j < x->jacobian->p[i + 1]; j++)
-        {
-            node->jacobian->x[j] = a[i] * x->jacobian->x[j];
-        }
+        node->jacobian->x[j] = a * child->jacobian->x[j];
     }
 }
 
@@ -77,44 +86,40 @@ static void wsum_hess_init_impl(expr *node)
 
     /* same sparsity as child */
     node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
-
-    node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
-    const double *a = ((const_vector_mult_expr *) node)->a;
+    x->eval_wsum_hess(x, w);
 
-    /* scale weights w by a */
-    for (int i = 0; i < node->size; i++)
+    double a = ((scalar_mult_expr *) node)->param_source->value[0];
+    for (int j = 0; j < x->wsum_hess->nnz; j++)
     {
-        node->work->dwork[i] = a[i] * w[i];
+        node->wsum_hess->x[j] = a * x->wsum_hess->x[j];
     }
-
-    x->eval_wsum_hess(x, node->work->dwork);
-
-    /* copy values from child to this node */
-    memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
-}
-
-static void free_type_data(expr *node)
-{
-    const_vector_mult_expr *vnode = (const_vector_mult_expr *) node;
-    free(vnode->a);
 }
 
 static bool is_affine(const expr *node)
 {
-    /* Affine iff the child is affine */
     return node->left->is_affine(node->left);
 }
 
-expr *new_const_vector_mult(const double *a, expr *child)
+static void free_type_data(expr *node)
 {
-    const_vector_mult_expr *vnode =
-        (const_vector_mult_expr *) SP_CALLOC(1, sizeof(const_vector_mult_expr));
-    expr *node = &vnode->base;
+    scalar_mult_expr *snode = (scalar_mult_expr *) node;
+    if (snode->param_source != NULL)
+    {
+        free_expr(snode->param_source);
+        snode->param_source = NULL;
+    }
+}
+
+expr *new_scalar_mult(expr *param_node, expr *child)
+{
+    scalar_mult_expr *mult_node =
+        (scalar_mult_expr *) SP_CALLOC(1, sizeof(scalar_mult_expr));
+    expr *node = &mult_node->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
@@ -122,9 +127,11 @@ expr *new_const_vector_mult(const double *a, expr *child)
     node->left = child;
     expr_retain(child);
 
-    /* copy a vector */
-    vnode->a = (double *) SP_MALLOC(child->size * sizeof(double));
-    memcpy(vnode->a, a, child->size * sizeof(double));
+    mult_node->param_source = param_node;
+    expr_retain(param_node);
+
+    /* special case for handling broadcasting of constants correctly */
+    mult_node->base.needs_parameter_refresh = true;
 
     return node;
 }

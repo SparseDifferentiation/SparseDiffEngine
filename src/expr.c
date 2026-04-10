@@ -108,6 +108,15 @@ void wsum_hess_init(expr *node)
     node->wsum_hess_init_impl(node);
 }
 
+void expr_set_needs_refresh(expr *node)
+{
+    if (node == NULL) return;
+    node->needs_parameter_refresh = true;
+    node->work->jacobian_csc_filled = false;
+    expr_set_needs_refresh(node->left);
+    expr_set_needs_refresh(node->right);
+}
+
 void expr_retain(expr *node)
 {
     if (node == NULL) return;

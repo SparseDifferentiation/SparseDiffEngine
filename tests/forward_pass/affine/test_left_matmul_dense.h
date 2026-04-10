@@ -24,7 +24,7 @@ const char *test_left_matmul_dense(void)
     double A_data[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
 
     /* Build expression Z = A @ X */
-    expr *Z = new_left_matmul_dense(X, 3, 3, A_data);
+    expr *Z = new_left_matmul_dense(NULL, X, 3, 3, A_data);
 
     /* Variable values in column-major order */
     double u[9] = {1.0, 2.0, 3.0,  /* first column */

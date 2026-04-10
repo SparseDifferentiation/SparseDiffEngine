@@ -86,6 +86,12 @@ typedef struct expr
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
     Expr_Work *work;                    /* derivative workspace */
+    /* Set to true on all nodes by problem_update_params() via
+       expr_set_needs_refresh(). Atoms that cache parameter data
+       (e.g. left_matmul_dense) check this flag before their forward
+       pass: if true, they refresh their cached matrices from
+       param_source->value and clear the flag to false. */
+    bool needs_parameter_refresh;
 
     // name of node just for debugging - should be removed later
     char name[32];
@@ -107,6 +113,9 @@ void wsum_hess_init(expr *node);
 /* Initialize CSC form of the Jacobian from the CSR Jacobian.
  * Must be called after jacobian_init. */
 void jacobian_csc_init(expr *node);
+
+/* Recursively set needs_parameter_refresh on node and all children */
+void expr_set_needs_refresh(expr *node);
 
 /* Reference counting helpers */
 void expr_retain(expr *node);
