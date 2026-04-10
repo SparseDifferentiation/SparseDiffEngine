@@ -64,7 +64,7 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
     expr *node = &pnode->base;
     init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
-    
+
     // TODO we should assert that the values array has the correct size.
     pnode->param_id = param_id;
 
