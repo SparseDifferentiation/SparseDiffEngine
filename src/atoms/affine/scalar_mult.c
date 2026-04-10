@@ -30,9 +30,14 @@ static void forward(expr *node, const double *u)
     expr *child = node->left;
     scalar_mult_expr *snode = (scalar_mult_expr *) node;
 
-    /* call forward for param_source expr tree
-     ex: broadcast(param) or promote(const)*/
-    // snode->param_source->forward(snode->param_source, NULL);
+    /* call forward for param_source expr tree (this extra logic is needed
+       in case the parameter is a broadcast or promote node which needs to refresh
+       its values) */
+    if (snode->base.needs_parameter_refresh)
+    {
+        snode->param_source->forward(snode->param_source, NULL);
+        snode->base.needs_parameter_refresh = false;
+    }
 
     double a = snode->param_source->value[0];
 
@@ -124,6 +129,9 @@ expr *new_scalar_mult(expr *param_node, expr *child)
 
     mult_node->param_source = param_node;
     expr_retain(param_node);
+
+    /* special case for handling broadcasting of constants correctly */
+    mult_node->base.needs_parameter_refresh = true;
 
     return node;
 }

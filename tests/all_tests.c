@@ -366,6 +366,8 @@ int main(void)
     mu_run_test(test_constant_promote_vector_mult, tests_run);
     mu_run_test(test_param_broadcast_vector_mult, tests_run);
     mu_run_test(test_param_promote_vector_mult, tests_run);
+    mu_run_test(test_const_sum_scalar_mult, tests_run);
+    mu_run_test(test_param_sum_scalar_mult, tests_run);
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
