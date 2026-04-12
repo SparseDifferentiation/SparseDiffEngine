@@ -7,12 +7,14 @@
 #ifndef PROFILE_ONLY
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
+#include "forward_pass/affine/test_diag_mat.h"
 #include "forward_pass/affine/test_hstack.h"
 #include "forward_pass/affine/test_left_matmul_dense.h"
 #include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
+#include "forward_pass/affine/test_upper_tri.h"
 #include "forward_pass/affine/test_variable_parameter.h"
 #include "forward_pass/affine/test_vstack.h"
 #include "forward_pass/bivariate_full_dom/test_matmul.h"
@@ -23,6 +25,7 @@
 #include "forward_pass/other/test_prod_axis_one.h"
 #include "forward_pass/other/test_prod_axis_zero.h"
 #include "jacobian_tests/affine/test_broadcast.h"
+#include "jacobian_tests/affine/test_diag_mat.h"
 #include "jacobian_tests/affine/test_hstack.h"
 #include "jacobian_tests/affine/test_index.h"
 #include "jacobian_tests/affine/test_left_matmul.h"
@@ -33,6 +36,7 @@
 #include "jacobian_tests/affine/test_sum.h"
 #include "jacobian_tests/affine/test_trace.h"
 #include "jacobian_tests/affine/test_transpose.h"
+#include "jacobian_tests/affine/test_upper_tri.h"
 #include "jacobian_tests/affine/test_vector_mult.h"
 #include "jacobian_tests/affine/test_vstack.h"
 #include "jacobian_tests/bivariate_full_dom/test_elementwise_mult.h"
@@ -61,6 +65,7 @@
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
 #include "wsum_hess/affine/test_broadcast.h"
+#include "wsum_hess/affine/test_diag_mat.h"
 #include "wsum_hess/affine/test_hstack.h"
 #include "wsum_hess/affine/test_index.h"
 #include "wsum_hess/affine/test_left_matmul.h"
@@ -69,6 +74,7 @@
 #include "wsum_hess/affine/test_sum.h"
 #include "wsum_hess/affine/test_trace.h"
 #include "wsum_hess/affine/test_transpose.h"
+#include "wsum_hess/affine/test_upper_tri.h"
 #include "wsum_hess/affine/test_vector_mult.h"
 #include "wsum_hess/affine/test_vstack.h"
 #include "wsum_hess/bivariate_full_dom/test_matmul.h"
@@ -128,6 +134,8 @@ int main(void)
     mu_run_test(test_forward_prod_axis_one, tests_run);
     mu_run_test(test_matmul, tests_run);
     mu_run_test(test_left_matmul_dense, tests_run);
+    mu_run_test(test_diag_mat_forward, tests_run);
+    mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);
@@ -208,6 +216,10 @@ int main(void)
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
     mu_run_test(test_jacobian_matmul, tests_run);
     mu_run_test(test_jacobian_transpose, tests_run);
+    mu_run_test(test_diag_mat_jacobian_variable, tests_run);
+    mu_run_test(test_diag_mat_jacobian_of_log, tests_run);
+    mu_run_test(test_upper_tri_jacobian_variable, tests_run);
+    mu_run_test(test_upper_tri_jacobian_of_log, tests_run);
 
     printf("\n--- Weighted Sum of Hessian Tests ---\n");
     mu_run_test(test_wsum_hess_log, tests_run);
@@ -275,6 +287,8 @@ int main(void)
     mu_run_test(test_wsum_hess_trace_log_variable, tests_run);
     mu_run_test(test_wsum_hess_trace_composite, tests_run);
     mu_run_test(test_wsum_hess_transpose, tests_run);
+    mu_run_test(test_wsum_hess_diag_mat_log, tests_run);
+    mu_run_test(test_wsum_hess_upper_tri_log, tests_run);
     mu_run_test(test_wsum_hess_exp_sum, tests_run);
     mu_run_test(test_wsum_hess_exp_sum_mult, tests_run);
     mu_run_test(test_wsum_hess_exp_sum_matmul, tests_run);
