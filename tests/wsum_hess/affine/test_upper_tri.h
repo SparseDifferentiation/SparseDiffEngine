@@ -15,7 +15,7 @@ const char *test_wsum_hess_upper_tri_log(void)
 {
     /* upper_tri(log(X)) where X is 3x3, w = [1, 1, 1]
      * X (column-major): [1, 2, 3, 4, 5, 6, 7, 8, 9]
-     * Upper tri flat indices: [3, 6, 7]
+     * Upper tri flat indices (row-major): [3, 6, 7]
      * Hessian of log is diag(-1/x^2)
      * Weights scatter: parent_w[3]=1, parent_w[6]=1, parent_w[7]=1
      * All other parent_w entries = 0

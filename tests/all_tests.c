@@ -136,6 +136,7 @@ int main(void)
     mu_run_test(test_left_matmul_dense, tests_run);
     mu_run_test(test_diag_mat_forward, tests_run);
     mu_run_test(test_upper_tri_forward, tests_run);
+    mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
     printf("\n--- Jacobian Tests ---\n");
     mu_run_test(test_neg_jacobian, tests_run);

@@ -22,10 +22,16 @@
 #include <stdlib.h>
 
 /* Extract strict upper triangular elements (excluding diagonal)
- * from a square matrix, in column-major order.
+ * from a square matrix, in ROW-MAJOR order to match CVXPY.
  *
- * For an (n, n) matrix, element (i, j) with i < j is at flat
- * index j * n + i. Output has n * (n - 1) / 2 elements. */
+ * NOTE: This is an exception to the engine's column-major
+ * convention. CVXPY's upper_tri iterates row-by-row across
+ * columns (i outer, j inner), so we do the same here for
+ * compatibility.
+ *
+ * For an (n, n) column-major matrix, element (i, j) with
+ * i < j is at flat index j * n + i.
+ * Output has n * (n - 1) / 2 elements. */
 
 expr *new_upper_tri(expr *child)
 {
@@ -38,9 +44,9 @@ expr *new_upper_tri(expr *child)
     {
         indices = (int *) malloc((size_t) n_elems * sizeof(int));
         int k = 0;
-        for (int j = 0; j < n; j++)
+        for (int i = 0; i < n; i++)
         {
-            for (int i = 0; i < j; i++)
+            for (int j = i + 1; j < n; j++)
             {
                 indices[k++] = j * n + i;
             }
