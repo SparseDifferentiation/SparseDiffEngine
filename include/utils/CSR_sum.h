@@ -6,84 +6,55 @@
 /* forward declaration */
 struct int_double_pair;
 
-/* Compute C = A + B where A, B, C are CSR matrices
- * A and B must have same dimensions
- * C must be pre-allocated with sufficient nnz capacity.
- * C must be different from A and B */
-void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
+/* Compute sparsity pattern of C = A + B (and sets C->nnz) */
+void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 
-/* Compute sparsity pattern of A + B where A, B, C are CSR matrices.
- * Fills C->p, C->i, and C->nnz; does not touch C->x. */
-void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
-                                    CSR_Matrix *C);
+/* Fills values of C = A + B (assuming C's sparsity pattern is set) */
+void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C);
 
-/* Fill only the values of C = A + B, assuming C's sparsity pattern (p and i)
- * is already filled and matches the union of A and B per row. Does not modify
- * C->p, C->i, or C->nnz. */
-void sum_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
-                                  CSR_Matrix *C);
-
-/* Compute C = diag(d1) * A + diag(d2) * B where A, B, C are CSR matrices */
-void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,
-                             const double *d1, const double *d2);
-
-/* Fill only the values of C = diag(d1) * A + diag(d2) * B, assuming C's sparsity
- * pattern (p and i) is already filled and matches the union of A and B per row.
- * Does not modify C->p, C->i, or C->nnz. */
+/* Fills values of C = diag(d1) * A + diag(d2) * B (assuming C's sparsity is set)*/
 void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
                                          CSR_Matrix *C, const double *d1,
                                          const double *d2);
 
-/* Sum all rows of A into a single row matrix C */
-void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                      struct int_double_pair *pairs);
+/* The following five functions are used for summing either more than two CSR
+   matrices or rows of CSR matrices. To implement the filling of values efficiently,
+   we compute an idx_map when we fill the sparsity pattern of the output matrix,
+   which maps each nonzero entry in the input matrix to its position in the output
+   matrix. This allows us to fill the values with a single pass of the output matrix
+   through the input matrices, without needing to search for the position of each
+   entry in the output matrix. So each idx_map should have size equal to the number
+   of nonzeros in the corresponding input matrix, and idx_map[j] should give the
+   index in the output matrix of the entry (in the value array of the output matrix)
+   corresponding to the j-th nonzero in the input matrix.
 
-/* iwork must have size max(C->n, A->nnz), and idx_map must have size A->nnz. */
-void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix *C,
-                                                int *iwork, int *idx_map);
+   Output matrix C, input matrix A, iwork->size = max(A->n, A->nnz) for the first
+   four functions. The last function allocates the output matrix and returns it. */
+// ------------------------------------------------------------------------------------
+void sum_all_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C, int *iwork,
+                            int *idx_map);
 
-/* Fill values of summed rows using precomputed idx_map and sparsity of C */
-// void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
-//                                  const int *idx_map);
+void sum_block_of_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+                                 int row_block_size, int *iwork, int *idx_map);
 
-/* Fill accumulator for summing rows using precomputed idx_map for each nnz of A.
-   Must memset accumulator to zero before calling. */
-void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
-                         double *accumulator);
-void idx_map_accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map,
-                                      double *accumulator, int spacing);
+void sum_evenly_spaced_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+                                      int row_spacing, int *iwork, int *idx_map);
 
-/* Sum blocks of rows of A into a matrix C */
-void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                           struct int_double_pair *pairs, int row_block_size);
+void sum_spaced_rows_into_row_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+                                        int spacing, int *iwork, int *idx_map);
 
-/* Build sparsity and index map for summing blocks of rows.
- * iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz. */
-void sum_block_of_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
-                                                     CSR_Matrix *C,
-                                                     int row_block_size, int *iwork,
-                                                     int *idx_map);
+/* Compute sparsity pattern of out = A + B + C + D */
+CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
+                            const CSR_Matrix *C, const CSR_Matrix *D,
+                            int *idx_maps[4]);
+// ------------------------------------------------------------------------------------
 
-/* Sum evenly spaced rows of A into a matrix C */
-void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                                struct int_double_pair *pairs, int row_spacing);
+/* Accumulates values from A according to map. Must memset to zero before calling. */
+void accumulator(const CSR_Matrix *A, const int *idx_map, double *out);
 
-/* Build sparsity and index map for summing evenly spaced rows.
- * iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz. */
-void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
-                                                          CSR_Matrix *C,
-                                                          int row_spacing,
-                                                          int *iwork, int *idx_map);
-
-/* Sum evenly spaced rows of A starting at offset into a row matrix C */
-void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                                  struct int_double_pair *pairs, int offset,
-                                  int spacing);
-
-/* Fills the sparsity and index map for summing spaced rows into a row matrix */
-void sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
-                                                            CSR_Matrix *C,
-                                                            int spacing, int *iwork,
-                                                            int *idx_map);
+/* Accumulates values from A according to map with spacing. Must memset to zero
+ * before calling. */
+void accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map, double *out,
+                              int spacing);
 
 #endif /* CSR_SUM_H */

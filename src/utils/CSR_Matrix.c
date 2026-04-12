@@ -17,6 +17,7 @@
  */
 #include "utils/CSR_Matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -26,10 +27,10 @@
 
 CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
 {
-    CSR_Matrix *matrix = (CSR_Matrix *) malloc(sizeof(CSR_Matrix));
-    matrix->p = (int *) calloc(m + 1, sizeof(int));
-    matrix->i = (int *) calloc(nnz, sizeof(int));
-    matrix->x = (double *) malloc(nnz * sizeof(double));
+    CSR_Matrix *matrix = (CSR_Matrix *) SP_MALLOC(sizeof(CSR_Matrix));
+    matrix->p = (int *) SP_CALLOC(m + 1, sizeof(int));
+    matrix->i = (int *) SP_CALLOC(nnz, sizeof(int));
+    matrix->x = (double *) SP_MALLOC(nnz * sizeof(double));
     matrix->m = m;
     matrix->n = n;
     matrix->nnz = nnz;
@@ -42,6 +43,14 @@ CSR_Matrix *new_csr(const CSR_Matrix *A)
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
     memcpy(copy->x, A->x, A->nnz * sizeof(double));
+    return copy;
+}
+
+CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A)
+{
+    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
+    memcpy(copy->i, A->i, A->nnz * sizeof(int));
     return copy;
 }
 
@@ -66,77 +75,7 @@ void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C)
     memcpy(C->x, A->x, A->nnz * sizeof(double));
 }
 
-CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p)
-{
-    assert(p > 0);
-
-    int m = A->m;
-    int n = A->n;
-    int nnz = A->nnz;
-
-    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
-
-    int nnz_cursor = 0;
-    for (int block = 0; block < p; block++)
-    {
-        int row_offset = block * m;
-        int col_offset = block * n;
-
-        for (int row = 0; row < m; row++)
-        {
-            int dest_row = row_offset + row;
-            A_kron->p[dest_row] = nnz_cursor;
-
-            for (int j = A->p[row]; j < A->p[row + 1]; j++)
-            {
-                A_kron->i[nnz_cursor] = A->i[j] + col_offset;
-                A_kron->x[nnz_cursor] = A->x[j];
-                nnz_cursor++;
-            }
-
-            A_kron->p[dest_row + 1] = nnz_cursor;
-        }
-    }
-
-    return A_kron;
-}
-
-CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p)
-{
-    assert(p > 0);
-
-    int m = A->m;
-    int n = A->n;
-    int nnz = A->nnz;
-
-    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
-
-    int nnz_cursor = 0;
-    for (int row_block = 0; row_block < m; row_block++)
-    {
-        for (int diag_idx = 0; diag_idx < p; diag_idx++)
-        {
-            int dest_row = row_block * p + diag_idx;
-            A_kron->p[dest_row] = nnz_cursor;
-
-            /* Copy entries from row_block of A, adjusting column indices */
-            for (int j = A->p[row_block]; j < A->p[row_block + 1]; j++)
-            {
-                int col_block = A->i[j];
-                /* Column in result: col_block * p + diag_idx */
-                A_kron->i[nnz_cursor] = col_block * p + diag_idx;
-                A_kron->x[nnz_cursor] = A->x[j];
-                nnz_cursor++;
-            }
-
-            A_kron->p[dest_row + 1] = nnz_cursor;
-        }
-    }
-
-    return A_kron;
-}
-
-void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset)
+void Ax_csr(const CSR_Matrix *A, const double *x, double *y, int col_offset)
 {
     for (int row = 0; row < A->m; row++)
     {
@@ -144,19 +83,6 @@ void csr_matvec(const CSR_Matrix *A, const double *x, double *y, int col_offset)
         for (int j = A->p[row]; j < A->p[row + 1]; j++)
         {
             sum += A->x[j] * x[A->i[j] - col_offset];
-        }
-        y[row] = sum;
-    }
-}
-
-void csr_matvec_wo_offset(const CSR_Matrix *A, const double *x, double *y)
-{
-    for (int row = 0; row < A->m; row++)
-    {
-        double sum = 0.0;
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            sum += A->x[j] * x[A->i[j]];
         }
         y[row] = sum;
     }
@@ -194,20 +120,7 @@ void insert_idx(int idx, int *arr, int len)
     arr[j] = idx;
 }
 
-void diag_csr_mult(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
-{
-    copy_csr_matrix(A, C);
-
-    for (int row = 0; row < C->m; row++)
-    {
-        for (int j = C->p[row]; j < C->p[row + 1]; j++)
-        {
-            C->x[j] *= d[row];
-        }
-    }
-}
-
-void diag_csr_mult_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
+void DA_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
 {
     memcpy(C->x, A->x, A->nnz * sizeof(double));
 
@@ -218,34 +131,6 @@ void diag_csr_mult_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix 
             C->x[j] *= d[row];
         }
     }
-}
-
-void csr_insert_value(CSR_Matrix *A, int col_idx, double value)
-{
-    assert(A->m == 1);
-
-    for (int j = 0; j < A->nnz; j++)
-    {
-        assert(col_idx != A->i[j]);
-
-        if (col_idx < A->i[j])
-        {
-            /* move the rest of the elements */
-            memmove(A->i + (j + 1), A->i + j, (A->nnz - j) * sizeof(int));
-            memmove(A->x + (j + 1), A->x + j, (A->nnz - j) * sizeof(double));
-
-            /* insert new value */
-            A->i[j] = col_idx;
-            A->x[j] = value;
-            A->nnz++;
-            return;
-        }
-    }
-
-    /* if we get here it should be inserted in the end */
-    A->i[A->nnz] = col_idx;
-    A->x[A->nnz] = value;
-    A->nnz++;
 }
 
 CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
@@ -356,43 +241,6 @@ void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
     }
 }
 
-/**/
-void csr_matvec_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C)
-{
-    int A_ncols = AT->m;
-
-    for (int i = 0; i < A_ncols; i++)
-    {
-        double val = 0;
-        for (int j = AT->p[i]; j < AT->p[i + 1]; j++)
-        {
-            val += z[AT->i[j]] * AT->x[j];
-        }
-
-        if (AT->p[i + 1] - AT->p[i] == 0) continue;
-
-        // find position in C
-        for (int k = 0; k < C->nnz; k++)
-        {
-            if (C->i[k] == i)
-            {
-                C->x[k] = val;
-                break;
-            }
-        }
-    }
-}
-
-// void csr_vecmat_sparse(const double *x, const CSR_Matrix *A, CSR_Matrix *C)
-//{
-//     memset(C->x, 0, C->nnz * sizeof(double));
-//     C->nnz = 0;
-//     for (int j = 0; j < A->nnz; j++)
-//     {
-//         C->x[]
-//     }
-// }
-
 double csr_get_value(const CSR_Matrix *A, int row, int col)
 {
     for (int j = A->p[row]; j < A->p[row + 1]; j++)
@@ -410,7 +258,7 @@ void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_Matrix *C)
     int i, j, col;
 
     /* Count entries per row */
-    int *counts = (int *) calloc(m, sizeof(int));
+    int *counts = (int *) SP_CALLOC(m, sizeof(int));
     for (i = 0; i < m; i++)
     {
         for (j = Ap[i]; j < Ap[i + 1]; j++)

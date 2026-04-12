@@ -1,0 +1,291 @@
+/*
+ * Copyright 2026 Daniel Cederberg and William Zhang
+ *
+ * This file is part of the DNLP-differentiation-engine project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "atoms/affine.h"
+#include "subexpr.h"
+#include "utils/dense_matrix.h"
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/* This file implement the atom 'left_matmul' corresponding to the operation y =
+   A @ f(x), where A is a given matrix and f(x) is an arbitrary expression.
+   Here, f(x) can be a vector-valued expression and a matrix-valued
+   expression. The dimensions are A - m x n, f(x) - n x p, y - m x p.
+   Note that here A does not have global column indices but it is a local matrix.
+   This is an important distinction compared to linear_op_expr.
+
+   * To compute the forward pass: vec(y) = A_kron @ vec(f(x)),
+     where A_kron = I_p kron A is a Kronecker product of size (m*p) x (n*p),
+     or more specificely, a block-diagonal matrix with p blocks of A along the
+     diagonal. In the refactored implementation we don't form A_kron explicitly,
+     only conceptually. This led to a 100x speedup in the initialization of the
+     Jacobian sparsity pattern.
+
+   * To compute the Jacobian: J_y = A_kron @ J_f(x), where J_f(x) is the
+     Jacobian of f(x) of size (n*p) x n_vars.
+
+    * To compute the contribution to the Lagrange Hessian: we form
+    w = A_kron^T @ lambda and then evaluate the hessian of f(x).
+
+    Working in terms of A_kron unifies the implementation of f(x) being
+    vector-valued or matrix-valued.
+*/
+
+#include "utils/tracked_alloc.h"
+#include "utils/utils.h"
+
+static void refresh_param_values(left_matmul_expr *lnode)
+{
+    if (lnode->param_source == NULL || !lnode->base.needs_parameter_refresh)
+    {
+        return;
+    }
+
+    lnode->base.needs_parameter_refresh = false;
+    lnode->refresh_param_values(lnode);
+}
+
+static void forward(expr *node, const double *u)
+{
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+
+    /* call forward on param_source if it exists and needs refresh */
+    if (lnode->param_source != NULL && lnode->base.needs_parameter_refresh)
+    {
+        lnode->param_source->forward(lnode->param_source, NULL);
+    }
+
+    refresh_param_values(lnode);
+
+    expr *x = node->left;
+
+    /* child's forward pass */
+    node->left->forward(node->left, u);
+
+    /* y = A_kron @ vec(f(x)) */
+    Matrix *A = lnode->A;
+    int n_blocks = lnode->n_blocks;
+    A->block_left_mult_vec(A, x->value, node->value, n_blocks);
+}
+
+static bool is_affine(const expr *node)
+{
+    return node->left->is_affine(node->left);
+}
+
+static void free_type_data(expr *node)
+{
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    free_matrix(lnode->A);
+    free_matrix(lnode->AT);
+    free_csc_matrix(lnode->Jchild_CSC);
+    free_csc_matrix(lnode->J_CSC);
+    free(lnode->csc_to_csr_work);
+    if (lnode->param_source != NULL)
+    {
+        free_expr(lnode->param_source);
+    }
+    lnode->A = NULL;
+    lnode->AT = NULL;
+    lnode->Jchild_CSC = NULL;
+    lnode->J_CSC = NULL;
+    lnode->csc_to_csr_work = NULL;
+    lnode->param_source = NULL;
+}
+
+static void jacobian_init_impl(expr *node)
+{
+    expr *x = node->left;
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+
+    /* initialize child's jacobian and precompute sparsity of its CSC */
+    jacobian_init(x);
+    lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian, node->work->iwork);
+
+    /* precompute sparsity of this node's jacobian in CSC and CSR */
+    lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
+                                                      lnode->n_blocks);
+    node->jacobian = csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work);
+}
+
+static void eval_jacobian(expr *node)
+{
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    expr *x = node->left;
+
+    CSC_Matrix *Jchild_CSC = lnode->Jchild_CSC;
+    CSC_Matrix *J_CSC = lnode->J_CSC;
+
+    /* evaluate child's jacobian and convert to CSC */
+    x->eval_jacobian(x);
+    csr_to_csc_fill_values(x->jacobian, Jchild_CSC, node->work->iwork);
+
+    /* compute this node's jacobian: */
+    lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
+    csc_to_csr_fill_values(J_CSC, node->jacobian, lnode->csc_to_csr_work);
+}
+
+static void wsum_hess_init_impl(expr *node)
+{
+    /* initialize child's hessian */
+    expr *x = node->left;
+    wsum_hess_init(x);
+
+    /* allocate this node's hessian with the same sparsity as child's */
+    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+
+    /* work for computing A^T w*/
+    int n_blocks = ((left_matmul_expr *) node)->n_blocks;
+    int dim = ((left_matmul_expr *) node)->AT->m * n_blocks;
+    node->work->dwork = (double *) SP_MALLOC(dim * sizeof(double));
+}
+
+static void eval_wsum_hess(expr *node, const double *w)
+{
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+
+    /* compute A^T w*/
+    Matrix *AT = lnode->AT;
+    int n_blocks = lnode->n_blocks;
+    AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
+
+    node->left->eval_wsum_hess(node->left, node->work->dwork);
+    memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
+}
+
+static void refresh_dense_left(left_matmul_expr *lnode)
+{
+    Dense_Matrix *dm_A = (Dense_Matrix *) lnode->A;
+    Dense_Matrix *dm_AT = (Dense_Matrix *) lnode->AT;
+    int m = dm_A->base.m;
+    int n = dm_A->base.n;
+
+    /* The parameter represents the A in left_matmul_dense(A, x) in column-major.
+       In this diffengine, we store A in row-major order. Hence, param->vals
+       actually corresponds to the transpose of A, and we transpose AT to get A. */
+    memcpy(dm_AT->x, lnode->param_source->value, m * n * sizeof(double));
+    A_transpose(dm_A->x, dm_AT->x, n, m);
+}
+
+expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
+{
+    /* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users
+       to do A @ u where u is (n, ) which in C is actually (1, n). In that case
+       the result of A @ u is (m, ), which is (1, m) according to broadcasting
+       rules. We therefore check if this is the case. */
+    int d1, d2, n_blocks;
+    if (u->d1 == A->n)
+    {
+        d1 = A->m;
+        d2 = u->d2;
+        n_blocks = u->d2;
+    }
+    else if (u->d2 == A->n && u->d1 == 1)
+    {
+        d1 = 1;
+        d2 = A->m;
+        n_blocks = 1;
+    }
+    else
+    {
+        fprintf(stderr, "Error in new_left_matmul: dimension mismatch \n");
+        exit(1);
+    }
+
+    /* Allocate the type-specific struct */
+    left_matmul_expr *lnode =
+        (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
+    expr *node = &lnode->base;
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    node->left = u;
+    expr_retain(u);
+
+    /* allocate workspace. iwork is used for converting J_child csr to csc
+       (requiring size node->n_vars) and for transposing A (requiring size A->n).
+       csc_to_csr_work is used for converting J_CSC to CSR (requiring
+       node->size) */
+    node->work->iwork = (int *) SP_MALLOC(MAX(A->n, node->n_vars) * sizeof(int));
+    lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
+    lnode->n_blocks = n_blocks;
+
+    /* store A and AT */
+    lnode->A = new_sparse_matrix(A);
+    lnode->AT =
+        sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->work->iwork);
+
+    /* parameter support */
+    lnode->param_source = param_node;
+    if (param_node != NULL)
+    {
+        fprintf(stderr, "Error in new_left_matmul: parameter for a sparse matrix "
+                        "not supported \n");
+        exit(1);
+    }
+
+    return node;
+}
+
+expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
+                            const double *data)
+{
+    int d1, d2, n_blocks;
+    if (u->d1 == n)
+    {
+        d1 = m;
+        d2 = u->d2;
+        n_blocks = u->d2;
+    }
+    else if (u->d2 == n && u->d1 == 1)
+    {
+        d1 = 1;
+        d2 = m;
+        n_blocks = 1;
+    }
+    else
+    {
+        fprintf(stderr, "Error in new_left_matmul_dense: dimension mismatch\n");
+        exit(1);
+    }
+
+    left_matmul_expr *lnode =
+        (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
+    expr *node = &lnode->base;
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    node->left = u;
+    expr_retain(u);
+
+    node->work->iwork = (int *) SP_MALLOC(MAX(n, node->n_vars) * sizeof(int));
+    lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
+    lnode->n_blocks = n_blocks;
+
+    lnode->A = new_dense_matrix(m, n, data);
+    lnode->AT = dense_matrix_trans((const Dense_Matrix *) lnode->A);
+
+    /* parameter support */
+    lnode->param_source = param_node;
+    if (param_node != NULL)
+    {
+        expr_retain(param_node);
+        lnode->refresh_param_values = refresh_dense_left;
+    }
+
+    return node;
+}

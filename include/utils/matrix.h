@@ -31,6 +31,7 @@ typedef struct Matrix
                                             const CSC_Matrix *J, int p);
     void (*block_left_mult_values)(const struct Matrix *self, const CSC_Matrix *J,
                                    CSC_Matrix *C);
+    void (*update_values)(struct Matrix *self, const double *new_values);
     void (*free_fn)(struct Matrix *self);
 } Matrix;
 
@@ -41,21 +42,11 @@ typedef struct Sparse_Matrix
     CSR_Matrix *csr;
 } Sparse_Matrix;
 
-/* Dense matrix (row-major) */
-typedef struct Dense_Matrix
-{
-    Matrix base;
-    double *x;
-    double *work; /* scratch buffer, length n */
-} Dense_Matrix;
-
 /* Constructors */
 Matrix *new_sparse_matrix(const CSR_Matrix *A);
-Matrix *new_dense_matrix(int m, int n, const double *data);
 
-/* Transpose helpers */
+/* Transpose helper */
 Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork);
-Matrix *dense_matrix_trans(const Dense_Matrix *self);
 
 /* Free helper */
 static inline void free_matrix(Matrix *m)

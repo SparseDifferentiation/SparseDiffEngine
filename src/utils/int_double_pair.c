@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "utils/int_double_pair.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 
 static int compare_int_double_pair(const void *a, const void *b)
@@ -30,7 +31,7 @@ static int compare_int_double_pair(const void *a, const void *b)
 
 int_double_pair *new_int_double_pair_array(int size)
 {
-    return (int_double_pair *) malloc(size * sizeof(int_double_pair));
+    return (int_double_pair *) SP_MALLOC(size * sizeof(int_double_pair));
 }
 
 void set_int_double_pair_array(int_double_pair *pair, int *ints, double *doubles,

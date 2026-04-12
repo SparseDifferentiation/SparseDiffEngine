@@ -4,8 +4,8 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(DIFF_ENGINE_VERSION_MAJOR 0)
-set(DIFF_ENGINE_VERSION_MINOR 1)
-set(DIFF_ENGINE_VERSION_PATCH 5)
+set(DIFF_ENGINE_VERSION_MINOR 3)
+set(DIFF_ENGINE_VERSION_PATCH 0)
 set(DIFF_ENGINE_VERSION "${DIFF_ENGINE_VERSION_MAJOR}.${DIFF_ENGINE_VERSION_MINOR}.${DIFF_ENGINE_VERSION_PATCH}")
 add_compile_definitions(DIFF_ENGINE_VERSION="${DIFF_ENGINE_VERSION}")
 
@@ -103,6 +103,7 @@ if(NOT SKBUILD)
     add_executable(all_tests
         tests/all_tests.c
         tests/test_helpers.c
+        tests/numerical_diff.c
     )
     target_link_libraries(all_tests dnlp_diff)
     

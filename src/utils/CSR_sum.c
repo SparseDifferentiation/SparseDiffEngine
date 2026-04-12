@@ -18,74 +18,13 @@
 #include "utils/CSR_sum.h"
 #include "utils/CSR_Matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
-void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
-{
-    /* A and B must be different from C */
-    assert(A != C && B != C);
-
-    C->nnz = 0;
-
-    for (int row = 0; row < A->m; row++)
-    {
-        int a_ptr = A->p[row];
-        int a_end = A->p[row + 1];
-        int b_ptr = B->p[row];
-        int b_end = B->p[row + 1];
-        C->p[row] = C->nnz;
-
-        /* Merge while both have elements */
-        while (a_ptr < a_end && b_ptr < b_end)
-        {
-            if (A->i[a_ptr] < B->i[b_ptr])
-            {
-                C->i[C->nnz] = A->i[a_ptr];
-                C->x[C->nnz] = A->x[a_ptr];
-                a_ptr++;
-            }
-            else if (B->i[b_ptr] < A->i[a_ptr])
-            {
-                C->i[C->nnz] = B->i[b_ptr];
-                C->x[C->nnz] = B->x[b_ptr];
-                b_ptr++;
-            }
-            else
-            {
-                C->i[C->nnz] = A->i[a_ptr];
-                C->x[C->nnz] = A->x[a_ptr] + B->x[b_ptr];
-                a_ptr++;
-                b_ptr++;
-            }
-            C->nnz++;
-        }
-
-        /* Copy remaining elements from A */
-        if (a_ptr < a_end)
-        {
-            int a_remaining = a_end - a_ptr;
-            memcpy(C->i + C->nnz, A->i + a_ptr, a_remaining * sizeof(int));
-            memcpy(C->x + C->nnz, A->x + a_ptr, a_remaining * sizeof(double));
-            C->nnz += a_remaining;
-        }
-
-        /* Copy remaining elements from B */
-        if (b_ptr < b_end)
-        {
-            int b_remaining = b_end - b_ptr;
-            memcpy(C->i + C->nnz, B->i + b_ptr, b_remaining * sizeof(int));
-            memcpy(C->x + C->nnz, B->x + b_ptr, b_remaining * sizeof(double));
-            C->nnz += b_remaining;
-        }
-    }
-
-    C->p[A->m] = C->nnz;
-}
-
-void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
-                                    CSR_Matrix *C)
+void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
 {
     /* A and B must be different from C */
     assert(A != C && B != C);
@@ -142,8 +81,7 @@ void sum_csr_matrices_fill_sparsity(const CSR_Matrix *A, const CSR_Matrix *B,
     C->p[A->m] = C->nnz;
 }
 
-void sum_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
-                                  CSR_Matrix *C)
+void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
 {
     /* Assumes C->p and C->i already contain the sparsity pattern of A+B.
        Fills only C->x accordingly. */
@@ -209,165 +147,9 @@ void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *
     }
 }
 
-void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,
-                             const double *d1, const double *d2)
-{
-    C->nnz = 0;
-
-    for (int row = 0; row < A->m; row++)
-    {
-        int a_ptr = A->p[row];
-        int a_end = A->p[row + 1];
-        int b_ptr = B->p[row];
-        int b_end = B->p[row + 1];
-        C->p[row] = C->nnz;
-
-        /* Merge while both have elements */
-        while (a_ptr < a_end && b_ptr < b_end)
-        {
-            if (A->i[a_ptr] < B->i[b_ptr])
-            {
-                C->i[C->nnz] = A->i[a_ptr];
-                C->x[C->nnz] = d1[row] * A->x[a_ptr];
-                a_ptr++;
-            }
-            else if (B->i[b_ptr] < A->i[a_ptr])
-            {
-                C->i[C->nnz] = B->i[b_ptr];
-                C->x[C->nnz] = d2[row] * B->x[b_ptr];
-                b_ptr++;
-            }
-            else
-            {
-                C->i[C->nnz] = A->i[a_ptr];
-                C->x[C->nnz] = d1[row] * A->x[a_ptr] + d2[row] * B->x[b_ptr];
-                a_ptr++;
-                b_ptr++;
-            }
-            C->nnz++;
-        }
-
-        /* Copy remaining elements from A */
-        if (a_ptr < a_end)
-        {
-            int a_remaining = a_end - a_ptr;
-            for (int j = 0; j < a_remaining; j++)
-            {
-                C->i[C->nnz + j] = A->i[a_ptr + j];
-                C->x[C->nnz + j] = d1[row] * A->x[a_ptr + j];
-            }
-            C->nnz += a_remaining;
-        }
-
-        /* Copy remaining elements from B */
-        if (b_ptr < b_end)
-        {
-            int b_remaining = b_end - b_ptr;
-            for (int j = 0; j < b_remaining; j++)
-            {
-                C->i[C->nnz + j] = B->i[b_ptr + j];
-                C->x[C->nnz + j] = d2[row] * B->x[b_ptr + j];
-            }
-            C->nnz += b_remaining;
-        }
-    }
-
-    C->p[A->m] = C->nnz;
-}
-
-void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C, int_double_pair *pairs)
-{
-    assert(C->m == 1);
-    C->n = A->n;
-    C->p[0] = 0;
-
-    /* copy A's values and column indices into pairs */
-    set_int_double_pair_array(pairs, A->i, A->x, A->nnz);
-
-    /* sort so columns are in order */
-    sort_int_double_pair_array(pairs, A->nnz);
-
-    /* merge entries with same columns and insert result in C */
-    C->nnz = 0;
-    for (int j = 0; j < A->nnz;)
-    {
-        int current_col = pairs[j].col;
-        double sum_val = 0.0;
-
-        /* sum all values with the same column */
-        while (j < A->nnz && pairs[j].col == current_col)
-        {
-            sum_val += pairs[j].val;
-            j++;
-        }
-
-        /* insert into C */
-        C->i[C->nnz] = current_col;
-        C->x[C->nnz] = sum_val;
-        C->nnz++;
-    }
-
-    C->p[1] = C->nnz;
-}
-
-void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                           int_double_pair *pairs, int row_block_size)
-{
-    assert(A->m % row_block_size == 0);
-    int n_blocks = A->m / row_block_size;
-    assert(C->m == n_blocks);
-    C->n = A->n;
-    C->p[0] = 0;
-
-    C->nnz = 0;
-    for (int block = 0; block < n_blocks; block++)
-    {
-        int start_row = block * row_block_size;
-        int end_row = start_row + row_block_size;
-
-        /* copy block rows' values and column indices into pairs */
-        int pair_idx = 0;
-        for (int row = start_row; row < end_row; row++)
-        {
-            for (int j = A->p[row]; j < A->p[row + 1]; j++)
-            {
-                pairs[pair_idx].col = A->i[j];
-                pairs[pair_idx].val = A->x[j];
-                pair_idx++;
-            }
-        }
-
-        /* sort so columns are in order */
-        sort_int_double_pair_array(pairs, pair_idx);
-
-        /* merge entries with same columns and insert result in C */
-        for (int j = 0; j < pair_idx;)
-        {
-            int current_col = pairs[j].col;
-            double sum_val = 0.0;
-
-            /* sum all values with the same column */
-            while (j < pair_idx && pairs[j].col == current_col)
-            {
-                sum_val += pairs[j].val;
-                j++;
-            }
-
-            /* insert into C */
-            C->i[C->nnz] = current_col;
-            C->x[C->nnz] = sum_val;
-            C->nnz++;
-        }
-
-        C->p[block + 1] = C->nnz;
-    }
-}
-
 /* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
-void sum_block_of_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
-                                                     CSR_Matrix *C,
-                                                     int row_block_size, int *iwork,
-                                                     int *idx_map)
+void sum_block_of_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+                                 int row_block_size, int *iwork, int *idx_map)
 {
     assert(A->m % row_block_size == 0);
     int n_blocks = A->m / row_block_size;
@@ -437,75 +219,9 @@ void sum_block_of_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
     }
 }
 
-/*
-void sum_block_of_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
-                                       const int *idx_map)
-{
-    memset(C->x, 0, C->nnz * sizeof(double));
-
-    for (int row = 0; row < A->m; row++)
-    {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            C->x[idx_map[j]] += A->x[j];
-        }
-    }
-}
-*/
-
-void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                                struct int_double_pair *pairs, int row_spacing)
-{
-    assert(C->m == row_spacing);
-    C->n = A->n;
-    C->p[0] = 0;
-    C->nnz = 0;
-
-    for (int C_row = 0; C_row < C->m; C_row++)
-    {
-        /* copy evenly spaced rows into pairs */
-        int pair_idx = 0;
-        for (int row = C_row; row < A->m; row += row_spacing)
-        {
-            for (int j = A->p[row]; j < A->p[row + 1]; j++)
-            {
-                pairs[pair_idx].col = A->i[j];
-                pairs[pair_idx].val = A->x[j];
-                pair_idx++;
-            }
-        }
-
-        /* sort so columns are in order */
-        sort_int_double_pair_array(pairs, pair_idx);
-
-        /* merge entries with same columns and insert result in C */
-        for (int j = 0; j < pair_idx;)
-        {
-            int current_col = pairs[j].col;
-            double sum_val = 0.0;
-
-            /* sum all values with the same column */
-            while (j < pair_idx && pairs[j].col == current_col)
-            {
-                sum_val += pairs[j].val;
-                j++;
-            }
-
-            /* insert into C */
-            C->i[C->nnz] = current_col;
-            C->x[C->nnz] = sum_val;
-            C->nnz++;
-        }
-
-        C->p[C_row + 1] = C->nnz;
-    }
-}
-
 /* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
-void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
-                                                          CSR_Matrix *C,
-                                                          int row_spacing,
-                                                          int *iwork, int *idx_map)
+void sum_evenly_spaced_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+                                      int row_spacing, int *iwork, int *idx_map)
 {
     assert(C->m == row_spacing);
     C->n = A->n;
@@ -569,80 +285,30 @@ void sum_evenly_spaced_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
     }
 }
 
-void idx_map_accumulator(const CSR_Matrix *A, const int *idx_map,
-                         double *accumulator)
+void accumulator(const CSR_Matrix *A, const int *idx_map, double *out)
 {
-    /* don't forget to initialze accumulator to 0 before calling this */
-    for (int row = 0; row < A->m; row++)
+    /* don't forget to initialize accumulator to 0 before calling this */
+    for (int j = 0; j < A->nnz; j++)
     {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            accumulator[idx_map[j]] += A->x[j];
-        }
+        out[idx_map[j]] += A->x[j];
     }
 }
 
-void idx_map_accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map,
-                                      double *accumulator, int spacing)
+void accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map, double *out,
+                              int spacing)
 {
     /* don't forget to initialze accumulator to 0 before calling this */
     for (int row = 0; row < A->m; row += spacing)
     {
         for (int j = A->p[row]; j < A->p[row + 1]; j++)
         {
-            accumulator[idx_map[j]] += A->x[j];
+            out[idx_map[j]] += A->x[j];
         }
     }
 }
 
-void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
-                                  struct int_double_pair *pairs, int offset,
-                                  int spacing)
-{
-    assert(C->m == 1);
-    C->n = A->n;
-    C->p[0] = 0;
-    C->nnz = 0;
-
-    /* copy evenly spaced rows starting at offset into pairs */
-    int pair_idx = 0;
-    for (int row = offset; row < A->m; row += spacing)
-    {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            pairs[pair_idx].col = A->i[j];
-            pairs[pair_idx].val = A->x[j];
-            pair_idx++;
-        }
-    }
-
-    /* sort so columns are in order */
-    sort_int_double_pair_array(pairs, pair_idx);
-
-    /* merge entries with same columns and insert result in C */
-    for (int j = 0; j < pair_idx;)
-    {
-        int current_col = pairs[j].col;
-        double sum_val = 0.0;
-
-        /* sum all values with the same column */
-        while (j < pair_idx && pairs[j].col == current_col)
-        {
-            sum_val += pairs[j].val;
-            j++;
-        }
-
-        /* insert into C */
-        C->i[C->nnz] = current_col;
-        C->x[C->nnz] = sum_val;
-        C->nnz++;
-    }
-
-    C->p[1] = C->nnz;
-}
-
-void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix *C,
-                                                int *iwork, int *idx_map)
+void sum_all_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C, int *iwork,
+                            int *idx_map)
 {
     // -------------------------------------------------------------------
     //           Build sparsity pattern of the summed row
@@ -687,22 +353,6 @@ void sum_all_rows_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A, CSR_Matrix 
 }
 
 /*
-void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
-                                  const int *idx_map)
-{
-    memset(C->x, 0, C->nnz * sizeof(double));
-
-    for (int row = 0; row < A->m; row++)
-    {
-        for (int j = A->p[row]; j < A->p[row + 1]; j++)
-        {
-            C->x[idx_map[j]] += A->x[j];
-        }
-    }
-}
-*/
-
-/*
  * Sums evenly spaced rows from A into a single row in C and fills an index map.
  * A: input CSR matrix
  * C: output CSR matrix (must have m=1)
@@ -710,10 +360,78 @@ void sum_all_rows_csr_fill_values(const CSR_Matrix *A, CSR_Matrix *C,
  * iwork: workspace of size at least max(A->n, A->nnz)
  * idx_map: output index map, size at least A->nnz
  */
-void sum_spaced_rows_into_row_csr_fill_sparsity_and_idx_map(const CSR_Matrix *A,
-                                                            CSR_Matrix *C,
-                                                            int spacing, int *iwork,
-                                                            int *idx_map)
+CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
+                            const CSR_Matrix *C, const CSR_Matrix *D,
+                            int *idx_maps[4])
+{
+    const CSR_Matrix *inputs[4] = {A, B, C, D};
+    int m = A->m;
+    int n = A->n;
+    int nnz_ub = A->nnz + B->nnz + C->nnz + D->nnz;
+
+    /* allocate output and index maps */
+    CSR_Matrix *out = new_csr_matrix(m, n, nnz_ub);
+    for (int k = 0; k < 4; k++)
+    {
+        idx_maps[k] = (int *) SP_MALLOC(inputs[k]->nnz * sizeof(int));
+    }
+
+    /* 4-way sorted merge per row */
+    int ptrs[4], ends[4];
+    int nnz = 0;
+
+    for (int row = 0; row < m; row++)
+    {
+        out->p[row] = nnz;
+        for (int k = 0; k < 4; k++)
+        {
+            ptrs[k] = inputs[k]->p[row];
+            ends[k] = inputs[k]->p[row + 1];
+        }
+
+        for (;;)
+        {
+
+            /* find minimum column in the current row among the 4 inputs */
+            int min_col = -1;
+            for (int k = 0; k < 4; k++)
+            {
+                if (ptrs[k] < ends[k])
+                {
+                    int col = inputs[k]->i[ptrs[k]];
+                    if (min_col == -1 || col < min_col)
+                    {
+                        min_col = col;
+                    }
+                }
+            }
+
+            /* if no elements in the current row, the output row will be empty */
+            if (min_col == -1)
+            {
+                break;
+            }
+
+            /* insert min_col into output and update idx_maps */
+            out->i[nnz] = min_col;
+            for (int k = 0; k < 4; k++)
+            {
+                if (ptrs[k] < ends[k] && inputs[k]->i[ptrs[k]] == min_col)
+                {
+                    idx_maps[k][ptrs[k]++] = nnz;
+                }
+            }
+            nnz++;
+        }
+    }
+
+    out->p[m] = nnz;
+    out->nnz = nnz;
+    return out;
+}
+
+void sum_spaced_rows_into_row_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+                                        int spacing, int *iwork, int *idx_map)
 {
     assert(C->m == 1);
     C->n = A->n;

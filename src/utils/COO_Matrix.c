@@ -16,18 +16,19 @@
  * limitations under the License.
  */
 #include "utils/COO_Matrix.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 
 COO_Matrix *new_coo_matrix(const CSR_Matrix *A)
 {
-    COO_Matrix *coo = (COO_Matrix *) malloc(sizeof(COO_Matrix));
+    COO_Matrix *coo = (COO_Matrix *) SP_MALLOC(sizeof(COO_Matrix));
     coo->m = A->m;
     coo->n = A->n;
     coo->nnz = A->nnz;
-    coo->rows = (int *) malloc(A->nnz * sizeof(int));
-    coo->cols = (int *) malloc(A->nnz * sizeof(int));
-    coo->x = (double *) malloc(A->nnz * sizeof(double));
+    coo->rows = (int *) SP_MALLOC(A->nnz * sizeof(int));
+    coo->cols = (int *) SP_MALLOC(A->nnz * sizeof(int));
+    coo->x = (double *) SP_MALLOC(A->nnz * sizeof(double));
     coo->value_map = NULL;
 
     for (int r = 0; r < A->m; r++)
@@ -59,14 +60,14 @@ COO_Matrix *new_coo_matrix_lower_triangular(const CSR_Matrix *A)
         }
     }
 
-    COO_Matrix *coo = (COO_Matrix *) malloc(sizeof(COO_Matrix));
+    COO_Matrix *coo = (COO_Matrix *) SP_MALLOC(sizeof(COO_Matrix));
     coo->m = A->m;
     coo->n = A->n;
     coo->nnz = count;
-    coo->rows = (int *) malloc(count * sizeof(int));
-    coo->cols = (int *) malloc(count * sizeof(int));
-    coo->x = (double *) malloc(count * sizeof(double));
-    coo->value_map = (int *) malloc(count * sizeof(int));
+    coo->rows = (int *) SP_MALLOC(count * sizeof(int));
+    coo->cols = (int *) SP_MALLOC(count * sizeof(int));
+    coo->x = (double *) SP_MALLOC(count * sizeof(double));
+    coo->value_map = (int *) SP_MALLOC(count * sizeof(int));
 
     /* Pass 2: fill arrays */
     int idx = 0;

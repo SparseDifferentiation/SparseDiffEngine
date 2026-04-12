@@ -17,7 +17,9 @@
  */
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/matrix.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
+#include <string.h>
 
 static void sparse_block_left_mult_vec(const Matrix *self, const double *x,
                                        double *y, int p)
@@ -40,6 +42,12 @@ static void sparse_block_left_mult_values(const Matrix *self, const CSC_Matrix *
     block_left_multiply_fill_values(sm->csr, J, C);
 }
 
+static void sparse_update_values(Matrix *self, const double *new_values)
+{
+    Sparse_Matrix *sm = (Sparse_Matrix *) self;
+    memcpy(sm->csr->x, new_values, sm->csr->nnz * sizeof(double));
+}
+
 static void sparse_free(Matrix *self)
 {
     Sparse_Matrix *sm = (Sparse_Matrix *) self;
@@ -49,12 +57,13 @@ static void sparse_free(Matrix *self)
 
 Matrix *new_sparse_matrix(const CSR_Matrix *A)
 {
-    Sparse_Matrix *sm = (Sparse_Matrix *) calloc(1, sizeof(Sparse_Matrix));
+    Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
     sm->base.m = A->m;
     sm->base.n = A->n;
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
     sm->base.block_left_mult_values = sparse_block_left_mult_values;
+    sm->base.update_values = sparse_update_values;
     sm->base.free_fn = sparse_free;
     sm->csr = new_csr(A);
     return &sm->base;
@@ -63,12 +72,13 @@ Matrix *new_sparse_matrix(const CSR_Matrix *A)
 Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork)
 {
     CSR_Matrix *AT = transpose(self->csr, iwork);
-    Sparse_Matrix *sm = (Sparse_Matrix *) calloc(1, sizeof(Sparse_Matrix));
+    Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
     sm->base.m = AT->m;
     sm->base.n = AT->n;
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
     sm->base.block_left_mult_values = sparse_block_left_mult_values;
+    sm->base.update_values = sparse_update_values;
     sm->base.free_fn = sparse_free;
     sm->csr = AT;
     return &sm->base;

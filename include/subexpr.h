@@ -26,14 +26,24 @@
 /* Forward declaration */
 struct int_double_pair;
 
+/* Parameter ID for fixed constants (not updatable) */
+#define PARAM_FIXED -1
+
 /* Type-specific expression structures that "inherit" from expr */
 
-/* Linear operator: y = A * x + b */
+/* Unified constant/parameter node. Constants use param_id == PARAM_FIXED.
+ * Updatable parameters use param_id >= 0 (offset into global theta). */
+typedef struct parameter_expr
+{
+    expr base;
+    int param_id;
+} parameter_expr;
+
+/* Linear operator: y = A * x + b
+ * The matrix A is stored as node->jacobian (CSR). */
 typedef struct linear_op_expr
 {
     expr base;
-    CSC_Matrix *A_csc;
-    CSR_Matrix *A_csr;
     double *b; /* constant offset vector (NULL if no offset) */
 } linear_op_expr;
 
@@ -49,6 +59,7 @@ typedef struct quad_form_expr
 {
     expr base;
     CSR_Matrix *Q;
+    CSC_Matrix *QJf; /* Q * J_f in CSC (for chain rule hessian) */
 } quad_form_expr;
 
 /* Sum reduction along an axis */
@@ -98,8 +109,12 @@ typedef struct hstack_expr
 typedef struct elementwise_mult_expr
 {
     expr base;
-    CSR_Matrix *CSR_work1;
-    CSR_Matrix *CSR_work2;
+    CSR_Matrix *CSR_work1; /* C  = Jg2^T diag(w) Jg1 */
+    CSR_Matrix *CSR_work2; /* CT = C^T */
+    int *idx_map_C;        /* C[j]  -> wsum_hess pos */
+    int *idx_map_CT;       /* CT[j] -> wsum_hess pos */
+    int *idx_map_Hx;       /* x->wsum_hess[j] -> pos */
+    int *idx_map_Hy;       /* y->wsum_hess[j] -> pos */
 } elementwise_mult_expr;
 
 /* Left matrix multiplication: y = A * f(x) where f(x) is an expression. Note that
@@ -114,32 +129,46 @@ typedef struct left_matmul_expr
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *csc_to_csr_work;
+    expr *param_source;
+    void (*refresh_param_values)(struct left_matmul_expr *);
 } left_matmul_expr;
 
-/* Right matrix multiplication: y = f(x) * A where f(x) is an expression.
- * f(x) has shape p x n, A has shape n x q, output y has shape p x q.
- * Uses vec(y) = B * vec(f(x)) where B = A^T kron I_p. */
-typedef struct right_matmul_expr
+/* Scalar multiplication: y = a * child where a comes from param_source */
+typedef struct scalar_mult_expr
 {
     expr base;
-    CSR_Matrix *B;  /* B = A^T kron I_p */
-    CSR_Matrix *BT; /* B^T for backpropagating Hessian weights */
-    CSC_Matrix *CSC_work;
-} right_matmul_expr;
+    expr *param_source;
+} scalar_mult_expr;
 
-/* Constant scalar multiplication: y = a * child where a is a constant double */
-typedef struct const_scalar_mult_expr
+/* Vector elementwise multiplication: y = a \circ child where a comes from
+ * param_source */
+typedef struct vector_mult_expr
 {
     expr base;
-    double a;
-} const_scalar_mult_expr;
+    expr *param_source;
+} vector_mult_expr;
 
-/* Constant vector elementwise multiplication: y = a \circ child for constant a */
-typedef struct const_vector_mult_expr
+/* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
+ * may be composite expressions. */
+typedef struct matmul_expr
 {
     expr base;
-    double *a; /* length equals node->size */
-} const_vector_mult_expr;
+    /* Jacobian workspace */
+    CSR_Matrix *term1_CSR; /* (Y^T x I_m) @ J_f */
+    CSR_Matrix *term2_CSR; /* (I_n x X) @ J_g */
+
+    /* Hessian workspace (composite only) */
+    CSR_Matrix *B;       /* cross-Hessian B(w), mk x kn */
+    CSR_Matrix *BJg;     /* B @ J_g */
+    CSC_Matrix *BJg_CSC; /* BJg in CSC */
+    int *BJg_csc_work;   /* CSR-to-CSC workspace */
+    CSR_Matrix *C;       /* J_f^T @ B @ J_g */
+    CSR_Matrix *CT;      /* C^T */
+    int *idx_map_C;
+    int *idx_map_CT;
+    int *idx_map_Hf;
+    int *idx_map_Hg;
+} matmul_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr

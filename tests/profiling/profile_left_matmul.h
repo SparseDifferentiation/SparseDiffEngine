@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "affine.h"
-#include "bivariate.h"
-#include "elementwise_univariate.h"
+#include "atoms/affine.h"
+#include "atoms/elementwise_full_dom.h"
+#include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"
@@ -31,7 +31,7 @@ const char *profile_left_matmul(void)
     }
     A->p[n] = n * n;
 
-    expr *AX = new_left_matmul(X, A);
+    expr *AX = new_left_matmul(NULL, X, A);
 
     double *x_vals = (double *) malloc(n * n * sizeof(double));
     for (int i = 0; i < n * n; i++)
@@ -45,7 +45,7 @@ const char *profile_left_matmul(void)
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     printf("left_matmul forward time: %8.3f seconds\n", GET_ELAPSED_SECONDS(timer));
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    AX->jacobian_init(AX);
+    jacobian_init(AX);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     printf("left_matmul jacobian init time: %8.3f seconds\n",
            GET_ELAPSED_SECONDS(timer));
