@@ -8,25 +8,31 @@
 
 const char *test_upper_tri_jacobian_variable(void)
 {
-    /* upper_tri of a 3x3 variable (9 vars total)
-     * Upper tri flat indices: [3, 6, 7]
-     * Jacobian is 3x9 CSR: row k has col indices[k] */
-    double u[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
-    expr *var = new_variable(3, 3, 0, 9);
+    /* upper_tri of a 4x4 variable (16 vars total)
+     * Row-major upper tri indices: [4, 8, 12, 9, 13, 14]
+     * Jacobian is 6x16 CSR: row k has a single 1.0 at col indices[k] */
+    double u[16];
+    for (int k = 0; k < 16; k++)
+    {
+        u[k] = (double) (k + 1);
+    }
+    expr *var = new_variable(4, 4, 0, 16);
     expr *ut = new_upper_tri(var);
 
     ut->forward(ut, u);
     jacobian_init(ut);
     ut->eval_jacobian(ut);
 
-    double expected_x[3] = {1.0, 1.0, 1.0};
-    int expected_p[4] = {0, 1, 2, 3};
-    int expected_i[3] = {3, 6, 7};
+    double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
+    int expected_i[6] = {4, 8, 12, 9, 13, 14};
 
     mu_assert("upper_tri jac vals",
-              cmp_double_array(ut->jacobian->x, expected_x, 3));
-    mu_assert("upper_tri jac p", cmp_int_array(ut->jacobian->p, expected_p, 4));
-    mu_assert("upper_tri jac i", cmp_int_array(ut->jacobian->i, expected_i, 3));
+              cmp_double_array(ut->jacobian->x, expected_x, 6));
+    mu_assert("upper_tri jac p",
+              cmp_int_array(ut->jacobian->p, expected_p, 7));
+    mu_assert("upper_tri jac i",
+              cmp_int_array(ut->jacobian->i, expected_i, 6));
 
     free_expr(ut);
     return 0;
@@ -34,15 +40,17 @@ const char *test_upper_tri_jacobian_variable(void)
 
 const char *test_upper_tri_jacobian_of_log(void)
 {
-    /* upper_tri(log(X)) where X is 3x3 variable
-     * Upper tri flat indices: [3, 6, 7]
-     * X values at those positions: x[3]=4, x[6]=7, x[7]=8
-     * d/dx log at those positions:
-     * Row 0: 1/4 = 0.25 at col 3
-     * Row 1: 1/7 at col 6
-     * Row 2: 1/8 = 0.125 at col 7 */
-    double u[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
-    expr *var = new_variable(3, 3, 0, 9);
+    /* upper_tri(log(X)) where X is 4x4 variable
+     * Row-major upper tri indices: [4, 8, 12, 9, 13, 14]
+     * Values at those positions: u[4]=5, u[8]=9, u[12]=13,
+     *                            u[9]=10, u[13]=14, u[14]=15
+     * d/dx log at those positions: 1/5, 1/9, 1/13, 1/10, 1/14, 1/15 */
+    double u[16];
+    for (int k = 0; k < 16; k++)
+    {
+        u[k] = (double) (k + 1);
+    }
+    expr *var = new_variable(4, 4, 0, 16);
     expr *log_node = new_log(var);
     expr *ut = new_upper_tri(log_node);
 
@@ -50,13 +58,14 @@ const char *test_upper_tri_jacobian_of_log(void)
     jacobian_init(ut);
     ut->eval_jacobian(ut);
 
-    double expected_x[3] = {0.25, 1.0 / 7.0, 0.125};
-    int expected_i[3] = {3, 6, 7};
+    double expected_x[6] = {0.2, 1.0 / 9.0, 1.0 / 13.0,
+                            0.1, 1.0 / 14.0, 1.0 / 15.0};
+    int expected_i[6] = {4, 8, 12, 9, 13, 14};
 
     mu_assert("upper_tri log jac vals",
-              cmp_double_array(ut->jacobian->x, expected_x, 3));
+              cmp_double_array(ut->jacobian->x, expected_x, 6));
     mu_assert("upper_tri log jac cols",
-              cmp_int_array(ut->jacobian->i, expected_i, 3));
+              cmp_int_array(ut->jacobian->i, expected_i, 6));
 
     free_expr(ut);
     return 0;
