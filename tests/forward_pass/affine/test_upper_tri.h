@@ -34,8 +34,7 @@ const char *test_upper_tri_forward_4x4(void)
     ut->forward(ut, u);
 
     double expected[6] = {5.0, 9.0, 13.0, 10.0, 14.0, 15.0};
-    mu_assert("upper_tri forward 4x4",
-              cmp_double_array(ut->value, expected, 6));
+    mu_assert("upper_tri forward 4x4", cmp_double_array(ut->value, expected, 6));
 
     free_expr(ut);
     return 0;

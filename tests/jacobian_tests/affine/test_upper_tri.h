@@ -29,10 +29,8 @@ const char *test_upper_tri_jacobian_variable(void)
 
     mu_assert("upper_tri jac vals",
               cmp_double_array(ut->jacobian->x, expected_x, 6));
-    mu_assert("upper_tri jac p",
-              cmp_int_array(ut->jacobian->p, expected_p, 7));
-    mu_assert("upper_tri jac i",
-              cmp_int_array(ut->jacobian->i, expected_i, 6));
+    mu_assert("upper_tri jac p", cmp_int_array(ut->jacobian->p, expected_p, 7));
+    mu_assert("upper_tri jac i", cmp_int_array(ut->jacobian->i, expected_i, 6));
 
     free_expr(ut);
     return 0;
@@ -58,8 +56,7 @@ const char *test_upper_tri_jacobian_of_log(void)
     jacobian_init(ut);
     ut->eval_jacobian(ut);
 
-    double expected_x[6] = {0.2, 1.0 / 9.0, 1.0 / 13.0,
-                            0.1, 1.0 / 14.0, 1.0 / 15.0};
+    double expected_x[6] = {0.2, 1.0 / 9.0, 1.0 / 13.0, 0.1, 1.0 / 14.0, 1.0 / 15.0};
     int expected_i[6] = {4, 8, 12, 9, 13, 14};
 
     mu_assert("upper_tri log jac vals",
