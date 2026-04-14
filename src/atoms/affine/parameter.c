@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 Daniel Cederberg and William Zhang
  *
- * This file is part of the DNLP-differentiation-engine project.
+ * This file is part of the SparseDiffEngine project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
