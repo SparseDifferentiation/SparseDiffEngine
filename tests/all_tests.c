@@ -13,6 +13,7 @@
 #include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
+#include "forward_pass/affine/test_right_matmul.h"
 #include "forward_pass/affine/test_sum.h"
 #include "forward_pass/affine/test_upper_tri.h"
 #include "forward_pass/affine/test_variable_parameter.h"
@@ -134,6 +135,8 @@ int main(void)
     mu_run_test(test_forward_prod_axis_one, tests_run);
     mu_run_test(test_matmul, tests_run);
     mu_run_test(test_left_matmul_dense, tests_run);
+    mu_run_test(test_right_matmul, tests_run);
+    mu_run_test(test_right_matmul_vector, tests_run);
     mu_run_test(test_diag_mat_forward, tests_run);
     mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
@@ -382,6 +385,8 @@ int main(void)
     mu_run_test(test_param_promote_vector_mult, tests_run);
     mu_run_test(test_const_sum_scalar_mult, tests_run);
     mu_run_test(test_param_sum_scalar_mult, tests_run);
+    mu_run_test(test_const_hstack_left_matmul, tests_run);
+    mu_run_test(test_param_hstack_left_matmul, tests_run);
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
