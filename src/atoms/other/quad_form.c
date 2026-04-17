@@ -49,9 +49,6 @@ static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
 
-    /* dwork stores the result of Q @ f(x) in the forward pass */
-    node->work->dwork = (double *) SP_MALLOC(x->size * sizeof(double));
-
     if (x->var_id != NOT_A_VARIABLE)
     {
         node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
@@ -260,5 +257,8 @@ expr *new_quad_form(expr *left, CSR_Matrix *Q)
     /* Set type-specific field */
     qnode->Q = new_csr_matrix(Q->m, Q->n, Q->nnz);
     copy_csr_matrix(Q, qnode->Q);
+
+    /* dwork stores the result of Q @ f(x) in the forward pass */
+    node->work->dwork = (double *) SP_MALLOC(left->size * sizeof(double));
     return node;
 }
