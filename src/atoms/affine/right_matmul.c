@@ -55,17 +55,6 @@ static void refresh_dense_right(left_matmul_expr *lnode)
 
 expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 {
-    /* Validate dimensions for y = u @ A, A is (m, n):
-       - Standard 2D: u is (p, m) -> y is (p, n).
-       - numpy 1D broadcast: u has shape (m,), stored as (1, m) -> y is (1, n).
-       We already do something similar in left_matmul
-       But it is good to catch it earlier here. */
-    if (u->d2 != A->m)
-    {
-        fprintf(stderr, "Error in new_right_matmul: dimension mismatch \n");
-        exit(1);
-    }
-
     /* We can express right matmul using left matmul and transpose:
        u @ A = (A^T @ u^T)^T. */
     int *work_transpose = (int *) SP_MALLOC(A->n * sizeof(int));
@@ -93,13 +82,6 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
                              const double *data)
 {
-    if (u->d2 != m)
-    {
-        fprintf(stderr,
-                "Error in new_right_matmul_dense: dimension mismatch \n");
-        exit(1);
-    }
-
     /* We express: u @ A = (A^T @ u^T)^T. A is m x n, so A^T is n x m. */
     double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
     A_transpose(AT, data, m, n);
