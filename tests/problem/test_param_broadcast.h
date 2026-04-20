@@ -257,4 +257,88 @@ const char *test_param_sum_scalar_mult(void)
     return 0;
 }
 
+const char *test_const_hstack_left_matmul(void)
+{
+    int n = 4;
+
+    /* minimize hstack(p1, p2) @ x, where p1 and p2 are fixed */
+    expr *x = new_variable(2 * n, 1, 0, 2 * n);
+    double p1_vals[4] = {1.0, 2.0, 3.0, 0.0};
+    expr *p1 = new_parameter(1, n, PARAM_FIXED, 2 * n, p1_vals);
+    double p2_vals[4] = {4.0, 0.0, 5.0, 6.0};
+    expr *p2 = new_parameter(1, n, PARAM_FIXED, 2 * n, p2_vals);
+    expr *param_nodes[2] = {p1, p2};
+    expr *p_hstack = new_hstack(param_nodes, 2, 2 * n);
+    /* pass concatenated parameter vectors */
+    double A_data[8] = {1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 5.0, 6.0};
+    expr *objective = new_left_matmul_dense(p_hstack, x, 1, 2 * n, A_data);
+    problem *prob = new_problem(objective, NULL, 0, false);
+
+    problem_init_derivatives(prob);
+
+    /* point for evaluating */
+    double x_vals[8] = {2.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0};
+
+    problem_objective_forward(prob, x_vals);
+    double obj_val = 1.0 * 2.0 + 2.0 * 2.0 + 3.0 * 2.0 + 0.0 * 2.0 + 4.0 * 1.0 +
+                     0.0 * 1.0 + 5.0 * 1.0 + 6.0 * 1.0;
+    mu_assert("vals fail", fabs(prob->objective->value[0] - obj_val) < 1e-6);
+
+    problem_gradient(prob);
+    double grad_x[8] = {1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 5.0, 6.0};
+    mu_assert("vals fail", cmp_double_array(prob->gradient_values, grad_x, 8));
+
+    free_problem(prob);
+    return 0;
+}
+
+const char *test_param_hstack_left_matmul(void)
+{
+    int n = 4;
+
+    /* minimize hstack(p1, p2) @ x, where p1 and p2 are parameter */
+    expr *x = new_variable(2 * n, 1, 0, 2 * n);
+    double p1_vals[4] = {1.0, 2.0, 3.0, 0.0};
+    expr *p1 = new_parameter(1, n, 0, 2 * n, p1_vals);
+    double p2_vals[4] = {4.0, 0.0, 5.0, 6.0};
+    expr *p2 = new_parameter(1, n, n, 2 * n, p2_vals);
+    expr *param_nodes[2] = {p1, p2};
+    expr *p_hstack = new_hstack(param_nodes, 2, 2 * n);
+    /* pass concatenated parameter vectors */
+    double A_data[8] = {1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 5.0, 6.0};
+    expr *objective = new_left_matmul_dense(p_hstack, x, 1, 2 * n, A_data);
+    problem *prob = new_problem(objective, NULL, 0, false);
+
+    problem_register_params(prob, param_nodes, 2);
+    problem_init_derivatives(prob);
+
+    /* point for evaluating */
+    double x_vals[8] = {2.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0};
+
+    problem_objective_forward(prob, x_vals);
+    double obj_val = 1.0 * 2.0 + 2.0 * 2.0 + 3.0 * 2.0 + 0.0 * 2.0 + 4.0 * 1.0 +
+                     0.0 * 1.0 + 5.0 * 1.0 + 6.0 * 1.0;
+    mu_assert("vals fail", fabs(prob->objective->value[0] - obj_val) < 1e-6);
+
+    problem_gradient(prob);
+    double grad_x[8] = {1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 5.0, 6.0};
+    mu_assert("vals fail", cmp_double_array(prob->gradient_values, grad_x, 8));
+
+    double theta[8] = {5.0, 4.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0};
+    problem_update_params(prob, theta);
+
+    problem_objective_forward(prob, x_vals);
+    double updated_obj_val = 5.0 * 2.0 + 4.0 * 2.0 + 3.0 * 2.0 + 2.0 * 2.0 +
+                             1.0 * 1.0 + 0.0 * 1.0 + 1.0 * 1.0 + 2.0 * 1.0;
+    mu_assert("vals fail", fabs(prob->objective->value[0] - updated_obj_val) < 1e-6);
+
+    problem_gradient(prob);
+    double updated_grad_x[8] = {5.0, 4.0, 3.0, 2.0, 1.0, 0.0, 1.0, 2.0};
+    mu_assert("vals fail",
+              cmp_double_array(prob->gradient_values, updated_grad_x, 8));
+
+    free_problem(prob);
+    return 0;
+}
+
 #endif /* TEST_PARAM_BROADCAST_H */
