@@ -9,6 +9,7 @@
 #include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_diag_mat.h"
 #include "forward_pass/affine/test_hstack.h"
+#include "forward_pass/affine/test_kron_left.h"
 #include "forward_pass/affine/test_left_matmul_dense.h"
 #include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
@@ -28,6 +29,7 @@
 #include "jacobian_tests/affine/test_diag_mat.h"
 #include "jacobian_tests/affine/test_hstack.h"
 #include "jacobian_tests/affine/test_index.h"
+#include "jacobian_tests/affine/test_kron_left.h"
 #include "jacobian_tests/affine/test_left_matmul.h"
 #include "jacobian_tests/affine/test_neg.h"
 #include "jacobian_tests/affine/test_promote.h"
@@ -68,6 +70,7 @@
 #include "wsum_hess/affine/test_diag_mat.h"
 #include "wsum_hess/affine/test_hstack.h"
 #include "wsum_hess/affine/test_index.h"
+#include "wsum_hess/affine/test_kron_left.h"
 #include "wsum_hess/affine/test_left_matmul.h"
 #include "wsum_hess/affine/test_right_matmul.h"
 #include "wsum_hess/affine/test_scalar_mult.h"
@@ -134,6 +137,8 @@ int main(void)
     mu_run_test(test_forward_prod_axis_one, tests_run);
     mu_run_test(test_matmul, tests_run);
     mu_run_test(test_left_matmul_dense, tests_run);
+    mu_run_test(test_kron_left_forward, tests_run);
+    mu_run_test(test_kron_left_forward_identity, tests_run);
     mu_run_test(test_diag_mat_forward, tests_run);
     mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
@@ -212,6 +217,8 @@ int main(void)
     mu_run_test(test_jacobian_left_matmul_log, tests_run);
     mu_run_test(test_jacobian_left_matmul_log_matrix, tests_run);
     mu_run_test(test_jacobian_left_matmul_exp_composite, tests_run);
+    mu_run_test(test_jacobian_kron_left_log, tests_run);
+    mu_run_test(test_jacobian_kron_left_log_matrix, tests_run);
     mu_run_test(test_jacobian_right_matmul_log, tests_run);
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
     mu_run_test(test_jacobian_matmul, tests_run);
@@ -276,6 +283,8 @@ int main(void)
     mu_run_test(test_wsum_hess_left_matmul, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_matrix, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_exp_composite, tests_run);
+    mu_run_test(test_wsum_hess_kron_left, tests_run);
+    mu_run_test(test_wsum_hess_kron_left_composite, tests_run);
     mu_run_test(test_wsum_hess_matmul, tests_run);
     mu_run_test(test_wsum_hess_matmul_yx, tests_run);
     mu_run_test(test_wsum_hess_right_matmul, tests_run);

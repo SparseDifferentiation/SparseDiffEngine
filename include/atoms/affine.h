@@ -58,6 +58,13 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
 expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
                              const double *data);
 
+/* Kronecker product with constant on the left: Z = kron(C, u) where C is a
+ * constant sparse matrix and u is a (p x q) expression. Output shape
+ * (C->m * p, C->n * q). param_node must be NULL; the parameter path is
+ * reserved for a future change. */
+expr *new_kron_left(expr *param_node, expr *u, const CSR_Matrix *C, int p,
+                    int q);
+
 /* Scalar multiplication: a * f(x) where a comes from param_node */
 expr *new_scalar_mult(expr *param_node, expr *child);
 
