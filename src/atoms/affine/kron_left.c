@@ -71,8 +71,7 @@ static void forward(expr *node, const double *u)
             int x_col_start = l * p;
             for (int k = 0; k < p; k++)
             {
-                node->value[z_col_start + k] =
-                    cij * child->value[x_col_start + k];
+                node->value[z_col_start + k] = cij * child->value[x_col_start + k];
             }
         }
     }
@@ -293,8 +292,7 @@ expr *new_kron_left(expr *param_node, expr *u, const CSR_Matrix *C, int p, int q
     int m = C->m;
     int n = C->n;
 
-    kron_left_expr *lnode =
-        (kron_left_expr *) SP_CALLOC(1, sizeof(kron_left_expr));
+    kron_left_expr *lnode = (kron_left_expr *) SP_CALLOC(1, sizeof(kron_left_expr));
     expr *node = &lnode->base;
     init_expr(node, m * p, n * q, u->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,

@@ -82,8 +82,7 @@ const char *test_jacobian_kron_left_log_matrix(void)
     jacobian_init(Z);
     Z->eval_jacobian(Z);
 
-    double expected_x[8] = {1.0,       0.5,  2.0,       1.0,
-                            1.0 / 3.0, 0.25, 2.0 / 3.0, 0.5};
+    double expected_x[8] = {1.0, 0.5, 2.0, 1.0, 1.0 / 3.0, 0.25, 2.0 / 3.0, 0.5};
     int expected_i[8] = {0, 1, 0, 1, 2, 3, 2, 3};
     int expected_p[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
