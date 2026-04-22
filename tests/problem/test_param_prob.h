@@ -578,12 +578,9 @@ const char *test_param_convolve_problem(void)
     mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 6));
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 9));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, Ax, 9));
-    mu_assert("hess rows fail",
-              cmp_int_array(prob->lagrange_hessian->p, Hp, 4));
-    mu_assert("hess cols fail",
-              cmp_int_array(prob->lagrange_hessian->i, Hi, 3));
-    mu_assert("hess vals fail",
-              cmp_double_array(prob->lagrange_hessian->x, Hx, 3));
+    mu_assert("hess rows fail", cmp_int_array(prob->lagrange_hessian->p, Hp, 4));
+    mu_assert("hess cols fail", cmp_int_array(prob->lagrange_hessian->i, Hi, 3));
+    mu_assert("hess vals fail", cmp_double_array(prob->lagrange_hessian->x, Hx, 3));
 
     /* test 2: kernel a = [4, 5, 6] — refresh path must rebuild T(a) values
        and propagate to both Jacobian and Hessian. */
@@ -615,12 +612,9 @@ const char *test_param_convolve_problem(void)
     mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 6));
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 9));
     mu_assert("vals fail", cmp_double_array(prob->jacobian->x, Ax, 9));
-    mu_assert("hess rows fail",
-              cmp_int_array(prob->lagrange_hessian->p, Hp, 4));
-    mu_assert("hess cols fail",
-              cmp_int_array(prob->lagrange_hessian->i, Hi, 3));
-    mu_assert("hess vals fail",
-              cmp_double_array(prob->lagrange_hessian->x, Hx, 3));
+    mu_assert("hess rows fail", cmp_int_array(prob->lagrange_hessian->p, Hp, 4));
+    mu_assert("hess cols fail", cmp_int_array(prob->lagrange_hessian->i, Hi, 3));
+    mu_assert("hess vals fail", cmp_double_array(prob->lagrange_hessian->x, Hx, 3));
 
     free_problem(prob);
 

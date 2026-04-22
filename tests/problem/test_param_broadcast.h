@@ -375,8 +375,7 @@ const char *test_param_scalar_mult_convolve(void)
     problem_constraint_forward(prob, x_vals);
     problem_jacobian(prob);
     double constrs[6] = {1.0, 4.0, 10.0, 16.0, 17.0, 12.0};
-    double Ax[12] = {1.0, 2.0, 1.0, 3.0, 2.0, 1.0,
-                     4.0, 3.0, 2.0, 4.0, 3.0, 4.0};
+    double Ax[12] = {1.0, 2.0, 1.0, 3.0, 2.0, 1.0, 4.0, 3.0, 2.0, 4.0, 3.0, 4.0};
     mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 6));
     mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 7));
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 12));

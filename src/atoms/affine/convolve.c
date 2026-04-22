@@ -248,8 +248,7 @@ expr *new_convolve(expr *param_node, expr *child)
         exit(1);
     }
 
-    convolve_expr *cnode =
-        (convolve_expr *) SP_CALLOC(1, sizeof(convolve_expr));
+    convolve_expr *cnode = (convolve_expr *) SP_CALLOC(1, sizeof(convolve_expr));
     expr *node = &cnode->base;
     init_expr(node, out_d1, out_d2, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,

@@ -156,10 +156,10 @@ typedef struct vector_mult_expr
 typedef struct convolve_expr
 {
     expr base;
-    expr *param_source;  /* length-m kernel */
-    int m;               /* kernel length */
-    int n;               /* input length */
-    Matrix *T;           /* (m+n-1) x n Toeplitz Sparse_Matrix */
+    expr *param_source; /* length-m kernel */
+    int m;              /* kernel length */
+    int n;              /* input length */
+    Matrix *T;          /* (m+n-1) x n Toeplitz Sparse_Matrix */
     CSC_Matrix *Jchild_CSC;
     CSC_Matrix *J_CSC;
     int *csc_to_csr_work;
