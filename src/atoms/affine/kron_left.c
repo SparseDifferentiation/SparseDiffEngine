@@ -43,9 +43,6 @@
  * identity-detection is needed: for C = I_m, nnz_C == m and the work
  * naturally drops to O(m * p * q) without any special-case code. */
 
-/* ------------------------------------------------------------------ */
-/*                          Forward pass                              */
-/* ------------------------------------------------------------------ */
 static void forward(expr *node, const double *u)
 {
     kron_left_expr *lnode = (kron_left_expr *) node;
@@ -77,17 +74,11 @@ static void forward(expr *node, const double *u)
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*                          Affine check                              */
-/* ------------------------------------------------------------------ */
 static bool is_affine(const expr *node)
 {
     return node->left->is_affine(node->left);
 }
 
-/* ------------------------------------------------------------------ */
-/*                      Jacobian initialization                       */
-/* ------------------------------------------------------------------ */
 /* Two-pass construction over active C entries × (l, k):
  *   pass 1 fills row_nnz[r] for every active output row,
  *   pass 2 writes column indices into the already-allocated CSR.
@@ -163,9 +154,6 @@ static void jacobian_init_impl(expr *node)
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*                      Jacobian evaluation                           */
-/* ------------------------------------------------------------------ */
 static void eval_jacobian(expr *node)
 {
     kron_left_expr *lnode = (kron_left_expr *) node;
@@ -202,9 +190,6 @@ static void eval_jacobian(expr *node)
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*                  Weighted-sum Hessian initialization               */
-/* ------------------------------------------------------------------ */
 static void wsum_hess_init_impl(expr *node)
 {
     expr *child = node->left;
@@ -218,9 +203,6 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) SP_MALLOC((size_t) child->size * sizeof(double));
 }
 
-/* ------------------------------------------------------------------ */
-/*                  Weighted-sum Hessian evaluation                   */
-/* ------------------------------------------------------------------ */
 static void eval_wsum_hess(expr *node, const double *w)
 {
     kron_left_expr *lnode = (kron_left_expr *) node;
@@ -255,9 +237,6 @@ static void eval_wsum_hess(expr *node, const double *w)
            (size_t) node->wsum_hess->nnz * sizeof(double));
 }
 
-/* ------------------------------------------------------------------ */
-/*                          Cleanup                                   */
-/* ------------------------------------------------------------------ */
 static void free_type_data(expr *node)
 {
     kron_left_expr *lnode = (kron_left_expr *) node;
@@ -276,9 +255,6 @@ static void free_type_data(expr *node)
     lnode->param_source = NULL;
 }
 
-/* ------------------------------------------------------------------ */
-/*                        Constructor                                 */
-/* ------------------------------------------------------------------ */
 expr *new_kron_left(expr *param_node, expr *u, const CSR_Matrix *C, int p, int q)
 {
     if (u->size != p * q)
