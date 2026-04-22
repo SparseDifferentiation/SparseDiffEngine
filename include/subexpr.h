@@ -170,6 +170,30 @@ typedef struct matmul_expr
     int *idx_map_Hg;
 } matmul_expr;
 
+/* Kronecker product with a constant on the left: Z = kron(C, X) where C is
+ * a constant (m x n) sparse matrix and X is an expression of shape (p x q).
+ * Output has shape (m*p, n*q). The atom is affine in X; the param_source
+ * slot is reserved for a future update that makes C an updatable parameter.
+ *
+ * We cache the active entries of C (one per nonzero of C) so that all
+ * inner loops run in O(nnz_C * p * q) rather than touching zero rows of
+ * the output. This automatically collapses to O(m * p * q) when C = I_m,
+ * with no special case in the code. */
+typedef struct kron_left_expr
+{
+    expr base;
+    CSR_Matrix *C; /* constant matrix, owned */
+    int p, q;      /* child shape (m, n are C->m, C->n) */
+    /* active-entry tables (length C->nnz), filled in constructor */
+    int n_active;
+    int *active_i;   /* row index i of each nonzero */
+    int *active_j;   /* col index j of each nonzero */
+    int *active_idx; /* index into C->x */
+    /* parameter slot (not wired up yet — param_source must be NULL) */
+    expr *param_source;
+    void (*refresh_param_values)(struct kron_left_expr *);
+} kron_left_expr;
+
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */
 typedef struct index_expr
 {
