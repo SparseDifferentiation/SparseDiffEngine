@@ -59,8 +59,9 @@ static void build_toeplitz(CSR_Matrix *T_csr, const double *a, int m, int n)
     T_csr->p[out_rows] = nnz;
 }
 
-/* Overwrite T(a)'s CSR values (only) from the current kernel. Sparsity
-   pattern is unchanged, so we just walk the existing CSR entries. */
+/* Values-only refresh analogous to refresh_dense_left in left_matmul.c:
+   sparsity is kernel-independent so p/i stay intact; we just walk the
+   existing CSR entries and overwrite x from the current kernel. */
 static void refresh_toeplitz_values(convolve_expr *cnode)
 {
     CSR_Matrix *T_csr = ((Sparse_Matrix *) cnode->T)->csr;
@@ -172,13 +173,14 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     /* w' = T(a)^T w. T(a)^T[j, k] = a[k-j] for j <= k < j+m, so
        w'[j] = sum_{i=0..m-1} a[i] * w[i + j]. */
-    memset(w_prime, 0, n * sizeof(double));
     for (int j = 0; j < n; j++)
     {
+        double sum = 0.0;
         for (int i = 0; i < m; i++)
         {
-            w_prime[j] += a[i] * w[i + j];
+            sum += a[i] * w[i + j];
         }
+        w_prime[j] = sum;
     }
 
     child->eval_wsum_hess(child, w_prime);
@@ -198,39 +200,25 @@ static void free_type_data(expr *node)
     free_csc_matrix(cnode->Jchild_CSC);
     free_csc_matrix(cnode->J_CSC);
     free(cnode->csc_to_csr_work);
-    if (cnode->param_source != NULL)
-    {
-        free_expr(cnode->param_source);
-    }
-    cnode->T = NULL;
-    cnode->Jchild_CSC = NULL;
-    cnode->J_CSC = NULL;
-    cnode->csc_to_csr_work = NULL;
-    cnode->param_source = NULL;
+    free_expr(cnode->param_source);
 }
 
 expr *new_convolve(expr *param_node, expr *child)
 {
-    if (param_node == NULL)
-    {
-        fprintf(stderr, "Error in new_convolve: param_node must not be NULL\n");
-        exit(1);
-    }
-
+    /* Accept both (n, 1) column and (1, n) row shapes — numpy-style 1D
+       arrays reach us as (1, n) through the Python bindings, and the math
+       is shape-agnostic (flat buffers of size m + n - 1). Output shape
+       matches the input orientation. */
     int m = param_node->size;
-    int n;
-    int out_d1, out_d2;
-
+    int n, out_d1, out_d2;
     if (child->d2 == 1)
     {
-        /* child is (n, 1) column vector */
         n = child->d1;
         out_d1 = m + n - 1;
         out_d2 = 1;
     }
     else if (child->d1 == 1)
     {
-        /* child is (1, n) row vector */
         n = child->d2;
         out_d1 = 1;
         out_d2 = m + n - 1;
