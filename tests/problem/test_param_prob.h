@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "atoms/affine.h"
+#include "atoms/elementwise_full_dom.h"
 #include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
@@ -529,6 +530,97 @@ const char *test_param_shared_left_matmul_problem(void)
     mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 5));
     mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 8));
     mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 4));
+
+    free_problem(prob);
+
+    return 0;
+}
+
+const char *test_param_convolve_problem(void)
+{
+    int n = 3;
+
+    /* minimize sum(x) subject to conv(a, exp(x)), with kernel a as parameter.
+       The exp nonlinearity gives a non-zero Hessian that depends on the kernel,
+       so both Jacobian and Hessian refresh paths get exercised on
+       problem_update_params. At x = [0, 0, 0] we have exp(x) = 1, so J = T
+       and H diagonal = T^T @ 1_5 = sum(a) per column. */
+    expr *x = new_variable(3, 1, 0, n);
+    expr *exp_x = new_exp(x);
+    expr *objective = new_sum(x, -1);
+    double theta[3] = {1.0, 2.0, 3.0};
+    expr *a_param = new_parameter(3, 1, 0, n, theta);
+    expr *constraint = new_convolve(a_param, exp_x);
+    expr *constraints[1] = {constraint};
+    problem *prob = new_problem(objective, constraints, 1, true);
+
+    /* register parameters and fill sparsity patterns */
+    expr *param_nodes[1] = {a_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* point for evaluating and constant sparsity arrays */
+    double x_vals[3] = {0.0, 0.0, 0.0};
+    double w[5] = {1.0, 1.0, 1.0, 1.0, 1.0};
+    int Ap[6] = {0, 1, 3, 6, 8, 9};
+    int Ai[9] = {0, 0, 1, 0, 1, 2, 1, 2, 2};
+    int Hp[4] = {0, 1, 2, 3};
+    int Hi[3] = {0, 1, 2};
+
+    /* test 1: kernel a = [1, 2, 3] */
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    problem_hessian(prob, 0.0, w);
+    double constrs[5] = {1.0, 3.0, 6.0, 5.0, 3.0};
+    double Ax[9] = {1.0, 2.0, 1.0, 3.0, 2.0, 1.0, 3.0, 2.0, 3.0};
+    double Hx[3] = {6.0, 6.0, 6.0};
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 5));
+    mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 6));
+    mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 9));
+    mu_assert("vals fail", cmp_double_array(prob->jacobian->x, Ax, 9));
+    mu_assert("hess rows fail",
+              cmp_int_array(prob->lagrange_hessian->p, Hp, 4));
+    mu_assert("hess cols fail",
+              cmp_int_array(prob->lagrange_hessian->i, Hi, 3));
+    mu_assert("hess vals fail",
+              cmp_double_array(prob->lagrange_hessian->x, Hx, 3));
+
+    /* test 2: kernel a = [4, 5, 6] — refresh path must rebuild T(a) values
+       and propagate to both Jacobian and Hessian. */
+    theta[0] = 4.0;
+    theta[1] = 5.0;
+    theta[2] = 6.0;
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    problem_hessian(prob, 0.0, w);
+    constrs[0] = 4.0;
+    constrs[1] = 9.0;
+    constrs[2] = 15.0;
+    constrs[3] = 11.0;
+    constrs[4] = 6.0;
+    Ax[0] = 4.0;
+    Ax[1] = 5.0;
+    Ax[2] = 4.0;
+    Ax[3] = 6.0;
+    Ax[4] = 5.0;
+    Ax[5] = 4.0;
+    Ax[6] = 6.0;
+    Ax[7] = 5.0;
+    Ax[8] = 6.0;
+    Hx[0] = 15.0;
+    Hx[1] = 15.0;
+    Hx[2] = 15.0;
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 5));
+    mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 6));
+    mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 9));
+    mu_assert("vals fail", cmp_double_array(prob->jacobian->x, Ax, 9));
+    mu_assert("hess rows fail",
+              cmp_int_array(prob->lagrange_hessian->p, Hp, 4));
+    mu_assert("hess cols fail",
+              cmp_int_array(prob->lagrange_hessian->i, Hi, 3));
+    mu_assert("hess vals fail",
+              cmp_double_array(prob->lagrange_hessian->x, Hx, 3));
 
     free_problem(prob);
 

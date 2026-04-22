@@ -7,6 +7,7 @@
 #ifndef PROFILE_ONLY
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
+#include "forward_pass/affine/test_convolve.h"
 #include "forward_pass/affine/test_diag_mat.h"
 #include "forward_pass/affine/test_hstack.h"
 #include "forward_pass/affine/test_left_matmul_dense.h"
@@ -25,6 +26,7 @@
 #include "forward_pass/other/test_prod_axis_one.h"
 #include "forward_pass/other/test_prod_axis_zero.h"
 #include "jacobian_tests/affine/test_broadcast.h"
+#include "jacobian_tests/affine/test_convolve.h"
 #include "jacobian_tests/affine/test_diag_mat.h"
 #include "jacobian_tests/affine/test_hstack.h"
 #include "jacobian_tests/affine/test_index.h"
@@ -65,6 +67,7 @@
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
 #include "wsum_hess/affine/test_broadcast.h"
+#include "wsum_hess/affine/test_convolve.h"
 #include "wsum_hess/affine/test_diag_mat.h"
 #include "wsum_hess/affine/test_hstack.h"
 #include "wsum_hess/affine/test_index.h"
@@ -134,6 +137,8 @@ int main(void)
     mu_run_test(test_forward_prod_axis_one, tests_run);
     mu_run_test(test_matmul, tests_run);
     mu_run_test(test_left_matmul_dense, tests_run);
+    mu_run_test(test_convolve_forward, tests_run);
+    mu_run_test(test_convolve_forward_param, tests_run);
     mu_run_test(test_diag_mat_forward, tests_run);
     mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
@@ -215,6 +220,8 @@ int main(void)
     mu_run_test(test_jacobian_right_matmul_log, tests_run);
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
     mu_run_test(test_jacobian_matmul, tests_run);
+    mu_run_test(test_jacobian_convolve, tests_run);
+    mu_run_test(test_jacobian_convolve_composite, tests_run);
     mu_run_test(test_jacobian_transpose, tests_run);
     mu_run_test(test_diag_mat_jacobian_variable, tests_run);
     mu_run_test(test_diag_mat_jacobian_of_log, tests_run);
@@ -280,6 +287,8 @@ int main(void)
     mu_run_test(test_wsum_hess_matmul_yx, tests_run);
     mu_run_test(test_wsum_hess_right_matmul, tests_run);
     mu_run_test(test_wsum_hess_right_matmul_vector, tests_run);
+    mu_run_test(test_wsum_hess_convolve, tests_run);
+    mu_run_test(test_wsum_hess_convolve_composite, tests_run);
     mu_run_test(test_wsum_hess_broadcast_row, tests_run);
     mu_run_test(test_wsum_hess_broadcast_col, tests_run);
     mu_run_test(test_wsum_hess_broadcast_scalar_to_matrix, tests_run);
@@ -374,6 +383,7 @@ int main(void)
     mu_run_test(test_param_shared_left_matmul_problem, tests_run);
     mu_run_test(test_param_fixed_skip_in_update, tests_run);
     mu_run_test(test_param_scalar_mult_problem_with_constant, tests_run);
+    mu_run_test(test_param_convolve_problem, tests_run);
 
     printf("\n--- Parameter + Broadcast Tests ---\n");
     mu_run_test(test_constant_broadcast_vector_mult, tests_run);
@@ -384,6 +394,7 @@ int main(void)
     mu_run_test(test_param_sum_scalar_mult, tests_run);
     mu_run_test(test_const_hstack_left_matmul, tests_run);
     mu_run_test(test_param_hstack_left_matmul, tests_run);
+    mu_run_test(test_param_scalar_mult_convolve, tests_run);
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY

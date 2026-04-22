@@ -65,4 +65,12 @@ expr *new_scalar_mult(expr *param_node, expr *child);
  * param_node */
 expr *new_vector_mult(expr *param_node, expr *child);
 
+/* 1D full convolution: y = conv(a, child) where a is the kernel held by
+ * param_node (length m) and child is a length-n vector (shape (n, 1) or
+ * (1, n)). Output is length (m + n - 1). param_node may be PARAM_FIXED
+ * or an updatable parameter; the kernel values refresh automatically on
+ * problem_update_params (same convention as new_vector_mult /
+ * new_scalar_mult). */
+expr *new_convolve(expr *param_node, expr *child);
+
 #endif /* AFFINE_H */

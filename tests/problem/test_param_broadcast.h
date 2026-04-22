@@ -341,4 +341,69 @@ const char *test_param_hstack_left_matmul(void)
     return 0;
 }
 
+const char *test_param_scalar_mult_convolve(void)
+{
+    int n = 3;
+
+    /* minimize sum(x) subject to conv(s * kernel, x), where kernel is a fixed
+       length-4 vector and s is an updatable scalar parameter. Scaling s
+       rescales the entire kernel, so Jacobian and constraint values scale
+       linearly with s. */
+    expr *x = new_variable(3, 1, 0, n);
+    expr *objective = new_sum(x, -1);
+
+    double kernel_vals[4] = {1.0, 2.0, 3.0, 4.0};
+    expr *kernel = new_parameter(4, 1, PARAM_FIXED, n, kernel_vals);
+    double s_vals[1] = {1.0};
+    expr *s = new_parameter(1, 1, 0, n, s_vals);
+    expr *scaled_kernel = new_scalar_mult(s, kernel);
+
+    expr *constraint = new_convolve(scaled_kernel, x);
+    expr *constraints[1] = {constraint};
+    problem *prob = new_problem(objective, constraints, 1, false);
+
+    expr *param_nodes[1] = {s};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    /* point for evaluating and sparsity arrays (T is 6x3 with 12 nonzeros) */
+    double x_vals[3] = {1.0, 2.0, 3.0};
+    int Ap[7] = {0, 1, 3, 6, 9, 11, 12};
+    int Ai[12] = {0, 0, 1, 0, 1, 2, 0, 1, 2, 1, 2, 2};
+
+    /* test 1: s = 1, effective kernel = [1, 2, 3, 4] */
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    double constrs[6] = {1.0, 4.0, 10.0, 16.0, 17.0, 12.0};
+    double Ax[12] = {1.0, 2.0, 1.0, 3.0, 2.0, 1.0,
+                     4.0, 3.0, 2.0, 4.0, 3.0, 4.0};
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 6));
+    mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 7));
+    mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 12));
+    mu_assert("vals fail", cmp_double_array(prob->jacobian->x, Ax, 12));
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    /* test 2: s = 10 via problem_update_params, effective kernel = [10,20,30,40] */
+    double theta[1] = {10.0};
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    double updated_constrs[6] = {10.0, 40.0, 100.0, 160.0, 170.0, 120.0};
+    double updated_Ax[12] = {10.0, 20.0, 10.0, 30.0, 20.0, 10.0,
+                             40.0, 30.0, 20.0, 40.0, 30.0, 40.0};
+    mu_assert("vals fail",
+              cmp_double_array(prob->constraint_values, updated_constrs, 6));
+    mu_assert("rows fail", cmp_int_array(prob->jacobian->p, Ap, 7));
+    mu_assert("cols fail", cmp_int_array(prob->jacobian->i, Ai, 12));
+    mu_assert("vals fail", cmp_double_array(prob->jacobian->x, updated_Ax, 12));
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_problem(prob);
+    return 0;
+}
+
 #endif /* TEST_PARAM_BROADCAST_H */
