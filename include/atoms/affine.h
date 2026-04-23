@@ -42,19 +42,31 @@ expr *new_diag_mat(expr *child);
 expr *new_upper_tri(expr *child);
 expr *new_transpose(expr *child);
 
-/* Left matrix multiplication: A @ f(x) where A is a constant or parameter
- * sparse matrix. param_node is NULL for fixed constants. */
+/* Left matrix multiplication: A @ f(x) where A is a constant sparse matrix.
+   param_node is NULL for fixed constants. We currently do not support sparse
+   parameters, so param_node should always be null. */
 expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
 
-/* Left matrix multiplication: A @ f(x) where A is a constant or parameter
- * dense matrix (row-major, m x n). Uses CBLAS for efficient computation. */
+/* Left matrix multiplication: A @ f(x) where A is a constant dense matrix
+   (in row-major, m x n, with values given by 'data') or a parameter
+   representing a dense m x n matrix in row-major.
+
+   The 'data' pointer only represents the values of the dense matrix if
+   param_node is null. If param_node is not null, data must be null. */
 expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
                             const double *data);
 
-/* Right matrix multiplication: f(x) @ A where A is a constant or parameter
- * matrix. */
+/* Right matrix multiplication: f(x) @ A where A is a constant sparse matrix.
+   We currently do not support sparse parameters, so param_node should always be
+   null. */
 expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
 
+/* Right matrix multiplication: f(x) @ A where A is a constant dense matrix
+   (in row-major, m x n, with values given by 'data') or a parameter
+   representing a dense m x n matrix in row-major.
+
+   The 'data' pointer only represents the values of the dense matrix if
+   param_node is null. If param_node is not null, data must be null. */
 expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
                              const double *data);
 
@@ -64,5 +76,9 @@ expr *new_scalar_mult(expr *param_node, expr *child);
 /* Vector elementwise multiplication: a . f(x) where a comes from
  * param_node */
 expr *new_vector_mult(expr *param_node, expr *child);
+
+/* 1D full convolution: y = conv(param_node, child) where param_node is the
+   kernel and may either represent a constant or an updatable parameter */
+expr *new_convolve(expr *param_node, expr *child);
 
 #endif /* AFFINE_H */

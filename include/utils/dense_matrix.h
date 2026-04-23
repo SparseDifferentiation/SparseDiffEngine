@@ -28,7 +28,8 @@ typedef struct Dense_Matrix
     double *work; /* scratch buffer, length n */
 } Dense_Matrix;
 
-/* Constructors */
+/* Constructors. If data is NULL, the value buffer is allocated but left
+   uninitialized; otherwise m*n entries are copied from data. */
 Matrix *new_dense_matrix(int m, int n, const double *data);
 
 /* Transpose helper */

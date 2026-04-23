@@ -67,7 +67,10 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.update_values = dense_update_values;
     dm->base.free_fn = dense_free;
     dm->x = (double *) SP_MALLOC(m * n * sizeof(double));
-    memcpy(dm->x, data, m * n * sizeof(double));
+    if (data != NULL)
+    {
+        memcpy(dm->x, data, m * n * sizeof(double));
+    }
     dm->work = (double *) SP_MALLOC(n * sizeof(double));
     return &dm->base;
 }
