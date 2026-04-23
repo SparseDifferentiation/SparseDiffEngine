@@ -18,6 +18,8 @@
 #ifndef MINI_NUMPY_H
 #define MINI_NUMPY_H
 
+#include "utils/CSR_Matrix.h"
+
 /* Example: a = [1, 2], len = 2, repeats = 3, result = [1, 1, 1, 2, 2, 2] */
 void repeat(double *result, const double *a, int len, int repeats);
 
@@ -40,5 +42,14 @@ void Y_kron_I_vec(int m, int k, int n, const double *Y, const double *w, double 
    len(v) = k * n.  Equivalently, reshape w as the m x n matrix W (col-major) and
    compute v = vec(X^T @ W). */
 void I_kron_XT_vec(int m, int k, int n, const double *X, const double *w, double *v);
+
+/* Fill T_csr's row pointers and column indices for the 1D full-convolution
+   Toeplitz matrix T(a), sized (m+n-1) x n with m*n nonzeros. Values (x) are
+   not written; call conv_matrix_fill_values to populate them. */
+void conv_matrix_fill_sparsity(CSR_Matrix *T_csr, int m, int n);
+
+/* Overwrite T_csr->x from kernel a, using the sparsity already written by
+   conv_matrix_fill_sparsity. T[r, col] = a[r - col]. */
+void conv_matrix_fill_values(CSR_Matrix *T_csr, const double *a);
 
 #endif /* MINI_NUMPY_H */

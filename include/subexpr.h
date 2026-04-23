@@ -148,6 +148,21 @@ typedef struct vector_mult_expr
     expr *param_source;
 } vector_mult_expr;
 
+/* 1D convolution: y = conv(a, child) where a is a length-m kernel held by
+ * param_source. Output has size (m + n - 1) where n is the child length.
+ * Forward and wsum_hess backprop are computed as direct loops; for Jacobian
+ * we materialize T(a) as a CSR once at jacobian_init and reuse the engine's
+ * block-left-mult machinery for composite children. */
+typedef struct convolve_expr
+{
+    expr base;
+    expr *param_source; /* length-m kernel */
+    int m;              /* kernel length */
+    int n;              /* input length */
+    CSR_Matrix *T;      /* (m+n-1) x n convolution matrix */
+    CSC_Matrix *Jchild_CSC;
+} convolve_expr;
+
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
  * may be composite expressions. */
 typedef struct matmul_expr

@@ -276,15 +276,35 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
-    lnode->A = new_dense_matrix(m, n, data);
-    lnode->AT = dense_matrix_trans((const Dense_Matrix *) lnode->A);
-
     /* parameter support */
     lnode->param_source = param_node;
     if (param_node != NULL)
     {
+        if (data != NULL)
+        {
+            fprintf(stderr, "Error in new_left_matmul_dense with ptr convention \n");
+            exit(1);
+        }
+
         expr_retain(param_node);
         lnode->refresh_param_values = refresh_dense_left;
+
+        /* A and AT buffers are filled by refresh_dense_left from the parameter. */
+        lnode->A = new_dense_matrix(m, n, NULL);
+        lnode->AT = new_dense_matrix(n, m, NULL);
+        node->needs_parameter_refresh = true;
+    }
+    /* constant matrix case */
+    else
+    {
+        if (data == NULL)
+        {
+            fprintf(stderr, "Error in new_left_matmul_dense with ptr convention \n");
+            exit(1);
+        }
+
+        lnode->A = new_dense_matrix(m, n, data);
+        lnode->AT = dense_matrix_trans((const Dense_Matrix *) lnode->A);
     }
 
     return node;
