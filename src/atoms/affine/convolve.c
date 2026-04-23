@@ -87,11 +87,9 @@ static void jacobian_init_impl(expr *node)
     conv_matrix_fill_sparsity(cnode->T, m, n);
     conv_matrix_fill_values(cnode->T, a);
 
-    /* J_node = T @ J_child via block_left_mult with n_blocks = 1. */
+    /* J = T @ J_child */
     cnode->Jchild_CSC = csr_to_csc_alloc(child->jacobian, node->work->iwork);
-    cnode->J_CSC =
-        block_left_multiply_fill_sparsity(cnode->T, cnode->Jchild_CSC, 1);
-    node->jacobian = csc_to_csr_alloc(cnode->J_CSC, cnode->csc_to_csr_work);
+    node->jacobian = csr_csc_matmul_alloc(cnode->T, cnode->Jchild_CSC);
 }
 
 static void eval_jacobian(expr *node)
@@ -101,11 +99,9 @@ static void eval_jacobian(expr *node)
 
     child->eval_jacobian(child);
 
-    /* T values have been refreshed by forward() if the kernel changed; here
-       we just need to refresh child's Jacobian and rerun the block matmul. */
+    /* J = T @ J_child */
     csr_to_csc_fill_values(child->jacobian, cnode->Jchild_CSC, node->work->iwork);
-    block_left_multiply_fill_values(cnode->T, cnode->Jchild_CSC, cnode->J_CSC);
-    csc_to_csr_fill_values(cnode->J_CSC, node->jacobian, cnode->csc_to_csr_work);
+    csr_csc_matmul_fill_values(cnode->T, cnode->Jchild_CSC, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -154,8 +150,6 @@ static void free_type_data(expr *node)
     convolve_expr *cnode = (convolve_expr *) node;
     free_csr_matrix(cnode->T);
     free_csc_matrix(cnode->Jchild_CSC);
-    free_csc_matrix(cnode->J_CSC);
-    free(cnode->csc_to_csr_work);
     free_expr(cnode->param_source);
 }
 
@@ -207,7 +201,6 @@ expr *new_convolve(expr *param_node, expr *child)
 
     /* iwork is used for csr_to_csc of child's Jacobian (size n_vars). */
     node->work->iwork = (int *) SP_MALLOC(node->n_vars * sizeof(int));
-    cnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
 
     /* Ensure first forward() pulls current param values through any
        broadcast/promote wrappers and reflects them in T (once T is built). */

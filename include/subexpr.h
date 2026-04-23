@@ -161,8 +161,6 @@ typedef struct convolve_expr
     int n;              /* input length */
     CSR_Matrix *T;      /* (m+n-1) x n convolution matrix */
     CSC_Matrix *Jchild_CSC;
-    CSC_Matrix *J_CSC;
-    int *csc_to_csr_work;
 } convolve_expr;
 
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
