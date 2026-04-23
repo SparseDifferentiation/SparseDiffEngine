@@ -269,9 +269,7 @@ const char *test_const_hstack_left_matmul(void)
     expr *p2 = new_parameter(1, n, PARAM_FIXED, 2 * n, p2_vals);
     expr *param_nodes[2] = {p1, p2};
     expr *p_hstack = new_hstack(param_nodes, 2, 2 * n);
-    /* pass concatenated parameter vectors */
-    double A_data[8] = {1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 5.0, 6.0};
-    expr *objective = new_left_matmul_dense(p_hstack, x, 1, 2 * n, A_data);
+    expr *objective = new_left_matmul_dense(p_hstack, x, 1, 2 * n, NULL);
     problem *prob = new_problem(objective, NULL, 0, false);
 
     problem_init_derivatives(prob);
@@ -304,9 +302,7 @@ const char *test_param_hstack_left_matmul(void)
     expr *p2 = new_parameter(1, n, n, 2 * n, p2_vals);
     expr *param_nodes[2] = {p1, p2};
     expr *p_hstack = new_hstack(param_nodes, 2, 2 * n);
-    /* pass concatenated parameter vectors */
-    double A_data[8] = {1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 5.0, 6.0};
-    expr *objective = new_left_matmul_dense(p_hstack, x, 1, 2 * n, A_data);
+    expr *objective = new_left_matmul_dense(p_hstack, x, 1, 2 * n, NULL);
     problem *prob = new_problem(objective, NULL, 0, false);
 
     problem_register_params(prob, param_nodes, 2);

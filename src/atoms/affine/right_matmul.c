@@ -82,24 +82,32 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
                              const double *data)
 {
-    /* We express: u @ A = (A^T @ u^T)^T. A is m x n, so A^T is n x m. */
-    double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
-    A_transpose(AT, data, m, n);
-
-    expr *u_transpose = new_transpose(u);
-    expr *left_matmul_node = new_left_matmul_dense(NULL, u_transpose, n, m, AT);
-
-    /* If parameterized, attach param_source and custom refresh */
-    if (param_node != NULL)
+    if ((param_node != NULL && data != NULL) || (param_node == NULL && data == NULL))
     {
-        left_matmul_expr *lnode = (left_matmul_expr *) left_matmul_node;
-        lnode->param_source = param_node;
-        expr_retain(param_node);
-        lnode->refresh_param_values = refresh_dense_right;
+        fprintf(stderr, "Error in new_right_matmul_dense with ptr convention \n");
+        exit(1);
     }
 
-    expr *node = new_transpose(left_matmul_node);
+    /* We express: u @ A = (A^T @ u^T)^T. A is m x n, so A^T is n x m. */
+    expr *u_transpose = new_transpose(u);
+    expr *left_matmul_node;
 
-    free(AT);
-    return node;
+    if (param_node != NULL)
+    {
+        left_matmul_node =
+            new_left_matmul_dense(param_node, u_transpose, n, m, NULL);
+        left_matmul_expr *lnode = (left_matmul_expr *) left_matmul_node;
+
+        /* swap the refresh function */
+        lnode->refresh_param_values = refresh_dense_right;
+    }
+    else
+    {
+        double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
+        A_transpose(AT, data, m, n);
+        left_matmul_node = new_left_matmul_dense(NULL, u_transpose, n, m, AT);
+        free(AT);
+    }
+
+    return new_transpose(left_matmul_node);
 }
