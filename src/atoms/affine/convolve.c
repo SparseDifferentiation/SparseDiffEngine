@@ -28,15 +28,8 @@
 /* 1D full convolution: y = conv(a, child), where a is a length-m kernel
  * held by param_source and child is a length-n vector. Output length is
  * m + n - 1. In matrix form, y = T(a) @ child, where T(a) is the
- * (m+n-1) x n Toeplitz matrix with T(a)[k, j] = a[k-j] when 0 <= k-j < m.
- *
- * Forward and Hessian backprop (w' = T(a)^T w) are direct loops, avoiding
- * CSR traversal and AT materialization. Jacobian values go through the
- * existing block-left-mult path so composite children work correctly.
- *
- * When param_source is updatable, forward() refreshes T(a)'s CSR values
- * from the new kernel before running the convolution. The sparsity of
- * T(a) is kernel-independent (staircase), so only values are rewritten. */
+ * (m+n-1) x n Toeplitz/convolution matrix with T(a)[k, j] = a[k-j] when
+ * 0 <= k-j < m. */
 
 static void forward(expr *node, const double *u)
 {
@@ -118,17 +111,14 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *child = node->left;
     convolve_expr *cnode = (convolve_expr *) node;
-    int m = cnode->m;
-    int n = cnode->n;
     const double *a = cnode->param_source->value;
     double *w_prime = node->work->dwork;
 
-    /* w' = T(a)^T w. T(a)^T[j, k] = a[k-j] for j <= k < j+m, so
-       w'[j] = sum_{i=0..m-1} a[i] * w[i + j]. */
-    for (int j = 0; j < n; j++)
+    /* w' = conv_matrix.T w, so w'[j] = sum_{i=0..m-1} a[i] * w[i + j]. */
+    for (int j = 0; j < cnode->n; j++)
     {
         double sum = 0.0;
-        for (int i = 0; i < m; i++)
+        for (int i = 0; i < cnode->m; i++)
         {
             sum += a[i] * w[i + j];
         }
@@ -160,18 +150,18 @@ expr *new_convolve(expr *param_node, expr *child)
        is shape-agnostic (flat buffers of size m + n - 1). Output shape
        matches the input orientation. */
     int m = param_node->size;
-    int n, out_d1, out_d2;
+    int n, d1, d2;
     if (child->d2 == 1)
     {
         n = child->d1;
-        out_d1 = m + n - 1;
-        out_d2 = 1;
+        d1 = m + n - 1;
+        d2 = 1;
     }
     else if (child->d1 == 1)
     {
         n = child->d2;
-        out_d1 = 1;
-        out_d2 = m + n - 1;
+        d1 = 1;
+        d2 = m + n - 1;
     }
     else
     {
@@ -180,15 +170,9 @@ expr *new_convolve(expr *param_node, expr *child)
         exit(1);
     }
 
-    if (m < 1 || n < 1)
-    {
-        fprintf(stderr, "Error in new_convolve: m and n must be >= 1\n");
-        exit(1);
-    }
-
     convolve_expr *cnode = (convolve_expr *) SP_CALLOC(1, sizeof(convolve_expr));
     expr *node = &cnode->base;
-    init_expr(node, out_d1, out_d2, child->n_vars, forward, jacobian_init_impl,
+    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
               free_type_data);
     node->left = child;
