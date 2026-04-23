@@ -294,7 +294,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
         lnode->AT = new_dense_matrix(n, m, NULL);
         node->needs_parameter_refresh = true;
     }
-    /* constant matrix and param_source should be null */
+    /* constant matrix case */
     else
     {
         if (data == NULL)

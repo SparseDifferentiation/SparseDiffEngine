@@ -18,7 +18,8 @@
 #include "atoms/affine.h"
 #include "subexpr.h"
 #include "utils/CSR_Matrix.h"
-#include "utils/matrix.h"
+#include "utils/linalg_sparse_matmuls.h"
+#include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,45 +38,6 @@
  * from the new kernel before running the convolution. The sparsity of
  * T(a) is kernel-independent (staircase), so only values are rewritten. */
 
-/* Fill T(a)'s CSR row pointers, column indices, and values from kernel a.
-   Row r holds T[r, col] = a[r - col] for col in
-   [max(0, r-m+1), min(n-1, r)]. */
-static void build_toeplitz(CSR_Matrix *T_csr, const double *a, int m, int n)
-{
-    int out_rows = m + n - 1;
-    int nnz = 0;
-    for (int r = 0; r < out_rows; r++)
-    {
-        T_csr->p[r] = nnz;
-        int col_lo = r - m + 1 > 0 ? r - m + 1 : 0;
-        int col_hi = r < n - 1 ? r : n - 1;
-        for (int col = col_lo; col <= col_hi; col++)
-        {
-            T_csr->i[nnz] = col;
-            T_csr->x[nnz] = a[r - col];
-            nnz++;
-        }
-    }
-    T_csr->p[out_rows] = nnz;
-}
-
-/* Values-only refresh analogous to refresh_dense_left in left_matmul.c:
-   sparsity is kernel-independent so p/i stay intact; we just walk the
-   existing CSR entries and overwrite x from the current kernel. */
-static void refresh_toeplitz_values(convolve_expr *cnode)
-{
-    CSR_Matrix *T_csr = ((Sparse_Matrix *) cnode->T)->csr;
-    const double *a = cnode->param_source->value;
-    int out_rows = cnode->m + cnode->n - 1;
-    for (int r = 0; r < out_rows; r++)
-    {
-        for (int k = T_csr->p[r]; k < T_csr->p[r + 1]; k++)
-        {
-            T_csr->x[k] = a[r - T_csr->i[k]];
-        }
-    }
-}
-
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
@@ -84,12 +46,12 @@ static void forward(expr *node, const double *u)
     if (cnode->base.needs_parameter_refresh)
     {
         cnode->param_source->forward(cnode->param_source, NULL);
-        /* T is NULL until jacobian_init_impl runs; forward can be called
-           first in standalone tests, in which case T is built later from
-           the already-refreshed param values. */
+        /* refresh the convolution matrix values if it exists (necessary to check
+           for null in case someone calls forward before initializing the jacobian,
+           which might happen when we expose Python bindings to SparseDiffEngine) */
         if (cnode->T != NULL)
         {
-            refresh_toeplitz_values(cnode);
+            conv_matrix_fill_values(cnode->T, cnode->param_source->value);
         }
         cnode->base.needs_parameter_refresh = false;
     }
@@ -99,13 +61,11 @@ static void forward(expr *node, const double *u)
     const double *a = cnode->param_source->value;
     const double *x = child->value;
     double *y = node->value;
-    int m = cnode->m;
-    int n = cnode->n;
 
     memset(y, 0, node->size * sizeof(double));
-    for (int j = 0; j < n; j++)
+    for (int j = 0; j < cnode->n; j++)
     {
-        for (int i = 0; i < m; i++)
+        for (int i = 0; i < cnode->m; i++)
         {
             y[i + j] += a[i] * x[j];
         }
@@ -122,19 +82,15 @@ static void jacobian_init_impl(expr *node)
 
     jacobian_init(child);
 
-    /* Build T(a) as CSR: (m+n-1) x n, m*n nonzeros, staircase pattern. */
-    int out_rows = m + n - 1;
-    CSR_Matrix *T_csr = new_csr_matrix(out_rows, n, m * n);
-    build_toeplitz(T_csr, a, m, n);
+    /* Build convolution matrix of size (m+n-1) x n with m*n nonzeros */
+    cnode->T = new_csr_matrix(m + n - 1, n, m * n);
+    conv_matrix_fill_sparsity(cnode->T, m, n);
+    conv_matrix_fill_values(cnode->T, a);
 
-    cnode->T = new_sparse_matrix(T_csr);
-    free_csr_matrix(T_csr);
-
-    /* Reuse left_matmul's sparsity precompute: J_node = T @ J_child via
-       block_left_mult with n_blocks = 1. */
+    /* J_node = T @ J_child via block_left_mult with n_blocks = 1. */
     cnode->Jchild_CSC = csr_to_csc_alloc(child->jacobian, node->work->iwork);
     cnode->J_CSC =
-        cnode->T->block_left_mult_sparsity(cnode->T, cnode->Jchild_CSC, 1);
+        block_left_multiply_fill_sparsity(cnode->T, cnode->Jchild_CSC, 1);
     node->jacobian = csc_to_csr_alloc(cnode->J_CSC, cnode->csc_to_csr_work);
 }
 
@@ -148,7 +104,7 @@ static void eval_jacobian(expr *node)
     /* T values have been refreshed by forward() if the kernel changed; here
        we just need to refresh child's Jacobian and rerun the block matmul. */
     csr_to_csc_fill_values(child->jacobian, cnode->Jchild_CSC, node->work->iwork);
-    cnode->T->block_left_mult_values(cnode->T, cnode->Jchild_CSC, cnode->J_CSC);
+    block_left_multiply_fill_values(cnode->T, cnode->Jchild_CSC, cnode->J_CSC);
     csc_to_csr_fill_values(cnode->J_CSC, node->jacobian, cnode->csc_to_csr_work);
 }
 
@@ -196,7 +152,7 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     convolve_expr *cnode = (convolve_expr *) node;
-    free_matrix(cnode->T);
+    free_csr_matrix(cnode->T);
     free_csc_matrix(cnode->Jchild_CSC);
     free_csc_matrix(cnode->J_CSC);
     free(cnode->csc_to_csr_work);
