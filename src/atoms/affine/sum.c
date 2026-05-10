@@ -162,8 +162,10 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     x->eval_wsum_hess(x, node->work->dwork);
 
-    /* copy values */
-    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->nnz * sizeof(double));
+    /* copy values via polymorphic update_values so PD-backed wsum_hess writes
+       reach the underlying X rather than just the lazy CSR cache. */
+    node->wsum_hess->update_values(node->wsum_hess,
+                                   x->wsum_hess->to_csr(x->wsum_hess)->x);
 }
 
 static bool is_affine(const expr *node)

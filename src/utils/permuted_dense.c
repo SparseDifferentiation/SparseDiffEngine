@@ -41,6 +41,43 @@ static void permuted_dense_refresh_csc_values(Matrix *self)
     (void) self;
 }
 
+/* Replace pd->X with new_values (dense_m * dense_n doubles, row-major). Same
+   layout as the CSR view's value array (see permuted_dense_to_csr_alloc), so
+   callers that have a CSR view's x can pass it here. */
+static void permuted_dense_vtable_update_values(Matrix *self,
+                                                const double *new_values)
+{
+    Permuted_Dense *pd = (Permuted_Dense *) self;
+    memcpy(pd->X, new_values, pd->dense_m * pd->dense_n * sizeof(double));
+}
+
+/* Vtable adapters — each delegates to the existing permuted_dense_* kernel. */
+static Matrix *permuted_dense_vtable_copy_sparsity(const Matrix *self)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    return new_permuted_dense(pd->base.m, pd->base.n, pd->dense_m, pd->dense_n,
+                              pd->row_perm, pd->col_perm, NULL);
+}
+
+static void permuted_dense_vtable_DA_fill_values(const double *d,
+                                                 const Matrix *self, Matrix *out)
+{
+    permuted_dense_DA_fill_values(d, (const Permuted_Dense *) self,
+                                  (Permuted_Dense *) out);
+}
+
+static Matrix *permuted_dense_vtable_ATA_alloc(Matrix *self)
+{
+    return permuted_dense_ATA_alloc((const Permuted_Dense *) self);
+}
+
+static void permuted_dense_vtable_ATDA_fill_values(const Matrix *self,
+                                                   const double *d, Matrix *out)
+{
+    permuted_dense_ATDA_fill_values((const Permuted_Dense *) self, d,
+                                    (Permuted_Dense *) out);
+}
+
 /* Lazy CSR view: allocate structure on first call, refill values on every call.
    This means the returned CSR's values always reflect the current X.
 
@@ -86,12 +123,14 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     Permuted_Dense *pd = (Permuted_Dense *) SP_CALLOC(1, sizeof(Permuted_Dense));
     pd->base.m = m;
     pd->base.n = n;
+    pd->base.update_values = permuted_dense_vtable_update_values;
+    pd->base.copy_sparsity = permuted_dense_vtable_copy_sparsity;
+    pd->base.DA_fill_values = permuted_dense_vtable_DA_fill_values;
+    pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;
+    pd->base.ATDA_fill_values = permuted_dense_vtable_ATDA_fill_values;
     pd->base.to_csr = permuted_dense_to_csr;
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
     pd->base.free_fn = permuted_dense_free;
-    /* Other vtable slots (copy_sparsity, DA_fill_values, ATA_alloc,
-       ATDA_fill_values) are wired up in a later step when permuted_dense
-       actually starts appearing as a node->jacobian. */
 
     pd->dense_m = dense_m;
     pd->dense_n = dense_n;

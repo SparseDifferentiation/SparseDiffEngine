@@ -109,7 +109,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     x->eval_wsum_hess(x, node->work->dwork);
 
     /* copy values from child to this node */
-    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->nnz * sizeof(double));
+    node->wsum_hess->update_values(node->wsum_hess, x->wsum_hess->to_csr(x->wsum_hess)->x);
 }
 
 static void free_type_data(expr *node)

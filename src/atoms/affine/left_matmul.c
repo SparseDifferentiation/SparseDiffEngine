@@ -18,6 +18,7 @@
 #include "atoms/affine.h"
 #include "subexpr.h"
 #include "utils/dense_matrix.h"
+#include "utils/permuted_dense.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -113,9 +114,30 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
     left_matmul_expr *lnode = (left_matmul_expr *) node;
 
-    /* initialize child's jacobian and precompute sparsity of its CSC */
+    /* initialize child's jacobian */
     jacobian_init(x);
-    lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
+
+    /* Fast path: A is a constant Dense_Matrix, child is a leaf variable, and
+       there are no Kronecker blocks. The Jacobian is A placed at the variable's
+       column slot — a full-dense Permuted_Dense. Skip the CSC mirror entirely. */
+    if (lnode->produce_pd_jacobian)
+    {
+        int m_loc = lnode->A->m;
+        int *row_perm = (int *) SP_MALLOC(m_loc * sizeof(int));
+        int *col_perm = (int *) SP_MALLOC(lnode->A->n * sizeof(int));
+        for (int i = 0; i < m_loc; i++) row_perm[i] = i;
+        for (int j = 0; j < lnode->A->n; j++) col_perm[j] = x->var_id + j;
+        Dense_Matrix *dm = (Dense_Matrix *) lnode->A;
+        node->jacobian = new_permuted_dense(m_loc, node->n_vars, m_loc,
+                                            lnode->A->n, row_perm, col_perm, dm->x);
+        free(row_perm);
+        free(col_perm);
+        return;
+    }
+
+    /* General path via CSC mirror. */
+    lnode->Jchild_CSC =
+        csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
@@ -128,6 +150,9 @@ static void eval_jacobian(expr *node)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     expr *x = node->left;
+
+    /* Fast path: PD Jacobian backed by constant A. Values never change. */
+    if (lnode->produce_pd_jacobian) return;
 
     CSC_Matrix *Jchild_CSC = lnode->Jchild_CSC;
     CSC_Matrix *J_CSC = lnode->J_CSC;
@@ -166,8 +191,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
 
     node->left->eval_wsum_hess(node->left, node->work->dwork);
-    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, node->left->wsum_hess->to_csr(node->left->wsum_hess)->x,
-           node->wsum_hess->to_csr(node->wsum_hess)->nnz * sizeof(double));
+    node->wsum_hess->update_values(node->wsum_hess, node->left->wsum_hess->to_csr(node->left->wsum_hess)->x);
 }
 
 static void refresh_dense_left(left_matmul_expr *lnode)
@@ -309,6 +333,14 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
 
         lnode->A = new_dense_matrix(m, n, data);
         lnode->AT = dense_matrix_trans((const Dense_Matrix *) lnode->A);
+
+        /* If the child is a leaf variable and there are no blocks, the Jacobian
+           is exactly A placed in the variable's column slot — a full-dense
+           Permuted_Dense. Enable the fast path. */
+        if (u->var_id != NOT_A_VARIABLE && n_blocks == 1)
+        {
+            lnode->produce_pd_jacobian = true;
+        }
     }
 
     return node;

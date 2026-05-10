@@ -119,26 +119,31 @@ const char *profile_log_reg(void)
            (sec_a_jac + sec_a_hess) / (sec_b_jac + sec_b_hess));
 
     /* ---- Compare Jacobian (1 x n, both have full sparsity) ---- */
-    mu_assert("J n mismatch", obj->jacobian->to_csr(obj->jacobian)->n == Jobj_csr->n);
-    mu_assert("J nnz mismatch", obj->jacobian->to_csr(obj->jacobian)->nnz == Jobj_csr->nnz);
+    CSR_Matrix *J_a = obj->jacobian->to_csr(obj->jacobian);
+    mu_assert("J n mismatch", J_a->n == Jobj_csr->n);
+    mu_assert("J nnz mismatch", J_a->nnz == Jobj_csr->nnz);
     double max_J_diff = 0.0;
-    for (int j = 0; j < obj->jacobian->to_csr(obj->jacobian)->nnz; j++)
+    for (int j = 0; j < J_a->nnz; j++)
     {
-        double diff = fabs(obj->jacobian->to_csr(obj->jacobian)->x[j] - Jobj_csr->x[j]);
+        double diff = fabs(J_a->x[j] - Jobj_csr->x[j]);
         if (diff > max_J_diff) max_J_diff = diff;
     }
     printf("  Jacobian max abs diff:   %10.3e\n", max_J_diff);
     mu_assert("Jacobian mismatch", max_J_diff < 1e-10);
 
     /* ---- Compare Hessian (n x n): scatter Path A's CSR into a dense
-       n x n array, compare to H_pd->X (already dense row-major). ---- */
+       n x n array, compare to H_pd->X (already dense row-major).
+       Extract the CSR view ONCE: PD's to_csr does an O(dense_m * dense_n)
+       memcpy refresh per call, so calling it inside the inner loop is
+       quadratically expensive. ---- */
+    CSR_Matrix *H_a = obj->wsum_hess->to_csr(obj->wsum_hess);
     double *H_a_dense = (double *) calloc((size_t) n * n, sizeof(double));
     for (int i = 0; i < n; i++)
     {
-        for (int e = obj->wsum_hess->to_csr(obj->wsum_hess)->p[i]; e < obj->wsum_hess->to_csr(obj->wsum_hess)->p[i + 1]; e++)
+        for (int e = H_a->p[i]; e < H_a->p[i + 1]; e++)
         {
-            int col = obj->wsum_hess->to_csr(obj->wsum_hess)->i[e];
-            H_a_dense[i * n + col] = obj->wsum_hess->to_csr(obj->wsum_hess)->x[e];
+            int col = H_a->i[e];
+            H_a_dense[i * n + col] = H_a->x[e];
         }
     }
     double max_H_diff = 0.0;

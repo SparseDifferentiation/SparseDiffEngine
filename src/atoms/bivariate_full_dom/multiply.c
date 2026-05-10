@@ -192,8 +192,12 @@ static void eval_wsum_hess(expr *node, const double *w)
     if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
         x->var_id != y->var_id)
     {
-        memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, w, node->size * sizeof(double));
-        memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x + node->size, w, node->size * sizeof(double));
+        /* node->wsum_hess is Sparse_Matrix (built explicitly above), so the CSR
+           view aliases its storage. Two contiguous halves [w; w] of length
+           node->size each, matching the (var1, var2) and (var2, var1) blocks. */
+        CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+        memcpy(H->x, w, node->size * sizeof(double));
+        memcpy(H->x + node->size, w, node->size * sizeof(double));
     }
     else
     {

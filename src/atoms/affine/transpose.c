@@ -117,8 +117,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->left->eval_wsum_hess(node->left, node->work->dwork);
 
     /* copy to this node's hessian */
-    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, node->left->wsum_hess->to_csr(node->left->wsum_hess)->x,
-           node->wsum_hess->to_csr(node->wsum_hess)->nnz * sizeof(double));
+    node->wsum_hess->update_values(node->wsum_hess, node->left->wsum_hess->to_csr(node->left->wsum_hess)->x);
 }
 
 static bool is_affine(const expr *node)
