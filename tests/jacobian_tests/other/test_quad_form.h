@@ -31,9 +31,9 @@ const char *test_quad_form(void)
     int expected_Ap[2] = {0, 3};
     int expected_Ai[3] = {2, 3, 4};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 3));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->p, expected_Ap, 2));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->i, expected_Ai, 3));
+    mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_Ax, 3));
+    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
+    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 3));
     free_expr(node);
     free_csr_matrix(Q);
     return 0;
@@ -77,9 +77,9 @@ double expected_Ax[5] = {422, 2222, 3244, 3786, 120};
 int expected_Ap[2] = {0, 5};
 int expected_Ai[5] = {0, 2, 3, 4, 5};
 
-mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 5));
-mu_assert("rows fail", cmp_int_array(node->jacobian->p, expected_Ap, 2));
-mu_assert("cols fail", cmp_int_array(node->jacobian->i, expected_Ai, 5));
+mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_Ax, 5));
+mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
+mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 5));
 free_expr(node);
 free_expr(Au);
 free_csr_matrix(Q);

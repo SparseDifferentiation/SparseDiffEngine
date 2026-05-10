@@ -76,7 +76,7 @@ int check_jacobian_num(expr *node, const double *u, double h)
     node->forward(node, u);
 
     double *J_analytical = calloc((size_t) m * n, sizeof(double));
-    csr_to_dense(node->jacobian, J_analytical);
+    csr_to_dense(node->jacobian->to_csr(node->jacobian), J_analytical);
 
     int result = 1;
     for (int i = 0; i < m * n; i++)
@@ -134,14 +134,14 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
         node->forward(node, u_work);
         node->eval_jacobian(node);
         memset(g_plus, 0, n * sizeof(double));
-        csr_transpose_mult_vec(node->jacobian, w, g_plus);
+        csr_transpose_mult_vec(node->jacobian->to_csr(node->jacobian), w, g_plus);
 
         /* g(u - h*e_j) */
         u_work[j] = u[j] - h;
         node->forward(node, u_work);
         node->eval_jacobian(node);
         memset(g_minus, 0, n * sizeof(double));
-        csr_transpose_mult_vec(node->jacobian, w, g_minus);
+        csr_transpose_mult_vec(node->jacobian->to_csr(node->jacobian), w, g_minus);
 
         u_work[j] = u[j];
 

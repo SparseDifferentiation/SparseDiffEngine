@@ -20,6 +20,7 @@
 
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/matrix.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
@@ -70,7 +71,7 @@ typedef struct expr
     //                     oracle related quantities
     // ------------------------------------------------------------------------
     double *value;
-    CSR_Matrix *jacobian;
+    Matrix *jacobian;
     CSR_Matrix *wsum_hess;
     forward_fn forward;
     jacobian_init_fn jacobian_init_impl;

@@ -53,20 +53,19 @@ static void jacobian_init_impl(expr *node)
     {
         assert(hnode->args[i] != NULL);
         jacobian_init(hnode->args[i]);
-        nnz += hnode->args[i]->jacobian->nnz;
+        nnz += hnode->args[i]->jacobian->to_csr(hnode->args[i]->jacobian)->nnz;
     }
 
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
+    CSR_Matrix *A = new_csr_matrix(node->size, node->n_vars, nnz);
 
     /* precompute sparsity pattern of this node's jacobian */
     int row_offset = 0;
-    CSR_Matrix *A = node->jacobian;
     A->nnz = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
-        CSR_Matrix *B = child->jacobian;
+        CSR_Matrix *B = child->jacobian->to_csr(child->jacobian);
 
         /* copy columns */
         memcpy(A->i + A->nnz, B->i, B->nnz * sizeof(int));
@@ -81,23 +80,24 @@ static void jacobian_init_impl(expr *node)
         row_offset += child->size;
     }
     A->p[node->size] = A->nnz;
+    node->jacobian = new_sparse_matrix(A);
 }
 
 static void eval_jacobian(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    CSR_Matrix *A = node->jacobian;
+    CSR_Matrix *A = node->jacobian->to_csr(node->jacobian);
     A->nnz = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
         child->eval_jacobian(child);
+        CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
 
         /* copy values */
-        memcpy(A->x + A->nnz, child->jacobian->x,
-               child->jacobian->nnz * sizeof(double));
-        A->nnz += child->jacobian->nnz;
+        memcpy(A->x + A->nnz, Jc->x, Jc->nnz * sizeof(double));
+        A->nnz += Jc->nnz;
     }
 }
 

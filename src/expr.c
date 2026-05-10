@@ -52,7 +52,7 @@ void jacobian_csc_init(expr *node)
     }
     node->work->csc_work = (int *) SP_MALLOC(node->n_vars * sizeof(int));
     node->work->jacobian_csc =
-        csr_to_csc_alloc(node->jacobian, node->work->csc_work);
+        csr_to_csc_alloc(node->jacobian->to_csr(node->jacobian), node->work->csc_work);
 }
 
 void free_expr(expr *node)
@@ -76,7 +76,7 @@ void free_expr(expr *node)
 
     /* free value array and derivative matrices */
     free(node->value);
-    free_csr_matrix(node->jacobian);
+    free_matrix(node->jacobian);
     free_csr_matrix(node->wsum_hess);
 
     /* free workspace */

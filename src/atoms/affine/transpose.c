@@ -45,11 +45,10 @@ static void jacobian_init_impl(expr *node)
 {
     expr *child = node->left;
     jacobian_init(child);
-    CSR_Matrix *Jc = child->jacobian;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, Jc->nnz);
+    CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
+    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jc->nnz);
 
     /* fill sparsity */
-    CSR_Matrix *J = node->jacobian;
     int d1 = node->d1;
     int d2 = node->d2;
     int nnz = 0;
@@ -65,14 +64,16 @@ static void jacobian_init_impl(expr *node)
         nnz += len;
         J->p[row + 1] = nnz;
     }
+
+    node->jacobian = new_sparse_matrix(J);
 }
 
 static void eval_jacobian(expr *node)
 {
     expr *child = node->left;
     child->eval_jacobian(child);
-    CSR_Matrix *Jc = child->jacobian;
-    CSR_Matrix *J = node->jacobian;
+    CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
+    CSR_Matrix *J = node->jacobian->to_csr(node->jacobian);
 
     int d1 = node->d1;
     int d2 = node->d2;

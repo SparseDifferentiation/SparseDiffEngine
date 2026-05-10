@@ -71,13 +71,14 @@ static void jacobian_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
-        node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = x->size;
+        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
+        jac->p[0] = 0;
+        jac->p[1] = x->size;
         for (int j = 0; j < x->size; j++)
         {
-            node->jacobian->i[j] = x->var_id + j;
+            jac->i[j] = x->var_id + j;
         }
+        node->jacobian = new_sparse_matrix(jac);
     }
     else
     {
@@ -96,21 +97,22 @@ static void eval_jacobian(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
+        double *jx = node->jacobian->to_csr(node->jacobian)->x;
         if (num_of_zeros == 0)
         {
             for (int j = 0; j < x->size; j++)
             {
-                node->jacobian->x[j] = node->value[0] / x->value[j];
+                jx[j] = node->value[0] / x->value[j];
             }
         }
         else if (num_of_zeros == 1)
         {
-            memset(node->jacobian->x, 0, sizeof(double) * x->size);
-            node->jacobian->x[pnode->zero_index] = pnode->prod_nonzero;
+            memset(jx, 0, sizeof(double) * x->size);
+            jx[pnode->zero_index] = pnode->prod_nonzero;
         }
         else
         {
-            memset(node->jacobian->x, 0, sizeof(double) * x->size);
+            memset(jx, 0, sizeof(double) * x->size);
         }
     }
     else

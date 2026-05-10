@@ -115,12 +115,13 @@ static void jacobian_init_impl(expr *node)
 
     /* initialize child's jacobian and precompute sparsity of its CSC */
     jacobian_init(x);
-    lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian, node->work->iwork);
+    lnode->Jchild_CSC = csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
 
     /* precompute sparsity of this node's jacobian in CSC and CSR */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
                                                       lnode->n_blocks);
-    node->jacobian = csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work);
+    node->jacobian =
+        new_sparse_matrix(csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work));
 }
 
 static void eval_jacobian(expr *node)
@@ -133,11 +134,11 @@ static void eval_jacobian(expr *node)
 
     /* evaluate child's jacobian and convert to CSC */
     x->eval_jacobian(x);
-    csr_to_csc_fill_values(x->jacobian, Jchild_CSC, node->work->iwork);
+    csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jchild_CSC, node->work->iwork);
 
     /* compute this node's jacobian: */
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
-    csc_to_csr_fill_values(J_CSC, node->jacobian, lnode->csc_to_csr_work);
+    csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian), lnode->csc_to_csr_work);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -225,8 +226,8 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
     lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
-    /* store A and AT */
-    lnode->A = new_sparse_matrix(A);
+    /* store A and AT. new_sparse_matrix takes ownership, so clone first. */
+    lnode->A = new_sparse_matrix(new_csr(A));
     lnode->AT =
         sparse_matrix_trans((const Sparse_Matrix *) lnode->A, node->work->iwork);
 

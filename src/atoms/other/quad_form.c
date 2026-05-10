@@ -51,14 +51,15 @@ static void jacobian_init_impl(expr *node)
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(1, node->n_vars, x->size);
-        node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = x->size;
+        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
+        jac->p[0] = 0;
+        jac->p[1] = x->size;
 
         for (int j = 0; j < x->size; j++)
         {
-            node->jacobian->i[j] = x->var_id + j;
+            jac->i[j] = x->var_id + j;
         }
+        node->jacobian = new_sparse_matrix(jac);
     }
     else
     {
@@ -69,9 +70,9 @@ static void jacobian_init_impl(expr *node)
 
         /* allocate the right number of nnz */
         int nnz = count_nonzero_cols_csc(J_csc);
-        node->jacobian = new_csr_matrix(1, node->n_vars, nnz);
-        node->jacobian->p[0] = 0;
-        node->jacobian->p[1] = nnz;
+        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, nnz);
+        jac->p[0] = 0;
+        jac->p[1] = nnz;
 
         /* fill sparsity pattern */
         int idx = 0;
@@ -79,9 +80,10 @@ static void jacobian_init_impl(expr *node)
         {
             if (J_csc->p[j + 1] > J_csc->p[j])
             {
-                node->jacobian->i[idx++] = j;
+                jac->i[idx++] = j;
             }
         }
+        node->jacobian = new_sparse_matrix(jac);
     }
 }
 
@@ -89,12 +91,13 @@ static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
     CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     if (x->var_id != NOT_A_VARIABLE)
     {
         /* jacobian = 2 * (Q @ x)^T */
-        Ax_csr(Q, x->value, node->jacobian->x, 0);
-        cblas_dscal(x->size, 2.0, node->jacobian->x, 1);
+        Ax_csr(Q, x->value, jac->x, 0);
+        cblas_dscal(x->size, 2.0, jac->x, 1);
     }
     else
     {
@@ -103,7 +106,7 @@ static void eval_jacobian(expr *node)
 
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), x->work->jacobian_csc,
                                    x->work->csc_work);
 
             if (x->is_affine(x))
@@ -114,9 +117,9 @@ static void eval_jacobian(expr *node)
 
         /* The jacobian has same values as the gradient, which is
            J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
-        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, node->jacobian);
+        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, jac);
 
-        cblas_dscal(node->jacobian->nnz, 2.0, node->jacobian->x, 1);
+        cblas_dscal(jac->nnz, 2.0, jac->x, 1);
     }
 }
 
@@ -195,7 +198,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSC_Matrix *Jf = x->work->jacobian_csc;
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian, Jf, x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jf, x->work->csc_work);
 
             if (x->is_affine(x))
             {

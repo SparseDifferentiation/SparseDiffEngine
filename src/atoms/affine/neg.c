@@ -40,7 +40,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     /* same sparsity pattern as child */
-    node->jacobian = new_csr_copy_sparsity(x->jacobian);
+    node->jacobian = new_sparse_matrix(new_csr_copy_sparsity(x->jacobian->to_csr(x->jacobian)));
 }
 
 static void eval_jacobian(expr *node)
@@ -49,10 +49,11 @@ static void eval_jacobian(expr *node)
     node->left->eval_jacobian(node->left);
 
     /* negate values only (sparsity pattern set in jacobian_init_impl) */
-    CSR_Matrix *child_jac = node->left->jacobian;
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    CSR_Matrix *child_jac = node->left->jacobian->to_csr(node->left->jacobian);
     for (int k = 0; k < child_jac->nnz; k++)
     {
-        node->jacobian->x[k] = -child_jac->x[k];
+        jac->x[k] = -child_jac->x[k];
     }
 }
 

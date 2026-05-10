@@ -56,9 +56,9 @@ const char *test_index_jacobian_of_variable(void)
     int expected_p[3] = {0, 1, 2}; /* CSR row ptrs */
     int expected_i[2] = {0, 2};    /* column indices */
 
-    mu_assert("index jac vals", cmp_double_array(idx->jacobian->x, expected_x, 2));
-    mu_assert("index jac p", cmp_int_array(idx->jacobian->p, expected_p, 3));
-    mu_assert("index jac i", cmp_int_array(idx->jacobian->i, expected_i, 2));
+    mu_assert("index jac vals", cmp_double_array(idx->jacobian->to_csr(idx->jacobian)->x, expected_x, 2));
+    mu_assert("index jac p", cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->p, expected_p, 3));
+    mu_assert("index jac i", cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->i, expected_i, 2));
 
     free_expr(idx);
     return 0;
@@ -83,9 +83,9 @@ const char *test_index_jacobian_of_log(void)
     int expected_i[2] = {0, 2};
 
     mu_assert("index of log jac vals",
-              cmp_double_array(idx->jacobian->x, expected_x, 2));
+              cmp_double_array(idx->jacobian->to_csr(idx->jacobian)->x, expected_x, 2));
     mu_assert("index of log jac cols",
-              cmp_int_array(idx->jacobian->i, expected_i, 2));
+              cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->i, expected_i, 2));
 
     free_expr(idx);
     return 0;
@@ -108,11 +108,11 @@ const char *test_index_jacobian_repeated(void)
     int expected_i[2] = {0, 0}; /* Both reference col 0 */
 
     mu_assert("index repeated jac vals",
-              cmp_double_array(idx->jacobian->x, expected_x, 2));
+              cmp_double_array(idx->jacobian->to_csr(idx->jacobian)->x, expected_x, 2));
     mu_assert("index repeated row ptr",
-              cmp_int_array(idx->jacobian->p, expected_p, 3));
+              cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->p, expected_p, 3));
     mu_assert("index repeated jac i",
-              cmp_int_array(idx->jacobian->i, expected_i, 2));
+              cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->i, expected_i, 2));
 
     free_expr(idx);
     return 0;
@@ -137,8 +137,8 @@ const char *test_sum_of_index(void)
     double expected_x[2] = {1.0, 1.0};
     int expected_i[2] = {0, 2};
 
-    mu_assert("sum of index vals", cmp_double_array(s->jacobian->x, expected_x, 2));
-    mu_assert("sum of index cols", cmp_int_array(s->jacobian->i, expected_i, 2));
+    mu_assert("sum of index vals", cmp_double_array(s->jacobian->to_csr(s->jacobian)->x, expected_x, 2));
+    mu_assert("sum of index cols", cmp_int_array(s->jacobian->to_csr(s->jacobian)->i, expected_i, 2));
 
     free_expr(s);
     return 0;

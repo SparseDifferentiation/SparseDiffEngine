@@ -29,20 +29,20 @@ const char *test_jacobian_convolve(void)
     jacobian_init(y);
     y->eval_jacobian(y);
 
-    mu_assert("Jacobian should have 5 rows", y->jacobian->m == 5);
-    mu_assert("Jacobian should have 3 columns", y->jacobian->n == 3);
-    mu_assert("Jacobian should have 9 nonzeros", y->jacobian->nnz == 9);
+    mu_assert("Jacobian should have 5 rows", y->jacobian->to_csr(y->jacobian)->m == 5);
+    mu_assert("Jacobian should have 3 columns", y->jacobian->to_csr(y->jacobian)->n == 3);
+    mu_assert("Jacobian should have 9 nonzeros", y->jacobian->to_csr(y->jacobian)->nnz == 9);
 
     int expected_p[6] = {0, 1, 3, 6, 8, 9};
     int expected_i[9] = {0, 0, 1, 0, 1, 2, 1, 2, 2};
     double expected_x[9] = {1.0, 2.0, 1.0, 3.0, 2.0, 1.0, 3.0, 2.0, 3.0};
 
     mu_assert("Convolve Jacobian row pointers incorrect",
-              cmp_int_array(y->jacobian->p, expected_p, 6));
+              cmp_int_array(y->jacobian->to_csr(y->jacobian)->p, expected_p, 6));
     mu_assert("Convolve Jacobian column indices incorrect",
-              cmp_int_array(y->jacobian->i, expected_i, 9));
+              cmp_int_array(y->jacobian->to_csr(y->jacobian)->i, expected_i, 9));
     mu_assert("Convolve Jacobian values incorrect",
-              cmp_double_array(y->jacobian->x, expected_x, 9));
+              cmp_double_array(y->jacobian->to_csr(y->jacobian)->x, expected_x, 9));
 
     free_expr(y);
     return 0;

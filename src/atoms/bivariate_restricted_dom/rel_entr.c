@@ -45,7 +45,7 @@ static void forward_vector_args(expr *node, const double *u)
 
 static void jacobian_init_vectors_args(expr *node)
 {
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, 2 * node->size);
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, 2 * node->size);
 
     expr *x = node->left;
     expr *y = node->right;
@@ -57,44 +57,46 @@ static void jacobian_init_vectors_args(expr *node)
     {
         for (int j = 0; j < node->size; j++)
         {
-            node->jacobian->i[2 * j] = j + x->var_id;
-            node->jacobian->i[2 * j + 1] = j + y->var_id;
-            node->jacobian->p[j] = 2 * j;
+            jac->i[2 * j] = j + x->var_id;
+            jac->i[2 * j + 1] = j + y->var_id;
+            jac->p[j] = 2 * j;
         }
     }
     else
     {
         for (int j = 0; j < node->size; j++)
         {
-            node->jacobian->i[2 * j] = j + y->var_id;
-            node->jacobian->i[2 * j + 1] = j + x->var_id;
-            node->jacobian->p[j] = 2 * j;
+            jac->i[2 * j] = j + y->var_id;
+            jac->i[2 * j + 1] = j + x->var_id;
+            jac->p[j] = 2 * j;
         }
     }
 
-    node->jacobian->p[node->size] = 2 * node->size;
+    jac->p[node->size] = 2 * node->size;
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian_vector_args(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     /* if x has lower variable idx than y */
     if (x->var_id < y->var_id)
     {
         for (int i = 0; i < node->size; i++)
         {
-            node->jacobian->x[2 * i] = log(x->value[i] / y->value[i]) + 1;
-            node->jacobian->x[2 * i + 1] = -x->value[i] / y->value[i];
+            jac->x[2 * i] = log(x->value[i] / y->value[i]) + 1;
+            jac->x[2 * i + 1] = -x->value[i] / y->value[i];
         }
     }
     else
     {
         for (int i = 0; i < node->size; i++)
         {
-            node->jacobian->x[2 * i] = -x->value[i] / y->value[i];
-            node->jacobian->x[2 * i + 1] = log(x->value[i] / y->value[i]) + 1;
+            jac->x[2 * i] = -x->value[i] / y->value[i];
+            jac->x[2 * i + 1] = log(x->value[i] / y->value[i]) + 1;
         }
     }
 }

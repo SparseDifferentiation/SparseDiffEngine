@@ -32,7 +32,7 @@ static void forward(expr *node, const double *u)
     node->left->forward(node->left, u);
 
     /* y = A * x (A is stored as node->jacobian) */
-    Ax_csr(node->jacobian, x->value, node->value, x->var_id);
+    Ax_csr(node->jacobian->to_csr(node->jacobian), x->value, node->value, x->var_id);
 
     /* y += b (if offset exists) */
     if (lin_node->b != NULL)
@@ -97,8 +97,9 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
     expr_retain(u);
 
     /* Store A directly as the jacobian (linear op jacobian is constant) */
-    node->jacobian = new_csr_matrix(A->m, A->n, A->nnz);
-    copy_csr_matrix(A, node->jacobian);
+    CSR_Matrix *jac = new_csr_matrix(A->m, A->n, A->nnz);
+    copy_csr_matrix(A, jac);
+    node->jacobian = new_sparse_matrix(jac);
 
     /* Initialize offset (copy b if provided, otherwise NULL) */
     if (b != NULL)

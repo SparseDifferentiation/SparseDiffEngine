@@ -51,7 +51,7 @@ static void jacobian_init_impl(expr *node)
     int n = x->size;
     jacobian_init(x);
 
-    CSR_Matrix *Jx = x->jacobian;
+    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
     CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
 
     /* Output has n^2 rows but only n diagonal positions are non-empty.
@@ -72,7 +72,7 @@ static void jacobian_init_impl(expr *node)
     }
     J->p[node->size] = nnz;
 
-    node->jacobian = J;
+    node->jacobian = new_sparse_matrix(J);
 }
 
 static void eval_jacobian(expr *node)
@@ -81,8 +81,8 @@ static void eval_jacobian(expr *node)
     int n = x->size;
     x->eval_jacobian(x);
 
-    CSR_Matrix *J = node->jacobian;
-    CSR_Matrix *Jx = x->jacobian;
+    CSR_Matrix *J = node->jacobian->to_csr(node->jacobian);
+    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
     /* Copy values from child row i to output diagonal row i*(n+1) */
     for (int i = 0; i < n; i++)

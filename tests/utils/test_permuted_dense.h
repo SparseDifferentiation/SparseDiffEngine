@@ -312,6 +312,35 @@ const char *test_permuted_dense_times_csc_no_active(void)
     return 0;
 }
 
+/* to_csr vtable method: lazy CSR view. First call allocates pd->csr_cache;
+   subsequent calls refresh values to reflect the current pd->X. */
+const char *test_permuted_dense_to_csr_lazy(void)
+{
+    int row_perm[3] = {1, 2, 4};
+    int col_perm[2] = {0, 3};
+    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+
+    Matrix *M = new_permuted_dense(5, 6, 3, 2, row_perm, col_perm, X);
+    Permuted_Dense *pd = (Permuted_Dense *) M;
+
+    mu_assert("csr_cache initially NULL", pd->csr_cache == NULL);
+
+    CSR_Matrix *csr = M->to_csr(M);
+    mu_assert("csr_cache populated", pd->csr_cache != NULL);
+    mu_assert("returns the cache", csr == pd->csr_cache);
+
+    double expected[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    mu_assert("values match X", cmp_double_array(csr->x, expected, 6));
+
+    /* Mutate X and re-call to_csr: values must reflect the change. */
+    pd->X[0] = 99.0;
+    csr = M->to_csr(M);
+    mu_assert("refresh picks up new value", csr->x[0] == 99.0);
+
+    free_matrix(M);
+    return 0;
+}
+
 /* Sanity check: col_inv is built correctly. col_perm = {0, 3} on n = 6
    should give col_inv = {0, -1, -1, 1, -1, -1}. */
 const char *test_permuted_dense_col_inv(void)

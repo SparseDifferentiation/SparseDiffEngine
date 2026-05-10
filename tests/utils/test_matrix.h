@@ -76,7 +76,6 @@ const char *test_sparse_vs_dense_mult_vec(void)
 
     free_matrix(sparse);
     free_matrix(dense);
-    free_csr_matrix(csr);
     return 0;
 }
 
@@ -129,7 +128,6 @@ const char *test_sparse_vs_dense_mult_vec_blocks(void)
 
     free_matrix(sparse);
     free_matrix(dense);
-    free_csr_matrix(csr);
     return 0;
 }
 

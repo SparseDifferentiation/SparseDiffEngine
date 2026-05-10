@@ -34,11 +34,11 @@ const char *test_jacobian_transpose(void)
     int expected_i[8] = {0, 1, 2, 3, 0, 1, 2, 3};
 
     mu_assert("jacobian values fail",
-              cmp_double_array(transpose_AX->jacobian->x, expected_x, 8));
+              cmp_double_array(transpose_AX->jacobian->to_csr(transpose_AX->jacobian)->x, expected_x, 8));
     mu_assert("jacobian row ptr fail",
-              cmp_int_array(transpose_AX->jacobian->p, expected_p, 5));
+              cmp_int_array(transpose_AX->jacobian->to_csr(transpose_AX->jacobian)->p, expected_p, 5));
     mu_assert("jacobian col idx fail",
-              cmp_int_array(transpose_AX->jacobian->i, expected_i, 8));
+              cmp_int_array(transpose_AX->jacobian->to_csr(transpose_AX->jacobian)->i, expected_i, 8));
     free_expr(transpose_AX);
     free_csr_matrix(A);
     return 0;

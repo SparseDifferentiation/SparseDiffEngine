@@ -36,14 +36,16 @@ static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     jacobian_init(x);
-    node->jacobian = new_csr_copy_sparsity(x->jacobian);
+    node->jacobian = new_sparse_matrix(new_csr_copy_sparsity(x->jacobian->to_csr(x->jacobian)));
 }
 
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
     x->eval_jacobian(x);
-    memcpy(node->jacobian->x, x->jacobian->x, x->jacobian->nnz * sizeof(double));
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
+    memcpy(jac->x, Jx->x, Jx->nnz * sizeof(double));
 }
 
 static void wsum_hess_init_impl(expr *node)

@@ -31,9 +31,10 @@ static void log_forward(expr *node, const double *u)
 static void log_eval_jacobian(expr *node)
 {
     double *x = node->left->value;
+    double *jx = node->jacobian->to_csr(node->jacobian)->x;
     for (int j = 0; j < node->size; j++)
     {
-        node->jacobian->x[j] = 1.0 / x[j];
+        jx[j] = 1.0 / x[j];
     }
 }
 

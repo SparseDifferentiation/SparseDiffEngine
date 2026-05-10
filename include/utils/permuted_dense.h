@@ -31,15 +31,18 @@
    strictly increasing order; the constructor asserts this. */
 typedef struct Permuted_Dense
 {
-    Matrix base;       /* base.m, base.n = global ambient dimensions */
-    int dense_m;       /* rows of dense block (= len(row_perm))      */
-    int dense_n;       /* cols of dense block (= len(col_perm))      */
-    int *row_perm;     /* row_perm[ii] in [0, base.m), sorted        */
-    int *col_perm;     /* col_perm[jj] in [0, base.n), sorted        */
-    double *X;         /* dense_m * dense_n, row-major               */
-    double *Y_scratch; /* dense_m * dense_n, used by ATDA            */
-    int *col_inv;      /* length base.n: col_inv[col_perm[jj]] = jj, */
-                       /* otherwise -1; used by `x CSC` allocation.  */
+    Matrix base;           /* base.m, base.n = global ambient dimensions */
+    int dense_m;           /* rows of dense block (= len(row_perm))      */
+    int dense_n;           /* cols of dense block (= len(col_perm))      */
+    int *row_perm;         /* row_perm[ii] in [0, base.m), sorted        */
+    int *col_perm;         /* col_perm[jj] in [0, base.n), sorted        */
+    double *X;             /* dense_m * dense_n, row-major               */
+    double *Y_scratch;     /* dense_m * dense_n, used by ATDA            */
+    int *col_inv;          /* length base.n: col_inv[col_perm[jj]] = jj, */
+                           /* otherwise -1; used by `x CSC` allocation.  */
+    CSR_Matrix *csr_cache; /* lazy CSR view built by to_csr; structure */
+                           /* allocated on first call, values refilled */
+                           /* on every call. NULL until first call.    */
 } Permuted_Dense;
 
 /* Constructor. row_perm and col_perm must be strictly increasing in their

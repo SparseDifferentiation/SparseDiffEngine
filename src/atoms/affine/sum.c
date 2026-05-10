@@ -86,12 +86,12 @@ static void jacobian_init_impl(expr *node)
 
     /* initialize child's jacobian */
     jacobian_init(x);
+    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
     /* we never have to store more than the child's nnz */
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, x->jacobian->nnz);
-    node->work->iwork =
-        SP_MALLOC(MAX(node->jacobian->n, x->jacobian->nnz) * sizeof(int));
-    snode->idx_map = SP_MALLOC(x->jacobian->nnz * sizeof(int));
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
+    node->work->iwork = SP_MALLOC(MAX(jac->n, Jx->nnz) * sizeof(int));
+    snode->idx_map = SP_MALLOC(Jx->nnz * sizeof(int));
 
     /* the idx_map array maps each nonzero entry j in x->jacobian
        to the corresponding index in the output row matrix C. Specifically, for
@@ -100,19 +100,20 @@ static void jacobian_init_impl(expr *node)
 
     if (axis == -1)
     {
-        sum_all_rows_csr_alloc(x->jacobian, node->jacobian, node->work->iwork,
-                               snode->idx_map);
+        sum_all_rows_csr_alloc(Jx, jac, node->work->iwork, snode->idx_map);
     }
     else if (axis == 0)
     {
-        sum_block_of_rows_csr_alloc(x->jacobian, node->jacobian, x->d1,
-                                    node->work->iwork, snode->idx_map);
+        sum_block_of_rows_csr_alloc(Jx, jac, x->d1, node->work->iwork,
+                                    snode->idx_map);
     }
     else if (axis == 1)
     {
-        sum_evenly_spaced_rows_csr_alloc(x->jacobian, node->jacobian, node->size,
-                                         node->work->iwork, snode->idx_map);
+        sum_evenly_spaced_rows_csr_alloc(Jx, jac, node->size, node->work->iwork,
+                                         snode->idx_map);
     }
+
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian(expr *node)
@@ -124,8 +125,9 @@ static void eval_jacobian(expr *node)
 
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
-    memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator(x->jacobian, ((sum_expr *) node)->idx_map, node->jacobian->x);
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    memset(jac->x, 0, jac->nnz * sizeof(double));
+    accumulator(x->jacobian->to_csr(x->jacobian), ((sum_expr *) node)->idx_map, jac->x);
 }
 
 static void wsum_hess_init_impl(expr *node)

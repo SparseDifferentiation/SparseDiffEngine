@@ -76,14 +76,14 @@ static void jacobian_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        node->jacobian = new_csr_matrix(node->size, node->n_vars, x->size);
+        CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, x->size);
 
         /* set row pointers (each row has d1 nnzs) */
         for (int row = 0; row < x->d2; row++)
         {
-            node->jacobian->p[row] = row * x->d1;
+            jac->p[row] = row * x->d1;
         }
-        node->jacobian->p[x->d2] = x->size;
+        jac->p[x->d2] = x->size;
 
         /* set column indices */
         for (int col = 0; col < x->d2; col++)
@@ -91,9 +91,10 @@ static void jacobian_init_impl(expr *node)
             int start = col * x->d1;
             for (int i = 0; i < x->d1; i++)
             {
-                node->jacobian->i[start + i] = x->var_id + start + i;
+                jac->i[start + i] = x->var_id + start + i;
             }
         }
+        node->jacobian = new_sparse_matrix(jac);
     }
     else
     {
@@ -108,7 +109,7 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
 
-    double *J_vals = node->jacobian->x;
+    double *J_vals = node->jacobian->to_csr(node->jacobian)->x;
 
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)

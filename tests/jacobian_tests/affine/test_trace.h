@@ -40,9 +40,9 @@ const char *test_jacobian_trace_variable(void)
     int expected_Ai[3] = {1, 5, 9}; /* column indices (global variable indices) */
 
     mu_assert("vals fail",
-              cmp_double_array(trace_node->jacobian->x, expected_Ax, 3));
-    mu_assert("rows fail", cmp_int_array(trace_node->jacobian->p, expected_Ap, 2));
-    mu_assert("cols fail", cmp_int_array(trace_node->jacobian->i, expected_Ai, 3));
+              cmp_double_array(trace_node->jacobian->to_csr(trace_node->jacobian)->x, expected_Ax, 3));
+    mu_assert("rows fail", cmp_int_array(trace_node->jacobian->to_csr(trace_node->jacobian)->p, expected_Ap, 2));
+    mu_assert("cols fail", cmp_int_array(trace_node->jacobian->to_csr(trace_node->jacobian)->i, expected_Ai, 3));
 
     free_expr(trace_node);
     return 0;
@@ -93,11 +93,11 @@ const char *test_jacobian_trace_composite(void)
     int expected_Ap[2] = {0, 3};
     int expected_Ai[3] = {1, 5, 9}; /* column indices (global variable indices) */
 
-    mu_assert("vals match count", trace_node->jacobian->nnz == 3);
-    mu_assert("rows fail", cmp_int_array(trace_node->jacobian->p, expected_Ap, 2));
-    mu_assert("cols fail", cmp_int_array(trace_node->jacobian->i, expected_Ai, 3));
+    mu_assert("vals match count", trace_node->jacobian->to_csr(trace_node->jacobian)->nnz == 3);
+    mu_assert("rows fail", cmp_int_array(trace_node->jacobian->to_csr(trace_node->jacobian)->p, expected_Ap, 2));
+    mu_assert("cols fail", cmp_int_array(trace_node->jacobian->to_csr(trace_node->jacobian)->i, expected_Ai, 3));
     mu_assert("vals fail",
-              cmp_double_array(trace_node->jacobian->x, expected_Ax, 3));
+              cmp_double_array(trace_node->jacobian->to_csr(trace_node->jacobian)->x, expected_Ax, 3));
 
     free_expr(trace_node);
     return 0;

@@ -55,7 +55,7 @@ static void jacobian_init_impl(expr *node)
     // ---------------------------------------------------------------
     //    count total nnz and allocate matrix with sufficient space
     // ---------------------------------------------------------------
-    const CSR_Matrix *A = x->jacobian;
+    const CSR_Matrix *A = x->jacobian->to_csr(x->jacobian);
     int total_nnz = 0;
     int row_spacing = x->d1 + 1;
 
@@ -64,22 +64,23 @@ static void jacobian_init_impl(expr *node)
         total_nnz += A->p[row + 1] - A->p[row];
     }
 
-    node->jacobian = new_csr_matrix(1, node->n_vars, total_nnz);
+    CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, total_nnz);
 
     // ---------------------------------------------------------------
     // fill sparsity pattern and idx_map
     // ---------------------------------------------------------------
     trace_expr *tnode = (trace_expr *) node;
-    node->work->iwork = SP_MALLOC(MAX(node->jacobian->n, total_nnz) * sizeof(int));
+    node->work->iwork = SP_MALLOC(MAX(jac->n, total_nnz) * sizeof(int));
 
     /* the idx_map array maps each nonzero entry j in the original matrix A (from the
        selected, evenly spaced rows) to the corresponding index in the output row
        matrix C. Specifically, for each nonzero entry j in A (from the selected
        rows), idx_map[j] gives the position in C->x where the value from A->x[j]
        should be accumulated. */
-    tnode->idx_map = SP_MALLOC(x->jacobian->nnz * sizeof(int));
-    sum_spaced_rows_into_row_csr_alloc(A, node->jacobian, row_spacing,
-                                       node->work->iwork, tnode->idx_map);
+    tnode->idx_map = SP_MALLOC(A->nnz * sizeof(int));
+    sum_spaced_rows_into_row_csr_alloc(A, jac, row_spacing, node->work->iwork,
+                                       tnode->idx_map);
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian(expr *node)
@@ -91,9 +92,9 @@ static void eval_jacobian(expr *node)
     x->eval_jacobian(x);
 
     /* local jacobian */
-    memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator_with_spacing(x->jacobian, tnode->idx_map, node->jacobian->x,
-                             x->d1 + 1);
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    memset(jac->x, 0, jac->nnz * sizeof(double));
+    accumulator_with_spacing(x->jacobian->to_csr(x->jacobian), tnode->idx_map, jac->x, x->d1 + 1);
 }
 
 /* Placeholders for Hessian-related functions */

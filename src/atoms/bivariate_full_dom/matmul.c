@@ -139,7 +139,7 @@ static void jacobian_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int nnz = m * n * 2 * k;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz);
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz);
 
     int nnz_idx = 0;
     for (int i = 0; i < node->size; i++)
@@ -147,33 +147,34 @@ static void jacobian_init_no_chain_rule(expr *node)
         int row = i % m;
         int col = i / m;
 
-        node->jacobian->p[i] = nnz_idx;
+        jac->p[i] = nnz_idx;
 
         if (x->var_id < y->var_id)
         {
             for (int j = 0; j < k; j++)
             {
-                node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
+                jac->i[nnz_idx++] = x->var_id + row + j * m;
             }
             for (int j = 0; j < k; j++)
             {
-                node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
+                jac->i[nnz_idx++] = y->var_id + col * k + j;
             }
         }
         else
         {
             for (int j = 0; j < k; j++)
             {
-                node->jacobian->i[nnz_idx++] = y->var_id + col * k + j;
+                jac->i[nnz_idx++] = y->var_id + col * k + j;
             }
             for (int j = 0; j < k; j++)
             {
-                node->jacobian->i[nnz_idx++] = x->var_id + row + j * m;
+                jac->i[nnz_idx++] = x->var_id + row + j * m;
             }
         }
     }
-    node->jacobian->p[node->size] = nnz_idx;
+    jac->p[node->size] = nnz_idx;
     assert(nnz_idx == nnz);
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian_no_chain_rule(expr *node)
@@ -182,13 +183,14 @@ static void eval_jacobian_no_chain_rule(expr *node)
     expr *y = node->right;
     int m = x->d1;
     int k = x->d2;
-    double *Jx = node->jacobian->x;
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    double *Jx = jac->x;
 
     for (int i = 0; i < node->size; i++)
     {
         int row = i % m;
         int col = i / m;
-        int pos = node->jacobian->p[i];
+        int pos = jac->p[i];
 
         if (x->var_id < y->var_id)
         {
@@ -234,8 +236,9 @@ static void jacobian_init_chain_rule(expr *node)
     mnode->term1_CSR = YT_kron_I_alloc(m, k, n, f->work->jacobian_csc);
     mnode->term2_CSR = I_kron_X_alloc(m, k, n, g->work->jacobian_csc);
     int max_nnz = mnode->term1_CSR->nnz + mnode->term2_CSR->nnz;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, max_nnz);
-    sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, max_nnz);
+    sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, jac);
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian_chain_rule(expr *node)
@@ -250,14 +253,16 @@ static void eval_jacobian_chain_rule(expr *node)
     /* evaluate Jacobians of children */
     f->eval_jacobian(f);
     g->eval_jacobian(g);
-    csr_to_csc_fill_values(f->jacobian, f->work->jacobian_csc, f->work->csc_work);
-    csr_to_csc_fill_values(g->jacobian, g->work->jacobian_csc, g->work->csc_work);
+    csr_to_csc_fill_values(f->jacobian->to_csr(f->jacobian), f->work->jacobian_csc,
+                           f->work->csc_work);
+    csr_to_csc_fill_values(g->jacobian->to_csr(g->jacobian), g->work->jacobian_csc,
+                           g->work->csc_work);
 
     /* evaluate term1, term2, and their sum */
     YT_kron_I_fill_values(m, k, n, g->value, f->work->jacobian_csc,
                           mnode->term1_CSR);
     I_kron_X_fill_values(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
-    sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR, node->jacobian);
+    sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR, node->jacobian->to_csr(node->jacobian));
 }
 
 // ------------------------------------------------------------------------------------
@@ -466,7 +471,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC values (cache if affine) */
     if (!f->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_values(f->jacobian, Jf, f->work->csc_work);
+        csr_to_csc_fill_values(f->jacobian->to_csr(f->jacobian), Jf, f->work->csc_work);
         if (is_f_affine)
         {
             f->work->jacobian_csc_filled = true;
@@ -476,7 +481,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC values (cache if affine) */
     if (!g->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_values(g->jacobian, Jg, g->work->csc_work);
+        csr_to_csc_fill_values(g->jacobian->to_csr(g->jacobian), Jg, g->work->csc_work);
         if (is_g_affine)
         {
             g->work->jacobian_csc_filled = true;

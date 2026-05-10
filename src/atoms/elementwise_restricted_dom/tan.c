@@ -30,10 +30,11 @@ static void tan_forward(expr *node, const double *u)
 static void tan_eval_jacobian(expr *node)
 {
     double *x = node->left->value;
+    double *jx = node->jacobian->to_csr(node->jacobian)->x;
     for (int j = 0; j < node->size; j++)
     {
         double c = cos(x[j]);
-        node->jacobian->x[j] = 1.0 / (c * c);
+        jx[j] = 1.0 / (c * c);
     }
 }
 

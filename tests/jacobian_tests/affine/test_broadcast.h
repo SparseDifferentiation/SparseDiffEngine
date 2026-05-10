@@ -38,11 +38,11 @@ const char *test_broadcast_row_jacobian(void)
     int expected_i[6] = {0, 0, 1, 1, 2, 2};
 
     mu_assert("broadcast row jacobian vals fail",
-              cmp_double_array(bcast->jacobian->x, expected_x, 6));
+              cmp_double_array(bcast->jacobian->to_csr(bcast->jacobian)->x, expected_x, 6));
     mu_assert("broadcast row jacobian rows fail",
-              cmp_int_array(bcast->jacobian->p, expected_p, 4));
+              cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->p, expected_p, 4));
     mu_assert("broadcast row jacobian cols fail",
-              cmp_int_array(bcast->jacobian->i, expected_i, 6));
+              cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->i, expected_i, 6));
 
     free_expr(bcast);
     return 0;
@@ -83,11 +83,11 @@ const char *test_broadcast_col_jacobian(void)
     int expected_i[6] = {0, 1, 2, 0, 1, 2};
 
     mu_assert("broadcast col jacobian vals fail",
-              cmp_double_array(bcast->jacobian->x, expected_x, 6));
+              cmp_double_array(bcast->jacobian->to_csr(bcast->jacobian)->x, expected_x, 6));
     mu_assert("broadcast col jacobian rows fail",
-              cmp_int_array(bcast->jacobian->p, expected_p, 7));
+              cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->p, expected_p, 7));
     mu_assert("broadcast col jacobian cols fail",
-              cmp_int_array(bcast->jacobian->i, expected_i, 6));
+              cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->i, expected_i, 6));
 
     free_expr(bcast);
     return 0;
@@ -124,11 +124,11 @@ const char *test_broadcast_scalar_to_matrix_jacobian(void)
     int expected_i[6] = {0, 0, 0, 0, 0, 0};
 
     mu_assert("broadcast scalar jacobian vals fail",
-              cmp_double_array(bcast->jacobian->x, expected_x, 6));
+              cmp_double_array(bcast->jacobian->to_csr(bcast->jacobian)->x, expected_x, 6));
     mu_assert("broadcast scalar jacobian rows fail",
-              cmp_int_array(bcast->jacobian->p, expected_p, 7));
+              cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->p, expected_p, 7));
     mu_assert("broadcast scalar jacobian cols fail",
-              cmp_int_array(bcast->jacobian->i, expected_i, 6));
+              cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->i, expected_i, 6));
 
     free_expr(bcast);
     return 0;
@@ -156,11 +156,11 @@ const char *test_double_broadcast(void)
     // int expected_i[6] = {0, 0, 0, 0, 0, 0};
     //
     // mu_assert("broadcast scalar jacobian vals fail",
-    //          cmp_double_array(sum->jacobian->x, expected_x, 6));
+    //          cmp_double_array(sum->jacobian->to_csr(sum->jacobian)->x, expected_x, 6));
     // mu_assert("broadcast scalar jacobian rows fail",
     //          cmp_int_array(sum ->jacobian->p, expected_p, 7));
     // mu_assert("broadcast scalar jacobian cols fail",
-    //          cmp_int_array(bcast->jacobian->i, expected_i, 6));
+    //          cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->i, expected_i, 6));
 
     free_expr(sum);
     return 0;

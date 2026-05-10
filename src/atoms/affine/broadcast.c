@@ -72,6 +72,7 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
     jacobian_init(x);
     broadcast_expr *bcast = (broadcast_expr *) node;
+    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
     int total_nnz;
 
     // --------------------------------------------------------------------
@@ -80,26 +81,25 @@ static void jacobian_init_impl(expr *node)
     if (bcast->type == BROADCAST_ROW)
     {
         /* Row broadcast: (1, n) -> (m, n) */
-        total_nnz = x->jacobian->nnz * node->d1;
+        total_nnz = Jx->nnz * node->d1;
     }
     else if (bcast->type == BROADCAST_COL)
     {
         /* Column broadcast: (m, 1) -> (m, n) */
-        total_nnz = x->jacobian->nnz * node->d2;
+        total_nnz = Jx->nnz * node->d2;
     }
     else
     {
         /* Scalar broadcast: (1, 1) -> (m, n) */
-        total_nnz = x->jacobian->nnz * node->size;
+        total_nnz = Jx->nnz * node->size;
     }
 
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, total_nnz);
+    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, total_nnz);
+    node->jacobian = new_sparse_matrix(J);
 
     // ---------------------------------------------------------------------
     //                 fill sparsity pattern
     // ---------------------------------------------------------------------
-    CSR_Matrix *Jx = x->jacobian;
-    CSR_Matrix *J = node->jacobian;
 
     if (bcast->type == BROADCAST_ROW)
     {
@@ -163,8 +163,8 @@ static void eval_jacobian(expr *node)
     node->left->eval_jacobian(node->left);
 
     broadcast_expr *bcast = (broadcast_expr *) node;
-    CSR_Matrix *Jx = node->left->jacobian;
-    CSR_Matrix *J = node->jacobian;
+    CSR_Matrix *Jx = node->left->jacobian->to_csr(node->left->jacobian);
+    CSR_Matrix *J = node->jacobian->to_csr(node->jacobian);
 
     if (bcast->type == BROADCAST_ROW)
     {

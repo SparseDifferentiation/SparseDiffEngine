@@ -25,9 +25,9 @@ const char *test_jacobian_sum_log(void)
     int expected_Ap[2] = {0, 3};
     int expected_Ai[3] = {2, 3, 4};
 
-    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->x, expected_Ax, 3));
-    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->p, expected_Ap, 2));
-    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 3));
+    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->to_csr(sum_node->jacobian)->x, expected_Ax, 3));
+    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->p, expected_Ap, 2));
+    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->i, expected_Ai, 3));
 
     free_expr(sum_node);
     return 0;
@@ -59,9 +59,9 @@ const char *test_jacobian_sum_mult(void)
     int expected_Ap[2] = {0, 6}; /* 1x10 matrix: row 0 spans all 6 nonzeros */
     int expected_Ai[6] = {2, 3, 4, 6, 7, 8}; /* column indices */
 
-    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->p, expected_Ap, 2));
-    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 6));
+    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->to_csr(sum_node->jacobian)->x, expected_Ax, 6));
+    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->p, expected_Ap, 2));
+    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->i, expected_Ai, 6));
 
     free_expr(sum_node);
     return 0;
@@ -99,9 +99,9 @@ const char *test_jacobian_sum_log_axis_0(void)
     int expected_Ap[3] = {0, 3, 6};
     int expected_Ai[6] = {2, 3, 4, 5, 6, 7}; /* column indices */
 
-    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->p, expected_Ap, 3));
-    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 6));
+    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->to_csr(sum_node->jacobian)->x, expected_Ax, 6));
+    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->p, expected_Ap, 3));
+    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->i, expected_Ai, 6));
 
     free_expr(sum_node);
     return 0;
@@ -146,9 +146,9 @@ const char *test_jacobian_sum_add_log_axis_0(void)
     int expected_Ai[12] = {2, 3, 4, 8,  9,  10,  /* row 0 columns */
                            5, 6, 7, 11, 12, 13}; /* row 1 columns */
 
-    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->x, expected_Ax, 12));
-    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->p, expected_Ap, 3));
-    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 12));
+    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->to_csr(sum_node->jacobian)->x, expected_Ax, 12));
+    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->p, expected_Ap, 3));
+    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->i, expected_Ai, 12));
 
     free_expr(sum_node);
     return 0;
@@ -188,9 +188,9 @@ const char *test_jacobian_sum_log_axis_1(void)
     int expected_Ap[4] = {0, 2, 4, 6};
     int expected_Ai[6] = {2, 5, 3, 6, 4, 7}; /* column indices */
 
-    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->p, expected_Ap, 4));
-    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->i, expected_Ai, 6));
+    mu_assert("vals fail", cmp_double_array(sum_node->jacobian->to_csr(sum_node->jacobian)->x, expected_Ax, 6));
+    mu_assert("rows fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->p, expected_Ap, 4));
+    mu_assert("cols fail", cmp_int_array(sum_node->jacobian->to_csr(sum_node->jacobian)->i, expected_Ai, 6));
 
     free_expr(sum_node);
     return 0;

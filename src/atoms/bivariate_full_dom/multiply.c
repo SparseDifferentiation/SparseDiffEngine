@@ -49,11 +49,14 @@ static void jacobian_init_impl(expr *node)
 {
     jacobian_init(node->left);
     jacobian_init(node->right);
-    int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
+    CSR_Matrix *Jl = node->left->jacobian->to_csr(node->left->jacobian);
+    CSR_Matrix *Jr = node->right->jacobian->to_csr(node->right->jacobian);
+    int nnz_max = Jl->nnz + Jr->nnz;
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz_max);
 
     /* fill sparsity pattern */
-    sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
+    sum_csr_alloc(Jl, Jr, jac);
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian(expr *node)
@@ -66,8 +69,8 @@ static void eval_jacobian(expr *node)
 
     /* chain rule: the jacobian of h(x) = f(g1(x), g2(x))) is Jh = J_{f, 1} J_{g1} +
      * J_{f, 2} J_{g2} */
-    sum_scaled_csr_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
-                                        y->value, x->value);
+    sum_scaled_csr_matrices_fill_values(x->jacobian->to_csr(x->jacobian), y->jacobian->to_csr(y->jacobian),
+                                        node->jacobian->to_csr(node->jacobian), y->value, x->value);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -200,7 +203,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         // ----------------------------------------------------------------------
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian, x->work->jacobian_csc,
+            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), x->work->jacobian_csc,
                                    x->work->csc_work);
 
             if (is_x_affine)
@@ -211,7 +214,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         if (!y->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(y->jacobian, y->work->jacobian_csc,
+            csr_to_csc_fill_values(y->jacobian->to_csr(y->jacobian), y->work->jacobian_csc,
                                    y->work->csc_work);
 
             if (is_y_affine)

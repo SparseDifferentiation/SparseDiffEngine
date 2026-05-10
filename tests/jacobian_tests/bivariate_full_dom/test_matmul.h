@@ -49,14 +49,14 @@ const char *test_jacobian_matmul(void)
     Z->eval_jacobian(Z);
 
     /* Verify sparsity pattern */
-    mu_assert("Jacobian should have 8 rows", Z->jacobian->m == z_size);
-    mu_assert("Jacobian should have 18 columns", Z->jacobian->n == n_vars);
-    mu_assert("Jacobian should have 48 nonzeros", Z->jacobian->nnz == 48);
+    mu_assert("Jacobian should have 8 rows", Z->jacobian->to_csr(Z->jacobian)->m == z_size);
+    mu_assert("Jacobian should have 18 columns", Z->jacobian->to_csr(Z->jacobian)->n == n_vars);
+    mu_assert("Jacobian should have 48 nonzeros", Z->jacobian->to_csr(Z->jacobian)->nnz == 48);
 
     /* Check row pointers: each row should have 6 entries */
     int expected_p[9] = {0, 6, 12, 18, 24, 30, 36, 42, 48};
     mu_assert("Row pointers incorrect",
-              cmp_int_array(Z->jacobian->p, expected_p, 9));
+              cmp_int_array(Z->jacobian->to_csr(Z->jacobian)->p, expected_p, 9));
 
     int expected_i[48] = {0, 2, 4, 6,  7,  8,   /* row 0 */
                           1, 3, 5, 6,  7,  8,   /* row 1 */
@@ -67,7 +67,7 @@ const char *test_jacobian_matmul(void)
                           0, 2, 4, 15, 16, 17,  /* row 6 */
                           1, 3, 5, 15, 16, 17}; /* row 7 */
     mu_assert("Column indices incorrect",
-              cmp_int_array(Z->jacobian->i, expected_i, 48));
+              cmp_int_array(Z->jacobian->to_csr(Z->jacobian)->i, expected_i, 48));
 
     /* Verify Jacobian values row-wise: for each row, values are
        [Y^T row for the column, X row values] since X has lower var_id */
@@ -82,7 +82,7 @@ const char *test_jacobian_matmul(void)
         /* row 7 (col 3) */ 16.0, 17.0, 18.0, 2.0, 4.0, 6.0};
 
     mu_assert("Jacobian values incorrect",
-              cmp_double_array(Z->jacobian->x, expected_x, 48));
+              cmp_double_array(Z->jacobian->to_csr(Z->jacobian)->x, expected_x, 48));
 
     free_expr(Z);
     return 0;

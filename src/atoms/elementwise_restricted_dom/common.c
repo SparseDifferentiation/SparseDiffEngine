@@ -23,13 +23,14 @@ void jacobian_init_restricted(expr *node)
 {
     expr *child = node->left;
 
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, node->size);
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, node->size);
     for (int j = 0; j < node->size; j++)
     {
-        node->jacobian->p[j] = j;
-        node->jacobian->i[j] = j + child->var_id;
+        jac->p[j] = j;
+        jac->i[j] = j + child->var_id;
     }
-    node->jacobian->p[node->size] = node->size;
+    jac->p[node->size] = node->size;
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 void wsum_hess_init_restricted(expr *node)

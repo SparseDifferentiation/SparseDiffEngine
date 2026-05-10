@@ -36,9 +36,9 @@ const char *test_jacobian_prod_axis_zero(void)
     int expected_Ap[4] = {0, 2, 4, 6};
     int expected_Ai[6] = {1, 2, 3, 4, 5, 6};
 
-    mu_assert("vals fail", cmp_double_array(p->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(p->jacobian->p, expected_Ap, 4));
-    mu_assert("cols fail", cmp_int_array(p->jacobian->i, expected_Ai, 6));
+    mu_assert("vals fail", cmp_double_array(p->jacobian->to_csr(p->jacobian)->x, expected_Ax, 6));
+    mu_assert("rows fail", cmp_int_array(p->jacobian->to_csr(p->jacobian)->p, expected_Ap, 4));
+    mu_assert("cols fail", cmp_int_array(p->jacobian->to_csr(p->jacobian)->i, expected_Ai, 6));
 
     free_expr(p);
     return 0;

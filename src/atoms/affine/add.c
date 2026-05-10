@@ -41,12 +41,16 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(node->left);
     jacobian_init(node->right);
 
+    CSR_Matrix *Jl = node->left->jacobian->to_csr(node->left->jacobian);
+    CSR_Matrix *Jr = node->right->jacobian->to_csr(node->right->jacobian);
+
     /* we never have to store more than the sum of children's nnz */
-    int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
-    node->jacobian = new_csr_matrix(node->size, node->n_vars, nnz_max);
+    int nnz_max = Jl->nnz + Jr->nnz;
+    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz_max);
 
     /* fill sparsity pattern  */
-    sum_csr_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
+    sum_csr_alloc(Jl, Jr, jac);
+    node->jacobian = new_sparse_matrix(jac);
 }
 
 static void eval_jacobian(expr *node)
@@ -56,7 +60,8 @@ static void eval_jacobian(expr *node)
     node->right->eval_jacobian(node->right);
 
     /* sum children's jacobians */
-    sum_csr_fill_values(node->left->jacobian, node->right->jacobian, node->jacobian);
+    sum_csr_fill_values(node->left->jacobian->to_csr(node->left->jacobian), node->right->jacobian->to_csr(node->right->jacobian),
+                        node->jacobian->to_csr(node->jacobian));
 }
 
 static void wsum_hess_init_impl(expr *node)

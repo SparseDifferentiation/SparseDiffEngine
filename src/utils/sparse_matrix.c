@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "utils/CSC_Matrix.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/matrix.h"
 #include "utils/tracked_alloc.h"
@@ -52,20 +53,87 @@ static void sparse_free(Matrix *self)
 {
     Sparse_Matrix *sm = (Sparse_Matrix *) self;
     free_csr_matrix(sm->csr);
+    free_csc_matrix(sm->csc_cache);
+    free(sm->csc_iwork);
     free(sm);
 }
 
-Matrix *new_sparse_matrix(const CSR_Matrix *A)
+/* Forward decl: ctor is referenced by copy_sparsity below. */
+Matrix *new_sparse_matrix(CSR_Matrix *A);
+
+/* Build the CSC cache structure if absent. Values are NOT filled here; caller
+   must call refresh_csc_values before consuming. ATA_alloc_csr only needs
+   structure, so it's safe to call after build_csc_structure alone. */
+static void build_csc_structure_if_absent(Sparse_Matrix *sm)
 {
-    Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
-    sm->base.m = A->m;
-    sm->base.n = A->n;
+    if (sm->csc_cache != NULL) return;
+    sm->csc_iwork = (int *) SP_MALLOC(sm->csr->n * sizeof(int));
+    sm->csc_cache = csr_to_csc_alloc(sm->csr, sm->csc_iwork);
+}
+
+static Matrix *sparse_copy_sparsity(const Matrix *self)
+{
+    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    return new_sparse_matrix(new_csr_copy_sparsity(sm->csr));
+}
+
+static void sparse_DA_fill_values(const double *d, const Matrix *self, Matrix *out)
+{
+    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    Sparse_Matrix *sm_out = (Sparse_Matrix *) out;
+    DA_fill_values(d, sm->csr, sm_out->csr);
+}
+
+static CSR_Matrix *sparse_ATA_alloc_csr(Matrix *self)
+{
+    Sparse_Matrix *sm = (Sparse_Matrix *) self;
+    build_csc_structure_if_absent(sm);
+    return ATA_alloc(sm->csc_cache);
+}
+
+/* Caller must have called refresh_csc_values since the last change to csr->x. */
+static void sparse_ATDA_fill_csr(const Matrix *self, const double *d,
+                                 CSR_Matrix *csr_out)
+{
+    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    ATDA_fill_values(sm->csc_cache, d, csr_out);
+}
+
+static CSR_Matrix *sparse_to_csr(Matrix *self)
+{
+    return ((Sparse_Matrix *) self)->csr;
+}
+
+/* Build CSC structure on first call; refill values from csr->x on every call. */
+static void sparse_refresh_csc_values(Matrix *self)
+{
+    Sparse_Matrix *sm = (Sparse_Matrix *) self;
+    build_csc_structure_if_absent(sm);
+    csr_to_csc_fill_values(sm->csr, sm->csc_cache, sm->csc_iwork);
+}
+
+static void wire_vtable(Sparse_Matrix *sm)
+{
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
     sm->base.block_left_mult_values = sparse_block_left_mult_values;
     sm->base.update_values = sparse_update_values;
+    sm->base.copy_sparsity = sparse_copy_sparsity;
+    sm->base.DA_fill_values = sparse_DA_fill_values;
+    sm->base.ATA_alloc_csr = sparse_ATA_alloc_csr;
+    sm->base.ATDA_fill_csr = sparse_ATDA_fill_csr;
+    sm->base.to_csr = sparse_to_csr;
+    sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;
-    sm->csr = new_csr(A);
+}
+
+Matrix *new_sparse_matrix(CSR_Matrix *A)
+{
+    Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
+    sm->base.m = A->m;
+    sm->base.n = A->n;
+    wire_vtable(sm);
+    sm->csr = A;
     return &sm->base;
 }
 
@@ -75,11 +143,7 @@ Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork)
     Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
     sm->base.m = AT->m;
     sm->base.n = AT->n;
-    sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
-    sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
-    sm->base.block_left_mult_values = sparse_block_left_mult_values;
-    sm->base.update_values = sparse_update_values;
-    sm->base.free_fn = sparse_free;
+    wire_vtable(sm);
     sm->csr = AT;
     return &sm->base;
 }

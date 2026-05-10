@@ -51,14 +51,17 @@ const char *profile_log_reg(void)
     /* Forward (untimed). */
     obj->forward(obj, u);
 
-    /* ---- Path A: time eval_jacobian + eval_wsum_hess ---- */
-    Timer t_a;
+    /* ---- Path A: time eval_jacobian and eval_wsum_hess separately ---- */
+    Timer t_a_jac, t_a_hess;
     double w_one = 1.0;
-    clock_gettime(CLOCK_MONOTONIC, &t_a.start);
+    clock_gettime(CLOCK_MONOTONIC, &t_a_jac.start);
     obj->eval_jacobian(obj);
+    clock_gettime(CLOCK_MONOTONIC, &t_a_jac.end);
+    clock_gettime(CLOCK_MONOTONIC, &t_a_hess.start);
     obj->eval_wsum_hess(obj, &w_one);
-    clock_gettime(CLOCK_MONOTONIC, &t_a.end);
-    double sec_a = GET_ELAPSED_SECONDS(t_a);
+    clock_gettime(CLOCK_MONOTONIC, &t_a_hess.end);
+    double sec_a_jac = GET_ELAPSED_SECONDS(t_a_jac);
+    double sec_a_hess = GET_ELAPSED_SECONDS(t_a_hess);
 
     /* ---- Path B setup (untimed) ---- */
     int *full_rows = (int *) malloc(m * sizeof(int));
@@ -87,33 +90,41 @@ const char *profile_log_reg(void)
     double *w_ones = (double *) malloc(m * sizeof(double));
     for (int i = 0; i < m; i++) w_ones[i] = 1.0;
 
-    /* ---- Path B: time the manual chain rule ---- */
-    Timer t_b;
-    clock_gettime(CLOCK_MONOTONIC, &t_b.start);
+    /* ---- Path B: time the manual chain rule, Jacobian and Hessian separately ---- */
+    Timer t_b_jac, t_b_hess;
     /* dwork = sigmoid(z); used as the diagonal in DA below and (still in
        dwork) as sigmas read by local_wsum_hess. */
+    clock_gettime(CLOCK_MONOTONIC, &t_b_jac.start);
     log_obj->local_jacobian(log_obj, log_obj->work->dwork);
     permuted_dense_DA_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
     permuted_dense_to_csr_fill_values(Jlog_pd, Jlog_csr);
     memset(Jobj_csr->x, 0, Jobj_csr->nnz * sizeof(double));
     accumulator(Jlog_csr, idx_map, Jobj_csr->x);
+    clock_gettime(CLOCK_MONOTONIC, &t_b_jac.end);
+    clock_gettime(CLOCK_MONOTONIC, &t_b_hess.start);
     log_obj->local_wsum_hess(log_obj, d2, w_ones);
     permuted_dense_ATDA_fill_values(A_pd, d2, H_pd);
-    clock_gettime(CLOCK_MONOTONIC, &t_b.end);
-    double sec_b = GET_ELAPSED_SECONDS(t_b);
+    clock_gettime(CLOCK_MONOTONIC, &t_b_hess.end);
+    double sec_b_jac = GET_ELAPSED_SECONDS(t_b_jac);
+    double sec_b_hess = GET_ELAPSED_SECONDS(t_b_hess);
 
     printf("\n");
-    printf("  Path A (engine CSR/CSC):  %10.6f seconds\n", sec_a);
-    printf("  Path B (Permuted_Dense):  %10.6f seconds\n", sec_b);
-    printf("  Speedup (A / B):          %10.2fx\n", sec_a / sec_b);
+    printf("                            Jacobian      Hessian        Total\n");
+    printf("  Path A (engine CSR/CSC): %10.6fs  %10.6fs  %10.6fs\n", sec_a_jac,
+           sec_a_hess, sec_a_jac + sec_a_hess);
+    printf("  Path B (Permuted_Dense): %10.6fs  %10.6fs  %10.6fs\n", sec_b_jac,
+           sec_b_hess, sec_b_jac + sec_b_hess);
+    printf("  Speedup (A / B):         %10.2fx %10.2fx %10.2fx\n",
+           sec_a_jac / sec_b_jac, sec_a_hess / sec_b_hess,
+           (sec_a_jac + sec_a_hess) / (sec_b_jac + sec_b_hess));
 
     /* ---- Compare Jacobian (1 x n, both have full sparsity) ---- */
-    mu_assert("J n mismatch", obj->jacobian->n == Jobj_csr->n);
-    mu_assert("J nnz mismatch", obj->jacobian->nnz == Jobj_csr->nnz);
+    mu_assert("J n mismatch", obj->jacobian->to_csr(obj->jacobian)->n == Jobj_csr->n);
+    mu_assert("J nnz mismatch", obj->jacobian->to_csr(obj->jacobian)->nnz == Jobj_csr->nnz);
     double max_J_diff = 0.0;
-    for (int j = 0; j < obj->jacobian->nnz; j++)
+    for (int j = 0; j < obj->jacobian->to_csr(obj->jacobian)->nnz; j++)
     {
-        double diff = fabs(obj->jacobian->x[j] - Jobj_csr->x[j]);
+        double diff = fabs(obj->jacobian->to_csr(obj->jacobian)->x[j] - Jobj_csr->x[j]);
         if (diff > max_J_diff) max_J_diff = diff;
     }
     printf("  Jacobian max abs diff:   %10.3e\n", max_J_diff);

@@ -176,15 +176,16 @@ void problem_init_jacobian(problem *prob)
     {
         expr *c = prob->constraints[i];
         jacobian_init(c);
-        nnz += c->jacobian->nnz;
+        CSR_Matrix *Jc = c->jacobian->to_csr(c->jacobian);
+        nnz += Jc->nnz;
 
         if (c->is_affine(c))
         {
-            prob->stats.nnz_affine += c->jacobian->nnz;
+            prob->stats.nnz_affine += Jc->nnz;
         }
         else
         {
-            prob->stats.nnz_nonlinear += c->jacobian->nnz;
+            prob->stats.nnz_nonlinear += Jc->nnz;
         }
     }
 
@@ -198,15 +199,16 @@ void problem_init_jacobian(problem *prob)
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
+        CSR_Matrix *Jc = c->jacobian->to_csr(c->jacobian);
 
-        for (int r = 1; r <= c->jacobian->m; r++)
+        for (int r = 1; r <= Jc->m; r++)
         {
-            H->p[row_offset + r] = nnz_offset + c->jacobian->p[r];
+            H->p[row_offset + r] = nnz_offset + Jc->p[r];
         }
 
-        memcpy(H->i + nnz_offset, c->jacobian->i, c->jacobian->nnz * sizeof(int));
-        row_offset += c->jacobian->m;
-        nnz_offset += c->jacobian->nnz;
+        memcpy(H->i + nnz_offset, Jc->i, Jc->nnz * sizeof(int));
+        row_offset += Jc->m;
+        nnz_offset += Jc->nnz;
     }
     assert(nnz_offset == nnz);
 
@@ -466,7 +468,7 @@ void problem_gradient(problem *prob)
 
     /* copy sparse jacobian to dense gradient */
     memset(prob->gradient_values, 0, prob->n_vars * sizeof(double));
-    CSR_Matrix *jac = prob->objective->jacobian;
+    CSR_Matrix *jac = prob->objective->jacobian->to_csr(prob->objective->jacobian);
     for (int k = jac->p[0]; k < jac->p[1]; k++)
     {
         prob->gradient_values[jac->i[k]] = jac->x[k];
@@ -488,17 +490,18 @@ void problem_jacobian(problem *prob)
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
+        CSR_Matrix *Jc = c->jacobian->to_csr(c->jacobian);
 
         if (!first_call && c->is_affine(c))
         {
             /* skip evaluation for affine constraints after first call */
-            nnz_offset += c->jacobian->nnz;
+            nnz_offset += Jc->nnz;
             continue;
         }
 
         c->eval_jacobian(c);
-        memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
-        nnz_offset += c->jacobian->nnz;
+        memcpy(J->x + nnz_offset, Jc->x, Jc->nnz * sizeof(double));
+        nnz_offset += Jc->nnz;
     }
 
     /* update actual nnz (may be less than allocated) */

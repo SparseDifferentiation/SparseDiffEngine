@@ -53,6 +53,8 @@
 typedef struct Matrix
 {
     int m, n;
+
+    /* Operators for the left-multiply matrix in left_matmul. */
     void (*block_left_mult_vec)(const struct Matrix *self, const double *x,
                                 double *y, int p);
     CSC_Matrix *(*block_left_mult_sparsity)(const struct Matrix *self,
@@ -60,18 +62,47 @@ typedef struct Matrix
     void (*block_left_mult_values)(const struct Matrix *self, const CSC_Matrix *J,
                                    CSC_Matrix *C);
     void (*update_values)(struct Matrix *self, const double *new_values);
+
+    /* Chain-rule operations used by transformer atoms (elementwise, etc.).
+       copy_sparsity returns a matrix of same shape and type as self;
+       DA_fill_values writes diag(d) * self into out (which has same structure as
+       self); ATA_alloc_csr allocates a CSR with sparsity of self^T * self;
+       ATDA_fill_csr fills csr_out with self^T * diag(d) * self;
+       to_csr returns a CSR view of self (constant-time for Sparse_Matrix, lazily
+       built/refreshed for other types). */
+    struct Matrix *(*copy_sparsity)(const struct Matrix *self);
+    void (*DA_fill_values)(const double *d, const struct Matrix *self,
+                           struct Matrix *out);
+    CSR_Matrix *(*ATA_alloc_csr)(struct Matrix *self);
+    void (*ATDA_fill_csr)(const struct Matrix *self, const double *d,
+                          CSR_Matrix *csr_out);
+    CSR_Matrix *(*to_csr)(struct Matrix *self);
+
+    /* Refresh any internal caches (e.g. a CSC mirror) so subsequent ATA / ATDA
+       calls reflect the current values. Atoms whose child Jacobian is affine
+       can skip this on iterations after the first; non-affine children must
+       call it before every chain-rule call. No-op for types that don't have
+       a cache (e.g. permuted_dense). */
+    void (*refresh_csc_values)(struct Matrix *self);
+
+    /* Lifecycle. */
     void (*free_fn)(struct Matrix *self);
 } Matrix;
 
-/* Sparse matrix wrapping CSR */
+/* Sparse matrix wrapping CSR. csc_cache is a lazily-built CSC mirror used by
+   the chain-rule ATA / ATDA paths; it's allocated on first need and refilled
+   by refresh_csc_values. csc_iwork is the workspace for csr_to_csc. */
 typedef struct Sparse_Matrix
 {
     Matrix base;
     CSR_Matrix *csr;
+    CSC_Matrix *csc_cache;
+    int *csc_iwork;
 } Sparse_Matrix;
 
-/* Constructors */
-Matrix *new_sparse_matrix(const CSR_Matrix *A);
+/* Constructor. Takes ownership of A; the caller must not free A separately
+   (free_matrix on the returned Matrix frees A). */
+Matrix *new_sparse_matrix(CSR_Matrix *A);
 
 /* Transpose helper */
 Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork);

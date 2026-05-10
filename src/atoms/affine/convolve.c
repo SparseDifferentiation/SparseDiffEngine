@@ -81,8 +81,9 @@ static void jacobian_init_impl(expr *node)
     conv_matrix_fill_values(cnode->T, a);
 
     /* J = T @ J_child */
-    cnode->Jchild_CSC = csr_to_csc_alloc(child->jacobian, node->work->iwork);
-    node->jacobian = csr_csc_matmul_alloc(cnode->T, cnode->Jchild_CSC);
+    cnode->Jchild_CSC = csr_to_csc_alloc(child->jacobian->to_csr(child->jacobian), node->work->iwork);
+    node->jacobian =
+        new_sparse_matrix(csr_csc_matmul_alloc(cnode->T, cnode->Jchild_CSC));
 }
 
 static void eval_jacobian(expr *node)
@@ -93,8 +94,10 @@ static void eval_jacobian(expr *node)
     child->eval_jacobian(child);
 
     /* J = T @ J_child */
-    csr_to_csc_fill_values(child->jacobian, cnode->Jchild_CSC, node->work->iwork);
-    csr_csc_matmul_fill_values(cnode->T, cnode->Jchild_CSC, node->jacobian);
+    csr_to_csc_fill_values(child->jacobian->to_csr(child->jacobian), cnode->Jchild_CSC,
+                           node->work->iwork);
+    csr_csc_matmul_fill_values(cnode->T, cnode->Jchild_CSC,
+                               node->jacobian->to_csr(node->jacobian));
 }
 
 static void wsum_hess_init_impl(expr *node)

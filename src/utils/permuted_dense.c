@@ -31,7 +31,34 @@ static void permuted_dense_free(Matrix *self)
     free(pd->X);
     free(pd->Y_scratch);
     free(pd->col_inv);
+    free_csr_matrix(pd->csr_cache);
     free(pd);
+}
+
+/* Permuted_Dense has no CSC mirror; chain-rule kernels operate on X directly. */
+static void permuted_dense_refresh_csc_values(Matrix *self)
+{
+    (void) self;
+}
+
+/* Lazy CSR view: allocate structure on first call, refill values on every call.
+   This means the returned CSR's values always reflect the current X.
+
+   Future optimization: pd->X and csr_cache->x have bit-identical memory layout
+   (row-major dense block, same offsets), so we could alias csr_cache->x = pd->X
+   and skip the value fill entirely. That requires a non-owning x flag on
+   CSR_Matrix so free_csr_matrix doesn't double-free pd->X. The current
+   memcpy-on-every-call is cheap (O(dense_m * dense_n) bandwidth), and revisiting
+   this can wait until a profile shows it matters. */
+static CSR_Matrix *permuted_dense_to_csr(Matrix *self)
+{
+    Permuted_Dense *pd = (Permuted_Dense *) self;
+    if (pd->csr_cache == NULL)
+    {
+        pd->csr_cache = permuted_dense_to_csr_alloc(pd);
+    }
+    permuted_dense_to_csr_fill_values(pd, pd->csr_cache);
+    return pd->csr_cache;
 }
 
 Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
@@ -59,9 +86,12 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     Permuted_Dense *pd = (Permuted_Dense *) SP_CALLOC(1, sizeof(Permuted_Dense));
     pd->base.m = m;
     pd->base.n = n;
+    pd->base.to_csr = permuted_dense_to_csr;
+    pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
     pd->base.free_fn = permuted_dense_free;
-    /* Other vtable slots are wired up in later steps as the operations
-       they dispatch to are implemented. */
+    /* Other vtable slots (copy_sparsity, DA_fill_values, ATA_alloc_csr,
+       ATDA_fill_csr) are wired up in a later step when permuted_dense actually
+       starts appearing as a node->jacobian. */
 
     pd->dense_m = dense_m;
     pd->dense_n = dense_n;
