@@ -103,7 +103,7 @@ static void eval_jacobian_vector_args(expr *node)
 
 static void wsum_hess_init_vector_args(expr *node)
 {
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->size);
+    CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->size);
     expr *x = node->left;
     expr *y = node->right;
 
@@ -123,9 +123,9 @@ static void wsum_hess_init_vector_args(expr *node)
     /* var1 rows of Hessian */
     for (i = 0; i < node->size; i++)
     {
-        node->wsum_hess->p[var1_id + i] = 2 * i;
-        node->wsum_hess->i[2 * i] = var1_id + i;
-        node->wsum_hess->i[2 * i + 1] = var2_id + i;
+        H->p[var1_id + i] = 2 * i;
+        H->i[2 * i] = var1_id + i;
+        H->i[2 * i + 1] = var2_id + i;
     }
 
     int nnz = 2 * node->size;
@@ -133,28 +133,29 @@ static void wsum_hess_init_vector_args(expr *node)
     /* rows between var1 and var2 */
     for (i = var1_id + node->size; i < var2_id; i++)
     {
-        node->wsum_hess->p[i] = nnz;
+        H->p[i] = nnz;
     }
 
     /* var2 rows of Hessian */
     for (i = 0; i < node->size; i++)
     {
-        node->wsum_hess->p[var2_id + i] = nnz + 2 * i;
+        H->p[var2_id + i] = nnz + 2 * i;
     }
-    memcpy(node->wsum_hess->i + nnz, node->wsum_hess->i, nnz * sizeof(int));
+    memcpy(H->i + nnz, H->i, nnz * sizeof(int));
 
     /* remaining rows */
     for (i = var2_id + node->size; i <= node->n_vars; i++)
     {
-        node->wsum_hess->p[i] = 4 * node->size;
+        H->p[i] = 4 * node->size;
     }
+    node->wsum_hess = new_sparse_matrix(H);
 }
 
 static void eval_wsum_hess_vector_args(expr *node, const double *w)
 {
     double *x = node->left->value;
     double *y = node->right->value;
-    double *hess = node->wsum_hess->x;
+    double *hess = node->wsum_hess->to_csr(node->wsum_hess)->x;
 
     if (node->left->var_id < node->right->var_id)
     {

@@ -148,7 +148,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* allocate this node's hessian with the same sparsity as child's */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
@@ -166,8 +166,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
 
     node->left->eval_wsum_hess(node->left, node->work->dwork);
-    memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
-           node->wsum_hess->nnz * sizeof(double));
+    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, node->left->wsum_hess->to_csr(node->left->wsum_hess)->x,
+           node->wsum_hess->to_csr(node->wsum_hess)->nnz * sizeof(double));
 }
 
 static void refresh_dense_left(left_matmul_expr *lnode)

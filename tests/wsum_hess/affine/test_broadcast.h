@@ -57,11 +57,11 @@ const char *test_wsum_hess_broadcast_row(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("broadcast row wsum_hess: x values fail",
-              cmp_double_array(bcast->wsum_hess->x, expected_x, 3));
+              cmp_double_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->x, expected_x, 3));
     mu_assert("broadcast row wsum_hess: row pointers fail",
-              cmp_int_array(bcast->wsum_hess->p, expected_p, 4));
+              cmp_int_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->p, expected_p, 4));
     mu_assert("broadcast row wsum_hess: column indices fail",
-              cmp_int_array(bcast->wsum_hess->i, expected_i, 3));
+              cmp_int_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->i, expected_i, 3));
 
     free_expr(bcast);
     return 0;
@@ -112,11 +112,11 @@ const char *test_wsum_hess_broadcast_col(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("broadcast col wsum_hess: x values fail",
-              cmp_double_array(bcast->wsum_hess->x, expected_x, 3));
+              cmp_double_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->x, expected_x, 3));
     mu_assert("broadcast col wsum_hess: row pointers fail",
-              cmp_int_array(bcast->wsum_hess->p, expected_p, 4));
+              cmp_int_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->p, expected_p, 4));
     mu_assert("broadcast col wsum_hess: column indices fail",
-              cmp_int_array(bcast->wsum_hess->i, expected_i, 3));
+              cmp_int_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->i, expected_i, 3));
 
     free_expr(bcast);
     return 0;
@@ -160,11 +160,11 @@ const char *test_wsum_hess_broadcast_scalar_to_matrix(void)
     int expected_i[1] = {0};
 
     mu_assert("broadcast scalar wsum_hess: x values fail",
-              cmp_double_array(bcast->wsum_hess->x, expected_x, 1));
+              cmp_double_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->x, expected_x, 1));
     mu_assert("broadcast scalar wsum_hess: row pointers fail",
-              cmp_int_array(bcast->wsum_hess->p, expected_p, 2));
+              cmp_int_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->p, expected_p, 2));
     mu_assert("broadcast scalar wsum_hess: column indices fail",
-              cmp_int_array(bcast->wsum_hess->i, expected_i, 1));
+              cmp_int_array(bcast->wsum_hess->to_csr(bcast->wsum_hess)->i, expected_i, 1));
 
     free_expr(bcast);
     return 0;

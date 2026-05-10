@@ -77,10 +77,7 @@ static void eval_jacobian(expr *node)
 static void wsum_hess_init_impl(expr *node)
 {
     wsum_hess_init(node->left);
-
-    /* same sparsity as child since we're summing weights */
-    CSR_Matrix *child_hess = node->left->wsum_hess;
-    node->wsum_hess = new_csr_copy_sparsity(child_hess);
+    node->wsum_hess = node->left->wsum_hess->copy_sparsity(node->left->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -96,8 +93,10 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->left->eval_wsum_hess(node->left, &sum_w);
 
     /* copy values */
-    CSR_Matrix *child_hess = node->left->wsum_hess;
-    memcpy(node->wsum_hess->x, child_hess->x, child_hess->nnz * sizeof(double));
+    CSR_Matrix *child_hess =
+        node->left->wsum_hess->to_csr(node->left->wsum_hess);
+    CSR_Matrix *jac = node->wsum_hess->to_csr(node->wsum_hess);
+    memcpy(jac->x, child_hess->x, child_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

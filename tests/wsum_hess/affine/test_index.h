@@ -38,9 +38,9 @@ const char *test_wsum_hess_index_log(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("index log hess vals",
-              cmp_double_array(idx->wsum_hess->x, expected_x, 3));
-    mu_assert("index log hess p", cmp_int_array(idx->wsum_hess->p, expected_p, 4));
-    mu_assert("index log hess i", cmp_int_array(idx->wsum_hess->i, expected_i, 3));
+              cmp_double_array(idx->wsum_hess->to_csr(idx->wsum_hess)->x, expected_x, 3));
+    mu_assert("index log hess p", cmp_int_array(idx->wsum_hess->to_csr(idx->wsum_hess)->p, expected_p, 4));
+    mu_assert("index log hess i", cmp_int_array(idx->wsum_hess->to_csr(idx->wsum_hess)->i, expected_i, 3));
 
     free_expr(idx);
     return 0;
@@ -71,11 +71,11 @@ const char *test_wsum_hess_index_repeated(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("index repeated hess vals",
-              cmp_double_array(idx->wsum_hess->x, expected_x, 3));
+              cmp_double_array(idx->wsum_hess->to_csr(idx->wsum_hess)->x, expected_x, 3));
     mu_assert("index repeated hess p",
-              cmp_int_array(idx->wsum_hess->p, expected_p, 4));
+              cmp_int_array(idx->wsum_hess->to_csr(idx->wsum_hess)->p, expected_p, 4));
     mu_assert("index repeated hess i",
-              cmp_int_array(idx->wsum_hess->i, expected_i, 3));
+              cmp_int_array(idx->wsum_hess->to_csr(idx->wsum_hess)->i, expected_i, 3));
 
     free_expr(idx);
     return 0;
@@ -110,11 +110,11 @@ const char *test_wsum_hess_sum_index_log(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("sum index log hess vals",
-              cmp_double_array(sum_node->wsum_hess->x, expected_x, 3));
+              cmp_double_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->x, expected_x, 3));
     mu_assert("sum index log hess p",
-              cmp_int_array(sum_node->wsum_hess->p, expected_p, 4));
+              cmp_int_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->p, expected_p, 4));
     mu_assert("sum index log hess i",
-              cmp_int_array(sum_node->wsum_hess->i, expected_i, 3));
+              cmp_int_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->i, expected_i, 3));
 
     free_expr(sum_node);
     return 0;

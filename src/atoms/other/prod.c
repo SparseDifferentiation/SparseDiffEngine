@@ -133,18 +133,18 @@ static void wsum_hess_init_impl(expr *node)
         /* allocate n_vars x n_vars CSR matrix with dense block */
         int block_size = x->size;
         int nnz = block_size * block_size;
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
+        CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
 
         /* fill row pointers for the dense block */
         for (int i = 0; i < block_size; i++)
         {
-            node->wsum_hess->p[x->var_id + i] = i * block_size;
+            hess->p[x->var_id + i] = i * block_size;
         }
 
         /* fill row pointers for rows after the block */
         for (int i = x->var_id + block_size; i <= node->n_vars; i++)
         {
-            node->wsum_hess->p[i] = nnz;
+            hess->p[i] = nnz;
         }
 
         /* fill column indices for the dense block */
@@ -152,9 +152,10 @@ static void wsum_hess_init_impl(expr *node)
         {
             for (int j = 0; j < block_size; j++)
             {
-                node->wsum_hess->i[i * block_size + j] = x->var_id + j;
+                hess->i[i * block_size + j] = x->var_id + j;
             }
         }
+        node->wsum_hess = new_sparse_matrix(hess);
     }
     else
     {
@@ -239,11 +240,11 @@ static inline void wsum_hess_no_zeros(expr *node, const double *w)
         {
             if (i == j)
             {
-                node->wsum_hess->x[i * n + j] = 0.0;
+                node->wsum_hess->to_csr(node->wsum_hess)->x[i * n + j] = 0.0;
             }
             else
             {
-                node->wsum_hess->x[i * n + j] = wf / (x[i] * x[j]);
+                node->wsum_hess->to_csr(node->wsum_hess)->x[i * n + j] = wf / (x[i] * x[j]);
             }
         }
     }
@@ -252,7 +253,7 @@ static inline void wsum_hess_no_zeros(expr *node, const double *w)
 static inline void wsum_hess_one_zero(expr *node, const double *w)
 {
     expr *x = node->left;
-    double *H = node->wsum_hess->x;
+    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
     memset(H, 0, sizeof(double) * (x->size * x->size));
     int p = ((prod_expr *) node)->zero_index;
     double prod_nonzero = ((prod_expr *) node)->prod_nonzero;
@@ -273,7 +274,7 @@ static inline void wsum_hess_two_zeros(expr *node, const double *w)
 {
     expr *x = node->left;
     int n = x->size;
-    memset(node->wsum_hess->x, 0, sizeof(double) * (n * n));
+    memset(node->wsum_hess->to_csr(node->wsum_hess)->x, 0, sizeof(double) * (n * n));
 
     /* find indices p and q where x[p] = x[q] = 0 */
     int p = -1, q = -1;
@@ -295,13 +296,13 @@ static inline void wsum_hess_two_zeros(expr *node, const double *w)
     assert(p != -1 && q != -1);
 
     double hess_val = w[0] * ((prod_expr *) node)->prod_nonzero;
-    node->wsum_hess->x[p * n + q] = hess_val;
-    node->wsum_hess->x[q * n + p] = hess_val;
+    node->wsum_hess->to_csr(node->wsum_hess)->x[p * n + q] = hess_val;
+    node->wsum_hess->to_csr(node->wsum_hess)->x[q * n + p] = hess_val;
 }
 
 static inline void wsum_hess_many_zeros(expr *node, const double *w)
 {
     expr *x = node->left;
-    memset(node->wsum_hess->x, 0, sizeof(double) * (x->size * x->size));
+    memset(node->wsum_hess->to_csr(node->wsum_hess)->x, 0, sizeof(double) * (x->size * x->size));
     (void) w;
 }

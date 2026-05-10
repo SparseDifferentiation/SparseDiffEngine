@@ -74,7 +74,8 @@ static void eval_jacobian(expr *node)
 static void wsum_hess_init_impl(expr *node)
 {
     /* Linear operator Hessian is always zero */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 0);
+    node->wsum_hess =
+        new_sparse_matrix(new_csr_matrix(node->n_vars, node->n_vars, 0));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)

@@ -111,7 +111,7 @@ static void wsum_hess_init_impl(expr *node)
        contribution to wsum_hess of entries of the child that will always have
        zero weight in eval_wsum_hess. We do this for simplicity. But the Hessian
        can for sure be made more sophisticated. */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -126,7 +126,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     x->eval_wsum_hess(x, node->work->dwork);
 
-    memcpy(node->wsum_hess->x, x->wsum_hess->x, sizeof(double) * x->wsum_hess->nnz);
+    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->x, sizeof(double) * x->wsum_hess->to_csr(x->wsum_hess)->nnz);
 }
 
 static bool is_affine(const expr *node)

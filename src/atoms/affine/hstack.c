@@ -109,30 +109,30 @@ static void wsum_hess_init_impl(expr *node)
     for (int i = 0; i < hnode->n_args; i++)
     {
         wsum_hess_init(hnode->args[i]);
-        nnz += hnode->args[i]->wsum_hess->nnz;
+        Matrix *child_hess = hnode->args[i]->wsum_hess;
+        nnz += child_hess->to_csr(child_hess)->nnz;
     }
 
     /* worst-case scenario the nnz of node->wsum_hess is the sum of children's
        nnz */
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
+    CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, nnz);
     hnode->CSR_work = new_csr_matrix(node->n_vars, node->n_vars, nnz);
 
     /* fill sparsity pattern */
-    CSR_Matrix *H = node->wsum_hess;
     H->nnz = 0;
-
     for (int i = 0; i < hnode->n_args; i++)
     {
-        expr *child = hnode->args[i];
+        Matrix *child_hess = hnode->args[i]->wsum_hess;
         copy_csr_matrix(H, hnode->CSR_work);
-        sum_csr_alloc(hnode->CSR_work, child->wsum_hess, H);
+        sum_csr_alloc(hnode->CSR_work, child_hess->to_csr(child_hess), H);
     }
+    node->wsum_hess = new_sparse_matrix(H);
 }
 
 static void wsum_hess_eval(expr *node, const double *w)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    CSR_Matrix *H = node->wsum_hess;
+    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     int row_offset = 0;
     memset(H->x, 0, H->nnz * sizeof(double));
 
@@ -141,7 +141,7 @@ static void wsum_hess_eval(expr *node, const double *w)
         expr *child = hnode->args[i];
         child->eval_wsum_hess(child, w + row_offset);
         copy_csr_matrix(H, hnode->CSR_work);
-        sum_csr_fill_values(hnode->CSR_work, child->wsum_hess, H);
+        sum_csr_fill_values(hnode->CSR_work, child->wsum_hess->to_csr(child->wsum_hess), H);
         row_offset += child->size;
     }
 }

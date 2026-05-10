@@ -137,7 +137,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* we never have to store more than the child's nnz */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
     node->work->dwork = SP_MALLOC(x->size * sizeof(double));
 }
 
@@ -163,7 +163,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     x->eval_wsum_hess(x, node->work->dwork);
 
     /* copy values */
-    memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
+    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

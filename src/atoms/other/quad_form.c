@@ -145,7 +145,7 @@ static void wsum_hess_init_impl(expr *node)
             H->i[i] = Q->i[i] + x->var_id;
         }
 
-        node->wsum_hess = H;
+        node->wsum_hess = new_sparse_matrix(H);
     }
     else
     {
@@ -165,17 +165,19 @@ static void wsum_hess_init_impl(expr *node)
         /* term1 = Jf^T W Jf = Jf^T B*/
         CSC_Matrix *B = symBA_alloc(Q, Jf);
         qnode->QJf = B;
-        node->work->hess_term1 = BTA_alloc(Jf, B);
+        node->work->hess_term1 = new_sparse_matrix(BTA_alloc(Jf, B));
 
         /* term2 = sum_i (Qf(x))_i nabla^2 f_i */
         wsum_hess_init(x);
-        node->work->hess_term2 = new_csr_copy_sparsity(x->wsum_hess);
+        node->work->hess_term2 = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
         /* hess = term1 + term2 */
-        int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
-        sum_csr_alloc(node->work->hess_term1, node->work->hess_term2,
-                      node->wsum_hess);
+        CSR_Matrix *t1 = node->work->hess_term1->to_csr(node->work->hess_term1);
+        CSR_Matrix *t2 = node->work->hess_term2->to_csr(node->work->hess_term2);
+        int max_nnz = t1->nnz + t2->nnz;
+        CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
+        sum_csr_alloc(t1, t2, hess);
+        node->wsum_hess = new_sparse_matrix(hess);
     }
 }
 
@@ -189,8 +191,9 @@ static void eval_wsum_hess(expr *node, const double *w)
     {
         /* TODO: do we want to compute this hessian only once (up to a scaling)?
          * Maybe unnecessary optimization. */
-        memcpy(node->wsum_hess->x, Q->x, Q->nnz * sizeof(double));
-        cblas_dscal(Q->nnz, two_w, node->wsum_hess->x, 1);
+        CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+        memcpy(H->x, Q->x, Q->nnz * sizeof(double));
+        cblas_dscal(Q->nnz, two_w, H->x, 1);
     }
     else
     {
@@ -207,23 +210,24 @@ static void eval_wsum_hess(expr *node, const double *w)
         }
 
         CSC_Matrix *QJf = ((quad_form_expr *) node)->QJf;
-        CSR_Matrix *term1 = node->work->hess_term1;
-        CSR_Matrix *term2 = node->work->hess_term2;
+        CSR_Matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
+        CSR_Matrix *term2 = node->work->hess_term2->to_csr(node->work->hess_term2);
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
         BA_fill_values(Q, Jf, QJf);
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */
+        CSR_Matrix *x_hess = x->wsum_hess->to_csr(x->wsum_hess);
         x->eval_wsum_hess(x, node->work->dwork);
-        memcpy(term2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
+        memcpy(term2->x, x_hess->x, x_hess->nnz * sizeof(double));
 
         /* scale both terms by 2w */
         cblas_dscal(term1->nnz, two_w, term1->x, 1);
         cblas_dscal(term2->nnz, two_w, term2->x, 1);
 
         /* sum the two terms */
-        sum_csr_fill_values(term1, term2, node->wsum_hess);
+        sum_csr_fill_values(term1, term2, node->wsum_hess->to_csr(node->wsum_hess));
     }
 }
 

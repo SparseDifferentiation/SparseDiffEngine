@@ -63,9 +63,9 @@ const char *test_wsum_hess_prod_axis_zero_no_zeros(void)
      */
     int expected_i[12] = {1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 12));
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->p, expected_p, 9));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->i, expected_i, 12));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 12));
+    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 9));
+    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 12));
 
     free_expr(p);
     return 0;
@@ -183,9 +183,9 @@ const char *test_wsum_hess_prod_axis_zero_mixed_zeros(void)
         }
     }
 
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->p, expected_p, 17));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->i, expected_i, 75));
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 75));
+    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 17));
+    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 75));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 75));
 
     free_expr(p);
     return 0;
@@ -245,9 +245,9 @@ const char *test_wsum_hess_prod_axis_zero_one_zero(void)
      */
     int expected_i[8] = {1, 2, 1, 2, 3, 4, 3, 4};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 8));
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->p, expected_p, 6));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->i, expected_i, 8));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 8));
+    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 6));
+    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 8));
 
     free_expr(p);
     return 0;

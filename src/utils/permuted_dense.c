@@ -89,9 +89,9 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     pd->base.to_csr = permuted_dense_to_csr;
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
     pd->base.free_fn = permuted_dense_free;
-    /* Other vtable slots (copy_sparsity, DA_fill_values, ATA_alloc_csr,
-       ATDA_fill_csr) are wired up in a later step when permuted_dense actually
-       starts appearing as a node->jacobian. */
+    /* Other vtable slots (copy_sparsity, DA_fill_values, ATA_alloc,
+       ATDA_fill_values) are wired up in a later step when permuted_dense
+       actually starts appearing as a node->jacobian. */
 
     pd->dense_m = dense_m;
     pd->dense_n = dense_n;

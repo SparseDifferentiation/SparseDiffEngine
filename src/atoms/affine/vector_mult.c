@@ -90,7 +90,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* same sparsity as child */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
     node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
 }
@@ -109,7 +109,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     x->eval_wsum_hess(x, node->work->dwork);
 
     /* copy values from child to this node */
-    memcpy(node->wsum_hess->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
+    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->x, x->wsum_hess->to_csr(x->wsum_hess)->nnz * sizeof(double));
 }
 
 static void free_type_data(expr *node)

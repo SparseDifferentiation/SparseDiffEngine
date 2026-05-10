@@ -87,7 +87,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* same sparsity as child */
-    node->wsum_hess = new_csr_copy_sparsity(x->wsum_hess);
+    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -96,9 +96,9 @@ static void eval_wsum_hess(expr *node, const double *w)
     x->eval_wsum_hess(x, w);
 
     double a = ((scalar_mult_expr *) node)->param_source->value[0];
-    for (int j = 0; j < x->wsum_hess->nnz; j++)
+    for (int j = 0; j < x->wsum_hess->to_csr(x->wsum_hess)->nnz; j++)
     {
-        node->wsum_hess->x[j] = a * x->wsum_hess->x[j];
+        node->wsum_hess->to_csr(node->wsum_hess)->x[j] = a * x->wsum_hess->to_csr(x->wsum_hess)->x[j];
     }
 }
 

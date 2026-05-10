@@ -64,9 +64,8 @@ static void wsum_hess_init_impl(expr *node)
     /* initialize child's wsum_hess */
     wsum_hess_init(x);
 
-    /* same sparsity pattern as child */
-    CSR_Matrix *child_hess = x->wsum_hess;
-    node->wsum_hess = new_csr_copy_sparsity(child_hess);
+    /* same sparsity pattern as child (polymorphic copy) */
+    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -75,10 +74,12 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->left->eval_wsum_hess(node->left, w);
 
     /* negate values (sparsity pattern set in wsum_hess_init_impl) */
-    CSR_Matrix *child_hess = node->left->wsum_hess;
+    CSR_Matrix *child_hess =
+        node->left->wsum_hess->to_csr(node->left->wsum_hess);
+    CSR_Matrix *jac = node->wsum_hess->to_csr(node->wsum_hess);
     for (int k = 0; k < child_hess->nnz; k++)
     {
-        node->wsum_hess->x[k] = -child_hess->x[k];
+        jac->x[k] = -child_hess->x[k];
     }
 }
 

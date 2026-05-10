@@ -35,10 +35,10 @@ const char *test_wsum_hess_trace_variable(void)
     trace_node->eval_wsum_hess(trace_node, &w);
 
     /* For a linear operation (variable), Hessian is zero */
-    mu_assert("wsum_hess should be empty", trace_node->wsum_hess->nnz == 0);
+    mu_assert("wsum_hess should be empty", trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->nnz == 0);
 
     mu_assert("dims correct",
-              trace_node->wsum_hess->m == 13 && trace_node->wsum_hess->n == 13);
+              trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->m == 13 && trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->n == 13);
 
     free_expr(trace_node);
     return 0;
@@ -70,7 +70,7 @@ const char *test_wsum_hess_trace_log_variable(void)
     int expected_Ap[14] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9};
     int expected_Ai[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    CSR_Matrix *H = trace_node->wsum_hess;
+    CSR_Matrix *H = trace_node->wsum_hess->to_csr(trace_node->wsum_hess);
     mu_assert("nnz wrong", H->nnz == 9);
     mu_assert("vals match", cmp_double_array(H->x, expected_Ax, 9));
     mu_assert("cols match", cmp_int_array(H->i, expected_Ai, 9));
@@ -135,11 +135,11 @@ const char *test_wsum_hess_trace_composite(void)
     int expected_Ap[14] = {0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 9};
     int expected_Ai[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    mu_assert("nnz wrong", trace_node->wsum_hess->nnz == 9);
-    mu_assert("rows fail", cmp_int_array(trace_node->wsum_hess->p, expected_Ap, 14));
+    mu_assert("nnz wrong", trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->nnz == 9);
+    mu_assert("rows fail", cmp_int_array(trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->p, expected_Ap, 14));
     mu_assert("vals match",
-              cmp_double_array(trace_node->wsum_hess->x, expected_Ax, 9));
-    mu_assert("cols match", cmp_int_array(trace_node->wsum_hess->i, expected_Ai, 9));
+              cmp_double_array(trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->x, expected_Ax, 9));
+    mu_assert("cols match", cmp_int_array(trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->i, expected_Ai, 9));
     free_expr(trace_node);
     return 0;
 }

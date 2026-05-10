@@ -53,8 +53,8 @@ typedef struct
        supporting common subexpressions on the Python side. */
     bool jacobian_csc_filled;
     double *local_jac_diag; /* cached f'(g(x)) diagonal */
-    CSR_Matrix *hess_term1; /* Jg^T D Jg workspace */
-    CSR_Matrix *hess_term2; /* child wsum_hess workspace */
+    Matrix *hess_term1; /* Jg^T D Jg workspace */
+    Matrix *hess_term2; /* child wsum_hess workspace */
 } Expr_Work;
 
 /* Base expression node structure */
@@ -72,7 +72,7 @@ typedef struct expr
     // ------------------------------------------------------------------------
     double *value;
     Matrix *jacobian;
-    CSR_Matrix *wsum_hess;
+    Matrix *wsum_hess;
     forward_fn forward;
     jacobian_init_fn jacobian_init_impl;
     wsum_hess_init_fn wsum_hess_init_impl;

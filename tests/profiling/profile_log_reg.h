@@ -135,10 +135,10 @@ const char *profile_log_reg(void)
     double *H_a_dense = (double *) calloc((size_t) n * n, sizeof(double));
     for (int i = 0; i < n; i++)
     {
-        for (int e = obj->wsum_hess->p[i]; e < obj->wsum_hess->p[i + 1]; e++)
+        for (int e = obj->wsum_hess->to_csr(obj->wsum_hess)->p[i]; e < obj->wsum_hess->to_csr(obj->wsum_hess)->p[i + 1]; e++)
         {
-            int col = obj->wsum_hess->i[e];
-            H_a_dense[i * n + col] = obj->wsum_hess->x[e];
+            int col = obj->wsum_hess->to_csr(obj->wsum_hess)->i[e];
+            H_a_dense[i * n + col] = obj->wsum_hess->to_csr(obj->wsum_hess)->x[e];
         }
     }
     double max_H_diff = 0.0;

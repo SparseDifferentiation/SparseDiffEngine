@@ -49,15 +49,15 @@ const char *test_wsum_hess_matmul(void)
     Z->eval_wsum_hess(Z, w);
 
     /* Verify Hessian dimensions and sparsity */
-    mu_assert("Hessian should be 18x18", Z->wsum_hess->m == n_vars);
-    mu_assert("Hessian should be 18x18", Z->wsum_hess->n == n_vars);
-    mu_assert("Hessian should have 48 nonzeros", Z->wsum_hess->nnz == 48);
+    mu_assert("Hessian should be 18x18", Z->wsum_hess->to_csr(Z->wsum_hess)->m == n_vars);
+    mu_assert("Hessian should be 18x18", Z->wsum_hess->to_csr(Z->wsum_hess)->n == n_vars);
+    mu_assert("Hessian should have 48 nonzeros", Z->wsum_hess->to_csr(Z->wsum_hess)->nnz == 48);
 
     int expected_p[19] = {0,  4,  8,  12, 16, 20, 24, 26, 28, 30,
                           32, 34, 36, 38, 40, 42, 44, 46, 48};
 
     mu_assert("Row pointers incorrect",
-              cmp_int_array(Z->wsum_hess->p, expected_p, 19));
+              cmp_int_array(Z->wsum_hess->to_csr(Z->wsum_hess)->p, expected_p, 19));
 
     int expected_i[48] = {6, 9,  12, 15, /* row 0 */
                           6, 9,  12, 15, /* row 1 */
@@ -79,7 +79,7 @@ const char *test_wsum_hess_matmul(void)
                           4, 5};
 
     mu_assert("Column indices incorrect",
-              cmp_int_array(Z->wsum_hess->i, expected_i, 48));
+              cmp_int_array(Z->wsum_hess->to_csr(Z->wsum_hess)->i, expected_i, 48));
 
     double expected_x[48] = {1.0, 3.0, 5.0, 7.0, /* row 0 */
                              2.0, 4.0, 6.0, 8.0, /* row 1 */
@@ -101,7 +101,7 @@ const char *test_wsum_hess_matmul(void)
                              7.0, 8.0};          /* row 17 */
 
     mu_assert("Hessian values incorrect",
-              cmp_double_array(Z->wsum_hess->x, expected_x, 48));
+              cmp_double_array(Z->wsum_hess->to_csr(Z->wsum_hess)->x, expected_x, 48));
 
     free_expr(Z);
     return 0;
@@ -150,9 +150,9 @@ const char *test_wsum_hess_matmul_yx(void)
     Z->eval_wsum_hess(Z, w);
 
     /* Verify Hessian dimensions and sparsity */
-    mu_assert("Hessian should be 18x18", Z->wsum_hess->m == n_vars);
-    mu_assert("Hessian should be 18x18", Z->wsum_hess->n == n_vars);
-    mu_assert("Hessian should have 48 nonzeros", Z->wsum_hess->nnz == 48);
+    mu_assert("Hessian should be 18x18", Z->wsum_hess->to_csr(Z->wsum_hess)->m == n_vars);
+    mu_assert("Hessian should be 18x18", Z->wsum_hess->to_csr(Z->wsum_hess)->n == n_vars);
+    mu_assert("Hessian should have 48 nonzeros", Z->wsum_hess->to_csr(Z->wsum_hess)->nnz == 48);
 
     /* Row pointers when Y < X:
      * Rows 0-11 (Y variables): each couples with m=2 X variables
@@ -162,7 +162,7 @@ const char *test_wsum_hess_matmul_yx(void)
                           20, 22, 24, 28, 32, 36, 40, 44, 48};
 
     mu_assert("Row pointers incorrect",
-              cmp_int_array(Z->wsum_hess->p, expected_p, 19));
+              cmp_int_array(Z->wsum_hess->to_csr(Z->wsum_hess)->p, expected_p, 19));
 
     /* Column indices when Y < X:
      * Y[k_idx, col] couples with X[row, k_idx] for all row
@@ -190,7 +190,7 @@ const char *test_wsum_hess_matmul_yx(void)
                           2,  5,  8, 11}; /* row 17: X[1,2] */
 
     mu_assert("Column indices incorrect",
-              cmp_int_array(Z->wsum_hess->i, expected_i, 48));
+              cmp_int_array(Z->wsum_hess->to_csr(Z->wsum_hess)->i, expected_i, 48));
 
     double expected_x[48] = {1.0, 2.0,            /* row 0 */
                              1.0, 2.0,            /* row 1 */
@@ -212,7 +212,7 @@ const char *test_wsum_hess_matmul_yx(void)
                              2.0, 4.0, 6.0, 8.0}; /* row 17 */
 
     mu_assert("Hessian values incorrect",
-              cmp_double_array(Z->wsum_hess->x, expected_x, 48));
+              cmp_double_array(Z->wsum_hess->to_csr(Z->wsum_hess)->x, expected_x, 48));
 
     free_expr(Z);
     return 0;

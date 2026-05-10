@@ -43,7 +43,7 @@ static void atanh_eval_wsum_hess(expr *node, const double *w)
     for (int j = 0; j < node->size; j++)
     {
         double c = 1.0 - x[j] * x[j];
-        node->wsum_hess->x[j] = w[j] * (2.0 * x[j]) / (c * c);
+        node->wsum_hess->to_csr(node->wsum_hess)->x[j] = w[j] * (2.0 * x[j]) / (c * c);
     }
 }
 

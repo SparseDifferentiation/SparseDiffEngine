@@ -51,9 +51,9 @@ const char *test_wsum_hess_right_matmul(void)
     int expected_p[5] = {0, 1, 2, 3, 4}; /* each row has 1 diagonal entry */
 
     mu_assert("vals incorrect",
-              cmp_double_array(log_x_A->wsum_hess->x, expected_x, 4));
-    mu_assert("cols incorrect", cmp_int_array(log_x_A->wsum_hess->i, expected_i, 4));
-    mu_assert("rows incorrect", cmp_int_array(log_x_A->wsum_hess->p, expected_p, 5));
+              cmp_double_array(log_x_A->wsum_hess->to_csr(log_x_A->wsum_hess)->x, expected_x, 4));
+    mu_assert("cols incorrect", cmp_int_array(log_x_A->wsum_hess->to_csr(log_x_A->wsum_hess)->i, expected_i, 4));
+    mu_assert("rows incorrect", cmp_int_array(log_x_A->wsum_hess->to_csr(log_x_A->wsum_hess)->p, expected_p, 5));
 
     free_csr_matrix(A);
     free_expr(log_x_A);
@@ -100,9 +100,9 @@ const char *test_wsum_hess_right_matmul_vector(void)
     int expected_p[4] = {0, 1, 2, 3}; /* each row has 1 diagonal entry */
 
     mu_assert("vals incorrect",
-              cmp_double_array(log_x_A->wsum_hess->x, expected_x, 3));
-    mu_assert("cols incorrect", cmp_int_array(log_x_A->wsum_hess->i, expected_i, 3));
-    mu_assert("rows incorrect", cmp_int_array(log_x_A->wsum_hess->p, expected_p, 4));
+              cmp_double_array(log_x_A->wsum_hess->to_csr(log_x_A->wsum_hess)->x, expected_x, 3));
+    mu_assert("cols incorrect", cmp_int_array(log_x_A->wsum_hess->to_csr(log_x_A->wsum_hess)->i, expected_i, 3));
+    mu_assert("rows incorrect", cmp_int_array(log_x_A->wsum_hess->to_csr(log_x_A->wsum_hess)->p, expected_p, 4));
 
     free_csr_matrix(A);
     free_expr(log_x_A);

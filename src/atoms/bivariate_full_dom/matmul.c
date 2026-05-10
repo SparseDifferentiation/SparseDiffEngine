@@ -277,10 +277,10 @@ static void wsum_hess_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int total_nnz = 2 * m * k * n;
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, total_nnz);
+    CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, total_nnz);
     int nnz = 0;
-    int *Hi = node->wsum_hess->i;
-    int *Hp = node->wsum_hess->p;
+    int *Hi = hess->i;
+    int *Hp = hess->p;
     int start, i;
 
     if (x->var_id < y->var_id)
@@ -343,6 +343,7 @@ static void wsum_hess_init_no_chain_rule(expr *node)
     }
     Hp[node->n_vars] = nnz;
     assert(nnz == total_nnz);
+    node->wsum_hess = new_sparse_matrix(hess);
 }
 
 static void eval_wsum_hess_no_chain_rule(expr *node, const double *w)
@@ -353,7 +354,7 @@ static void eval_wsum_hess_no_chain_rule(expr *node, const double *w)
     int k = x->d2;
     int n = y->d2;
     int offset = 0;
-    double *Hx = node->wsum_hess->x;
+    double *Hx = node->wsum_hess->to_csr(node->wsum_hess)->x;
     const double *w_temp;
 
     if (x->var_id < y->var_id)
@@ -440,8 +441,10 @@ static void wsum_hess_init_chain_rule(expr *node)
 
     /* sum the four terms and fill idx maps */
     int *maps[4];
-    node->wsum_hess =
-        sum_4_csr_alloc(mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess, maps);
+    CSR_Matrix *hess =
+        sum_4_csr_alloc(mnode->C, mnode->CT, f->wsum_hess->to_csr(f->wsum_hess),
+                        g->wsum_hess->to_csr(g->wsum_hess), maps);
+    node->wsum_hess = new_sparse_matrix(hess);
     mnode->idx_map_C = maps[0];
     mnode->idx_map_CT = maps[1];
     mnode->idx_map_Hf = maps[2];
@@ -512,11 +515,12 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     }
 
     /* accumulate H = C + C^T + H_f + H_g */
-    memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-    accumulator(mnode->C, mnode->idx_map_C, node->wsum_hess->x);
-    accumulator(mnode->CT, mnode->idx_map_CT, node->wsum_hess->x);
-    accumulator(f->wsum_hess, mnode->idx_map_Hf, node->wsum_hess->x);
-    accumulator(g->wsum_hess, mnode->idx_map_Hg, node->wsum_hess->x);
+    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    memset(H->x, 0, H->nnz * sizeof(double));
+    accumulator(mnode->C, mnode->idx_map_C, H->x);
+    accumulator(mnode->CT, mnode->idx_map_CT, H->x);
+    accumulator(f->wsum_hess->to_csr(f->wsum_hess), mnode->idx_map_Hf, H->x);
+    accumulator(g->wsum_hess->to_csr(g->wsum_hess), mnode->idx_map_Hg, H->x);
 }
 
 expr *new_matmul(expr *x, expr *y)

@@ -83,7 +83,8 @@ static void wsum_hess_init_impl(expr *node)
         x->var_id != y->var_id)
     {
         assert(y->var_id != NOT_A_VARIABLE);
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
+        CSR_Matrix *hess =
+            new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
 
         int i, var1_id, var2_id;
 
@@ -101,8 +102,8 @@ static void wsum_hess_init_impl(expr *node)
         /* var1 rows of Hessian */
         for (i = 0; i < node->size; i++)
         {
-            node->wsum_hess->p[var1_id + i] = i;
-            node->wsum_hess->i[i] = var2_id + i;
+            hess->p[var1_id + i] = i;
+            hess->i[i] = var2_id + i;
         }
 
         int nnz = node->size;
@@ -110,22 +111,23 @@ static void wsum_hess_init_impl(expr *node)
         /* rows between var1 and var2 */
         for (i = var1_id + node->size; i < var2_id; i++)
         {
-            node->wsum_hess->p[i] = nnz;
+            hess->p[i] = nnz;
         }
 
         /* var2 rows of Hessian */
         for (i = 0; i < node->size; i++)
         {
-            node->wsum_hess->p[var2_id + i] = nnz + i;
-            node->wsum_hess->i[nnz + i] = var1_id + i;
+            hess->p[var2_id + i] = nnz + i;
+            hess->i[nnz + i] = var1_id + i;
         }
 
         /* remaining rows */
         nnz += node->size;
         for (i = var2_id + node->size; i <= node->n_vars; i++)
         {
-            node->wsum_hess->p[i] = nnz;
+            hess->p[i] = nnz;
         }
+        node->wsum_hess = new_sparse_matrix(hess);
     }
     else
     {
@@ -171,7 +173,9 @@ static void wsum_hess_init_impl(expr *node)
            fill index maps telling us where to accumulate each element of each
            matrix in the sum) */
         int *maps[4];
-        node->wsum_hess = sum_4_csr_alloc(C, CT, x->wsum_hess, y->wsum_hess, maps);
+        CSR_Matrix *hess = sum_4_csr_alloc(C, CT, x->wsum_hess->to_csr(x->wsum_hess),
+                                            y->wsum_hess->to_csr(y->wsum_hess), maps);
+        node->wsum_hess = new_sparse_matrix(hess);
         mul_node->idx_map_C = maps[0];
         mul_node->idx_map_CT = maps[1];
         mul_node->idx_map_Hx = maps[2];
@@ -188,8 +192,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
         x->var_id != y->var_id)
     {
-        memcpy(node->wsum_hess->x, w, node->size * sizeof(double));
-        memcpy(node->wsum_hess->x + node->size, w, node->size * sizeof(double));
+        memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, w, node->size * sizeof(double));
+        memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x + node->size, w, node->size * sizeof(double));
     }
     else
     {
@@ -259,11 +263,12 @@ static void eval_wsum_hess(expr *node, const double *w)
         // ---------------------------------------------------------------
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
-        memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-        accumulator(C, mul_node->idx_map_C, node->wsum_hess->x);
-        accumulator(CT, mul_node->idx_map_CT, node->wsum_hess->x);
-        accumulator(x->wsum_hess, mul_node->idx_map_Hx, node->wsum_hess->x);
-        accumulator(y->wsum_hess, mul_node->idx_map_Hy, node->wsum_hess->x);
+        CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+        memset(H->x, 0, H->nnz * sizeof(double));
+        accumulator(C, mul_node->idx_map_C, H->x);
+        accumulator(CT, mul_node->idx_map_CT, H->x);
+        accumulator(x->wsum_hess->to_csr(x->wsum_hess), mul_node->idx_map_Hx, H->x);
+        accumulator(y->wsum_hess->to_csr(y->wsum_hess), mul_node->idx_map_Hy, H->x);
     }
 }
 

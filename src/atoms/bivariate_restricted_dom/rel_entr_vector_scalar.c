@@ -106,8 +106,8 @@ static void wsum_hess_init_vector_scalar(expr *node)
     int var_id_x = x->var_id;
     int var_id_y = y->var_id;
 
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, 3 * node->size + 1);
-    CSR_Matrix *H = node->wsum_hess;
+    CSR_Matrix *H =
+        new_csr_matrix(node->n_vars, node->n_vars, 3 * node->size + 1);
 
     if (var_id_x < var_id_y)
     {
@@ -163,13 +163,14 @@ static void wsum_hess_init_vector_scalar(expr *node)
             H->p[i] = 3 * node->size + 1;
         }
     }
+    node->wsum_hess = new_sparse_matrix(H);
 }
 
 static void eval_wsum_hess_vector_scalar(expr *node, const double *w)
 {
     double *x = node->left->value;
     double y = node->right->value[0];
-    double *H = node->wsum_hess->x;
+    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
     int var_id_x = node->left->var_id;
     int var_id_y = node->right->var_id;
 

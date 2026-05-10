@@ -70,12 +70,16 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(node->left);
     wsum_hess_init(node->right);
 
+    CSR_Matrix *Hl = node->left->wsum_hess->to_csr(node->left->wsum_hess);
+    CSR_Matrix *Hr = node->right->wsum_hess->to_csr(node->right->wsum_hess);
+
     /* we never have to store more than the sum of children's nnz */
-    int nnz_max = node->left->wsum_hess->nnz + node->right->wsum_hess->nnz;
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz_max);
+    int nnz_max = Hl->nnz + Hr->nnz;
+    CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, nnz_max);
 
     /* fill sparsity pattern of hessian */
-    sum_csr_alloc(node->left->wsum_hess, node->right->wsum_hess, node->wsum_hess);
+    sum_csr_alloc(Hl, Hr, hess);
+    node->wsum_hess = new_sparse_matrix(hess);
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -85,8 +89,9 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->right->eval_wsum_hess(node->right, w);
 
     /* sum children's wsum_hess */
-    sum_csr_fill_values(node->left->wsum_hess, node->right->wsum_hess,
-                        node->wsum_hess);
+    sum_csr_fill_values(node->left->wsum_hess->to_csr(node->left->wsum_hess),
+                        node->right->wsum_hess->to_csr(node->right->wsum_hess),
+                        node->wsum_hess->to_csr(node->wsum_hess));
 }
 
 static bool is_affine(const expr *node)

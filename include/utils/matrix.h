@@ -64,18 +64,18 @@ typedef struct Matrix
     void (*update_values)(struct Matrix *self, const double *new_values);
 
     /* Chain-rule operations used by transformer atoms (elementwise, etc.).
-       copy_sparsity returns a matrix of same shape and type as self;
-       DA_fill_values writes diag(d) * self into out (which has same structure as
-       self); ATA_alloc_csr allocates a CSR with sparsity of self^T * self;
-       ATDA_fill_csr fills csr_out with self^T * diag(d) * self;
-       to_csr returns a CSR view of self (constant-time for Sparse_Matrix, lazily
-       built/refreshed for other types). */
+       All chain-rule outputs are the same concrete type as self (uniform
+       polymorphism). copy_sparsity returns a matrix of same shape and type as
+       self; DA_fill_values writes diag(d) * self into out; ATA_alloc allocates
+       a matrix with sparsity of self^T * self; ATDA_fill_values fills out with
+       self^T * diag(d) * self; to_csr returns a CSR view of self (constant-time
+       for Sparse_Matrix, lazily built/refreshed for other types). */
     struct Matrix *(*copy_sparsity)(const struct Matrix *self);
     void (*DA_fill_values)(const double *d, const struct Matrix *self,
                            struct Matrix *out);
-    CSR_Matrix *(*ATA_alloc_csr)(struct Matrix *self);
-    void (*ATDA_fill_csr)(const struct Matrix *self, const double *d,
-                          CSR_Matrix *csr_out);
+    struct Matrix *(*ATA_alloc)(struct Matrix *self);
+    void (*ATDA_fill_values)(const struct Matrix *self, const double *d,
+                             struct Matrix *out);
     CSR_Matrix *(*to_csr)(struct Matrix *self);
 
     /* Refresh any internal caches (e.g. a CSC mirror) so subsequent ATA / ATDA

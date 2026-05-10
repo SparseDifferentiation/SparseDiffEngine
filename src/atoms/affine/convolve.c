@@ -106,7 +106,7 @@ static void wsum_hess_init_impl(expr *node)
     convolve_expr *cnode = (convolve_expr *) node;
 
     wsum_hess_init(child);
-    node->wsum_hess = new_csr_copy_sparsity(child->wsum_hess);
+    node->wsum_hess = child->wsum_hess->copy_sparsity(child->wsum_hess);
     node->work->dwork = (double *) SP_MALLOC(cnode->n * sizeof(double));
 }
 
@@ -129,8 +129,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 
     child->eval_wsum_hess(child, w_prime);
-    memcpy(node->wsum_hess->x, child->wsum_hess->x,
-           child->wsum_hess->nnz * sizeof(double));
+    memcpy(node->wsum_hess->to_csr(node->wsum_hess)->x, child->wsum_hess->to_csr(child->wsum_hess)->x,
+           child->wsum_hess->to_csr(child->wsum_hess)->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

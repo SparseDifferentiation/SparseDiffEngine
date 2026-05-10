@@ -44,7 +44,7 @@ static void entr_eval_wsum_hess(expr *node, const double *w)
     double *x = node->left->value;
     for (int j = 0; j < node->size; j++)
     {
-        node->wsum_hess->x[j] = -w[j] / x[j];
+        node->wsum_hess->to_csr(node->wsum_hess)->x[j] = -w[j] / x[j];
     }
 }
 

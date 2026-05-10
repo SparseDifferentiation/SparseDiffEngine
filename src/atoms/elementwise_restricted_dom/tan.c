@@ -44,7 +44,7 @@ static void tan_eval_wsum_hess(expr *node, const double *w)
     for (int j = 0; j < node->size; j++)
     {
         double c = cos(x[j]);
-        node->wsum_hess->x[j] = 2.0 * w[j] * node->value[j] / (c * c);
+        node->wsum_hess->to_csr(node->wsum_hess)->x[j] = 2.0 * w[j] * node->value[j] / (c * c);
     }
 }
 

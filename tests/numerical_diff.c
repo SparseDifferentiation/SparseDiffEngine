@@ -171,7 +171,7 @@ int check_wsum_hess(expr *node, const double *u, const double *w, double h)
     node->eval_wsum_hess(node, w);
 
     double *H_ana = calloc((size_t) n * n, sizeof(double));
-    csr_to_dense(node->wsum_hess, H_ana);
+    csr_to_dense(node->wsum_hess->to_csr(node->wsum_hess), H_ana);
 
     int result = 1;
     for (int i = 0; i < n * n; i++)

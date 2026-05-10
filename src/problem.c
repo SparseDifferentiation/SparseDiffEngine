@@ -83,7 +83,8 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
     int *cols = iwork;
     int *col_to_pos = iwork; /* reused after qsort */
     int nnz = 0;
-    CSR_Matrix *H_obj = prob->objective->wsum_hess;
+    CSR_Matrix *H_obj =
+        prob->objective->wsum_hess->to_csr(prob->objective->wsum_hess);
     CSR_Matrix *H_c;
     CSR_Matrix *H = prob->lagrange_hessian;
     H->p[0] = 0;
@@ -100,7 +101,7 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
         /* gather columns from constraint hessians */
         for (int c_idx = 0; c_idx < prob->n_constraints; c_idx++)
         {
-            H_c = constrs[c_idx]->wsum_hess;
+            H_c = constrs[c_idx]->wsum_hess->to_csr(constrs[c_idx]->wsum_hess);
             int c_len = H_c->p[row + 1] - H_c->p[row];
             memcpy(cols + count, H_c->i + H_c->p[row], c_len * sizeof(int));
             count += c_len;
@@ -146,7 +147,7 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
     /* map constraint hessian entries */
     for (int c_idx = 0; c_idx < prob->n_constraints; c_idx++)
     {
-        H_c = constrs[c_idx]->wsum_hess;
+        H_c = constrs[c_idx]->wsum_hess->to_csr(constrs[c_idx]->wsum_hess);
         for (int row = 0; row < H->m; row++)
         {
             for (int idx = H->p[row]; idx < H->p[row + 1]; idx++)
@@ -225,12 +226,14 @@ void problem_init_hessian(problem *prob)
     //                        Lagrange Hessian structure
     // -------------------------------------------------------------------------------
     wsum_hess_init(prob->objective);
-    int nnz = prob->objective->wsum_hess->nnz;
+    int nnz =
+        prob->objective->wsum_hess->to_csr(prob->objective->wsum_hess)->nnz;
 
     for (int i = 0; i < prob->n_constraints; i++)
     {
         wsum_hess_init(prob->constraints[i]);
-        nnz += prob->constraints[i]->wsum_hess->nnz;
+        Matrix *c_hess = prob->constraints[i]->wsum_hess;
+        nnz += c_hess->to_csr(c_hess)->nnz;
     }
 
     prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
@@ -547,14 +550,17 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     memset(H->x, 0, H->nnz * sizeof(double));
 
     /* accumulate objective function */
-    accumulator(obj->wsum_hess, idx_map, H->x);
-    offset = obj->wsum_hess->nnz;
+    CSR_Matrix *obj_hess_csr = obj->wsum_hess->to_csr(obj->wsum_hess);
+    accumulator(obj_hess_csr, idx_map, H->x);
+    offset = obj_hess_csr->nnz;
 
     /* accumulate constraint functions */
     for (int i = 0; i < prob->n_constraints; i++)
     {
-        accumulator(constrs[i]->wsum_hess, idx_map + offset, H->x);
-        offset += constrs[i]->wsum_hess->nnz;
+        CSR_Matrix *c_hess_csr =
+            constrs[i]->wsum_hess->to_csr(constrs[i]->wsum_hess);
+        accumulator(c_hess_csr, idx_map + offset, H->x);
+        offset += c_hess_csr->nnz;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);

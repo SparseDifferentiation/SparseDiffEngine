@@ -155,8 +155,7 @@ static void wsum_hess_init_impl(expr *node)
     {
         /* Hessian has block diagonal structure: d2 blocks of size d1 x d1 */
         int nnz = x->d2 * x->d1 * x->d1;
-        node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
-        CSR_Matrix *H = node->wsum_hess;
+        CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, nnz);
 
         /* fill row pointers for the variable's rows (block diagonal) */
         for (int i = 0; i < x->size; i++)
@@ -185,6 +184,7 @@ static void wsum_hess_init_impl(expr *node)
                 }
             }
         }
+        node->wsum_hess = new_sparse_matrix(H);
     }
     else
     {
@@ -199,7 +199,7 @@ static inline void wsum_hess_column_no_zeros(expr *node, const double *w, int co
                                              int d1)
 {
     expr *x = node->left;
-    double *H = node->wsum_hess->x;
+    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
     double scale = w[col] * node->value[col];
@@ -228,7 +228,7 @@ static inline void wsum_hess_column_one_zero(expr *node, const double *w, int co
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
-    double *H = node->wsum_hess->x;
+    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
 
@@ -256,7 +256,7 @@ static inline void wsum_hess_column_two_zeros(expr *node, const double *w, int c
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
-    double *H = node->wsum_hess->x;
+    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
 
@@ -290,7 +290,7 @@ static inline void wsum_hess_column_two_zeros(expr *node, const double *w, int c
 static inline void wsum_hess_column_many_zeros(expr *node, const double *w, int col,
                                                int d1)
 {
-    double *H = node->wsum_hess->x;
+    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
     int block_start = col * d1 * d1;
 
     /* clear this column's block */

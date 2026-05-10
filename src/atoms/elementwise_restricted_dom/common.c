@@ -39,18 +39,19 @@ void wsum_hess_init_restricted(expr *node)
     int id = child->var_id;
     int i;
 
-    node->wsum_hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
+    CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
 
     for (i = 0; i < node->size; i++)
     {
-        node->wsum_hess->p[id + i] = i;
-        node->wsum_hess->i[i] = id + i;
+        hess->p[id + i] = i;
+        hess->i[i] = id + i;
     }
 
     for (i = id + node->size; i <= node->n_vars; i++)
     {
-        node->wsum_hess->p[i] = node->size;
+        hess->p[i] = node->size;
     }
+    node->wsum_hess = new_sparse_matrix(hess);
 }
 
 bool is_affine_restricted(const expr *node)

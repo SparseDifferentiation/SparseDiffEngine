@@ -62,8 +62,8 @@ static void sparse_free(Matrix *self)
 Matrix *new_sparse_matrix(CSR_Matrix *A);
 
 /* Build the CSC cache structure if absent. Values are NOT filled here; caller
-   must call refresh_csc_values before consuming. ATA_alloc_csr only needs
-   structure, so it's safe to call after build_csc_structure alone. */
+   must call refresh_csc_values before consuming. ATA_alloc only needs structure,
+   so it's safe to call after build_csc_structure alone. */
 static void build_csc_structure_if_absent(Sparse_Matrix *sm)
 {
     if (sm->csc_cache != NULL) return;
@@ -84,19 +84,19 @@ static void sparse_DA_fill_values(const double *d, const Matrix *self, Matrix *o
     DA_fill_values(d, sm->csr, sm_out->csr);
 }
 
-static CSR_Matrix *sparse_ATA_alloc_csr(Matrix *self)
+static Matrix *sparse_ATA_alloc(Matrix *self)
 {
     Sparse_Matrix *sm = (Sparse_Matrix *) self;
     build_csc_structure_if_absent(sm);
-    return ATA_alloc(sm->csc_cache);
+    return new_sparse_matrix(ATA_alloc(sm->csc_cache));
 }
 
 /* Caller must have called refresh_csc_values since the last change to csr->x. */
-static void sparse_ATDA_fill_csr(const Matrix *self, const double *d,
-                                 CSR_Matrix *csr_out)
+static void sparse_ATDA_fill_values(const Matrix *self, const double *d, Matrix *out)
 {
     const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
-    ATDA_fill_values(sm->csc_cache, d, csr_out);
+    Sparse_Matrix *sm_out = (Sparse_Matrix *) out;
+    ATDA_fill_values(sm->csc_cache, d, sm_out->csr);
 }
 
 static CSR_Matrix *sparse_to_csr(Matrix *self)
@@ -120,8 +120,8 @@ static void wire_vtable(Sparse_Matrix *sm)
     sm->base.update_values = sparse_update_values;
     sm->base.copy_sparsity = sparse_copy_sparsity;
     sm->base.DA_fill_values = sparse_DA_fill_values;
-    sm->base.ATA_alloc_csr = sparse_ATA_alloc_csr;
-    sm->base.ATDA_fill_csr = sparse_ATDA_fill_csr;
+    sm->base.ATA_alloc = sparse_ATA_alloc;
+    sm->base.ATDA_fill_values = sparse_ATDA_fill_values;
     sm->base.to_csr = sparse_to_csr;
     sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;

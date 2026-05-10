@@ -25,9 +25,9 @@ const char *test_wsum_hess_rel_entr_vector_scalar(void)
     double expected_x[10] = {1.0,   -0.25, 1.0,  -0.5,  1.0,
                              -0.75, -0.25, -0.5, -0.75, 0.875};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->p, expected_p, 5));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->i, expected_i, 10));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 10));
+    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 5));
+    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 10));
+    mu_assert("x array fails", cmp_double_array(node->wsum_hess->to_csr(node->wsum_hess)->x, expected_x, 10));
 
     free_expr(node);
     return 0;

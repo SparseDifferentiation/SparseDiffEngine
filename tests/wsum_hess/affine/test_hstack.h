@@ -91,11 +91,11 @@ const char *test_wsum_hess_hstack(void)
     int expected_i[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
     mu_assert("vals incorrect",
-              cmp_double_array(hstack_node->wsum_hess->x, expected_x, 9));
+              cmp_double_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->x, expected_x, 9));
     mu_assert("rows incorrect",
-              cmp_int_array(hstack_node->wsum_hess->p, expected_p, 10));
+              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->p, expected_p, 10));
     mu_assert("cols incorrect",
-              cmp_int_array(hstack_node->wsum_hess->i, expected_i, 9));
+              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->i, expected_i, 9));
 
     free_expr(hstack_node);
     return 0;
@@ -201,11 +201,11 @@ const char *test_wsum_hess_hstack_matrix(void)
                           9, 10, 11, 12, 13, 14, 15, 16, 17};
 
     mu_assert("vals incorrect",
-              cmp_double_array(hstack_node->wsum_hess->x, expected_x, 18));
+              cmp_double_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->x, expected_x, 18));
     mu_assert("rows incorrect",
-              cmp_int_array(hstack_node->wsum_hess->p, expected_p, 19));
+              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->p, expected_p, 19));
     mu_assert("cols incorrect",
-              cmp_int_array(hstack_node->wsum_hess->i, expected_i, 18));
+              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->i, expected_i, 18));
 
     free_expr(hstack_node);
     return 0;
