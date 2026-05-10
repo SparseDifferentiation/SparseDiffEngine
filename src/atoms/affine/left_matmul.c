@@ -245,6 +245,9 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A)
 expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
                             const double *data)
 {
+    /* TODO: do a helper function for this dimension check (so we can use it in both
+     * dense and sparse constructors). We could include even more code in that
+     * functon, all the day down to the parameter support I think*/
     int d1, d2, n_blocks;
     if (u->d1 == n)
     {

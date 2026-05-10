@@ -21,6 +21,34 @@
 #include "CSC_Matrix.h"
 #include "CSR_Matrix.h"
 
+/* We implement three different types of matrices.
+
+    1. 'sparse_matrix' represents a generic CSR matrix.
+    2. 'permuted_dense' represents a matrix that only consists of a dense block
+        (potentially after permuting columns).
+    3. 'blkdiag_dense' represents a block diagonal matrix with a constant dense
+        block.
+
+    Each of these types implements its own functionality for common matrix operations
+    such as DA_fill_values etc. The return type of most of these operations are the
+    same as the type of the input. For example, DA_fill_values for permuted_dense
+    fills the values of a new permuted_dense object.
+
+    2, 'permuted_dense':
+       * DA_fill_values just scales the rows. It does not affect the permutation
+         indices.
+       * ATA_alloc
+       * ATDA_fill_values
+       * to_csr_sparsity
+       * to_csr_values
+       *
+
+   1. sparse_matrix: generic CSR matrix.
+   2. permuted_dense:
+
+
+*/
+
 /* Base matrix type with function pointers for polymorphic dispatch */
 typedef struct Matrix
 {

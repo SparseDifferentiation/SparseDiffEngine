@@ -66,6 +66,7 @@
 #include "utils/test_linalg_sparse_matmuls.h"
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
+#include "utils/test_permuted_dense.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
 #include "wsum_hess/affine/test_diag_mat.h"
@@ -103,6 +104,7 @@
 
 #ifdef PROFILE_ONLY
 #include "profiling/profile_left_matmul.h"
+#include "profiling/profile_log_reg.h"
 #endif /* PROFILE_ONLY */
 
 int main(void)
@@ -356,6 +358,17 @@ int main(void)
     mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
     mu_run_test(test_dense_matrix_trans, tests_run);
     mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
+    mu_run_test(test_permuted_dense_to_csr_basic, tests_run);
+    mu_run_test(test_permuted_dense_to_csr_empty, tests_run);
+    mu_run_test(test_permuted_dense_to_csr_full, tests_run);
+    mu_run_test(test_permuted_dense_to_csr_single_row, tests_run);
+    mu_run_test(test_permuted_dense_to_csr_single_col, tests_run);
+    mu_run_test(test_permuted_dense_DA_fill_values, tests_run);
+    mu_run_test(test_permuted_dense_ATA_alloc, tests_run);
+    mu_run_test(test_permuted_dense_ATDA_fill_values, tests_run);
+    mu_run_test(test_permuted_dense_times_csc, tests_run);
+    mu_run_test(test_permuted_dense_times_csc_no_active, tests_run);
+    mu_run_test(test_permuted_dense_col_inv, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
@@ -401,6 +414,7 @@ int main(void)
 #ifdef PROFILE_ONLY
     printf("\n--- Profiling Tests ---\n");
     mu_run_test(profile_left_matmul, tests_run);
+    mu_run_test(profile_log_reg, tests_run);
 #endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);
