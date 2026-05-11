@@ -66,6 +66,7 @@
 #include "utils/test_linalg_sparse_matmuls.h"
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
+#include "utils/test_matrix_BTA.h"
 #include "utils/test_permuted_dense.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
@@ -377,6 +378,18 @@ int main(void)
     mu_run_test(test_permuted_dense_broadcast_row, tests_run);
     mu_run_test(test_permuted_dense_broadcast_col, tests_run);
     mu_run_test(test_permuted_dense_diag_vec, tests_run);
+    mu_run_test(test_permuted_dense_BTA_matching_row_perm, tests_run);
+    mu_run_test(test_permuted_dense_BTA_partial_overlap, tests_run);
+    mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
+    mu_run_test(test_BTA_csr_pd_basic, tests_run);
+    mu_run_test(test_BTA_csr_pd_leaf_variable, tests_run);
+    mu_run_test(test_BTA_csr_pd_no_overlap, tests_run);
+    mu_run_test(test_BTA_pd_csr_basic, tests_run);
+    mu_run_test(test_BTA_pd_csr_leaf_variable, tests_run);
+    mu_run_test(test_BTA_pd_csr_no_overlap, tests_run);
+    mu_run_test(test_BTDA_matrices_pd_pd, tests_run);
+    mu_run_test(test_BTDA_matrices_csr_pd, tests_run);
+    mu_run_test(test_BTDA_matrices_pd_csr, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);

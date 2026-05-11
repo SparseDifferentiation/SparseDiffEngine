@@ -99,6 +99,12 @@ static CSR_Matrix *sparse_to_csr(Matrix *self)
     return ((Sparse_Matrix *) self)->csr;
 }
 
+static struct Permuted_Dense *sparse_as_permuted_dense(Matrix *self)
+{
+    (void) self;
+    return NULL;
+}
+
 static Matrix *sparse_index_alloc(Matrix *self, const int *indices, int n_idxs)
 {
     CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
@@ -299,6 +305,7 @@ static void wire_vtable(Sparse_Matrix *sm)
     sm->base.ATA_alloc = sparse_ATA_alloc;
     sm->base.ATDA_fill_values = sparse_ATDA_fill_values;
     sm->base.to_csr = sparse_to_csr;
+    sm->base.as_permuted_dense = sparse_as_permuted_dense;
     sm->base.index_alloc = sparse_index_alloc;
     sm->base.index_fill_values = sparse_index_fill_values;
     sm->base.promote_alloc = sparse_promote_alloc;

@@ -109,8 +109,8 @@ typedef struct hstack_expr
 typedef struct elementwise_mult_expr
 {
     expr base;
-    CSR_Matrix *CSR_work1; /* C  = Jg2^T diag(w) Jg1 */
-    CSR_Matrix *CSR_work2; /* CT = C^T */
+    Matrix *cross_C;       /* C  = Jg2^T diag(w) Jg1 (Sparse or PD) */
+    CSR_Matrix *CSR_work2; /* CT = C^T (always CSR) */
     int *idx_map_C;        /* C[j]  -> wsum_hess pos */
     int *idx_map_CT;       /* CT[j] -> wsum_hess pos */
     int *idx_map_Hx;       /* x->wsum_hess[j] -> pos */

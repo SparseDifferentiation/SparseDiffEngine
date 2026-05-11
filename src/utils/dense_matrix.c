@@ -22,6 +22,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+static struct Permuted_Dense *dense_as_permuted_dense(Matrix *self)
+{
+    (void) self;
+    return NULL;
+}
+
 static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *y,
                                       int p)
 {
@@ -57,6 +63,7 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.n = n;
     dm->base.nnz = m * n;
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
+    dm->base.as_permuted_dense = dense_as_permuted_dense;
     dm->base.block_left_mult_sparsity = I_kron_A_alloc;
     dm->base.block_left_mult_values = I_kron_A_fill_values;
     dm->base.free_fn = dense_free;

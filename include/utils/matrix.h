@@ -21,6 +21,10 @@
 #include "CSC_Matrix.h"
 #include "CSR_Matrix.h"
 
+/* Forward declaration; full definition in permuted_dense.h. Used by the
+   as_permuted_dense vtable getter. */
+struct Permuted_Dense;
+
 /* Broadcast shape used by the broadcast atom and its vtable methods. */
 typedef enum
 {
@@ -98,6 +102,11 @@ typedef struct Matrix
     void (*ATDA_fill_values)(const struct Matrix *self, const double *d,
                              struct Matrix *out);
     CSR_Matrix *(*to_csr)(struct Matrix *self);
+
+    /* Returns self downcast to Permuted_Dense if self is PD-backed, NULL
+       otherwise. Used by bivariate dispatchers to route to type-specialized
+       kernels. */
+    struct Permuted_Dense *(*as_permuted_dense)(struct Matrix *self);
 
     /* Row-selection / indexing: returns a new Matrix that selects rows
        indices[0..n_idxs) of self. Output shape is (n_idxs, self->n). The

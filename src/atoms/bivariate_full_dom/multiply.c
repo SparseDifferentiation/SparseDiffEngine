@@ -18,6 +18,7 @@
 #include "atoms/bivariate_full_dom.h"
 #include "subexpr.h"
 #include "utils/CSR_sum.h"
+#include "utils/matrix_BTA.h"
 #include "utils/matrix_sum.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
@@ -148,30 +149,34 @@ static void wsum_hess_init_impl(expr *node)
             node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
         }
 
-        /* prepare sparsity pattern of csc conversion */
+        /* CSC scaffolding is still needed for the (Sparse, Sparse) fast path
+           through BTA_matrices_* / BTDA_matrices_* — those route through
+           Sparse_Matrix's csc_cache. For PD operands, refresh_csc_values is
+           a no-op so the call is harmless. */
         jacobian_csc_init(x);
         jacobian_csc_init(y);
-        CSC_Matrix *Jg1 = x->work->jacobian_csc;
-        CSC_Matrix *Jg2 = y->work->jacobian_csc;
-
-        /* compute sparsity of C and prepare CT */
-        CSR_Matrix *C = BTA_alloc(Jg1, Jg2);
-        node->work->iwork = (int *) SP_MALLOC(C->m * sizeof(int));
-        CSR_Matrix *CT = AT_alloc(C, node->work->iwork);
 
         /* initialize wsum_hessians of children */
         wsum_hess_init(x);
         wsum_hess_init(y);
 
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
-        mul_node->CSR_work1 = C;
+
+        /* compute sparsity of C polymorphically (Sparse, PD-CSR, CSR-PD, PD-PD). */
+        mul_node->cross_C = BTA_matrices_alloc(x->jacobian, y->jacobian);
+
+        /* CT structure is always CSR (via AT on C's CSR view). */
+        CSR_Matrix *C_csr = mul_node->cross_C->to_csr(mul_node->cross_C);
+        node->work->iwork = (int *) SP_MALLOC(C_csr->m * sizeof(int));
+        CSR_Matrix *CT = AT_alloc(C_csr, node->work->iwork);
         mul_node->CSR_work2 = CT;
 
         /* compute sparsity pattern of H = C + C^T + term2 + term3 (we also
            fill index maps telling us where to accumulate each element of each
            matrix in the sum) */
         int *maps[4];
-        CSR_Matrix *hess = sum_4_csr_alloc(C, CT, x->wsum_hess->to_csr(x->wsum_hess),
+        CSR_Matrix *hess = sum_4_csr_alloc(C_csr, CT,
+                                           x->wsum_hess->to_csr(x->wsum_hess),
                                            y->wsum_hess->to_csr(y->wsum_hess), maps);
         node->wsum_hess = new_sparse_matrix(hess);
         mul_node->idx_map_C = maps[0];
@@ -198,44 +203,36 @@ static void eval_wsum_hess(expr *node, const double *w)
         bool is_x_affine = x->is_affine(x);
         bool is_y_affine = y->is_affine(y);
         // ----------------------------------------------------------------------
-        //            convert Jacobians of children to CSC format
-        //      (we only need to do this once if the child is affine)
-        //      TODO: what if we have parameters? Should we set jacobian_csc_filled
-        //      to false whenever parameters change value?
+        //  Refresh each operand's CSC cache as needed for the (Sparse, Sparse)
+        //  dispatch path. For PD operands, refresh_csc_values is a no-op. The
+        //  jacobian_csc_filled flag preserves the affine optimization: we only
+        //  refresh on the first eval for affine children.
         // ----------------------------------------------------------------------
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian),
-                                   x->work->jacobian_csc, x->work->csc_work);
-
+            x->jacobian->refresh_csc_values(x->jacobian);
             if (is_x_affine)
             {
                 x->work->jacobian_csc_filled = true;
             }
         }
-
         if (!y->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(y->jacobian->to_csr(y->jacobian),
-                                   y->work->jacobian_csc, y->work->csc_work);
-
+            y->jacobian->refresh_csc_values(y->jacobian);
             if (is_y_affine)
             {
                 y->work->jacobian_csc_filled = true;
             }
         }
 
-        CSC_Matrix *Jg1 = x->work->jacobian_csc;
-        CSC_Matrix *Jg2 = y->work->jacobian_csc;
-
         // ---------------------------------------------------------------
         //                    compute C and CT
         // ---------------------------------------------------------------
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
-        CSR_Matrix *C = mul_node->CSR_work1;
         CSR_Matrix *CT = mul_node->CSR_work2;
-        BTDA_fill_values(Jg1, Jg2, w, C);
-        AT_fill_values(C, CT, node->work->iwork);
+        BTDA_matrices_fill_values(x->jacobian, w, y->jacobian, mul_node->cross_C);
+        AT_fill_values(mul_node->cross_C->to_csr(mul_node->cross_C), CT,
+                       node->work->iwork);
 
         // ---------------------------------------------------------------
         //              compute term2 and term 3
@@ -262,7 +259,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
         memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-        accumulator(C->x, C->nnz, mul_node->idx_map_C, node->wsum_hess->x);
+        accumulator(mul_node->cross_C->x, mul_node->cross_C->nnz,
+                    mul_node->idx_map_C, node->wsum_hess->x);
         accumulator(CT->x, CT->nnz, mul_node->idx_map_CT, node->wsum_hess->x);
         accumulator(x->wsum_hess->x, x->wsum_hess->nnz, mul_node->idx_map_Hx,
                     node->wsum_hess->x);
@@ -274,7 +272,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 static void free_type_data(expr *node)
 {
     elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
-    free_csr_matrix(mul_node->CSR_work1);
+    free_matrix(mul_node->cross_C);
     free_csr_matrix(mul_node->CSR_work2);
     free(mul_node->idx_map_C);
     free(mul_node->idx_map_CT);
