@@ -70,10 +70,10 @@ typedef struct Matrix
     int m, n, nnz;
 
     /* Non-owning pointer to the value buffer. Sparse_Matrix: csr->x.
-       Permuted_Dense: pd->X. Dense_Matrix: dm->x. Sparse and Permuted_Dense
-       share row-major layout for equal sparsity patterns (see
-       permuted_dense_to_csr_fill_values), so memcpy via M->x is valid between
-       same-shape Sparse/PD pairs. */
+       Permuted_Dense: pd->X (also aliased as pd->csr_cache->x). Dense_Matrix:
+       dm->x. Sparse and Permuted_Dense share row-major layout for equal
+       sparsity patterns, so memcpy via M->x is valid between same-shape
+       Sparse/PD pairs. */
     double *x;
 
     /* Operators for the left-multiply matrix in left_matmul. */

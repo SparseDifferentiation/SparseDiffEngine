@@ -23,11 +23,8 @@ const char *test_permuted_dense_to_csr_basic(void)
     double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
     Matrix *M = new_permuted_dense(5, 6, 3, 2, row_perm, col_perm, X);
-    Permuted_Dense *pd = (Permuted_Dense *) M;
 
-    CSR_Matrix *C = permuted_dense_to_csr_alloc(pd);
-    permuted_dense_to_csr_fill_values(pd, C);
-
+    CSR_Matrix *C = M->to_csr(M);
     int Cp_expected[6] = {0, 0, 2, 4, 4, 6};
     int Ci_expected[6] = {0, 3, 0, 3, 0, 3};
     double Cx_expected[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
@@ -39,7 +36,6 @@ const char *test_permuted_dense_to_csr_basic(void)
     mu_assert("i", cmp_int_array(C->i, Ci_expected, 6));
     mu_assert("x", cmp_double_array(C->x, Cx_expected, 6));
 
-    free_csr_matrix(C);
     free_matrix(M);
     return 0;
 }
@@ -49,16 +45,12 @@ const char *test_permuted_dense_to_csr_basic(void)
 const char *test_permuted_dense_to_csr_empty(void)
 {
     Matrix *M = new_permuted_dense(4, 5, 0, 0, NULL, NULL, NULL);
-    Permuted_Dense *pd = (Permuted_Dense *) M;
 
-    CSR_Matrix *C = permuted_dense_to_csr_alloc(pd);
-    permuted_dense_to_csr_fill_values(pd, C);
-
+    CSR_Matrix *C = M->to_csr(M);
     int Cp_expected[5] = {0, 0, 0, 0, 0};
     mu_assert("nnz", C->nnz == 0);
     mu_assert("p", cmp_int_array(C->p, Cp_expected, 5));
 
-    free_csr_matrix(C);
     free_matrix(M);
     return 0;
 }
@@ -72,11 +64,8 @@ const char *test_permuted_dense_to_csr_full(void)
     double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
     Matrix *M = new_permuted_dense(2, 3, 2, 3, row_perm, col_perm, X);
-    Permuted_Dense *pd = (Permuted_Dense *) M;
 
-    CSR_Matrix *C = permuted_dense_to_csr_alloc(pd);
-    permuted_dense_to_csr_fill_values(pd, C);
-
+    CSR_Matrix *C = M->to_csr(M);
     int Cp_expected[3] = {0, 3, 6};
     int Ci_expected[6] = {0, 1, 2, 0, 1, 2};
     double Cx_expected[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
@@ -85,7 +74,6 @@ const char *test_permuted_dense_to_csr_full(void)
     mu_assert("i", cmp_int_array(C->i, Ci_expected, 6));
     mu_assert("x", cmp_double_array(C->x, Cx_expected, 6));
 
-    free_csr_matrix(C);
     free_matrix(M);
     return 0;
 }
@@ -99,11 +87,8 @@ const char *test_permuted_dense_to_csr_single_row(void)
     double X[2] = {7.0, 9.0};
 
     Matrix *M = new_permuted_dense(4, 5, 1, 2, row_perm, col_perm, X);
-    Permuted_Dense *pd = (Permuted_Dense *) M;
 
-    CSR_Matrix *C = permuted_dense_to_csr_alloc(pd);
-    permuted_dense_to_csr_fill_values(pd, C);
-
+    CSR_Matrix *C = M->to_csr(M);
     int Cp_expected[5] = {0, 0, 0, 2, 2};
     int Ci_expected[2] = {1, 4};
     double Cx_expected[2] = {7.0, 9.0};
@@ -112,7 +97,6 @@ const char *test_permuted_dense_to_csr_single_row(void)
     mu_assert("i", cmp_int_array(C->i, Ci_expected, 2));
     mu_assert("x", cmp_double_array(C->x, Cx_expected, 2));
 
-    free_csr_matrix(C);
     free_matrix(M);
     return 0;
 }
@@ -125,11 +109,8 @@ const char *test_permuted_dense_to_csr_single_col(void)
     double X[3] = {1.0, 2.0, 3.0};
 
     Matrix *M = new_permuted_dense(4, 4, 3, 1, row_perm, col_perm, X);
-    Permuted_Dense *pd = (Permuted_Dense *) M;
 
-    CSR_Matrix *C = permuted_dense_to_csr_alloc(pd);
-    permuted_dense_to_csr_fill_values(pd, C);
-
+    CSR_Matrix *C = M->to_csr(M);
     int Cp_expected[5] = {0, 1, 1, 2, 3};
     int Ci_expected[3] = {2, 2, 2};
     double Cx_expected[3] = {1.0, 2.0, 3.0};
@@ -138,7 +119,6 @@ const char *test_permuted_dense_to_csr_single_col(void)
     mu_assert("i", cmp_int_array(C->i, Ci_expected, 3));
     mu_assert("x", cmp_double_array(C->x, Cx_expected, 3));
 
-    free_csr_matrix(C);
     free_matrix(M);
     return 0;
 }
@@ -162,19 +142,14 @@ const char *test_permuted_dense_DA_fill_values(void)
     permuted_dense_DA_fill_values(d, pd, pd_out);
 
     /* Ground truth: build CSR of self, run DA_fill_values, compare. */
-    CSR_Matrix *csr = permuted_dense_to_csr_alloc(pd);
-    permuted_dense_to_csr_fill_values(pd, csr);
+    CSR_Matrix *csr = M->to_csr(M);
     CSR_Matrix *csr_expected = new_csr_copy_sparsity(csr);
     DA_fill_values(d, csr, csr_expected);
 
-    CSR_Matrix *csr_out = permuted_dense_to_csr_alloc(pd_out);
-    permuted_dense_to_csr_fill_values(pd_out, csr_out);
-
+    CSR_Matrix *csr_out = M_out->to_csr(M_out);
     mu_assert("x", cmp_double_array(csr_out->x, csr_expected->x, csr->nnz));
 
-    free_csr_matrix(csr);
     free_csr_matrix(csr_expected);
-    free_csr_matrix(csr_out);
     free_matrix(M);
     free_matrix(M_out);
     return 0;

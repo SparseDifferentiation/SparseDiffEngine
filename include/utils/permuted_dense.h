@@ -54,9 +54,10 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
                            const int *row_perm, const int *col_perm,
                            const double *X_data);
 
-/* Convert to CSR. The output has dense_m * dense_n nonzeros. */
-CSR_Matrix *permuted_dense_to_csr_alloc(const Permuted_Dense *self);
-void permuted_dense_to_csr_fill_values(const Permuted_Dense *self, CSR_Matrix *out);
+/* CSR view: callers should use the vtable, i.e. base.to_csr(base). The PD
+   owns and caches the returned CSR_Matrix; its value array aliases self->X,
+   so values are always live with no separate fill needed. Callers must not
+   free the returned CSR — it's released by free_matrix on the PD. */
 
 /* Fill out = diag(d) * self, where d has length self->base.m. out must have
    the same structure as self (same dimensions and same row_perm/col_perm). */

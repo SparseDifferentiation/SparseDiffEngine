@@ -29,3 +29,10 @@ void sum_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C)
 {
     sum_csr_fill_values(A->to_csr(A), B->to_csr(B), C->to_csr(C));
 }
+
+void sum_scaled_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C,
+                                     const double *d1, const double *d2)
+{
+    sum_scaled_csr_matrices_fill_values(A->to_csr(A), B->to_csr(B), C->to_csr(C),
+                                        d1, d2);
+}

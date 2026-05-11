@@ -33,4 +33,9 @@ void sum_matrices_alloc(Matrix *A, Matrix *B, Matrix *C);
    A and B (typically produced by sum_matrices_alloc). */
 void sum_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C);
 
+/* Fills C's values for C = diag(d1) * A + diag(d2) * B; assumes C already
+   has the union sparsity pattern of A and B. */
+void sum_scaled_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C,
+                                     const double *d1, const double *d2);
+
 #endif /* MATRIX_SUM_H */

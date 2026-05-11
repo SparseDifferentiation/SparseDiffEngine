@@ -67,8 +67,8 @@ static void eval_jacobian(expr *node)
 
     /* chain rule: the jacobian of h(x) = f(g1(x), g2(x))) is Jh = J_{f, 1} J_{g1} +
      * J_{f, 2} J_{g2} */
-    sum_scaled_csr_matrices_fill_values(x->jacobian->to_csr(x->jacobian), y->jacobian->to_csr(y->jacobian),
-                                        node->jacobian->to_csr(node->jacobian), y->value, x->value);
+    sum_scaled_matrices_fill_values(x->jacobian, y->jacobian, node->jacobian,
+                                    y->value, x->value);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -172,7 +172,7 @@ static void wsum_hess_init_impl(expr *node)
            matrix in the sum) */
         int *maps[4];
         CSR_Matrix *hess = sum_4_csr_alloc(C, CT, x->wsum_hess->to_csr(x->wsum_hess),
-                                            y->wsum_hess->to_csr(y->wsum_hess), maps);
+                                           y->wsum_hess->to_csr(y->wsum_hess), maps);
         node->wsum_hess = new_sparse_matrix(hess);
         mul_node->idx_map_C = maps[0];
         mul_node->idx_map_CT = maps[1];
@@ -190,12 +190,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     if (x->var_id != NOT_A_VARIABLE && y->var_id != NOT_A_VARIABLE &&
         x->var_id != y->var_id)
     {
-        /* node->wsum_hess is Sparse_Matrix (built explicitly above), so the CSR
-           view aliases its storage. Two contiguous halves [w; w] of length
-           node->size each, matching the (var1, var2) and (var2, var1) blocks. */
-        CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
-        memcpy(H->x, w, node->size * sizeof(double));
-        memcpy(H->x + node->size, w, node->size * sizeof(double));
+        memcpy(node->wsum_hess->x, w, node->size * sizeof(double));
+        memcpy(node->wsum_hess->x + node->size, w, node->size * sizeof(double));
     }
     else
     {
@@ -209,8 +205,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         // ----------------------------------------------------------------------
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), x->work->jacobian_csc,
-                                   x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian),
+                                   x->work->jacobian_csc, x->work->csc_work);
 
             if (is_x_affine)
             {
@@ -220,8 +216,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         if (!y->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(y->jacobian->to_csr(y->jacobian), y->work->jacobian_csc,
-                                   y->work->csc_work);
+            csr_to_csc_fill_values(y->jacobian->to_csr(y->jacobian),
+                                   y->work->jacobian_csc, y->work->csc_work);
 
             if (is_y_affine)
             {

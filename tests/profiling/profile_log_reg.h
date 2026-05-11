@@ -79,8 +79,8 @@ const char *profile_log_reg(void)
     free(full_rows);
     free(full_cols);
 
-    /* CSR scaffolding for the row-sum step. */
-    CSR_Matrix *Jlog_csr = permuted_dense_to_csr_alloc(Jlog_pd);
+    /* CSR scaffolding for the row-sum step (PD owns the cached CSR view). */
+    CSR_Matrix *Jlog_csr = Jlog_M->to_csr(Jlog_M);
     CSR_Matrix *Jobj_csr = new_csr_matrix(1, n, n);
     int *iwork = (int *) malloc((size_t) m * n * sizeof(int));
     int *idx_map = (int *) malloc((size_t) m * n * sizeof(int));
@@ -98,7 +98,6 @@ const char *profile_log_reg(void)
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.start);
     log_obj->local_jacobian(log_obj, log_obj->work->dwork);
     permuted_dense_DA_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
-    permuted_dense_to_csr_fill_values(Jlog_pd, Jlog_csr);
     memset(Jobj_csr->x, 0, Jobj_csr->nnz * sizeof(double));
     accumulator(Jlog_csr->x, Jlog_csr->nnz, idx_map, Jobj_csr->x);
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.end);
@@ -163,7 +162,7 @@ const char *profile_log_reg(void)
     free(iwork);
     free(idx_map);
     free_csr_matrix(Jobj_csr);
-    free_csr_matrix(Jlog_csr);
+    /* Jlog_csr is owned by Jlog_M's cache; released by free_matrix below. */
     free_matrix(H_pd_M);
     free_matrix(Jlog_M);
     free_matrix(A_pd_M);

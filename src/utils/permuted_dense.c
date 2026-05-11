@@ -28,11 +28,17 @@ static void permuted_dense_free(Matrix *self)
     Permuted_Dense *pd = (Permuted_Dense *) self;
     free(pd->row_perm);
     free(pd->col_perm);
-    free(pd->X);
     free(pd->Y_scratch);
     free(pd->col_inv);
     free(pd->row_inv);
+    /* csr_cache->x aliases pd->X (set in permuted_dense_to_csr_alloc); NULL it
+       so free_csr_matrix doesn't double-free the shared buffer. */
+    if (pd->csr_cache != NULL)
+    {
+        pd->csr_cache->x = NULL;
+    }
     free_csr_matrix(pd->csr_cache);
+    free(pd->X);
     free(pd);
 }
 
@@ -69,15 +75,12 @@ static void permuted_dense_vtable_ATDA_fill_values(const Matrix *self,
                                     (Permuted_Dense *) out);
 }
 
-/* Lazy CSR view: allocate structure on first call, refill values on every call.
-   This means the returned CSR's values always reflect the current X.
+/* Forward decl; definition lower in the file. */
+static CSR_Matrix *permuted_dense_to_csr_alloc(const Permuted_Dense *self);
 
-   Future optimization: pd->X and csr_cache->x have bit-identical memory layout
-   (row-major dense block, same offsets), so we could alias csr_cache->x = pd->X
-   and skip the value fill entirely. That requires a non-owning x flag on
-   CSR_Matrix so free_csr_matrix doesn't double-free pd->X. The current
-   memcpy-on-every-call is cheap (O(dense_m * dense_n) bandwidth), and revisiting
-   this can wait until a profile shows it matters. */
+/* Lazy CSR view: allocate structure on first call, then return the cache.
+   The cache's x array aliases pd->X (see permuted_dense_to_csr_alloc), so
+   values are always live without a per-call refresh. */
 static CSR_Matrix *permuted_dense_to_csr(Matrix *self)
 {
     Permuted_Dense *pd = (Permuted_Dense *) self;
@@ -85,7 +88,6 @@ static CSR_Matrix *permuted_dense_to_csr(Matrix *self)
     {
         pd->csr_cache = permuted_dense_to_csr_alloc(pd);
     }
-    permuted_dense_to_csr_fill_values(pd, pd->csr_cache);
     return pd->csr_cache;
 }
 
@@ -397,12 +399,19 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     return &pd->base;
 }
 
-CSR_Matrix *permuted_dense_to_csr_alloc(const Permuted_Dense *self)
+static CSR_Matrix *permuted_dense_to_csr_alloc(const Permuted_Dense *self)
 {
     int dense_m = self->dense_m;
     int dense_n = self->dense_n;
     int m = self->base.m;
     CSR_Matrix *C = new_csr_matrix(m, self->base.n, dense_m * dense_n);
+
+    /* Alias C->x to self->X: the dense block layout already matches what the
+       CSR view's value array would hold, so values are always live with no
+       memcpy needed. The PD owns the buffer; permuted_dense_free nulls
+       C->x before free_csr_matrix to avoid double-free. */
+    free(C->x);
+    C->x = self->X;
 
     /* fill column indices (each dense row contributes a copy of col_perm) */
     for (int ii = 0; ii < dense_m; ii++)
@@ -423,11 +432,6 @@ CSR_Matrix *permuted_dense_to_csr_alloc(const Permuted_Dense *self)
     }
 
     return C;
-}
-
-void permuted_dense_to_csr_fill_values(const Permuted_Dense *self, CSR_Matrix *out)
-{
-    memcpy(out->x, self->X, self->dense_m * self->dense_n * sizeof(double));
 }
 
 void permuted_dense_DA_fill_values(const double *d, const Permuted_Dense *self,
