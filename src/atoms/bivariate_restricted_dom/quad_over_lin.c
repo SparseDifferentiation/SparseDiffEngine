@@ -269,7 +269,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     double *x = node->left->value;
     double y = node->right->value[0];
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     int var_id_x = node->left->var_id;
     int var_id_y = node->right->var_id;
     int x_size = node->left->size;

@@ -226,14 +226,12 @@ void problem_init_hessian(problem *prob)
     //                        Lagrange Hessian structure
     // -------------------------------------------------------------------------------
     wsum_hess_init(prob->objective);
-    int nnz =
-        prob->objective->wsum_hess->to_csr(prob->objective->wsum_hess)->nnz;
+    int nnz = prob->objective->wsum_hess->nnz;
 
     for (int i = 0; i < prob->n_constraints; i++)
     {
         wsum_hess_init(prob->constraints[i]);
-        Matrix *c_hess = prob->constraints[i]->wsum_hess;
-        nnz += c_hess->to_csr(c_hess)->nnz;
+        nnz += prob->constraints[i]->wsum_hess->nnz;
     }
 
     prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
@@ -493,18 +491,16 @@ void problem_jacobian(problem *prob)
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-        CSR_Matrix *Jc = c->jacobian->to_csr(c->jacobian);
-
         if (!first_call && c->is_affine(c))
         {
             /* skip evaluation for affine constraints after first call */
-            nnz_offset += Jc->nnz;
+            nnz_offset += c->jacobian->nnz;
             continue;
         }
 
         c->eval_jacobian(c);
-        memcpy(J->x + nnz_offset, Jc->x, Jc->nnz * sizeof(double));
-        nnz_offset += Jc->nnz;
+        memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
+        nnz_offset += c->jacobian->nnz;
     }
 
     /* update actual nnz (may be less than allocated) */

@@ -63,7 +63,7 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
 
     if (node->left->var_id != NOT_A_VARIABLE)
     {
-        sigmas = node->jacobian->to_csr(node->jacobian)->x;
+        sigmas = node->jacobian->x;
     }
     else
     {

@@ -64,7 +64,7 @@ const char *test_wsum_hess_sum_log_axis0(void)
     int expected_i[6] = {0, 1, 2, 3, 4, 5};
 
     mu_assert("vals incorrect",
-              cmp_double_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->x, expected_x, 6));
+              cmp_double_array(sum_node->wsum_hess->x, expected_x, 6));
     mu_assert("rows incorrect",
               cmp_int_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->p, expected_p, 7));
     mu_assert("cols incorrect",
@@ -102,7 +102,7 @@ const char *test_wsum_hess_sum_log_axis1(void)
     int expected_i[6] = {0, 1, 2, 3, 4, 5};
 
     mu_assert("vals incorrect",
-              cmp_double_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->x, expected_x, 6));
+              cmp_double_array(sum_node->wsum_hess->x, expected_x, 6));
     mu_assert("rows incorrect",
               cmp_int_array(sum_node->wsum_hess->to_csr(sum_node->wsum_hess)->p, expected_p, 7));
     mu_assert("cols incorrect",

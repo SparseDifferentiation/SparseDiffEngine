@@ -43,12 +43,6 @@ static void sparse_block_left_mult_values(const Matrix *self, const CSC_Matrix *
     block_left_multiply_fill_values(sm->csr, J, C);
 }
 
-static void sparse_update_values(Matrix *self, const double *new_values)
-{
-    Sparse_Matrix *sm = (Sparse_Matrix *) self;
-    memcpy(sm->csr->x, new_values, sm->csr->nnz * sizeof(double));
-}
-
 static void sparse_free(Matrix *self)
 {
     Sparse_Matrix *sm = (Sparse_Matrix *) self;
@@ -117,7 +111,6 @@ static void wire_vtable(Sparse_Matrix *sm)
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
     sm->base.block_left_mult_values = sparse_block_left_mult_values;
-    sm->base.update_values = sparse_update_values;
     sm->base.copy_sparsity = sparse_copy_sparsity;
     sm->base.DA_fill_values = sparse_DA_fill_values;
     sm->base.ATA_alloc = sparse_ATA_alloc;
@@ -132,6 +125,8 @@ Matrix *new_sparse_matrix(CSR_Matrix *A)
     Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
     sm->base.m = A->m;
     sm->base.n = A->n;
+    sm->base.nnz = A->nnz;
+    sm->base.x = A->x;
     wire_vtable(sm);
     sm->csr = A;
     return &sm->base;
@@ -143,6 +138,8 @@ Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork)
     Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
     sm->base.m = AT->m;
     sm->base.n = AT->n;
+    sm->base.nnz = AT->nnz;
+    sm->base.x = AT->x;
     wire_vtable(sm);
     sm->csr = AT;
     return &sm->base;

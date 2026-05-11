@@ -32,7 +32,7 @@ const char *test_wsum_hess_multiply_1(void)
 
     mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 13));
     mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 6));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->to_csr(node->wsum_hess)->x, expected_x, 6));
+    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 6));
 
     free_expr(node);
     return 0;
@@ -101,7 +101,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     mu_assert("i array fails",
               cmp_int_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->i, expected_i, 29));
     mu_assert("x array fails",
-              cmp_double_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->x, expected_x, 29));
+              cmp_double_array(mult_node->wsum_hess->x, expected_x, 29));
 
     /* Cleanup */
     free_expr(mult_node);
@@ -184,7 +184,7 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     mu_assert("i array fails",
               cmp_int_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->i, expected_i, 7));
     mu_assert("x array fails",
-              cmp_double_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->x, expected_x, 7));
+              cmp_double_array(mult_node->wsum_hess->x, expected_x, 7));
 
     /* Cleanup */
     free_expr(mult_node);
@@ -221,7 +221,7 @@ const char *test_wsum_hess_multiply_2(void)
 
     mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 13));
     mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 6));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->to_csr(node->wsum_hess)->x, expected_x, 6));
+    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 6));
 
     free_expr(node);
     return 0;

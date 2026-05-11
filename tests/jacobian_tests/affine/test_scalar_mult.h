@@ -37,7 +37,7 @@ const char *test_jacobian_scalar_mult_log_vector(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("scalar mult log: x values fail",
-              cmp_double_array(y->jacobian->to_csr(y->jacobian)->x, expected_x, 3));
+              cmp_double_array(y->jacobian->x, expected_x, 3));
     mu_assert("scalar mult log: row pointers fail",
               cmp_int_array(y->jacobian->to_csr(y->jacobian)->p, expected_p, 4));
     mu_assert("scalar mult log: column indices fail",
@@ -74,7 +74,7 @@ const char *test_jacobian_scalar_mult_log_matrix(void)
     int expected_i[4] = {0, 1, 2, 3};
 
     mu_assert("scalar mult log matrix: x values fail",
-              cmp_double_array(y->jacobian->to_csr(y->jacobian)->x, expected_x, 4));
+              cmp_double_array(y->jacobian->x, expected_x, 4));
     mu_assert("scalar mult log matrix: row pointers fail",
               cmp_int_array(y->jacobian->to_csr(y->jacobian)->p, expected_p, 5));
     mu_assert("scalar mult log matrix: column indices fail",

@@ -23,7 +23,7 @@ const char *test_promote_scalar_jacobian(void)
     int expected_i[3] = {0, 0, 0};
 
     mu_assert("promote jacobian vals fail",
-              cmp_double_array(promote_node->jacobian->to_csr(promote_node->jacobian)->x, expected_x, 3));
+              cmp_double_array(promote_node->jacobian->x, expected_x, 3));
     mu_assert("promote jacobian rows fail",
               cmp_int_array(promote_node->jacobian->to_csr(promote_node->jacobian)->p, expected_p, 4));
     mu_assert("promote jacobian cols fail",
@@ -55,7 +55,7 @@ const char *test_promote_scalar_to_matrix_jacobian(void)
     int expected_i[6] = {0, 0, 0, 0, 0, 0};
 
     mu_assert("promote matrix jacobian vals fail",
-              cmp_double_array(promote_node->jacobian->to_csr(promote_node->jacobian)->x, expected_x, 6));
+              cmp_double_array(promote_node->jacobian->x, expected_x, 6));
     mu_assert("promote matrix jacobian rows fail",
               cmp_int_array(promote_node->jacobian->to_csr(promote_node->jacobian)->p, expected_p, 7));
     mu_assert("promote matrix jacobian cols fail",

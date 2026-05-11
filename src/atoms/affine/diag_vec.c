@@ -121,7 +121,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     /* Evaluate child's Hessian with extracted weights */
     x->eval_wsum_hess(x, node->work->dwork);
-    node->wsum_hess->update_values(node->wsum_hess, x->wsum_hess->to_csr(x->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

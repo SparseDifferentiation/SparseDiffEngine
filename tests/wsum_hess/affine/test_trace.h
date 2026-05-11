@@ -138,7 +138,7 @@ const char *test_wsum_hess_trace_composite(void)
     mu_assert("nnz wrong", trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->nnz == 9);
     mu_assert("rows fail", cmp_int_array(trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->p, expected_Ap, 14));
     mu_assert("vals match",
-              cmp_double_array(trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->x, expected_Ax, 9));
+              cmp_double_array(trace_node->wsum_hess->x, expected_Ax, 9));
     mu_assert("cols match", cmp_int_array(trace_node->wsum_hess->to_csr(trace_node->wsum_hess)->i, expected_Ai, 9));
     free_expr(trace_node);
     return 0;

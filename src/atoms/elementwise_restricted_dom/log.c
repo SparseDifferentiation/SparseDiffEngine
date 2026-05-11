@@ -31,7 +31,7 @@ static void log_forward(expr *node, const double *u)
 static void log_eval_jacobian(expr *node)
 {
     double *x = node->left->value;
-    double *jx = node->jacobian->to_csr(node->jacobian)->x;
+    double *jx = node->jacobian->x;
     for (int j = 0; j < node->size; j++)
     {
         jx[j] = 1.0 / x[j];
@@ -41,9 +41,10 @@ static void log_eval_jacobian(expr *node)
 static void log_eval_wsum_hess(expr *node, const double *w)
 {
     double *x = node->left->value;
+    double *hx = node->wsum_hess->x;
     for (int j = 0; j < node->size; j++)
     {
-        node->wsum_hess->to_csr(node->wsum_hess)->x[j] = -w[j] / (x[j] * x[j]);
+        hx[j] = -w[j] / (x[j] * x[j]);
     }
 }
 

@@ -39,7 +39,7 @@ const char *test_jacobian_vstack_vectors(void)
     int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
 
     mu_assert("vstack jac vectors: vals",
-              cmp_double_array(stack->jacobian->to_csr(stack->jacobian)->x, expected_x, 6));
+              cmp_double_array(stack->jacobian->x, expected_x, 6));
     mu_assert("vstack jac vectors: cols",
               cmp_int_array(stack->jacobian->to_csr(stack->jacobian)->i, expected_i, 6));
     mu_assert("vstack jac vectors: rows",
@@ -89,7 +89,7 @@ const char *test_jacobian_vstack_matrix(void)
     int expected_p[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
     mu_assert("vstack jac matrix: vals",
-              cmp_double_array(stack->jacobian->to_csr(stack->jacobian)->x, expected_x, 9));
+              cmp_double_array(stack->jacobian->x, expected_x, 9));
     mu_assert("vstack jac matrix: cols",
               cmp_int_array(stack->jacobian->to_csr(stack->jacobian)->i, expected_i, 9));
     mu_assert("vstack jac matrix: rows",

@@ -61,7 +61,7 @@ const char *test_jacobian_left_matmul_log(void)
     int expected_Ai[7] = {0, 2, 0, 2, 0, 2, 0};
     int expected_Ap[5] = {0, 2, 4, 6, 7};
 
-    mu_assert("vals fail", cmp_double_array(A_log_x->jacobian->to_csr(A_log_x->jacobian)->x, expected_Ax, 7));
+    mu_assert("vals fail", cmp_double_array(A_log_x->jacobian->x, expected_Ax, 7));
     mu_assert("cols fail", cmp_int_array(A_log_x->jacobian->to_csr(A_log_x->jacobian)->i, expected_Ai, 7));
     mu_assert("rows fail", cmp_int_array(A_log_x->jacobian->to_csr(A_log_x->jacobian)->p, expected_Ap, 5));
 
@@ -100,7 +100,7 @@ const char *test_jacobian_left_matmul_log_matrix(void)
     int expected_Ai[14] = {0, 2, 0, 2, 0, 2, 0, 3, 5, 3, 5, 3, 5, 3};
     int expected_Ap[9] = {0, 2, 4, 6, 7, 9, 11, 13, 14};
 
-    mu_assert("vals fail", cmp_double_array(A_log_x->jacobian->to_csr(A_log_x->jacobian)->x, expected_Ax, 14));
+    mu_assert("vals fail", cmp_double_array(A_log_x->jacobian->x, expected_Ax, 14));
     mu_assert("cols fail", cmp_int_array(A_log_x->jacobian->to_csr(A_log_x->jacobian)->i, expected_Ai, 14));
     mu_assert("rows fail", cmp_int_array(A_log_x->jacobian->to_csr(A_log_x->jacobian)->p, expected_Ap, 9));
 

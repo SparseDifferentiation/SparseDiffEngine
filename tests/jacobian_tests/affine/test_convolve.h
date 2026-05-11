@@ -42,7 +42,7 @@ const char *test_jacobian_convolve(void)
     mu_assert("Convolve Jacobian column indices incorrect",
               cmp_int_array(y->jacobian->to_csr(y->jacobian)->i, expected_i, 9));
     mu_assert("Convolve Jacobian values incorrect",
-              cmp_double_array(y->jacobian->to_csr(y->jacobian)->x, expected_x, 9));
+              cmp_double_array(y->jacobian->x, expected_x, 9));
 
     free_expr(y);
     return 0;

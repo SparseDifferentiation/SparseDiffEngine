@@ -191,7 +191,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
 
     node->left->eval_wsum_hess(node->left, node->work->dwork);
-    node->wsum_hess->update_values(node->wsum_hess, node->left->wsum_hess->to_csr(node->left->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static void refresh_dense_left(left_matmul_expr *lnode)

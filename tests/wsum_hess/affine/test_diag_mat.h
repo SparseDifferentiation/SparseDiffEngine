@@ -37,7 +37,7 @@ const char *test_wsum_hess_diag_mat_log(void)
     int expected_i[4] = {0, 1, 2, 3};
 
     mu_assert("diag_mat log hess vals",
-              cmp_double_array(dm->wsum_hess->to_csr(dm->wsum_hess)->x, expected_x, 4));
+              cmp_double_array(dm->wsum_hess->x, expected_x, 4));
     mu_assert("diag_mat log hess p", cmp_int_array(dm->wsum_hess->to_csr(dm->wsum_hess)->p, expected_p, 5));
     mu_assert("diag_mat log hess i", cmp_int_array(dm->wsum_hess->to_csr(dm->wsum_hess)->i, expected_i, 4));
 

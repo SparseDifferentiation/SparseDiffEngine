@@ -109,7 +109,7 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
 
-    double *J_vals = node->jacobian->to_csr(node->jacobian)->x;
+    double *J_vals = node->jacobian->x;
 
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
@@ -199,7 +199,7 @@ static inline void wsum_hess_column_no_zeros(expr *node, const double *w, int co
                                              int d1)
 {
     expr *x = node->left;
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
     double scale = w[col] * node->value[col];
@@ -228,7 +228,7 @@ static inline void wsum_hess_column_one_zero(expr *node, const double *w, int co
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
 
@@ -256,7 +256,7 @@ static inline void wsum_hess_column_two_zeros(expr *node, const double *w, int c
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     int col_start = col * d1;
     int block_start = col * d1 * d1;
 
@@ -290,7 +290,7 @@ static inline void wsum_hess_column_two_zeros(expr *node, const double *w, int c
 static inline void wsum_hess_column_many_zeros(expr *node, const double *w, int col,
                                                int d1)
 {
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     int block_start = col * d1 * d1;
 
     /* clear this column's block */

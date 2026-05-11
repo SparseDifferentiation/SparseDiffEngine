@@ -49,10 +49,24 @@
 
 */
 
-/* Base matrix type with function pointers for polymorphic dispatch */
+/* Base matrix type with function pointers for polymorphic dispatch. There are
+   two types of matrices: 'sparse_matrix' and 'permuted_dense'. Each type
+   implements the same set of operations, but with different algorithms.
+   The following operations are implemented: TODO
+*/
 typedef struct Matrix
 {
-    int m, n;
+    /* Dimensions and number of explicitly stored entries. For Sparse_Matrix
+       nnz is the CSR nnz; for Dense_Matrix it is m * n; for Permuted_Dense it
+       is dense_m * dense_n (the size of the stored dense block). */
+    int m, n, nnz;
+
+    /* Non-owning pointer to the value buffer. Sparse_Matrix: csr->x.
+       Permuted_Dense: pd->X. Dense_Matrix: dm->x. Sparse and Permuted_Dense
+       share row-major layout for equal sparsity patterns (see
+       permuted_dense_to_csr_fill_values), so memcpy via M->x is valid between
+       same-shape Sparse/PD pairs. */
+    double *x;
 
     /* Operators for the left-multiply matrix in left_matmul. */
     void (*block_left_mult_vec)(const struct Matrix *self, const double *x,
@@ -61,7 +75,6 @@ typedef struct Matrix
                                             const CSC_Matrix *J, int p);
     void (*block_left_mult_values)(const struct Matrix *self, const CSC_Matrix *J,
                                    CSC_Matrix *C);
-    void (*update_values)(struct Matrix *self, const double *new_values);
 
     /* Chain-rule operations used by transformer atoms (elementwise, etc.).
        All chain-rule outputs are the same concrete type as self (uniform

@@ -25,7 +25,7 @@ const char *test_quad_over_lin1(void)
     int expected_Ap[2] = {0, 4};
     int expected_Ai[4] = {2, 3, 4, 7};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_Ax, 4));
+    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 4));
     mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 4));
     free_expr(node);
@@ -49,7 +49,7 @@ const char *test_quad_over_lin2(void)
     int expected_Ap[2] = {0, 4};
     int expected_Ai[4] = {2, 5, 6, 7};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_Ax, 4));
+    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 4));
     mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 4));
     free_expr(node);
@@ -86,7 +86,7 @@ const char *test_quad_over_lin3(void)
     int expected_Ap[2] = {0, 4};
     int expected_Ai[4] = {2, 3, 4, 7};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_vals, 4));
+    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_vals, 4));
     mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 4));
 
@@ -126,7 +126,7 @@ const char *test_quad_over_lin4(void)
     int expected_Ap[2] = {0, 4};
     int expected_Ai[4] = {2, 5, 6, 7};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_vals, 4));
+    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_vals, 4));
     mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 4));
 
@@ -166,7 +166,7 @@ const char *test_quad_over_lin5(void)
     int expected_Ap[2] = {0, 7};
     int expected_Ai[7] = {0, 1, 2, 3, 5, 6, 7};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->to_csr(node->jacobian)->x, expected_vals, 7));
+    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_vals, 7));
     mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 2));
     mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 7));
 

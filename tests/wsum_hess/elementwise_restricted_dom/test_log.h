@@ -40,7 +40,7 @@ const char *test_wsum_hess_log(void)
     int expected_i[3] = {2, 3, 4};
 
     mu_assert("vals incorrect",
-              cmp_double_array(log_node->wsum_hess->to_csr(log_node->wsum_hess)->x, expected_x, 3));
+              cmp_double_array(log_node->wsum_hess->x, expected_x, 3));
     mu_assert("rows incorrect",
               cmp_int_array(log_node->wsum_hess->to_csr(log_node->wsum_hess)->p, expected_p, 8));
     mu_assert("cols incorrect",

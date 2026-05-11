@@ -18,7 +18,7 @@ const char *test_jacobian_log(void)
     log_node->forward(log_node, u_vals);
     jacobian_init(log_node);
     log_node->eval_jacobian(log_node);
-    mu_assert("vals fail", cmp_double_array(log_node->jacobian->to_csr(log_node->jacobian)->x, expected_Ax, 3));
+    mu_assert("vals fail", cmp_double_array(log_node->jacobian->x, expected_Ax, 3));
     mu_assert("rows fail", cmp_int_array(log_node->jacobian->to_csr(log_node->jacobian)->p, expected_Ap, 4));
     mu_assert("cols fail", cmp_int_array(log_node->jacobian->to_csr(log_node->jacobian)->i, expected_Ai, 3));
     free_expr(log_node);
@@ -36,7 +36,7 @@ const char *test_jacobian_log_matrix(void)
     log_node->forward(log_node, u_vals);
     jacobian_init(log_node);
     log_node->eval_jacobian(log_node);
-    mu_assert("vals fail", cmp_double_array(log_node->jacobian->to_csr(log_node->jacobian)->x, expected_Ax, 4));
+    mu_assert("vals fail", cmp_double_array(log_node->jacobian->x, expected_Ax, 4));
     mu_assert("rows fail", cmp_int_array(log_node->jacobian->to_csr(log_node->jacobian)->p, expected_Ap, 5));
     mu_assert("cols fail", cmp_int_array(log_node->jacobian->to_csr(log_node->jacobian)->i, expected_Ai, 4));
     free_expr(log_node);

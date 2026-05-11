@@ -63,13 +63,12 @@ static void eval_jacobian(expr *node)
     node->left->eval_jacobian(node->left);
 
     CSR_Matrix *child_jac = node->left->jacobian->to_csr(node->left->jacobian);
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
     int child_nnz = child_jac->p[1] - child_jac->p[0];
 
     /* Copy child's row values to each output row */
     for (int row = 0; row < node->size; row++)
     {
-        memcpy(jac->x + row * child_nnz, child_jac->x + child_jac->p[0],
+        memcpy(node->jacobian->x + row * child_nnz, child_jac->x + child_jac->p[0],
                child_nnz * sizeof(double));
     }
 }
@@ -93,10 +92,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->left->eval_wsum_hess(node->left, &sum_w);
 
     /* copy values */
-    CSR_Matrix *child_hess =
-        node->left->wsum_hess->to_csr(node->left->wsum_hess);
-    CSR_Matrix *jac = node->wsum_hess->to_csr(node->wsum_hess);
-    memcpy(jac->x, child_hess->x, child_hess->nnz * sizeof(double));
+    memcpy(node->wsum_hess->x, node->left->wsum_hess->x, node->left->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

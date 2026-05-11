@@ -114,7 +114,7 @@ static void eval_jacobian(expr *node)
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
 
-    double *J_vals = node->jacobian->to_csr(node->jacobian)->x;
+    double *J_vals = node->jacobian->x;
 
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)

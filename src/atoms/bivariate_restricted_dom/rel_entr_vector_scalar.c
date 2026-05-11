@@ -79,22 +79,20 @@ static void eval_jacobian_vector_scalar(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
-
     if (x->var_id < y->var_id)
     {
         for (int i = 0; i < node->size; i++)
         {
-            jac->x[2 * i] = log(x->value[i] / y->value[0]) + 1;
-            jac->x[2 * i + 1] = -x->value[i] / y->value[0];
+            node->jacobian->x[2 * i] = log(x->value[i] / y->value[0]) + 1;
+            node->jacobian->x[2 * i + 1] = -x->value[i] / y->value[0];
         }
     }
     else
     {
         for (int i = 0; i < node->size; i++)
         {
-            jac->x[2 * i] = -x->value[i] / y->value[0];
-            jac->x[2 * i + 1] = log(x->value[i] / y->value[0]) + 1;
+            node->jacobian->x[2 * i] = -x->value[i] / y->value[0];
+            node->jacobian->x[2 * i + 1] = log(x->value[i] / y->value[0]) + 1;
         }
     }
 }
@@ -170,7 +168,7 @@ static void eval_wsum_hess_vector_scalar(expr *node, const double *w)
 {
     double *x = node->left->value;
     double y = node->right->value[0];
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     int var_id_x = node->left->var_id;
     int var_id_y = node->right->var_id;
 

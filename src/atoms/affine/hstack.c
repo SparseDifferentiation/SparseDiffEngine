@@ -53,7 +53,7 @@ static void jacobian_init_impl(expr *node)
     {
         assert(hnode->args[i] != NULL);
         jacobian_init(hnode->args[i]);
-        nnz += hnode->args[i]->jacobian->to_csr(hnode->args[i]->jacobian)->nnz;
+        nnz += hnode->args[i]->jacobian->nnz;
     }
 
     CSR_Matrix *A = new_csr_matrix(node->size, node->n_vars, nnz);
@@ -86,18 +86,15 @@ static void jacobian_init_impl(expr *node)
 static void eval_jacobian(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    CSR_Matrix *A = node->jacobian->to_csr(node->jacobian);
-    A->nnz = 0;
+    node->jacobian->nnz = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
         child->eval_jacobian(child);
-        CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
-
         /* copy values */
-        memcpy(A->x + A->nnz, Jc->x, Jc->nnz * sizeof(double));
-        A->nnz += Jc->nnz;
+        memcpy(node->jacobian->x + node->jacobian->nnz, child->jacobian->x, child->jacobian->nnz * sizeof(double));
+        node->jacobian->nnz += child->jacobian->nnz;
     }
 }
 
@@ -109,8 +106,7 @@ static void wsum_hess_init_impl(expr *node)
     for (int i = 0; i < hnode->n_args; i++)
     {
         wsum_hess_init(hnode->args[i]);
-        Matrix *child_hess = hnode->args[i]->wsum_hess;
-        nnz += child_hess->to_csr(child_hess)->nnz;
+        nnz += hnode->args[i]->wsum_hess->nnz;
     }
 
     /* worst-case scenario the nnz of node->wsum_hess is the sum of children's

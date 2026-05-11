@@ -28,7 +28,7 @@ const char *test_wsum_hess_entr(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("vals incorrect",
-              cmp_double_array(entr_node->wsum_hess->to_csr(entr_node->wsum_hess)->x, expected_x, 3));
+              cmp_double_array(entr_node->wsum_hess->x, expected_x, 3));
     mu_assert("rows incorrect",
               cmp_int_array(entr_node->wsum_hess->to_csr(entr_node->wsum_hess)->p, expected_p, 4));
     mu_assert("cols incorrect",

@@ -28,7 +28,7 @@ const char *test_wsum_hess_transpose(void)
     int expected_i[16] = {4, 6, 4, 6, 5, 7, 5, 7, 0, 1, 2, 3, 0, 1, 2, 3};
 
     mu_assert("hess values fail",
-              cmp_double_array(XYT->wsum_hess->to_csr(XYT->wsum_hess)->x, expected_x, 8));
+              cmp_double_array(XYT->wsum_hess->x, expected_x, 8));
     mu_assert("jacobian row ptr fail",
               cmp_int_array(XYT->wsum_hess->to_csr(XYT->wsum_hess)->p, expected_p, 5));
     mu_assert("jacobian col idx fail",

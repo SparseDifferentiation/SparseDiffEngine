@@ -35,7 +35,7 @@ const char *test_wsum_hess_sinh(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("vals incorrect",
-              cmp_double_array(sinh_node->wsum_hess->to_csr(sinh_node->wsum_hess)->x, expected_x, 3));
+              cmp_double_array(sinh_node->wsum_hess->x, expected_x, 3));
     mu_assert("rows incorrect",
               cmp_int_array(sinh_node->wsum_hess->to_csr(sinh_node->wsum_hess)->p, expected_p, 4));
     mu_assert("cols incorrect",
@@ -73,7 +73,7 @@ const char *test_wsum_hess_tanh(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("vals incorrect",
-              cmp_double_array(tanh_node->wsum_hess->to_csr(tanh_node->wsum_hess)->x, expected_x, 3));
+              cmp_double_array(tanh_node->wsum_hess->x, expected_x, 3));
     mu_assert("rows incorrect",
               cmp_int_array(tanh_node->wsum_hess->to_csr(tanh_node->wsum_hess)->p, expected_p, 4));
     mu_assert("cols incorrect",
@@ -111,7 +111,7 @@ const char *test_wsum_hess_asinh(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("vals incorrect",
-              cmp_double_array(asinh_node->wsum_hess->to_csr(asinh_node->wsum_hess)->x, expected_x, 3));
+              cmp_double_array(asinh_node->wsum_hess->x, expected_x, 3));
     mu_assert("rows incorrect",
               cmp_int_array(asinh_node->wsum_hess->to_csr(asinh_node->wsum_hess)->p, expected_p, 4));
     mu_assert("cols incorrect",
@@ -150,7 +150,7 @@ const char *test_wsum_hess_atanh(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("vals incorrect",
-              cmp_double_array(atanh_node->wsum_hess->to_csr(atanh_node->wsum_hess)->x, expected_x, 3));
+              cmp_double_array(atanh_node->wsum_hess->x, expected_x, 3));
     mu_assert("rows incorrect",
               cmp_int_array(atanh_node->wsum_hess->to_csr(atanh_node->wsum_hess)->p, expected_p, 4));
     mu_assert("cols incorrect",

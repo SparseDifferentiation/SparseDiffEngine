@@ -92,9 +92,8 @@ static void eval_jacobian(expr *node)
     x->eval_jacobian(x);
 
     /* local jacobian */
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
-    memset(jac->x, 0, jac->nnz * sizeof(double));
-    accumulator_with_spacing(x->jacobian->to_csr(x->jacobian), tnode->idx_map, jac->x, x->d1 + 1);
+    memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
+    accumulator_with_spacing(x->jacobian->to_csr(x->jacobian), tnode->idx_map, node->jacobian->x, x->d1 + 1);
 }
 
 /* Placeholders for Hessian-related functions */
@@ -126,7 +125,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     x->eval_wsum_hess(x, node->work->dwork);
 
-    node->wsum_hess->update_values(node->wsum_hess, x->wsum_hess->to_csr(x->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

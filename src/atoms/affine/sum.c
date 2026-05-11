@@ -125,9 +125,8 @@ static void eval_jacobian(expr *node)
 
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
-    memset(jac->x, 0, jac->nnz * sizeof(double));
-    accumulator(x->jacobian->to_csr(x->jacobian), ((sum_expr *) node)->idx_map, jac->x);
+    memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
+    accumulator(x->jacobian->to_csr(x->jacobian), ((sum_expr *) node)->idx_map, node->jacobian->x);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -162,10 +161,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 
     x->eval_wsum_hess(x, node->work->dwork);
 
-    /* copy values via polymorphic update_values so PD-backed wsum_hess writes
-       reach the underlying X rather than just the lazy CSR cache. */
-    node->wsum_hess->update_values(node->wsum_hess,
-                                   x->wsum_hess->to_csr(x->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

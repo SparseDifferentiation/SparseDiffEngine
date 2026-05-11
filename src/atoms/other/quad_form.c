@@ -191,9 +191,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     {
         /* TODO: do we want to compute this hessian only once (up to a scaling)?
          * Maybe unnecessary optimization. */
-        CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
-        memcpy(H->x, Q->x, Q->nnz * sizeof(double));
-        cblas_dscal(Q->nnz, two_w, H->x, 1);
+        memcpy(node->wsum_hess->x, Q->x, Q->nnz * sizeof(double));
+        cblas_dscal(Q->nnz, two_w, node->wsum_hess->x, 1);
     }
     else
     {
@@ -218,9 +217,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */
-        CSR_Matrix *x_hess = x->wsum_hess->to_csr(x->wsum_hess);
         x->eval_wsum_hess(x, node->work->dwork);
-        memcpy(term2->x, x_hess->x, x_hess->nnz * sizeof(double));
+        memcpy(term2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
 
         /* scale both terms by 2w */
         cblas_dscal(term1->nnz, two_w, term1->x, 1);

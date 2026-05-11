@@ -20,7 +20,7 @@ const char *test_neg_jacobian(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("neg jacobian vals fail",
-              cmp_double_array(neg_node->jacobian->to_csr(neg_node->jacobian)->x, expected_x, 3));
+              cmp_double_array(neg_node->jacobian->x, expected_x, 3));
     mu_assert("neg jacobian rows fail",
               cmp_int_array(neg_node->jacobian->to_csr(neg_node->jacobian)->p, expected_p, 4));
     mu_assert("neg jacobian cols fail",
@@ -51,7 +51,7 @@ const char *test_neg_chain(void)
     int expected_i[3] = {0, 1, 2};
 
     mu_assert("neg chain jacobian vals fail",
-              cmp_double_array(neg2->jacobian->to_csr(neg2->jacobian)->x, expected_x, 3));
+              cmp_double_array(neg2->jacobian->x, expected_x, 3));
     mu_assert("neg chain jacobian rows fail",
               cmp_int_array(neg2->jacobian->to_csr(neg2->jacobian)->p, expected_p, 4));
     mu_assert("neg chain jacobian cols fail",

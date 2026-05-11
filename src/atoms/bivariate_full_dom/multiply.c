@@ -267,12 +267,11 @@ static void eval_wsum_hess(expr *node, const double *w)
         // ---------------------------------------------------------------
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
-        CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
-        memset(H->x, 0, H->nnz * sizeof(double));
-        accumulator(C, mul_node->idx_map_C, H->x);
-        accumulator(CT, mul_node->idx_map_CT, H->x);
-        accumulator(x->wsum_hess->to_csr(x->wsum_hess), mul_node->idx_map_Hx, H->x);
-        accumulator(y->wsum_hess->to_csr(y->wsum_hess), mul_node->idx_map_Hy, H->x);
+        memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
+        accumulator(C, mul_node->idx_map_C, node->wsum_hess->x);
+        accumulator(CT, mul_node->idx_map_CT, node->wsum_hess->x);
+        accumulator(x->wsum_hess->to_csr(x->wsum_hess), mul_node->idx_map_Hx, node->wsum_hess->x);
+        accumulator(y->wsum_hess->to_csr(y->wsum_hess), mul_node->idx_map_Hy, node->wsum_hess->x);
     }
 }
 

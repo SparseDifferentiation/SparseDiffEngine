@@ -23,7 +23,7 @@ const char *test_diag_mat_jacobian_variable(void)
     int expected_p[3] = {0, 1, 2};
     int expected_i[2] = {0, 3};
 
-    mu_assert("diag_mat jac vals", cmp_double_array(dm->jacobian->to_csr(dm->jacobian)->x, expected_x, 2));
+    mu_assert("diag_mat jac vals", cmp_double_array(dm->jacobian->x, expected_x, 2));
     mu_assert("diag_mat jac p", cmp_int_array(dm->jacobian->to_csr(dm->jacobian)->p, expected_p, 3));
     mu_assert("diag_mat jac i", cmp_int_array(dm->jacobian->to_csr(dm->jacobian)->i, expected_i, 2));
 
@@ -52,7 +52,7 @@ const char *test_diag_mat_jacobian_of_log(void)
     int expected_i[2] = {0, 3};
 
     mu_assert("diag_mat log jac vals",
-              cmp_double_array(dm->jacobian->to_csr(dm->jacobian)->x, expected_x, 2));
+              cmp_double_array(dm->jacobian->x, expected_x, 2));
     mu_assert("diag_mat log jac cols",
               cmp_int_array(dm->jacobian->to_csr(dm->jacobian)->i, expected_i, 2));
 

@@ -97,7 +97,7 @@ static void eval_jacobian(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        double *jx = node->jacobian->to_csr(node->jacobian)->x;
+        double *jx = node->jacobian->x;
         if (num_of_zeros == 0)
         {
             for (int j = 0; j < x->size; j++)
@@ -240,11 +240,11 @@ static inline void wsum_hess_no_zeros(expr *node, const double *w)
         {
             if (i == j)
             {
-                node->wsum_hess->to_csr(node->wsum_hess)->x[i * n + j] = 0.0;
+                node->wsum_hess->x[i * n + j] = 0.0;
             }
             else
             {
-                node->wsum_hess->to_csr(node->wsum_hess)->x[i * n + j] = wf / (x[i] * x[j]);
+                node->wsum_hess->x[i * n + j] = wf / (x[i] * x[j]);
             }
         }
     }
@@ -253,7 +253,7 @@ static inline void wsum_hess_no_zeros(expr *node, const double *w)
 static inline void wsum_hess_one_zero(expr *node, const double *w)
 {
     expr *x = node->left;
-    double *H = node->wsum_hess->to_csr(node->wsum_hess)->x;
+    double *H = node->wsum_hess->x;
     memset(H, 0, sizeof(double) * (x->size * x->size));
     int p = ((prod_expr *) node)->zero_index;
     double prod_nonzero = ((prod_expr *) node)->prod_nonzero;
@@ -274,7 +274,7 @@ static inline void wsum_hess_two_zeros(expr *node, const double *w)
 {
     expr *x = node->left;
     int n = x->size;
-    memset(node->wsum_hess->to_csr(node->wsum_hess)->x, 0, sizeof(double) * (n * n));
+    memset(node->wsum_hess->x, 0, sizeof(double) * (n * n));
 
     /* find indices p and q where x[p] = x[q] = 0 */
     int p = -1, q = -1;
@@ -296,13 +296,13 @@ static inline void wsum_hess_two_zeros(expr *node, const double *w)
     assert(p != -1 && q != -1);
 
     double hess_val = w[0] * ((prod_expr *) node)->prod_nonzero;
-    node->wsum_hess->to_csr(node->wsum_hess)->x[p * n + q] = hess_val;
-    node->wsum_hess->to_csr(node->wsum_hess)->x[q * n + p] = hess_val;
+    node->wsum_hess->x[p * n + q] = hess_val;
+    node->wsum_hess->x[q * n + p] = hess_val;
 }
 
 static inline void wsum_hess_many_zeros(expr *node, const double *w)
 {
     expr *x = node->left;
-    memset(node->wsum_hess->to_csr(node->wsum_hess)->x, 0, sizeof(double) * (x->size * x->size));
+    memset(node->wsum_hess->x, 0, sizeof(double) * (x->size * x->size));
     (void) w;
 }

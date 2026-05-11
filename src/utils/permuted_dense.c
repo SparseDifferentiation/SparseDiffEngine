@@ -41,16 +41,6 @@ static void permuted_dense_refresh_csc_values(Matrix *self)
     (void) self;
 }
 
-/* Replace pd->X with new_values (dense_m * dense_n doubles, row-major). Same
-   layout as the CSR view's value array (see permuted_dense_to_csr_alloc), so
-   callers that have a CSR view's x can pass it here. */
-static void permuted_dense_vtable_update_values(Matrix *self,
-                                                const double *new_values)
-{
-    Permuted_Dense *pd = (Permuted_Dense *) self;
-    memcpy(pd->X, new_values, pd->dense_m * pd->dense_n * sizeof(double));
-}
-
 /* Vtable adapters — each delegates to the existing permuted_dense_* kernel. */
 static Matrix *permuted_dense_vtable_copy_sparsity(const Matrix *self)
 {
@@ -59,8 +49,8 @@ static Matrix *permuted_dense_vtable_copy_sparsity(const Matrix *self)
                               pd->row_perm, pd->col_perm, NULL);
 }
 
-static void permuted_dense_vtable_DA_fill_values(const double *d,
-                                                 const Matrix *self, Matrix *out)
+static void permuted_dense_vtable_DA_fill_values(const double *d, const Matrix *self,
+                                                 Matrix *out)
 {
     permuted_dense_DA_fill_values(d, (const Permuted_Dense *) self,
                                   (Permuted_Dense *) out);
@@ -123,7 +113,7 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     Permuted_Dense *pd = (Permuted_Dense *) SP_CALLOC(1, sizeof(Permuted_Dense));
     pd->base.m = m;
     pd->base.n = n;
-    pd->base.update_values = permuted_dense_vtable_update_values;
+    pd->base.nnz = dense_m * dense_n;
     pd->base.copy_sparsity = permuted_dense_vtable_copy_sparsity;
     pd->base.DA_fill_values = permuted_dense_vtable_DA_fill_values;
     pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;
@@ -139,6 +129,7 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     pd->row_perm = (int *) SP_MALLOC(dense_m * sizeof(int));
     pd->col_perm = (int *) SP_MALLOC(dense_n * sizeof(int));
     pd->X = (double *) SP_MALLOC(sz * sizeof(double));
+    pd->base.x = pd->X;
     pd->Y_scratch = (double *) SP_MALLOC(sz * sizeof(double));
     pd->col_inv = (int *) SP_MALLOC(n * sizeof(int));
 

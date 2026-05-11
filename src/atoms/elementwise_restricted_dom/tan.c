@@ -30,7 +30,7 @@ static void tan_forward(expr *node, const double *u)
 static void tan_eval_jacobian(expr *node)
 {
     double *x = node->left->value;
-    double *jx = node->jacobian->to_csr(node->jacobian)->x;
+    double *jx = node->jacobian->x;
     for (int j = 0; j < node->size; j++)
     {
         double c = cos(x[j]);
@@ -41,10 +41,11 @@ static void tan_eval_jacobian(expr *node)
 static void tan_eval_wsum_hess(expr *node, const double *w)
 {
     double *x = node->left->value;
+    double *hx = node->wsum_hess->x;
     for (int j = 0; j < node->size; j++)
     {
         double c = cos(x[j]);
-        node->wsum_hess->to_csr(node->wsum_hess)->x[j] = 2.0 * w[j] * node->value[j] / (c * c);
+        hx[j] = 2.0 * w[j] * node->value[j] / (c * c);
     }
 }
 

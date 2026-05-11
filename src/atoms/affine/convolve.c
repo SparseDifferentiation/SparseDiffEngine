@@ -129,7 +129,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 
     child->eval_wsum_hess(child, w_prime);
-    node->wsum_hess->update_values(node->wsum_hess, child->wsum_hess->to_csr(child->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, child->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

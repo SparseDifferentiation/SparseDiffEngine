@@ -65,7 +65,7 @@ const char *test_wsum_hess_prod_axis_one_no_zeros(void)
                           /* Var 6 (row 1, col 2): cols 2,4 (excludes 6) */
                           2, 4};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 12));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 12));
     mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 9));
     mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 12));
 
@@ -165,7 +165,7 @@ const char *test_wsum_hess_prod_axis_one_one_zero(void)
                           /* Var 9 (row 2, col 2): cols 3,6 (excludes 9) */
                           3, 6};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 18));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 18));
     mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 11));
     mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 18));
 
@@ -317,7 +317,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
         }
     }
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 30));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 30));
     mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 17));
     mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 30));
 
@@ -373,7 +373,7 @@ const char *test_wsum_hess_prod_axis_one_2x2(void)
                          0,  /* Var 2 (row 0, col 1): only col 0 */
                          1}; /* Var 3 (row 1, col 1): only col 0 */
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->to_csr(p->wsum_hess)->x, expected_x, 4));
+    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 4));
     mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 5));
     mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 4));
 

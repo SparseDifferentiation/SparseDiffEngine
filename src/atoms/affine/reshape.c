@@ -36,16 +36,14 @@ static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     jacobian_init(x);
-    node->jacobian = new_sparse_matrix(new_csr_copy_sparsity(x->jacobian->to_csr(x->jacobian)));
+    node->jacobian = x->jacobian->copy_sparsity(x->jacobian);
 }
 
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
     x->eval_jacobian(x);
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
-    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
-    memcpy(jac->x, Jx->x, Jx->nnz * sizeof(double));
+    memcpy(node->jacobian->x, x->jacobian->x, x->jacobian->nnz * sizeof(double));
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -59,7 +57,8 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
     x->eval_wsum_hess(x, w);
-    node->wsum_hess->update_values(node->wsum_hess, x->wsum_hess->to_csr(x->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

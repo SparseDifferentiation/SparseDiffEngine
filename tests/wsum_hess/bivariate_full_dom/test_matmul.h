@@ -101,7 +101,7 @@ const char *test_wsum_hess_matmul(void)
                              7.0, 8.0};          /* row 17 */
 
     mu_assert("Hessian values incorrect",
-              cmp_double_array(Z->wsum_hess->to_csr(Z->wsum_hess)->x, expected_x, 48));
+              cmp_double_array(Z->wsum_hess->x, expected_x, 48));
 
     free_expr(Z);
     return 0;
@@ -212,7 +212,7 @@ const char *test_wsum_hess_matmul_yx(void)
                              2.0, 4.0, 6.0, 8.0}; /* row 17 */
 
     mu_assert("Hessian values incorrect",
-              cmp_double_array(Z->wsum_hess->to_csr(Z->wsum_hess)->x, expected_x, 48));
+              cmp_double_array(Z->wsum_hess->x, expected_x, 48));
 
     free_expr(Z);
     return 0;

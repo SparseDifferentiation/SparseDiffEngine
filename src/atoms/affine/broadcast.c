@@ -164,25 +164,23 @@ static void eval_jacobian(expr *node)
 
     broadcast_expr *bcast = (broadcast_expr *) node;
     CSR_Matrix *Jx = node->left->jacobian->to_csr(node->left->jacobian);
-    CSR_Matrix *J = node->jacobian->to_csr(node->jacobian);
-
     if (bcast->type == BROADCAST_ROW)
     {
-        J->nnz = 0;
+        node->jacobian->nnz = 0;
         for (int i = 0; i < node->d2; i++)
         {
             int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
-            tile_double(J->x + J->nnz, Jx->x + Jx->p[i], nnz_in_row, node->d1);
-            J->nnz += nnz_in_row * node->d1;
+            tile_double(node->jacobian->x + node->jacobian->nnz, Jx->x + Jx->p[i], nnz_in_row, node->d1);
+            node->jacobian->nnz += nnz_in_row * node->d1;
         }
     }
     else if (bcast->type == BROADCAST_COL)
     {
-        tile_double(J->x, Jx->x, Jx->nnz, node->d2);
+        tile_double(node->jacobian->x, Jx->x, Jx->nnz, node->d2);
     }
     else
     {
-        tile_double(J->x, Jx->x, Jx->nnz, node->size);
+        tile_double(node->jacobian->x, Jx->x, Jx->nnz, node->size);
     }
 }
 
@@ -239,7 +237,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 
     x->eval_wsum_hess(x, node->work->dwork);
-    node->wsum_hess->update_values(node->wsum_hess, x->wsum_hess->to_csr(x->wsum_hess)->x);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

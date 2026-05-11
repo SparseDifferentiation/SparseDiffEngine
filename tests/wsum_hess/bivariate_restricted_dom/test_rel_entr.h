@@ -32,7 +32,7 @@ const char *test_wsum_hess_rel_entr_1(void)
 
     mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 11));
     mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 12));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->to_csr(node->wsum_hess)->x, expected_x, 12));
+    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 12));
 
     free_expr(node);
     return 0;
@@ -64,7 +64,7 @@ const char *test_wsum_hess_rel_entr_2(void)
 
     mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 11));
     mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 12));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->to_csr(node->wsum_hess)->x, expected_x, 12));
+    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 12));
 
     free_expr(node);
     return 0;
@@ -100,7 +100,7 @@ const char *test_wsum_hess_rel_entr_matrix(void)
 
     mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 13));
     mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 24));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->to_csr(node->wsum_hess)->x, expected_x, 24));
+    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 24));
 
     free_expr(node);
     return 0;

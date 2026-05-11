@@ -82,7 +82,7 @@ const char *test_jacobian_matmul(void)
         /* row 7 (col 3) */ 16.0, 17.0, 18.0, 2.0, 4.0, 6.0};
 
     mu_assert("Jacobian values incorrect",
-              cmp_double_array(Z->jacobian->to_csr(Z->jacobian)->x, expected_x, 48));
+              cmp_double_array(Z->jacobian->x, expected_x, 48));
 
     free_expr(Z);
     return 0;
