@@ -105,6 +105,7 @@
 #ifdef PROFILE_ONLY
 #include "profiling/profile_left_matmul.h"
 #include "profiling/profile_log_reg.h"
+#include "profiling/profile_trimmed_log_reg.h"
 #endif /* PROFILE_ONLY */
 
 int main(void)
@@ -422,6 +423,7 @@ int main(void)
     printf("\n--- Profiling Tests ---\n");
     mu_run_test(profile_left_matmul, tests_run);
     mu_run_test(profile_log_reg, tests_run);
+    mu_run_test(profile_trimmed_log_reg, tests_run);
 #endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);
