@@ -516,8 +516,7 @@ const char *test_permuted_dense_diag_vec(void)
 {
     int row_perm[2] = {0, 2};
     int col_perm[2] = {1, 4};
-    double X[4] = {1.0, 2.0,
-                   3.0, 4.0};
+    double X[4] = {1.0, 2.0, 3.0, 4.0};
     Matrix *M = new_permuted_dense(3, 6, 2, 2, row_perm, col_perm, X);
 
     Matrix *out = M->diag_vec_alloc(M);
@@ -547,7 +546,8 @@ const char *test_permuted_dense_diag_vec(void)
 
 /* Scatter a PD into a dense m x n_global buffer (row-major), zero-filled.
    Buffer is allocated by the caller. */
-static void scatter_pd_to_dense(const Permuted_Dense *pd, int n_global, double *dense)
+static void scatter_pd_to_dense(const Permuted_Dense *pd, int n_global,
+                                double *dense)
 {
     int m = pd->base.m;
     memset(dense, 0, (size_t) m * (size_t) n_global * sizeof(double));
@@ -610,13 +610,14 @@ const char *test_permuted_dense_BTA_partial_overlap(void)
     int row_perm_B[3] = {3, 5, 7};
     int col_perm_A[2] = {0, 2};
     int col_perm_B[2] = {1, 3};
-    /* X_A rows correspond to A row_perm order: row 0 -> source row 1, row 1 -> 3, row 2 -> 5. */
-    double XA[6] = {1.0, 2.0,   /* row 1 (NOT in B) */
-                    3.0, 4.0,   /* row 3 (in B at pos 0) */
-                    5.0, 6.0};  /* row 5 (in B at pos 1) */
+    /* X_A rows correspond to A row_perm order: row 0 -> source row 1, row 1 -> 3,
+     * row 2 -> 5. */
+    double XA[6] = {1.0, 2.0,  /* row 1 (NOT in B) */
+                    3.0, 4.0,  /* row 3 (in B at pos 0) */
+                    5.0, 6.0}; /* row 5 (in B at pos 1) */
     /* X_B rows: row 0 -> source row 3, row 1 -> 5, row 2 -> 7. */
-    double XB[6] = {10.0, 20.0, /* row 3 (in A at pos 1) */
-                    30.0, 40.0, /* row 5 (in A at pos 2) */
+    double XB[6] = {10.0, 20.0,  /* row 3 (in A at pos 1) */
+                    30.0, 40.0,  /* row 5 (in A at pos 2) */
                     50.0, 60.0}; /* row 7 (NOT in A) */
     Matrix *A_m = new_permuted_dense(8, 4, 3, 2, row_perm_A, col_perm_A, XA);
     Matrix *B_m = new_permuted_dense(8, 4, 3, 2, row_perm_B, col_perm_B, XB);
@@ -736,7 +737,7 @@ const char *test_permuted_dense_BTDA_decomposition(void)
 /* Scatter a CSR matrix into a dense m x n_global buffer (row-major).
    Caller allocates and zero-fills. */
 static void scatter_csr_to_dense(const CSR_Matrix *A_csr, int n_global,
-                                  double *dense)
+                                 double *dense)
 {
     int m = A_csr->m;
     memset(dense, 0, (size_t) m * (size_t) n_global * sizeof(double));
@@ -771,7 +772,8 @@ const char *test_BTA_csr_pd_basic(void)
     memcpy(A->i, Ai, sizeof Ai);
     memcpy(A->x, Ax, sizeof Ax);
 
-    /* PD B: m=4, n=4, row_perm = [1, 3], col_perm = [0, 2], X = [[10, 20], [30, 40]]. */
+    /* PD B: m=4, n=4, row_perm = [1, 3], col_perm = [0, 2], X = [[10, 20], [30,
+     * 40]]. */
     int row_perm_B[2] = {1, 3};
     int col_perm_B[2] = {0, 2};
     double XB[4] = {10.0, 20.0, 30.0, 40.0};
@@ -819,7 +821,8 @@ const char *test_BTA_csr_pd_basic(void)
     {
         for (int jj = 0; jj < 4; jj++)
         {
-            expected_X[ii * 4 + jj] = C_ref[col_perm_B[ii] * 5 + expected_col_perm[jj]];
+            expected_X[ii * 4 + jj] =
+                C_ref[col_perm_B[ii] * 5 + expected_col_perm[jj]];
         }
     }
     mu_assert("values", cmp_double_array(out->X, expected_X, 8));
@@ -834,7 +837,8 @@ const char *test_BTA_csr_pd_basic(void)
 
 /* BTA(CSR A, PD B) where A is a leaf-variable Jacobian (identity-in-block).
    A is (4, 8): row k has a 1 at column 4+k (variable v of size 4 at var_id=4).
-   Expected: col_perm_out = {4+row_perm_B[kk]} = {4+1, 4+3} = {5, 7}, and X_C = X_B^T. */
+   Expected: col_perm_out = {4+row_perm_B[kk]} = {4+1, 4+3} = {5, 7}, and X_C =
+   X_B^T. */
 const char *test_BTA_csr_pd_leaf_variable(void)
 {
     CSR_Matrix *A = new_csr_matrix(4, 8, 4);

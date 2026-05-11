@@ -79,8 +79,8 @@ const char *profile_trimmed_log_reg(void)
 
     printf("\n");
     printf("                          Jacobian      Hessian        Total\n");
-    printf("  trimmed_log_reg:      %10.6fs  %10.6fs  %10.6fs\n", sec_jac,
-           sec_hess, sec_jac + sec_hess);
+    printf("  trimmed_log_reg:      %10.6fs  %10.6fs  %10.6fs\n", sec_jac, sec_hess,
+           sec_jac + sec_hess);
 
     /* ---- Cleanup ---- */
     free_expr(obj);

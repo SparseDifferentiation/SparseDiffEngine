@@ -90,15 +90,13 @@ void permuted_dense_ATDA_fill_values(const Permuted_Dense *self, const double *d
    A->dense_n), row_perm = B->col_perm, col_perm = A->col_perm. Values
    uninitialized. The output structure does not depend on row_perm_A or
    row_perm_B (only the values do; see permuted_dense_BTA_fill_values). */
-Matrix *permuted_dense_BTA_alloc(const Permuted_Dense *A,
-                                 const Permuted_Dense *B);
+Matrix *permuted_dense_BTA_alloc(const Permuted_Dense *A, const Permuted_Dense *B);
 
 /* Fill out->X = B->X^T @ A->X restricted to rows in row_perm_A ∩ row_perm_B.
    out must have the structure produced by permuted_dense_BTA_alloc(A, B).
    For matching row_perms, this is a single cblas_dgemm; otherwise the
    intersecting rows are first gathered into contiguous scratch buffers. */
-void permuted_dense_BTA_fill_values(const Permuted_Dense *A,
-                                    const Permuted_Dense *B,
+void permuted_dense_BTA_fill_values(const Permuted_Dense *A, const Permuted_Dense *B,
                                     Permuted_Dense *out);
 
 /* Allocate a new Permuted_Dense for C = B^T @ A where A is Sparse (CSR)
