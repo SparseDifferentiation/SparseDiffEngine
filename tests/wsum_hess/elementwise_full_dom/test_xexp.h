@@ -28,12 +28,9 @@ const char *test_wsum_hess_xexp(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(xexp_node->wsum_hess->x, expected_x, 3));
-    mu_assert("rows incorrect",
-              cmp_int_array(xexp_node->wsum_hess->to_csr(xexp_node->wsum_hess)->p, expected_p, 4));
-    mu_assert("cols incorrect",
-              cmp_int_array(xexp_node->wsum_hess->to_csr(xexp_node->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(xexp_node->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(xexp_node->wsum_hess, expected_p, expected_i, 3, 3));
 
     free_expr(xexp_node);
 

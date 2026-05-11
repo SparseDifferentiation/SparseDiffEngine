@@ -18,6 +18,7 @@
 #include "atoms/bivariate_full_dom.h"
 #include "subexpr.h"
 #include "utils/CSR_sum.h"
+#include "utils/matrix_sum.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
@@ -49,14 +50,11 @@ static void jacobian_init_impl(expr *node)
 {
     jacobian_init(node->left);
     jacobian_init(node->right);
-    CSR_Matrix *Jl = node->left->jacobian->to_csr(node->left->jacobian);
-    CSR_Matrix *Jr = node->right->jacobian->to_csr(node->right->jacobian);
-    int nnz_max = Jl->nnz + Jr->nnz;
-    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz_max);
+    int nnz_max = node->left->jacobian->nnz + node->right->jacobian->nnz;
+    node->jacobian = new_sparse_matrix_alloc(node->size, node->n_vars, nnz_max);
 
     /* fill sparsity pattern */
-    sum_csr_alloc(Jl, Jr, jac);
-    node->jacobian = new_sparse_matrix(jac);
+    sum_matrices_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
 }
 
 static void eval_jacobian(expr *node)
@@ -268,10 +266,12 @@ static void eval_wsum_hess(expr *node, const double *w)
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
         memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-        accumulator(C, mul_node->idx_map_C, node->wsum_hess->x);
-        accumulator(CT, mul_node->idx_map_CT, node->wsum_hess->x);
-        accumulator(x->wsum_hess->to_csr(x->wsum_hess), mul_node->idx_map_Hx, node->wsum_hess->x);
-        accumulator(y->wsum_hess->to_csr(y->wsum_hess), mul_node->idx_map_Hy, node->wsum_hess->x);
+        accumulator(C->x, C->nnz, mul_node->idx_map_C, node->wsum_hess->x);
+        accumulator(CT->x, CT->nnz, mul_node->idx_map_CT, node->wsum_hess->x);
+        accumulator(x->wsum_hess->x, x->wsum_hess->nnz, mul_node->idx_map_Hx,
+                    node->wsum_hess->x);
+        accumulator(y->wsum_hess->x, y->wsum_hess->nnz, mul_node->idx_map_Hy,
+                    node->wsum_hess->x);
     }
 }
 

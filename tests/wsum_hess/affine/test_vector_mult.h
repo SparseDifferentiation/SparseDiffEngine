@@ -38,12 +38,9 @@ const char *test_wsum_hess_vector_mult_log_vector(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("vector mult log hess: x values fail",
-              cmp_double_array(y->wsum_hess->x, expected_x, 3));
-    mu_assert("vector mult log hess: row pointers fail",
-              cmp_int_array(y->wsum_hess->to_csr(y->wsum_hess)->p, expected_p, 4));
-    mu_assert("vector mult log hess: column indices fail",
-              cmp_int_array(y->wsum_hess->to_csr(y->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(y->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(y->wsum_hess, expected_p, expected_i, 3, 3));
 
     free_expr(y);
     return 0;
@@ -76,12 +73,9 @@ const char *test_wsum_hess_vector_mult_log_matrix(void)
     int expected_p[5] = {0, 1, 2, 3, 4};
     int expected_i[4] = {0, 1, 2, 3};
 
-    mu_assert("vector mult log hess matrix: x values fail",
-              cmp_double_array(y->wsum_hess->x, expected_x, 4));
-    mu_assert("vector mult log hess matrix: row pointers fail",
-              cmp_int_array(y->wsum_hess->to_csr(y->wsum_hess)->p, expected_p, 5));
-    mu_assert("vector mult log hess matrix: column indices fail",
-              cmp_int_array(y->wsum_hess->to_csr(y->wsum_hess)->i, expected_i, 4));
+    mu_assert("vals fail", cmp_values(y->wsum_hess, expected_x, 4));
+    mu_assert("sparsity fail",
+              cmp_sparsity(y->wsum_hess, expected_p, expected_i, 4, 4));
 
     free_expr(y);
     return 0;

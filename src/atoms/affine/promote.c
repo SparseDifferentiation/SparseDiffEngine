@@ -39,38 +39,18 @@ static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     jacobian_init(x);
-    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
-    /* each output row copies the single row from child's jacobian */
-    int nnz = node->size * Jx->nnz;
-    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, nnz);
-
-    /* fill sparsity pattern */
-    J->nnz = 0;
-    for (int row = 0; row < node->size; row++)
-    {
-        J->p[row] = J->nnz;
-        memcpy(J->i + J->nnz, Jx->i, Jx->nnz * sizeof(int));
-        J->nnz += Jx->nnz;
-    }
-    assert(J->nnz == nnz);
-    J->p[node->size] = J->nnz;
-    node->jacobian = new_sparse_matrix(J);
+    /* allocate sparsity for an (node->size, n_vars) matrix whose rows are all
+       copies of the child's single row; output type matches child's type. */
+    node->jacobian = x->jacobian->promote_alloc(x->jacobian, node->size);
 }
 
 static void eval_jacobian(expr *node)
 {
     node->left->eval_jacobian(node->left);
 
-    CSR_Matrix *child_jac = node->left->jacobian->to_csr(node->left->jacobian);
-    int child_nnz = child_jac->p[1] - child_jac->p[0];
-
-    /* Copy child's row values to each output row */
-    for (int row = 0; row < node->size; row++)
-    {
-        memcpy(node->jacobian->x + row * child_nnz, child_jac->x + child_jac->p[0],
-               child_nnz * sizeof(double));
-    }
+    /* tile the child's single row into the preallocated output. */
+    node->left->jacobian->promote_fill_values(node->left->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -92,7 +72,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     node->left->eval_wsum_hess(node->left, &sum_w);
 
     /* copy values */
-    memcpy(node->wsum_hess->x, node->left->wsum_hess->x, node->left->wsum_hess->nnz * sizeof(double));
+    memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
+           node->left->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

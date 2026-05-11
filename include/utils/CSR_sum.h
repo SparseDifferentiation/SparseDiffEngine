@@ -66,8 +66,9 @@ CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
                             int *idx_maps[4]);
 // ------------------------------------------------------------------------------------
 
-/* Accumulates values from A according to map. Must memset to zero before calling. */
-void accumulator(const CSR_Matrix *A, const int *idx_map, double *out);
+/* Accumulates `nnz` values from `vals` into `out` at the positions given by
+   `idx_map` (length `nnz`). Caller must zero `out` before calling. */
+void accumulator(const double *vals, int nnz, const int *idx_map, double *out);
 
 /* Accumulates values from A according to map with spacing. Must memset to zero
  * before calling. */

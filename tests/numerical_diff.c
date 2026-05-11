@@ -127,6 +127,12 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
 
     memcpy(u_work, u, n * sizeof(double));
 
+    /* Hoist the CSR view once. For Sparse_Matrix (the only type used by tests
+       that reach here), csr->x aliases node->jacobian->x, so eval_jacobian
+       writes inside the loop update jac->x in place. A PD-backed Jacobian
+       would need a per-iteration to_csr refresh; not exercised today. */
+    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+
     for (int j = 0; j < n; j++)
     {
         /* g(u + h*e_j) */
@@ -134,14 +140,14 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
         node->forward(node, u_work);
         node->eval_jacobian(node);
         memset(g_plus, 0, n * sizeof(double));
-        csr_transpose_mult_vec(node->jacobian->to_csr(node->jacobian), w, g_plus);
+        csr_transpose_mult_vec(jac, w, g_plus);
 
         /* g(u - h*e_j) */
         u_work[j] = u[j] - h;
         node->forward(node, u_work);
         node->eval_jacobian(node);
         memset(g_minus, 0, n * sizeof(double));
-        csr_transpose_mult_vec(node->jacobian->to_csr(node->jacobian), w, g_minus);
+        csr_transpose_mult_vec(jac, w, g_minus);
 
         u_work[j] = u[j];
 

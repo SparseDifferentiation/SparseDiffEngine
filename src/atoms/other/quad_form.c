@@ -18,7 +18,7 @@
 #include "atoms/non_elementwise_full_dom.h"
 #include "subexpr.h"
 #include "utils/CSC_Matrix.h"
-#include "utils/CSR_sum.h"
+#include "utils/matrix_sum.h"
 #include "utils/cblas_wrapper.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
@@ -172,12 +172,12 @@ static void wsum_hess_init_impl(expr *node)
         node->work->hess_term2 = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
         /* hess = term1 + term2 */
-        CSR_Matrix *t1 = node->work->hess_term1->to_csr(node->work->hess_term1);
-        CSR_Matrix *t2 = node->work->hess_term2->to_csr(node->work->hess_term2);
-        int max_nnz = t1->nnz + t2->nnz;
-        CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
-        sum_csr_alloc(t1, t2, hess);
-        node->wsum_hess = new_sparse_matrix(hess);
+        int max_nnz =
+            node->work->hess_term1->nnz + node->work->hess_term2->nnz;
+        node->wsum_hess =
+            new_sparse_matrix_alloc(node->n_vars, node->n_vars, max_nnz);
+        sum_matrices_alloc(node->work->hess_term1, node->work->hess_term2,
+                           node->wsum_hess);
     }
 }
 
@@ -210,7 +210,6 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         CSC_Matrix *QJf = ((quad_form_expr *) node)->QJf;
         CSR_Matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
-        CSR_Matrix *term2 = node->work->hess_term2->to_csr(node->work->hess_term2);
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
         BA_fill_values(Q, Jf, QJf);
@@ -218,14 +217,16 @@ static void eval_wsum_hess(expr *node, const double *w)
 
         /* term2 */
         x->eval_wsum_hess(x, node->work->dwork);
-        memcpy(term2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
+        memcpy(node->work->hess_term2->x, x->wsum_hess->x,
+               x->wsum_hess->nnz * sizeof(double));
 
         /* scale both terms by 2w */
-        cblas_dscal(term1->nnz, two_w, term1->x, 1);
-        cblas_dscal(term2->nnz, two_w, term2->x, 1);
+        cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x, 1);
+        cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x, 1);
 
         /* sum the two terms */
-        sum_csr_fill_values(term1, term2, node->wsum_hess->to_csr(node->wsum_hess));
+        sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
+                                 node->wsum_hess);
     }
 }
 

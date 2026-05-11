@@ -36,10 +36,9 @@ const char *test_wsum_hess_diag_mat_log(void)
     int expected_p[5] = {0, 1, 2, 3, 4};
     int expected_i[4] = {0, 1, 2, 3};
 
-    mu_assert("diag_mat log hess vals",
-              cmp_double_array(dm->wsum_hess->x, expected_x, 4));
-    mu_assert("diag_mat log hess p", cmp_int_array(dm->wsum_hess->to_csr(dm->wsum_hess)->p, expected_p, 5));
-    mu_assert("diag_mat log hess i", cmp_int_array(dm->wsum_hess->to_csr(dm->wsum_hess)->i, expected_i, 4));
+    mu_assert("vals fail", cmp_values(dm->wsum_hess, expected_x, 4));
+    mu_assert("sparsity fail",
+              cmp_sparsity(dm->wsum_hess, expected_p, expected_i, 4, 4));
 
     free_expr(dm);
     return 0;

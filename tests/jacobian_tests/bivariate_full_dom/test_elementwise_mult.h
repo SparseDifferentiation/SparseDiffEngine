@@ -24,9 +24,8 @@ const char *test_jacobian_elementwise_mult_1(void)
     int rows[4] = {0, 2, 4, 6};
     int cols[6] = {2, 7, 3, 8, 4, 9};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, vals, 6));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, rows, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, cols, 6));
+    mu_assert("vals fail", cmp_values(node->jacobian, vals, 6));
+    mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 3, 6));
     free_expr(node);
     return 0;
 }
@@ -49,9 +48,8 @@ const char *test_jacobian_elementwise_mult_2(void)
     int rows[4] = {0, 2, 4, 6};
     int cols[6] = {2, 7, 3, 8, 4, 9};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, vals, 6));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, rows, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, cols, 6));
+    mu_assert("vals fail", cmp_values(node->jacobian, vals, 6));
+    mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 3, 6));
     free_expr(node);
     return 0;
 }
@@ -112,9 +110,8 @@ const char *test_jacobian_elementwise_mult_3(void)
     int rows[4] = {0, 4, 10, 16};
     int cols[16] = {2, 3, 7, 8, 2, 3, 4, 7, 8, 9, 2, 3, 4, 7, 8, 9};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, vals, 16));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, rows, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, cols, 16));
+    mu_assert("vals fail", cmp_values(node->jacobian, vals, 16));
+    mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 3, 16));
     free_expr(node);
     free_csr_matrix(A);
     free_csr_matrix(B);
@@ -157,9 +154,8 @@ const char *test_jacobian_elementwise_mult_4(void)
     int rows[4] = {0, 2, 5, 8};
     int cols[8] = {2, 3, 2, 3, 4, 2, 3, 4};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, vals, 8));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, rows, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, cols, 8));
+    mu_assert("vals fail", cmp_values(node->jacobian, vals, 8));
+    mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 3, 8));
     free_expr(node);
     free_csr_matrix(A);
     return 0;

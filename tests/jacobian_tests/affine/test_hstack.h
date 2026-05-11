@@ -42,9 +42,9 @@ const char *test_jacobian_hstack_vectors(void)
     int expected_Ai[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     int expected_Ap[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    mu_assert("vals fail", cmp_double_array(stack->jacobian->x, expected_Ax, 9));
-    mu_assert("cols fail", cmp_int_array(stack->jacobian->to_csr(stack->jacobian)->i, expected_Ai, 9));
-    mu_assert("rows fail", cmp_int_array(stack->jacobian->to_csr(stack->jacobian)->p, expected_Ap, 10));
+    mu_assert("vals fail", cmp_values(stack->jacobian, expected_Ax, 9));
+    mu_assert("sparsity fail",
+              cmp_sparsity(stack->jacobian, expected_Ap, expected_Ai, 9, 9));
 
     free_expr(stack);
     return 0;
@@ -86,9 +86,9 @@ const char *test_jacobian_hstack_matrix(void)
     int expected_Ap[19] = {0,  1,  2,  3,  4,  5,  6,  7,  8, 9,
                            10, 11, 12, 13, 14, 15, 16, 17, 18};
 
-    mu_assert("vals fail", cmp_double_array(stack->jacobian->x, expected_Ax, 18));
-    mu_assert("cols fail", cmp_int_array(stack->jacobian->to_csr(stack->jacobian)->i, expected_Ai, 18));
-    mu_assert("rows fail", cmp_int_array(stack->jacobian->to_csr(stack->jacobian)->p, expected_Ap, 19));
+    mu_assert("vals fail", cmp_values(stack->jacobian, expected_Ax, 18));
+    mu_assert("sparsity fail",
+              cmp_sparsity(stack->jacobian, expected_Ap, expected_Ai, 18, 18));
 
     free_expr(stack);
     return 0;

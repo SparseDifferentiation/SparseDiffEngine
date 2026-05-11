@@ -22,12 +22,9 @@ const char *test_promote_scalar_jacobian(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 0, 0};
 
-    mu_assert("promote jacobian vals fail",
-              cmp_double_array(promote_node->jacobian->x, expected_x, 3));
-    mu_assert("promote jacobian rows fail",
-              cmp_int_array(promote_node->jacobian->to_csr(promote_node->jacobian)->p, expected_p, 4));
-    mu_assert("promote jacobian cols fail",
-              cmp_int_array(promote_node->jacobian->to_csr(promote_node->jacobian)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(promote_node->jacobian, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(promote_node->jacobian, expected_p, expected_i, 3, 3));
 
     free_expr(promote_node);
     return 0;
@@ -54,12 +51,9 @@ const char *test_promote_scalar_to_matrix_jacobian(void)
     int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
     int expected_i[6] = {0, 0, 0, 0, 0, 0};
 
-    mu_assert("promote matrix jacobian vals fail",
-              cmp_double_array(promote_node->jacobian->x, expected_x, 6));
-    mu_assert("promote matrix jacobian rows fail",
-              cmp_int_array(promote_node->jacobian->to_csr(promote_node->jacobian)->p, expected_p, 7));
-    mu_assert("promote matrix jacobian cols fail",
-              cmp_int_array(promote_node->jacobian->to_csr(promote_node->jacobian)->i, expected_i, 6));
+    mu_assert("vals fail", cmp_values(promote_node->jacobian, expected_x, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(promote_node->jacobian, expected_p, expected_i, 6, 6));
 
     free_expr(promote_node);
     return 0;

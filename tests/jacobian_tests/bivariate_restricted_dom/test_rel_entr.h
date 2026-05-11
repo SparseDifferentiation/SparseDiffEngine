@@ -30,9 +30,9 @@ const char *test_jacobian_rel_entr_vector_args_1(void)
     int expected_Ap[4] = {0, 2, 4, 6};
     int expected_Ai[6] = {2, 7, 3, 8, 4, 9};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 3, 6));
+    mu_assert("vals fail", cmp_values(node->jacobian, expected_Ax, 6));
     free_expr(node);
     return 0;
 }
@@ -61,9 +61,9 @@ const char *test_jacobian_rel_entr_vector_args_2(void)
     int expected_Ap[4] = {0, 2, 4, 6};
     int expected_Ai[6] = {2, 7, 3, 8, 4, 9};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 3, 6));
+    mu_assert("vals fail", cmp_values(node->jacobian, expected_Ax, 6));
     free_expr(node);
     return 0;
 }
@@ -103,9 +103,9 @@ const char *test_jacobian_rel_entr_matrix_args(void)
     int expected_Ap[7] = {0, 2, 4, 6, 8, 10, 12};
     int expected_Ai[12] = {0, 6, 1, 7, 2, 8, 3, 9, 4, 10, 5, 11};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 12));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 7));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 12));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 6, 12));
+    mu_assert("vals fail", cmp_values(node->jacobian, expected_Ax, 12));
 
     free_expr(node);
     return 0;

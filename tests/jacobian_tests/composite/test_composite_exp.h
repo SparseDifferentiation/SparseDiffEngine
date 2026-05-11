@@ -33,9 +33,8 @@ const char *test_jacobian_composite_exp(void)
     double vals[6] = {3 * e10, 2 * e10, 1 * e10, 2 * e7, 1 * e7, 1 * e7};
     int rows[3] = {0, 3, 6};
     int cols[6] = {2, 3, 4, 2, 3, 4};
-    mu_assert("vals fail", cmp_double_array(exp_node->jacobian->x, vals, 6));
-    mu_assert("rows fail", cmp_int_array(exp_node->jacobian->to_csr(exp_node->jacobian)->p, rows, 3));
-    mu_assert("cols fail", cmp_int_array(exp_node->jacobian->to_csr(exp_node->jacobian)->i, cols, 6));
+    mu_assert("vals fail", cmp_values(exp_node->jacobian, vals, 6));
+    mu_assert("sparsity fail", cmp_sparsity(exp_node->jacobian, rows, cols, 2, 6));
     free_expr(exp_node);
     free_csr_matrix(A);
     return 0;

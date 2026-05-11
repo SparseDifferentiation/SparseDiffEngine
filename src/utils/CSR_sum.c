@@ -285,12 +285,12 @@ void sum_evenly_spaced_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
     }
 }
 
-void accumulator(const CSR_Matrix *A, const int *idx_map, double *out)
+void accumulator(const double *vals, int nnz, const int *idx_map, double *out)
 {
     /* don't forget to initialize accumulator to 0 before calling this */
-    for (int j = 0; j < A->nnz; j++)
+    for (int j = 0; j < nnz; j++)
     {
-        out[idx_map[j]] += A->x[j];
+        out[idx_map[j]] += vals[j];
     }
 }
 

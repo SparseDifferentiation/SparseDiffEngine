@@ -28,9 +28,9 @@ const char *test_jacobian_rel_entr_scalar_vector(void)
     int expected_Ap[4] = {0, 2, 4, 6};
     int expected_Ai[6] = {0, 1, 0, 2, 0, 3};
 
-    mu_assert("vals fail", cmp_double_array(node->jacobian->x, expected_Ax, 6));
-    mu_assert("rows fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->p, expected_Ap, 4));
-    mu_assert("cols fail", cmp_int_array(node->jacobian->to_csr(node->jacobian)->i, expected_Ai, 6));
+    mu_assert("vals fail", cmp_values(node->jacobian, expected_Ax, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 3, 6));
     free_expr(node);
     return 0;
 }

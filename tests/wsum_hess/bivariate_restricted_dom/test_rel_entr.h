@@ -30,9 +30,9 @@ const char *test_wsum_hess_rel_entr_1(void)
     double expected_x[12] = {1.0,   -0.25,  1.0,  -0.4, 1.0,  -0.5,
                              -0.25, 0.0625, -0.4, 0.16, -0.5, 0.25};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 11));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 12));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 12));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 10, 12));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 12));
 
     free_expr(node);
     return 0;
@@ -62,9 +62,9 @@ const char *test_wsum_hess_rel_entr_2(void)
     double expected_x[12] = {0.0625, -0.25, 0.16, -0.4, 0.25, -0.5,
                              -0.25,  1.0,   -0.4, 1.0,  -0.5, 1.0};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 11));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 12));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 12));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 10, 12));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 12));
 
     free_expr(node);
     return 0;
@@ -98,9 +98,9 @@ const char *test_wsum_hess_rel_entr_matrix(void)
         -1.0 / 6.0, 1.0 / 36.0,         -0.4, 0.16, -0.75, 0.5625,
         -4.0 / 3.0, 1.7777777777777777, -2.5, 6.25, -6.0,  36.0};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 13));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 24));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 24));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 12, 24));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 24));
 
     free_expr(node);
     return 0;

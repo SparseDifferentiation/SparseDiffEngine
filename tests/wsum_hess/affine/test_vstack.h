@@ -39,12 +39,9 @@ const char *test_wsum_hess_vstack_vectors(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("vstack hess vectors: vals",
-              cmp_double_array(stack->wsum_hess->x, expected_x, 3));
-    mu_assert("vstack hess vectors: rows",
-              cmp_int_array(stack->wsum_hess->to_csr(stack->wsum_hess)->p, expected_p, 4));
-    mu_assert("vstack hess vectors: cols",
-              cmp_int_array(stack->wsum_hess->to_csr(stack->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(stack->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(stack->wsum_hess, expected_p, expected_i, 3, 3));
 
     free_expr(stack);
     return 0;
@@ -102,12 +99,9 @@ const char *test_wsum_hess_vstack_matrix(void)
     int expected_p[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     int expected_i[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
-    mu_assert("vstack hess matrix: vals",
-              cmp_double_array(stack->wsum_hess->x, expected_x, 9));
-    mu_assert("vstack hess matrix: rows",
-              cmp_int_array(stack->wsum_hess->to_csr(stack->wsum_hess)->p, expected_p, 10));
-    mu_assert("vstack hess matrix: cols",
-              cmp_int_array(stack->wsum_hess->to_csr(stack->wsum_hess)->i, expected_i, 9));
+    mu_assert("vals fail", cmp_values(stack->wsum_hess, expected_x, 9));
+    mu_assert("sparsity fail",
+              cmp_sparsity(stack->wsum_hess, expected_p, expected_i, 9, 9));
 
     free_expr(stack);
     return 0;

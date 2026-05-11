@@ -40,6 +40,8 @@ typedef struct Permuted_Dense
     double *Y_scratch;     /* dense_m * dense_n, used by ATDA            */
     int *col_inv;          /* length base.n: col_inv[col_perm[jj]] = jj, */
                            /* otherwise -1; used by `x CSC` allocation.  */
+    int *row_inv;          /* length base.m: row_inv[row_perm[ii]] = ii, */
+                           /* otherwise -1; used by index_alloc.         */
     CSR_Matrix *csr_cache; /* lazy CSR view built by to_csr; structure */
                            /* allocated on first call, values refilled */
                            /* on every call. NULL until first call.    */

@@ -19,7 +19,7 @@
 #include "subexpr.h"
 #include "utils/CSC_Matrix.h"
 #include "utils/CSR_Matrix.h"
-#include "utils/CSR_sum.h"
+#include "utils/matrix_sum.h"
 #include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -116,14 +116,13 @@ void wsum_hess_init_elementwise(expr *node)
             node->work->hess_term2 =
                 child->wsum_hess->copy_sparsity(child->wsum_hess);
 
-            /* wsum_hess = term1 + term2 (sum_csr_alloc operates on CSR; extract
-               via to_csr on the operands). The result is stored as CSR. */
-            CSR_Matrix *t1 = node->work->hess_term1->to_csr(node->work->hess_term1);
-            CSR_Matrix *t2 = node->work->hess_term2->to_csr(node->work->hess_term2);
-            int max_nnz = t1->nnz + t2->nnz;
-            CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, max_nnz);
-            sum_csr_alloc(t1, t2, hess);
-            node->wsum_hess = new_sparse_matrix(hess);
+            /* wsum_hess = term1 + term2 */
+            int max_nnz =
+                node->work->hess_term1->nnz + node->work->hess_term2->nnz;
+            node->wsum_hess =
+                new_sparse_matrix_alloc(node->n_vars, node->n_vars, max_nnz);
+            sum_matrices_alloc(node->work->hess_term1, node->work->hess_term2,
+                               node->wsum_hess);
         }
     }
 }
@@ -171,16 +170,12 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
             }
 
             child->eval_wsum_hess(child, node->work->dwork);
-            CSR_Matrix *t2_csr =
-                node->work->hess_term2->to_csr(node->work->hess_term2);
-            memcpy(t2_csr->x, child->wsum_hess->x,
+            memcpy(node->work->hess_term2->x, child->wsum_hess->x,
                    child->wsum_hess->nnz * sizeof(double));
 
             /* wsum_hess = term1 + term2 */
-            CSR_Matrix *t1_csr =
-                node->work->hess_term1->to_csr(node->work->hess_term1);
-            sum_csr_fill_values(t1_csr, t2_csr,
-                                node->wsum_hess->to_csr(node->wsum_hess));
+            sum_matrices_fill_values(node->work->hess_term1,
+                                     node->work->hess_term2, node->wsum_hess);
         }
     }
 }

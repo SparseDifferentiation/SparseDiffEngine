@@ -19,12 +19,9 @@ const char *test_neg_jacobian(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("neg jacobian vals fail",
-              cmp_double_array(neg_node->jacobian->x, expected_x, 3));
-    mu_assert("neg jacobian rows fail",
-              cmp_int_array(neg_node->jacobian->to_csr(neg_node->jacobian)->p, expected_p, 4));
-    mu_assert("neg jacobian cols fail",
-              cmp_int_array(neg_node->jacobian->to_csr(neg_node->jacobian)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(neg_node->jacobian, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(neg_node->jacobian, expected_p, expected_i, 3, 3));
 
     free_expr(neg_node);
     return 0;
@@ -50,12 +47,9 @@ const char *test_neg_chain(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("neg chain jacobian vals fail",
-              cmp_double_array(neg2->jacobian->x, expected_x, 3));
-    mu_assert("neg chain jacobian rows fail",
-              cmp_int_array(neg2->jacobian->to_csr(neg2->jacobian)->p, expected_p, 4));
-    mu_assert("neg chain jacobian cols fail",
-              cmp_int_array(neg2->jacobian->to_csr(neg2->jacobian)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(neg2->jacobian, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(neg2->jacobian, expected_p, expected_i, 3, 3));
 
     free_expr(neg2);
     return 0;

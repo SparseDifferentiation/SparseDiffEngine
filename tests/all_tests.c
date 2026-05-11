@@ -370,6 +370,12 @@ int main(void)
     mu_run_test(test_permuted_dense_times_csc_no_active, tests_run);
     mu_run_test(test_permuted_dense_to_csr_lazy, tests_run);
     mu_run_test(test_permuted_dense_col_inv, tests_run);
+    mu_run_test(test_permuted_dense_index, tests_run);
+    mu_run_test(test_permuted_dense_promote, tests_run);
+    mu_run_test(test_permuted_dense_broadcast_scalar, tests_run);
+    mu_run_test(test_permuted_dense_broadcast_row, tests_run);
+    mu_run_test(test_permuted_dense_broadcast_col, tests_run);
+    mu_run_test(test_permuted_dense_diag_vec, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);

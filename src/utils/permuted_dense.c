@@ -31,6 +31,7 @@ static void permuted_dense_free(Matrix *self)
     free(pd->X);
     free(pd->Y_scratch);
     free(pd->col_inv);
+    free(pd->row_inv);
     free_csr_matrix(pd->csr_cache);
     free(pd);
 }
@@ -88,6 +89,225 @@ static CSR_Matrix *permuted_dense_to_csr(Matrix *self)
     return pd->csr_cache;
 }
 
+static Matrix *permuted_dense_vtable_index_alloc(Matrix *self, const int *indices,
+                                                 int n_idxs)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+
+    /* Scan indices: which output positions i hit a row in pd->row_perm? */
+    int *new_row_perm = (int *) SP_MALLOC(n_idxs * sizeof(int));
+    int new_dense_m = 0;
+    for (int i = 0; i < n_idxs; i++)
+    {
+        if (pd->row_inv[indices[i]] >= 0)
+        {
+            new_row_perm[new_dense_m++] = i;
+        }
+    }
+
+    Matrix *out = new_permuted_dense(n_idxs, pd->base.n, new_dense_m,
+                                     pd->dense_n, new_row_perm, pd->col_perm,
+                                     NULL);
+    free(new_row_perm);
+    return out;
+}
+
+static void permuted_dense_vtable_index_fill_values(Matrix *self,
+                                                    const int *indices, int n_idxs,
+                                                    Matrix *out)
+{
+    (void) n_idxs;
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    Permuted_Dense *out_pd = (Permuted_Dense *) out;
+    int dense_n = pd->dense_n;
+    for (int k = 0; k < out_pd->dense_m; k++)
+    {
+        int i = out_pd->row_perm[k];
+        int old_ii = pd->row_inv[indices[i]];
+        memcpy(out_pd->X + (size_t) k * dense_n, pd->X + (size_t) old_ii * dense_n,
+               dense_n * sizeof(double));
+    }
+}
+
+static Matrix *permuted_dense_vtable_promote_alloc(Matrix *self, int size)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    assert(pd->dense_m <= 1);
+
+    if (pd->dense_m == 0)
+    {
+        /* source row is all-zero; output is also structurally all-zero. */
+        return new_permuted_dense(size, pd->base.n, 0, pd->dense_n, NULL,
+                                  pd->col_perm, NULL);
+    }
+
+    int *new_row_perm = (int *) SP_MALLOC(size * sizeof(int));
+    for (int i = 0; i < size; i++)
+    {
+        new_row_perm[i] = i;
+    }
+    Matrix *out = new_permuted_dense(size, pd->base.n, size, pd->dense_n,
+                                     new_row_perm, pd->col_perm, NULL);
+    free(new_row_perm);
+    return out;
+}
+
+static void permuted_dense_vtable_promote_fill_values(Matrix *self, Matrix *out)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    Permuted_Dense *out_pd = (Permuted_Dense *) out;
+    if (pd->dense_m == 0) return;
+    int dense_n = pd->dense_n;
+    for (int k = 0; k < out_pd->dense_m; k++)
+    {
+        memcpy(out_pd->X + (size_t) k * dense_n, pd->X,
+               dense_n * sizeof(double));
+    }
+}
+
+static Matrix *permuted_dense_vtable_broadcast_alloc(Matrix *self,
+                                                     broadcast_type type, int d1,
+                                                     int d2)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    int out_m = d1 * d2;
+
+    int new_dense_m;
+    if (type == BROADCAST_SCALAR)
+    {
+        new_dense_m = (pd->dense_m == 0) ? 0 : out_m;
+    }
+    else if (type == BROADCAST_ROW)
+    {
+        new_dense_m = d1 * pd->dense_m;
+    }
+    else /* BROADCAST_COL */
+    {
+        new_dense_m = d2 * pd->dense_m;
+    }
+
+    if (new_dense_m == 0)
+    {
+        return new_permuted_dense(out_m, pd->base.n, 0, pd->dense_n, NULL,
+                                  pd->col_perm, NULL);
+    }
+
+    int *new_row_perm = (int *) SP_MALLOC(new_dense_m * sizeof(int));
+    int k = 0;
+    if (type == BROADCAST_SCALAR)
+    {
+        for (int i = 0; i < out_m; i++)
+        {
+            new_row_perm[k++] = i;
+        }
+    }
+    else if (type == BROADCAST_ROW)
+    {
+        for (int j_ii = 0; j_ii < pd->dense_m; j_ii++)
+        {
+            int j_old = pd->row_perm[j_ii];
+            for (int i = 0; i < d1; i++)
+            {
+                new_row_perm[k++] = j_old * d1 + i;
+            }
+        }
+    }
+    else /* BROADCAST_COL */
+    {
+        for (int j = 0; j < d2; j++)
+        {
+            for (int ii_old = 0; ii_old < pd->dense_m; ii_old++)
+            {
+                new_row_perm[k++] = j * d1 + pd->row_perm[ii_old];
+            }
+        }
+    }
+
+    Matrix *out = new_permuted_dense(out_m, pd->base.n, new_dense_m,
+                                     pd->dense_n, new_row_perm, pd->col_perm,
+                                     NULL);
+    free(new_row_perm);
+    return out;
+}
+
+static void permuted_dense_vtable_broadcast_fill_values(Matrix *self,
+                                                        broadcast_type type, int d1,
+                                                        int d2, Matrix *out)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    Permuted_Dense *out_pd = (Permuted_Dense *) out;
+    if (pd->dense_m == 0)
+    {
+        return;
+    }
+    int dense_n = pd->dense_n;
+
+    if (type == BROADCAST_SCALAR)
+    {
+        for (int k = 0; k < out_pd->dense_m; k++)
+        {
+            memcpy(out_pd->X + (size_t) k * dense_n, pd->X,
+                   dense_n * sizeof(double));
+        }
+    }
+    else if (type == BROADCAST_ROW)
+    {
+        /* output row k corresponds to child dense row (k / d1). */
+        (void) d2;
+        for (int k = 0; k < out_pd->dense_m; k++)
+        {
+            memcpy(out_pd->X + (size_t) k * dense_n,
+                   pd->X + (size_t) (k / d1) * dense_n,
+                   dense_n * sizeof(double));
+        }
+    }
+    else /* BROADCAST_COL */
+    {
+        (void) d1;
+        size_t child_block = (size_t) pd->dense_m * (size_t) dense_n;
+        for (int j = 0; j < d2; j++)
+        {
+            memcpy(out_pd->X + (size_t) j * child_block, pd->X,
+                   child_block * sizeof(double));
+        }
+    }
+}
+
+static Matrix *permuted_dense_vtable_diag_vec_alloc(Matrix *self)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    int n = pd->base.m;
+    int out_m = n * n;
+
+    if (pd->dense_m == 0)
+    {
+        return new_permuted_dense(out_m, pd->base.n, 0, pd->dense_n, NULL,
+                                  pd->col_perm, NULL);
+    }
+
+    int *new_row_perm = (int *) SP_MALLOC(pd->dense_m * sizeof(int));
+    for (int ii = 0; ii < pd->dense_m; ii++)
+    {
+        new_row_perm[ii] = pd->row_perm[ii] * (n + 1);
+    }
+    Matrix *out = new_permuted_dense(out_m, pd->base.n, pd->dense_m, pd->dense_n,
+                                     new_row_perm, pd->col_perm, NULL);
+    free(new_row_perm);
+    return out;
+}
+
+static void permuted_dense_vtable_diag_vec_fill_values(Matrix *self, Matrix *out)
+{
+    const Permuted_Dense *pd = (const Permuted_Dense *) self;
+    Permuted_Dense *out_pd = (Permuted_Dense *) out;
+    if (pd->dense_m == 0)
+    {
+        return;
+    }
+    memcpy(out_pd->X, pd->X,
+           (size_t) pd->dense_m * (size_t) pd->dense_n * sizeof(double));
+}
+
 Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
                            const int *row_perm, const int *col_perm,
                            const double *X_data)
@@ -119,6 +339,14 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;
     pd->base.ATDA_fill_values = permuted_dense_vtable_ATDA_fill_values;
     pd->base.to_csr = permuted_dense_to_csr;
+    pd->base.index_alloc = permuted_dense_vtable_index_alloc;
+    pd->base.index_fill_values = permuted_dense_vtable_index_fill_values;
+    pd->base.promote_alloc = permuted_dense_vtable_promote_alloc;
+    pd->base.promote_fill_values = permuted_dense_vtable_promote_fill_values;
+    pd->base.broadcast_alloc = permuted_dense_vtable_broadcast_alloc;
+    pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
+    pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
+    pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
     pd->base.free_fn = permuted_dense_free;
 
@@ -132,6 +360,7 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     pd->base.x = pd->X;
     pd->Y_scratch = (double *) SP_MALLOC(sz * sizeof(double));
     pd->col_inv = (int *) SP_MALLOC(n * sizeof(int));
+    pd->row_inv = (int *) SP_MALLOC(m * sizeof(int));
 
     if (dense_m > 0)
     {
@@ -149,6 +378,15 @@ Matrix *new_permuted_dense(int m, int n, int dense_m, int dense_n,
     for (int jj = 0; jj < dense_n; jj++)
     {
         pd->col_inv[col_perm[jj]] = jj;
+    }
+
+    for (int i = 0; i < m; i++)
+    {
+        pd->row_inv[i] = -1;
+    }
+    for (int ii = 0; ii < dense_m; ii++)
+    {
+        pd->row_inv[row_perm[ii]] = ii;
     }
 
     if (X_data != NULL && sz > 0)

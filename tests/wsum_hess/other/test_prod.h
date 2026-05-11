@@ -28,9 +28,9 @@ const char *test_wsum_hess_prod_no_zero(void)
     int expected_p[9] = {0, 0, 0, 4, 8, 12, 16, 16, 16};
     int expected_i[16] = {2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 16));
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 9));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 16));
+    mu_assert("vals fail", cmp_values(p->wsum_hess, expected_x, 16));
+    mu_assert("sparsity fail",
+              cmp_sparsity(p->wsum_hess, expected_p, expected_i, 8, 16));
 
     free_expr(p);
     return 0;
@@ -62,9 +62,9 @@ const char *test_wsum_hess_prod_one_zero(void)
     int expected_p[9] = {0, 0, 0, 4, 8, 12, 16, 16, 16};
     int expected_i[16] = {2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 16));
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 9));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 16));
+    mu_assert("vals fail", cmp_values(p->wsum_hess, expected_x, 16));
+    mu_assert("sparsity fail",
+              cmp_sparsity(p->wsum_hess, expected_p, expected_i, 8, 16));
 
     free_expr(p);
     return 0;
@@ -91,9 +91,9 @@ const char *test_wsum_hess_prod_two_zeros(void)
     int expected_p[9] = {0, 0, 0, 4, 8, 12, 16, 16, 16};
     int expected_i[16] = {2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 16));
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 9));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 16));
+    mu_assert("vals fail", cmp_values(p->wsum_hess, expected_x, 16));
+    mu_assert("sparsity fail",
+              cmp_sparsity(p->wsum_hess, expected_p, expected_i, 8, 16));
 
     free_expr(p);
     return 0;
@@ -118,9 +118,9 @@ const char *test_wsum_hess_prod_many_zeros(void)
     int expected_p[9] = {0, 0, 0, 4, 8, 12, 16, 16, 16};
     int expected_i[16] = {2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5, 2, 3, 4, 5};
 
-    mu_assert("vals fail", cmp_double_array(p->wsum_hess->x, expected_x, 16));
-    mu_assert("rows fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->p, expected_p, 9));
-    mu_assert("cols fail", cmp_int_array(p->wsum_hess->to_csr(p->wsum_hess)->i, expected_i, 16));
+    mu_assert("vals fail", cmp_values(p->wsum_hess, expected_x, 16));
+    mu_assert("sparsity fail",
+              cmp_sparsity(p->wsum_hess, expected_p, expected_i, 8, 16));
 
     free_expr(p);
     return 0;

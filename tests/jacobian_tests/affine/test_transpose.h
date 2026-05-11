@@ -33,12 +33,9 @@ const char *test_jacobian_transpose(void)
     int expected_p[5] = {0, 2, 4, 6, 8};
     int expected_i[8] = {0, 1, 2, 3, 0, 1, 2, 3};
 
-    mu_assert("jacobian values fail",
-              cmp_double_array(transpose_AX->jacobian->x, expected_x, 8));
-    mu_assert("jacobian row ptr fail",
-              cmp_int_array(transpose_AX->jacobian->to_csr(transpose_AX->jacobian)->p, expected_p, 5));
-    mu_assert("jacobian col idx fail",
-              cmp_int_array(transpose_AX->jacobian->to_csr(transpose_AX->jacobian)->i, expected_i, 8));
+    mu_assert("vals fail", cmp_values(transpose_AX->jacobian, expected_x, 8));
+    mu_assert("sparsity fail",
+              cmp_sparsity(transpose_AX->jacobian, expected_p, expected_i, 4, 8));
     free_expr(transpose_AX);
     free_csr_matrix(A);
     return 0;

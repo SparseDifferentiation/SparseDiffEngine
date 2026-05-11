@@ -27,12 +27,9 @@ const char *test_wsum_hess_sin(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(sin_node->wsum_hess->x, expected_x, 3));
-    mu_assert("rows incorrect",
-              cmp_int_array(sin_node->wsum_hess->to_csr(sin_node->wsum_hess)->p, expected_p, 4));
-    mu_assert("cols incorrect",
-              cmp_int_array(sin_node->wsum_hess->to_csr(sin_node->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(sin_node->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(sin_node->wsum_hess, expected_p, expected_i, 3, 3));
 
     free_expr(sin_node);
 
@@ -56,12 +53,9 @@ const char *test_wsum_hess_cos(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(cos_node->wsum_hess->x, expected_x, 3));
-    mu_assert("rows incorrect",
-              cmp_int_array(cos_node->wsum_hess->to_csr(cos_node->wsum_hess)->p, expected_p, 4));
-    mu_assert("cols incorrect",
-              cmp_int_array(cos_node->wsum_hess->to_csr(cos_node->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(cos_node->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(cos_node->wsum_hess, expected_p, expected_i, 3, 3));
 
     free_expr(cos_node);
 
@@ -87,12 +81,9 @@ const char *test_wsum_hess_tan(void)
     int expected_p[4] = {0, 1, 2, 3};
     int expected_i[3] = {0, 1, 2};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(tan_node->wsum_hess->x, expected_x, 3));
-    mu_assert("rows incorrect",
-              cmp_int_array(tan_node->wsum_hess->to_csr(tan_node->wsum_hess)->p, expected_p, 4));
-    mu_assert("cols incorrect",
-              cmp_int_array(tan_node->wsum_hess->to_csr(tan_node->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(tan_node->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(tan_node->wsum_hess, expected_p, expected_i, 3, 3));
 
     free_expr(tan_node);
 

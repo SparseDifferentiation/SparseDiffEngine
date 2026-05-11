@@ -18,6 +18,7 @@
 #include "utils/CSC_Matrix.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/matrix.h"
+#include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
@@ -98,6 +99,188 @@ static CSR_Matrix *sparse_to_csr(Matrix *self)
     return ((Sparse_Matrix *) self)->csr;
 }
 
+static Matrix *sparse_index_alloc(Matrix *self, const int *indices, int n_idxs)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_Matrix *J = new_csr_matrix(n_idxs, self->n, Jx->nnz);
+
+    J->p[0] = 0;
+    for (int i = 0; i < n_idxs; i++)
+    {
+        int row = indices[i];
+        int len = Jx->p[row + 1] - Jx->p[row];
+        memcpy(J->i + J->p[i], Jx->i + Jx->p[row], len * sizeof(int));
+        J->p[i + 1] = J->p[i] + len;
+    }
+    J->nnz = J->p[n_idxs];
+    return new_sparse_matrix(J);
+}
+
+static void sparse_index_fill_values(Matrix *self, const int *indices, int n_idxs,
+                                     Matrix *out)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_Matrix *J = ((Sparse_Matrix *) out)->csr;
+    for (int i = 0; i < n_idxs; i++)
+    {
+        int len = J->p[i + 1] - J->p[i];
+        memcpy(J->x + J->p[i], Jx->x + Jx->p[indices[i]], len * sizeof(double));
+    }
+}
+
+static Matrix *sparse_promote_alloc(Matrix *self, int size)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    int row_nnz = Jx->nnz;
+    CSR_Matrix *J = new_csr_matrix(size, self->n, size * row_nnz);
+
+    for (int row = 0; row < size; row++)
+    {
+        J->p[row] = row * row_nnz;
+        memcpy(J->i + row * row_nnz, Jx->i, row_nnz * sizeof(int));
+    }
+    J->p[size] = size * row_nnz;
+    J->nnz = size * row_nnz;
+    return new_sparse_matrix(J);
+}
+
+static void sparse_promote_fill_values(Matrix *self, Matrix *out)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    int row_nnz = Jx->nnz;
+    for (int row = 0; row < out->m; row++)
+    {
+        memcpy(out->x + row * row_nnz, Jx->x, row_nnz * sizeof(double));
+    }
+}
+
+static Matrix *sparse_broadcast_alloc(Matrix *self, broadcast_type type, int d1,
+                                      int d2)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    int out_m = d1 * d2;
+    int total_nnz;
+    if (type == BROADCAST_ROW)
+    {
+        total_nnz = Jx->nnz * d1;
+    }
+    else if (type == BROADCAST_COL)
+    {
+        total_nnz = Jx->nnz * d2;
+    }
+    else /* BROADCAST_SCALAR */
+    {
+        total_nnz = Jx->nnz * out_m;
+    }
+
+    CSR_Matrix *J = new_csr_matrix(out_m, self->n, total_nnz);
+
+    if (type == BROADCAST_ROW)
+    {
+        int acc = 0;
+        for (int i = 0; i < d2; i++)
+        {
+            int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
+            tile_int(J->i + acc, Jx->i + Jx->p[i], nnz_in_row, d1);
+            for (int rep = 0; rep < d1; rep++)
+            {
+                J->p[i * d1 + rep] = acc;
+                acc += nnz_in_row;
+            }
+        }
+        J->p[out_m] = total_nnz;
+    }
+    else if (type == BROADCAST_COL)
+    {
+        tile_int(J->i, Jx->i, Jx->nnz, d2);
+        int offset = 0;
+        for (int i = 0; i < d2; i++)
+        {
+            for (int j = 0; j < d1; j++)
+            {
+                int nnz_in_row = Jx->p[j + 1] - Jx->p[j];
+                J->p[i * d1 + j] = offset;
+                offset += nnz_in_row;
+            }
+        }
+        J->p[out_m] = total_nnz;
+    }
+    else /* BROADCAST_SCALAR */
+    {
+        tile_int(J->i, Jx->i, Jx->nnz, out_m);
+        int row_nnz = Jx->nnz;
+        for (int i = 0; i < out_m; i++)
+        {
+            J->p[i] = i * row_nnz;
+        }
+        J->p[out_m] = total_nnz;
+    }
+    return new_sparse_matrix(J);
+}
+
+static void sparse_broadcast_fill_values(Matrix *self, broadcast_type type, int d1,
+                                         int d2, Matrix *out)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    if (type == BROADCAST_ROW)
+    {
+        int acc = 0;
+        for (int i = 0; i < d2; i++)
+        {
+            int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
+            tile_double(out->x + acc, Jx->x + Jx->p[i], nnz_in_row, d1);
+            acc += nnz_in_row * d1;
+        }
+    }
+    else if (type == BROADCAST_COL)
+    {
+        tile_double(out->x, Jx->x, Jx->nnz, d2);
+    }
+    else /* BROADCAST_SCALAR */
+    {
+        tile_double(out->x, Jx->x, Jx->nnz, d1 * d2);
+    }
+}
+
+static Matrix *sparse_diag_vec_alloc(Matrix *self)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    int n = self->m;
+    int out_m = n * n;
+    CSR_Matrix *J = new_csr_matrix(out_m, self->n, Jx->nnz);
+
+    int nnz = 0;
+    int next_diag = 0;
+    for (int row = 0; row < out_m; row++)
+    {
+        J->p[row] = nnz;
+        if (row == next_diag)
+        {
+            int child_row = row / (n + 1);
+            int len = Jx->p[child_row + 1] - Jx->p[child_row];
+            memcpy(J->i + nnz, Jx->i + Jx->p[child_row], len * sizeof(int));
+            nnz += len;
+            next_diag += n + 1;
+        }
+    }
+    J->p[out_m] = nnz;
+    J->nnz = nnz;
+    return new_sparse_matrix(J);
+}
+
+static void sparse_diag_vec_fill_values(Matrix *self, Matrix *out)
+{
+    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_Matrix *J = ((Sparse_Matrix *) out)->csr;
+    int n = self->m;
+    for (int i = 0; i < n; i++)
+    {
+        int out_row = i * (n + 1);
+        int len = J->p[out_row + 1] - J->p[out_row];
+        memcpy(J->x + J->p[out_row], Jx->x + Jx->p[i], len * sizeof(double));
+    }
+}
+
 /* Build CSC structure on first call; refill values from csr->x on every call. */
 static void sparse_refresh_csc_values(Matrix *self)
 {
@@ -116,6 +299,14 @@ static void wire_vtable(Sparse_Matrix *sm)
     sm->base.ATA_alloc = sparse_ATA_alloc;
     sm->base.ATDA_fill_values = sparse_ATDA_fill_values;
     sm->base.to_csr = sparse_to_csr;
+    sm->base.index_alloc = sparse_index_alloc;
+    sm->base.index_fill_values = sparse_index_fill_values;
+    sm->base.promote_alloc = sparse_promote_alloc;
+    sm->base.promote_fill_values = sparse_promote_fill_values;
+    sm->base.broadcast_alloc = sparse_broadcast_alloc;
+    sm->base.broadcast_fill_values = sparse_broadcast_fill_values;
+    sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
+    sm->base.diag_vec_fill_values = sparse_diag_vec_fill_values;
     sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;
 }
@@ -130,6 +321,11 @@ Matrix *new_sparse_matrix(CSR_Matrix *A)
     wire_vtable(sm);
     sm->csr = A;
     return &sm->base;
+}
+
+Matrix *new_sparse_matrix_alloc(int m, int n, int nnz)
+{
+    return new_sparse_matrix(new_csr_matrix(m, n, nnz));
 }
 
 Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork)

@@ -21,6 +21,14 @@
 #include "CSC_Matrix.h"
 #include "CSR_Matrix.h"
 
+/* Broadcast shape used by the broadcast atom and its vtable methods. */
+typedef enum
+{
+    BROADCAST_ROW,   /* (1, n) -> (m, n) */
+    BROADCAST_COL,   /* (m, 1) -> (m, n) */
+    BROADCAST_SCALAR /* (1, 1) -> (m, n) */
+} broadcast_type;
+
 /* We implement three different types of matrices.
 
     1. 'sparse_matrix' represents a generic CSR matrix.
@@ -91,6 +99,40 @@ typedef struct Matrix
                              struct Matrix *out);
     CSR_Matrix *(*to_csr)(struct Matrix *self);
 
+    /* Row-selection / indexing: returns a new Matrix that selects rows
+       indices[0..n_idxs) of self. Output shape is (n_idxs, self->n). The
+       returned type matches self's concrete type. index_alloc sets up
+       sparsity (values uninitialized); index_fill_values fills values into
+       out, which must have been produced by a prior index_alloc with the
+       same indices/n_idxs. */
+    struct Matrix *(*index_alloc)(struct Matrix *self, const int *indices,
+                                  int n_idxs);
+    void (*index_fill_values)(struct Matrix *self, const int *indices, int n_idxs,
+                              struct Matrix *out);
+
+    /* Row-tiling for the promote atom: self must be a 1-row matrix; returns
+       a new Matrix of shape (size, self->n) where every row is a copy of
+       self's single row. Output type matches self's concrete type.
+       promote_alloc sets sparsity; promote_fill_values fills values. */
+    struct Matrix *(*promote_alloc)(struct Matrix *self, int size);
+    void (*promote_fill_values)(struct Matrix *self, struct Matrix *out);
+
+    /* Broadcast: lift the child Jacobian of a broadcast atom into the output
+       Jacobian. `type` is the broadcast variant; (d1, d2) is the output shape.
+       Output type matches self's concrete type. broadcast_alloc sets sparsity;
+       broadcast_fill_values fills values into out. */
+    struct Matrix *(*broadcast_alloc)(struct Matrix *self, broadcast_type type,
+                                      int d1, int d2);
+    void (*broadcast_fill_values)(struct Matrix *self, broadcast_type type, int d1,
+                                  int d2, struct Matrix *out);
+
+    /* diag_vec: child is an (n, self->n) Jacobian for a length-n vector;
+       output is (n*n, self->n) where child row i lands at output row
+       i*(n+1) (column-major diagonal positions). Other output rows are
+       structurally zero. Output type matches self's concrete type. */
+    struct Matrix *(*diag_vec_alloc)(struct Matrix *self);
+    void (*diag_vec_fill_values)(struct Matrix *self, struct Matrix *out);
+
     /* Refresh any internal caches (e.g. a CSC mirror) so subsequent ATA / ATDA
        calls reflect the current values. Atoms whose child Jacobian is affine
        can skip this on iterations after the first; non-affine children must
@@ -116,6 +158,11 @@ typedef struct Sparse_Matrix
 /* Constructor. Takes ownership of A; the caller must not free A separately
    (free_matrix on the returned Matrix frees A). */
 Matrix *new_sparse_matrix(CSR_Matrix *A);
+
+/* Convenience: allocate a Sparse_Matrix of shape (m, n) with capacity for
+   nnz entries. Equivalent to new_sparse_matrix(new_csr_matrix(m, n, nnz)).
+   Sparsity pattern and values are uninitialized. */
+Matrix *new_sparse_matrix_alloc(int m, int n, int nnz);
 
 /* Transpose helper */
 Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork);

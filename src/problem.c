@@ -546,17 +546,15 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     memset(H->x, 0, H->nnz * sizeof(double));
 
     /* accumulate objective function */
-    CSR_Matrix *obj_hess_csr = obj->wsum_hess->to_csr(obj->wsum_hess);
-    accumulator(obj_hess_csr, idx_map, H->x);
-    offset = obj_hess_csr->nnz;
+    accumulator(obj->wsum_hess->x, obj->wsum_hess->nnz, idx_map, H->x);
+    offset = obj->wsum_hess->nnz;
 
     /* accumulate constraint functions */
     for (int i = 0; i < prob->n_constraints; i++)
     {
-        CSR_Matrix *c_hess_csr =
-            constrs[i]->wsum_hess->to_csr(constrs[i]->wsum_hess);
-        accumulator(c_hess_csr, idx_map + offset, H->x);
-        offset += c_hess_csr->nnz;
+        Matrix *c_hess = constrs[i]->wsum_hess;
+        accumulator(c_hess->x, c_hess->nnz, idx_map + offset, H->x);
+        offset += c_hess->nnz;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);

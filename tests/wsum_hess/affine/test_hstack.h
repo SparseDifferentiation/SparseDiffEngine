@@ -90,12 +90,9 @@ const char *test_wsum_hess_hstack(void)
     int expected_p[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     int expected_i[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(hstack_node->wsum_hess->x, expected_x, 9));
-    mu_assert("rows incorrect",
-              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->p, expected_p, 10));
-    mu_assert("cols incorrect",
-              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->i, expected_i, 9));
+    mu_assert("vals fail", cmp_values(hstack_node->wsum_hess, expected_x, 9));
+    mu_assert("sparsity fail",
+              cmp_sparsity(hstack_node->wsum_hess, expected_p, expected_i, 9, 9));
 
     free_expr(hstack_node);
     return 0;
@@ -200,12 +197,9 @@ const char *test_wsum_hess_hstack_matrix(void)
     int expected_i[18] = {0, 1,  2,  3,  4,  5,  6,  7,  8,
                           9, 10, 11, 12, 13, 14, 15, 16, 17};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(hstack_node->wsum_hess->x, expected_x, 18));
-    mu_assert("rows incorrect",
-              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->p, expected_p, 19));
-    mu_assert("cols incorrect",
-              cmp_int_array(hstack_node->wsum_hess->to_csr(hstack_node->wsum_hess)->i, expected_i, 18));
+    mu_assert("vals fail", cmp_values(hstack_node->wsum_hess, expected_x, 18));
+    mu_assert("sparsity fail",
+              cmp_sparsity(hstack_node->wsum_hess, expected_p, expected_i, 18, 18));
 
     free_expr(hstack_node);
     return 0;

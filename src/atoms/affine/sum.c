@@ -118,50 +118,51 @@ static void jacobian_init_impl(expr *node)
 
 static void eval_jacobian(expr *node)
 {
-    expr *x = node->left;
+    expr *child = node->left;
 
     /* evaluate child's jacobian */
-    x->eval_jacobian(x);
+    child->eval_jacobian(child);
 
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator(x->jacobian->to_csr(x->jacobian), ((sum_expr *) node)->idx_map, node->jacobian->x);
+    accumulator(child->jacobian->x, child->jacobian->nnz,
+                ((sum_expr *) node)->idx_map, node->jacobian->x);
 }
 
 static void wsum_hess_init_impl(expr *node)
 {
-    expr *x = node->left;
+    expr *child = node->left;
     /* initialize child's wsum_hess */
-    wsum_hess_init(x);
+    wsum_hess_init(child);
 
     /* we never have to store more than the child's nnz */
-    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
-    node->work->dwork = SP_MALLOC(x->size * sizeof(double));
+    node->wsum_hess = child->wsum_hess->copy_sparsity(child->wsum_hess);
+    node->work->dwork = SP_MALLOC(child->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    expr *x = node->left;
+    expr *child = node->left;
     sum_expr *snode = (sum_expr *) node;
     int axis = snode->axis;
 
     if (axis == -1)
     {
-        scaled_ones(node->work->dwork, x->size, *w);
+        scaled_ones(node->work->dwork, child->size, *w);
     }
     else if (axis == 0)
     {
-        repeat(node->work->dwork, w, x->d2, x->d1);
+        repeat(node->work->dwork, w, child->d2, child->d1);
     }
     else if (axis == 1)
     {
-        tile_double(node->work->dwork, w, x->d1, x->d2);
+        tile_double(node->work->dwork, w, child->d1, child->d2);
     }
 
-    x->eval_wsum_hess(x, node->work->dwork);
+    child->eval_wsum_hess(child, node->work->dwork);
 
-    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+    memcpy(node->wsum_hess->x, child->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
 

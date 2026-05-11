@@ -48,49 +48,18 @@ static void forward(expr *node, const double *u)
 static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
-    int n = x->size;
     jacobian_init(x);
 
-    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
-    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
-
-    /* Output has n^2 rows but only n diagonal positions are non-empty.
-     * Diagonal position i is at row i*(n+1) in Fortran order. */
-    int nnz = 0;
-    int next_diag = 0;
-    for (int row = 0; row < node->size; row++)
-    {
-        J->p[row] = nnz;
-        if (row == next_diag)
-        {
-            int child_row = row / (n + 1);
-            int len = Jx->p[child_row + 1] - Jx->p[child_row];
-            memcpy(J->i + nnz, Jx->i + Jx->p[child_row], len * sizeof(int));
-            nnz += len;
-            next_diag += n + 1;
-        }
-    }
-    J->p[node->size] = nnz;
-
-    node->jacobian = new_sparse_matrix(J);
+    /* output type matches child's; rows i*(n+1) hold child row i, others zero. */
+    node->jacobian = x->jacobian->diag_vec_alloc(x->jacobian);
 }
 
 static void eval_jacobian(expr *node)
 {
-    expr *x = node->left;
-    int n = x->size;
-    x->eval_jacobian(x);
+    node->left->eval_jacobian(node->left);
 
-    CSR_Matrix *J = node->jacobian->to_csr(node->jacobian);
-    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
-
-    /* Copy values from child row i to output diagonal row i*(n+1) */
-    for (int i = 0; i < n; i++)
-    {
-        int out_row = i * (n + 1);
-        int len = J->p[out_row + 1] - J->p[out_row];
-        memcpy(J->x + J->p[out_row], Jx->x + Jx->p[i], len * sizeof(double));
-    }
+    /* fill the diagonal rows of the preallocated output. */
+    node->left->jacobian->diag_vec_fill_values(node->left->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)

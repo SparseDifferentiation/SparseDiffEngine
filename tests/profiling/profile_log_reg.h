@@ -90,7 +90,8 @@ const char *profile_log_reg(void)
     double *w_ones = (double *) malloc(m * sizeof(double));
     for (int i = 0; i < m; i++) w_ones[i] = 1.0;
 
-    /* ---- Path B: time the manual chain rule, Jacobian and Hessian separately ---- */
+    /* ---- Path B: time the manual chain rule, Jacobian and Hessian separately ----
+     */
     Timer t_b_jac, t_b_hess;
     /* dwork = sigmoid(z); used as the diagonal in DA below and (still in
        dwork) as sigmas read by local_wsum_hess. */
@@ -99,7 +100,7 @@ const char *profile_log_reg(void)
     permuted_dense_DA_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
     permuted_dense_to_csr_fill_values(Jlog_pd, Jlog_csr);
     memset(Jobj_csr->x, 0, Jobj_csr->nnz * sizeof(double));
-    accumulator(Jlog_csr, idx_map, Jobj_csr->x);
+    accumulator(Jlog_csr->x, Jlog_csr->nnz, idx_map, Jobj_csr->x);
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.end);
     clock_gettime(CLOCK_MONOTONIC, &t_b_hess.start);
     log_obj->local_wsum_hess(log_obj, d2, w_ones);

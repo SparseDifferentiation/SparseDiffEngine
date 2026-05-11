@@ -27,12 +27,9 @@ const char *test_wsum_hess_transpose(void)
     int expected_p[9] = {0, 2, 4, 6, 8, 10, 12, 14, 16};
     int expected_i[16] = {4, 6, 4, 6, 5, 7, 5, 7, 0, 1, 2, 3, 0, 1, 2, 3};
 
-    mu_assert("hess values fail",
-              cmp_double_array(XYT->wsum_hess->x, expected_x, 8));
-    mu_assert("jacobian row ptr fail",
-              cmp_int_array(XYT->wsum_hess->to_csr(XYT->wsum_hess)->p, expected_p, 5));
-    mu_assert("jacobian col idx fail",
-              cmp_int_array(XYT->wsum_hess->to_csr(XYT->wsum_hess)->i, expected_i, 8));
+    mu_assert("vals fail", cmp_values(XYT->wsum_hess, expected_x, 16));
+    mu_assert("sparsity fail",
+              cmp_sparsity(XYT->wsum_hess, expected_p, expected_i, 8, 16));
     free_expr(XYT);
 
     return 0;

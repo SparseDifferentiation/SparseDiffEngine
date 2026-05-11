@@ -56,9 +56,9 @@ const char *test_index_jacobian_of_variable(void)
     int expected_p[3] = {0, 1, 2}; /* CSR row ptrs */
     int expected_i[2] = {0, 2};    /* column indices */
 
-    mu_assert("index jac vals", cmp_double_array(idx->jacobian->x, expected_x, 2));
-    mu_assert("index jac p", cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->p, expected_p, 3));
-    mu_assert("index jac i", cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->i, expected_i, 2));
+    mu_assert("vals fail", cmp_values(idx->jacobian, expected_x, 2));
+    mu_assert("sparsity fail",
+              cmp_sparsity(idx->jacobian, expected_p, expected_i, 2, 2));
 
     free_expr(idx);
     return 0;
@@ -76,16 +76,17 @@ const char *test_index_jacobian_of_log(void)
     jacobian_init(idx);
     idx->eval_jacobian(idx);
 
-    /* d/dx log(x) = diag(1/x), then select rows 0 and 2
+    /* d/dx log(x) = diag(1/x), then select rows 0 and 2.
+     * Each selected row has exactly one nonzero (the diagonal entry).
      * Row 0: 1/1 = 1.0 at col 0
      * Row 1: 1/4 = 0.25 at col 2 */
     double expected_x[2] = {1.0, 0.25};
+    int expected_p[3] = {0, 1, 2};
     int expected_i[2] = {0, 2};
 
-    mu_assert("index of log jac vals",
-              cmp_double_array(idx->jacobian->x, expected_x, 2));
-    mu_assert("index of log jac cols",
-              cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->i, expected_i, 2));
+    mu_assert("vals fail", cmp_values(idx->jacobian, expected_x, 2));
+    mu_assert("sparsity fail",
+              cmp_sparsity(idx->jacobian, expected_p, expected_i, 2, 2));
 
     free_expr(idx);
     return 0;
@@ -107,12 +108,9 @@ const char *test_index_jacobian_repeated(void)
     int expected_p[3] = {0, 1, 2};
     int expected_i[2] = {0, 0}; /* Both reference col 0 */
 
-    mu_assert("index repeated jac vals",
-              cmp_double_array(idx->jacobian->x, expected_x, 2));
-    mu_assert("index repeated row ptr",
-              cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->p, expected_p, 3));
-    mu_assert("index repeated jac i",
-              cmp_int_array(idx->jacobian->to_csr(idx->jacobian)->i, expected_i, 2));
+    mu_assert("vals fail", cmp_values(idx->jacobian, expected_x, 2));
+    mu_assert("sparsity fail",
+              cmp_sparsity(idx->jacobian, expected_p, expected_i, 2, 2));
 
     free_expr(idx);
     return 0;
@@ -133,12 +131,14 @@ const char *test_sum_of_index(void)
     jacobian_init(s);
     s->eval_jacobian(s);
 
-    /* Gradient: [1, 0, 1] in sparse form */
+    /* Gradient: [1, 0, 1] in sparse form. Single output row holds both nnz. */
     double expected_x[2] = {1.0, 1.0};
+    int expected_p[2] = {0, 2};
     int expected_i[2] = {0, 2};
 
-    mu_assert("sum of index vals", cmp_double_array(s->jacobian->x, expected_x, 2));
-    mu_assert("sum of index cols", cmp_int_array(s->jacobian->to_csr(s->jacobian)->i, expected_i, 2));
+    mu_assert("vals fail", cmp_values(s->jacobian, expected_x, 2));
+    mu_assert("sparsity fail",
+              cmp_sparsity(s->jacobian, expected_p, expected_i, 1, 2));
 
     free_expr(s);
     return 0;

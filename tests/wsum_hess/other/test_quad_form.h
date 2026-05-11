@@ -38,9 +38,9 @@ const char *test_wsum_hess_quad_form(void)
     int expected_i[10] = {3, 4, 3, 4, 5, 4, 5, 6, 5, 6};
     double expected_x[10] = {4.0, 8.0, 8.0, 20.0, 12.0, 12.0, 16.0, 4.0, 4.0, 24.0};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 11));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 10));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 10));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 10, 10));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 10));
 
     free_expr(node);
     free_csr_matrix(Q);

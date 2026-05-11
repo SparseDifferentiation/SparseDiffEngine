@@ -516,10 +516,12 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
 
     /* accumulate H = C + C^T + H_f + H_g */
     memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-    accumulator(mnode->C, mnode->idx_map_C, node->wsum_hess->x);
-    accumulator(mnode->CT, mnode->idx_map_CT, node->wsum_hess->x);
-    accumulator(f->wsum_hess->to_csr(f->wsum_hess), mnode->idx_map_Hf, node->wsum_hess->x);
-    accumulator(g->wsum_hess->to_csr(g->wsum_hess), mnode->idx_map_Hg, node->wsum_hess->x);
+    accumulator(mnode->C->x, mnode->C->nnz, mnode->idx_map_C, node->wsum_hess->x);
+    accumulator(mnode->CT->x, mnode->CT->nnz, mnode->idx_map_CT, node->wsum_hess->x);
+    accumulator(f->wsum_hess->x, f->wsum_hess->nnz, mnode->idx_map_Hf,
+                node->wsum_hess->x);
+    accumulator(g->wsum_hess->x, g->wsum_hess->nnz, mnode->idx_map_Hg,
+                node->wsum_hess->x);
 }
 
 expr *new_matmul(expr *x, expr *y)

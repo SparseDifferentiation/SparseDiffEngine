@@ -26,10 +26,10 @@ const char *test_wsum_hess_convolve(void)
     wsum_hess_init(y);
     y->eval_wsum_hess(y, w);
 
-    mu_assert("Convolve wsum_hess should be 3x3", y->wsum_hess->to_csr(y->wsum_hess)->m == 3);
-    mu_assert("Convolve wsum_hess should be square", y->wsum_hess->to_csr(y->wsum_hess)->n == 3);
+    mu_assert("Convolve wsum_hess should be 3x3", y->wsum_hess->m == 3);
+    mu_assert("Convolve wsum_hess should be square", y->wsum_hess->n == 3);
     mu_assert("Convolve wsum_hess should have zero nonzeros",
-              y->wsum_hess->to_csr(y->wsum_hess)->nnz == 0);
+              y->wsum_hess->nnz == 0);
 
     free_expr(y);
     return 0;

@@ -73,16 +73,15 @@ static void eval_jacobian(expr *node)
     expr *child = node->left;
     child->eval_jacobian(child);
     CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
-    CSR_Matrix *J = node->jacobian->to_csr(node->jacobian);
 
     int d1 = node->d1;
     int d2 = node->d2;
     int nnz = 0;
-    for (int row = 0; row < J->m; ++row)
+    for (int row = 0; row < node->jacobian->m; ++row)
     {
         int k = (row / d1) + (row % d1) * d2;
         int len = Jc->p[k + 1] - Jc->p[k];
-        memcpy(J->x + nnz, Jc->x + Jc->p[k], len * sizeof(double));
+        memcpy(node->jacobian->x + nnz, Jc->x + Jc->p[k], len * sizeof(double));
         nnz += len;
     }
 }

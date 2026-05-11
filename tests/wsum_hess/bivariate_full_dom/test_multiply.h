@@ -30,9 +30,9 @@ const char *test_wsum_hess_multiply_1(void)
     int expected_i[6] = {8, 9, 10, 3, 4, 5};
     double expected_x[6] = {1.0, 2.0, 3.0, 1.0, 2.0, 3.0};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 13));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 6));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 12, 6));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 6));
 
     free_expr(node);
     return 0;
@@ -96,12 +96,9 @@ const char *test_wsum_hess_multiply_sparse_random(void)
         0.361058,    -0.09679721, -0.02914438, 0.02402617,  0.31718166,  -0.03065625,
         -0.09679721, -0.18801593, 0.01371497,  -0.01130641, 0.06305481};
 
-    mu_assert("p array fails",
-              cmp_int_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->p, expected_p, 11));
-    mu_assert("i array fails",
-              cmp_int_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->i, expected_i, 29));
-    mu_assert("x array fails",
-              cmp_double_array(mult_node->wsum_hess->x, expected_x, 29));
+    mu_assert("sparsity fail",
+              cmp_sparsity(mult_node->wsum_hess, expected_p, expected_i, 10, 29));
+    mu_assert("vals fail", cmp_values(mult_node->wsum_hess, expected_x, 29));
 
     /* Cleanup */
     free_expr(mult_node);
@@ -179,12 +176,9 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     int expected_i[7] = {0, 2, 1, 2, 0, 1, 2};
     double expected_x[7] = {74.0, 75.0, 216.0, 18.0, 75.0, 18.0, 76.0};
 
-    mu_assert("p array fails",
-              cmp_int_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->p, expected_p, 4));
-    mu_assert("i array fails",
-              cmp_int_array(mult_node->wsum_hess->to_csr(mult_node->wsum_hess)->i, expected_i, 7));
-    mu_assert("x array fails",
-              cmp_double_array(mult_node->wsum_hess->x, expected_x, 7));
+    mu_assert("sparsity fail",
+              cmp_sparsity(mult_node->wsum_hess, expected_p, expected_i, 3, 7));
+    mu_assert("vals fail", cmp_values(mult_node->wsum_hess, expected_x, 7));
 
     /* Cleanup */
     free_expr(mult_node);
@@ -219,9 +213,9 @@ const char *test_wsum_hess_multiply_2(void)
     int expected_i[6] = {8, 9, 10, 3, 4, 5};
     double expected_x[6] = {1.0, 2.0, 3.0, 1.0, 2.0, 3.0};
 
-    mu_assert("p array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->p, expected_p, 13));
-    mu_assert("i array fails", cmp_int_array(node->wsum_hess->to_csr(node->wsum_hess)->i, expected_i, 6));
-    mu_assert("x array fails", cmp_double_array(node->wsum_hess->x, expected_x, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 12, 6));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 6));
 
     free_expr(node);
     return 0;

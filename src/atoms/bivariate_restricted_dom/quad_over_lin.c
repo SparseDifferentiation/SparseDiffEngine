@@ -188,8 +188,7 @@ static void wsum_hess_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *H =
-            new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
+        CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
         node->wsum_hess = new_sparse_matrix(H);
 
         /* if x has lower idx than y*/

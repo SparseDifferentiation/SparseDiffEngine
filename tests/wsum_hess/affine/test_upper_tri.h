@@ -49,12 +49,9 @@ const char *test_wsum_hess_upper_tri_log(void)
     int expected_p[17] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
     int expected_i[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
-    mu_assert("upper_tri log hess vals",
-              cmp_double_array(ut->wsum_hess->x, expected_x, 16));
-    mu_assert("upper_tri log hess p",
-              cmp_int_array(ut->wsum_hess->to_csr(ut->wsum_hess)->p, expected_p, 17));
-    mu_assert("upper_tri log hess i",
-              cmp_int_array(ut->wsum_hess->to_csr(ut->wsum_hess)->i, expected_i, 16));
+    mu_assert("vals fail", cmp_values(ut->wsum_hess, expected_x, 16));
+    mu_assert("sparsity fail",
+              cmp_sparsity(ut->wsum_hess, expected_p, expected_i, 16, 16));
 
     free_expr(ut);
     return 0;

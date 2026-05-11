@@ -5,6 +5,7 @@
 
 #include "expr.h"
 #include "utils/CSR_Matrix.h"
+#include "utils/matrix.h"
 
 #define EPSILON 1e-7
 
@@ -42,6 +43,32 @@ int cmp_int_array(const int *actual, const int *expected, int size)
         }
     }
     return 1;
+}
+
+int cmp_sparsity(Matrix *M, const int *exp_p, const int *exp_i, int m, int nnz)
+{
+    if (M->m != m)
+    {
+        printf("  FAILED: M->m = %d, expected %d\n", M->m, m);
+        return 0;
+    }
+    if (M->nnz != nnz)
+    {
+        printf("  FAILED: M->nnz = %d, expected %d\n", M->nnz, nnz);
+        return 0;
+    }
+    CSR_Matrix *csr = M->to_csr(M);
+    return cmp_int_array(csr->p, exp_p, m + 1) && cmp_int_array(csr->i, exp_i, nnz);
+}
+
+int cmp_values(const Matrix *M, const double *exp_x, int nnz)
+{
+    if (M->nnz != nnz)
+    {
+        printf("  FAILED: M->nnz = %d, expected %d\n", M->nnz, nnz);
+        return 0;
+    }
+    return cmp_double_array(M->x, exp_x, nnz);
 }
 
 #ifndef M_PI

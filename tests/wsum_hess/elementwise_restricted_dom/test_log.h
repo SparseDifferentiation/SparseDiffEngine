@@ -39,12 +39,9 @@ const char *test_wsum_hess_log(void)
     int expected_p[8] = {0, 0, 0, 1, 2, 3, 3, 3};
     int expected_i[3] = {2, 3, 4};
 
-    mu_assert("vals incorrect",
-              cmp_double_array(log_node->wsum_hess->x, expected_x, 3));
-    mu_assert("rows incorrect",
-              cmp_int_array(log_node->wsum_hess->to_csr(log_node->wsum_hess)->p, expected_p, 8));
-    mu_assert("cols incorrect",
-              cmp_int_array(log_node->wsum_hess->to_csr(log_node->wsum_hess)->i, expected_i, 3));
+    mu_assert("vals fail", cmp_values(log_node->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(log_node->wsum_hess, expected_p, expected_i, 7, 3));
 
     free_expr(log_node);
 
