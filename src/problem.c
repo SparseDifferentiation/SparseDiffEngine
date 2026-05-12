@@ -190,7 +190,7 @@ void problem_init_jacobian(problem *prob)
         }
     }
 
-    prob->jacobian = new_csr_matrix(prob->total_constraint_size, prob->n_vars, nnz);
+    prob->jacobian = new_CSR_matrix(prob->total_constraint_size, prob->n_vars, nnz);
 
     /* set sparsity pattern of jacobian */
     CSR_matrix *H = prob->jacobian;
@@ -234,7 +234,7 @@ void problem_init_hessian(problem *prob)
         nnz += prob->constraints[i]->wsum_hess->nnz;
     }
 
-    prob->lagrange_hessian = new_csr_matrix(prob->n_vars, prob->n_vars, nnz);
+    prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, nnz);
     memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
     prob->stats.nnz_hessian = nnz;
     prob->hess_idx_map = (int *) SP_MALLOC(nnz * sizeof(int));
@@ -345,8 +345,8 @@ void free_problem(problem *prob)
     /* Free allocated arrays */
     free(prob->constraint_values);
     free(prob->gradient_values);
-    free_csr_matrix(prob->jacobian);
-    free_csr_matrix(prob->lagrange_hessian);
+    free_CSR_matrix(prob->jacobian);
+    free_CSR_matrix(prob->lagrange_hessian);
     free_coo_matrix(prob->jacobian_coo);
     free_coo_matrix(prob->lagrange_hessian_coo);
     free(prob->hess_idx_map);

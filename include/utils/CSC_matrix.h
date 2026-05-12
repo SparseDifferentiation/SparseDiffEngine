@@ -15,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CSC_MATRIX_H
-#define CSC_MATRIX_H
+#ifndef CSC_matrix_H
+#define CSC_matrix_H
 
 #include "CSR_matrix.h"
 
@@ -41,8 +41,8 @@ typedef struct CSC_matrix
 } CSC_matrix;
 
 /* constructor and destructor */
-CSC_matrix *new_csc_matrix(int m, int n, int nnz);
-void free_csc_matrix(CSC_matrix *matrix);
+CSC_matrix *new_CSC_matrix(int m, int n, int nnz);
+void free_CSC_matrix(CSC_matrix *matrix);
 
 /* Fill sparsity of C = A^T D A for diagonal D */
 CSR_matrix *ATA_alloc(const CSC_matrix *A);
@@ -77,4 +77,4 @@ void csr_to_csc_fill_values(const CSR_matrix *A, CSC_matrix *C, int *iwork);
 CSR_matrix *csc_to_csr_alloc(const CSC_matrix *A, int *iwork);
 void csc_to_csr_fill_values(const CSC_matrix *A, CSR_matrix *C, int *iwork);
 
-#endif /* CSC_MATRIX_H */
+#endif /* CSC_matrix_H */

@@ -370,7 +370,7 @@ CSR_matrix *sum_4_csr_alloc(const CSR_matrix *A, const CSR_matrix *B,
     int nnz_ub = A->nnz + B->nnz + C->nnz + D->nnz;
 
     /* allocate output and index maps */
-    CSR_matrix *out = new_csr_matrix(m, n, nnz_ub);
+    CSR_matrix *out = new_CSR_matrix(m, n, nnz_ub);
     for (int k = 0; k < 4; k++)
     {
         idx_maps[k] = (int *) SP_MALLOC(inputs[k]->nnz * sizeof(int));

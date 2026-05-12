@@ -17,7 +17,7 @@ const char *test_wsum_hess_quad_form(void)
      * [0 3 4 1]
      * [0 0 1 6]
      */
-    CSR_matrix *Q = new_csr_matrix(4, 4, 10);
+    CSR_matrix *Q = new_CSR_matrix(4, 4, 10);
     double Qx[10] = {1.0, 2.0, 2.0, 5.0, 3.0, 3.0, 4.0, 1.0, 1.0, 6.0};
     int Qi[10] = {0, 1, 0, 1, 2, 1, 2, 3, 2, 3};
     int Qp[5] = {0, 2, 5, 8, 10};
@@ -43,6 +43,6 @@ const char *test_wsum_hess_quad_form(void)
     mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 10));
 
     free_expr(node);
-    free_csr_matrix(Q);
+    free_CSR_matrix(Q);
     return 0;
 }

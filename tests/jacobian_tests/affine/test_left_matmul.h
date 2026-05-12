@@ -33,7 +33,7 @@ const char *test_jacobian_left_matmul_log(void)
     expr *x = new_variable(3, 1, 0, 3);
 
     /* Create sparse matrix A in CSR_matrix format */
-    CSR_matrix *A = new_csr_matrix(4, 3, 7);
+    CSR_matrix *A = new_CSR_matrix(4, 3, 7);
     int A_p[5] = {0, 2, 4, 6, 7};
     int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
     double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
@@ -65,7 +65,7 @@ const char *test_jacobian_left_matmul_log(void)
     mu_assert("sparsity fail",
               cmp_sparsity(A_log_x->jacobian, expected_Ap, expected_Ai, 4, 7));
 
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     free_expr(A_log_x);
     return 0;
 }
@@ -77,7 +77,7 @@ const char *test_jacobian_left_matmul_log_matrix(void)
     expr *x = new_variable(3, 2, 0, 6);
 
     /* Create sparse matrix A in CSR_matrix format (4x3) */
-    CSR_matrix *A = new_csr_matrix(4, 3, 7);
+    CSR_matrix *A = new_CSR_matrix(4, 3, 7);
     int A_p[5] = {0, 2, 4, 6, 7};
     int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
     double A_x[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
@@ -104,7 +104,7 @@ const char *test_jacobian_left_matmul_log_matrix(void)
     mu_assert("sparsity fail",
               cmp_sparsity(A_log_x->jacobian, expected_Ap, expected_Ai, 8, 14));
 
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     free_expr(A_log_x);
     return 0;
 }
@@ -116,7 +116,7 @@ const char *test_jacobian_left_matmul_exp_composite(void)
     expr *x = new_variable(3, 1, 0, 3);
 
     /* Create B matrix (3x3 all ones) */
-    CSR_matrix *B = new_csr_matrix(3, 3, 9);
+    CSR_matrix *B = new_CSR_matrix(3, 3, 9);
     int B_p[4] = {0, 3, 6, 9};
     int B_i[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     double B_x[9] = {1, 1, 1, 1, 1, 1, 1, 1, 1};
@@ -125,7 +125,7 @@ const char *test_jacobian_left_matmul_exp_composite(void)
     memcpy(B->x, B_x, 9 * sizeof(double));
 
     /* Create A matrix */
-    CSR_matrix *A = new_csr_matrix(4, 3, 7);
+    CSR_matrix *A = new_CSR_matrix(4, 3, 7);
     int A_p[5] = {0, 2, 4, 6, 7};
     int A_i[7] = {0, 2, 0, 2, 0, 2, 0};
     double A_x[7] = {1, 2, 3, 4, 5, 6, 7};
@@ -140,8 +140,8 @@ const char *test_jacobian_left_matmul_exp_composite(void)
     mu_assert("check_jacobian failed",
               check_jacobian_num(A_exp_Bx, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
     free_expr(A_exp_Bx);
     return 0;
 }

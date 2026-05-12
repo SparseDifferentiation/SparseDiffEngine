@@ -59,7 +59,7 @@ static void jacobian_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, x->size + 1);
+        CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, x->size + 1);
         jac->p[0] = 0;
         jac->p[1] = x->size + 1;
 
@@ -91,7 +91,7 @@ static void jacobian_init_impl(expr *node)
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
         CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
         int nonzero_cols = count_nonzero_cols(Jx, col_nz);
-        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
+        CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */
         jac->nnz = 0;
@@ -189,7 +189,7 @@ static void wsum_hess_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
+        CSR_matrix *H = new_CSR_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
         node->wsum_hess = new_sparse_matrix(H);
 
         /* if x has lower idx than y*/

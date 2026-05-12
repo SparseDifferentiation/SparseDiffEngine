@@ -55,7 +55,7 @@ const char *test_wsum_hess_exp_composite(void)
     double Ax[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     int Ai[] = {0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4};
     int Ap[] = {0, 5, 10, 15};
-    CSR_matrix *A_csr = new_csr_matrix(3, 5, 15);
+    CSR_matrix *A_csr = new_CSR_matrix(3, 5, 15);
     memcpy(A_csr->x, Ax, 15 * sizeof(double));
     memcpy(A_csr->i, Ai, 15 * sizeof(int));
     memcpy(A_csr->p, Ap, 4 * sizeof(int));
@@ -67,7 +67,7 @@ const char *test_wsum_hess_exp_composite(void)
     mu_assert("check_wsum_hess failed",
               check_wsum_hess(exp_node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
-    free_csr_matrix(A_csr);
+    free_CSR_matrix(A_csr);
     free_expr(exp_node);
 
     return 0;

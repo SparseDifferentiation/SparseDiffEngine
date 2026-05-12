@@ -84,7 +84,7 @@ void free_expr(expr *node)
     {
         free(node->work->dwork);
         free(node->work->iwork);
-        free_csc_matrix(node->work->jacobian_csc);
+        free_CSC_matrix(node->work->jacobian_csc);
         free(node->work->csc_work);
         free(node->work->local_jac_diag);
         free_matrix(node->work->hess_term1);

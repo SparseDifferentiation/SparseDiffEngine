@@ -45,7 +45,7 @@
 static CSR_matrix *build_cross_hessian_sparsity(int m, int k, int n)
 {
     int total_nnz = m * k * n;
-    CSR_matrix *B = new_csr_matrix(m * k, k * n, total_nnz);
+    CSR_matrix *B = new_CSR_matrix(m * k, k * n, total_nnz);
     int idx = 0;
 
     for (int j = 0; j < k; j++)
@@ -103,15 +103,15 @@ static void free_matmul_data(expr *node)
 {
     matmul_expr *mnode = (matmul_expr *) node;
     /* Jacobian workspace */
-    free_csr_matrix(mnode->term1_CSR);
-    free_csr_matrix(mnode->term2_CSR);
+    free_CSR_matrix(mnode->term1_CSR);
+    free_CSR_matrix(mnode->term2_CSR);
     /* Hessian workspace */
-    free_csr_matrix(mnode->B);
-    free_csr_matrix(mnode->BJg);
-    free_csc_matrix(mnode->BJg_CSC);
+    free_CSR_matrix(mnode->B);
+    free_CSR_matrix(mnode->BJg);
+    free_CSC_matrix(mnode->BJg_CSC);
     free(mnode->BJg_csc_work);
-    free_csr_matrix(mnode->C);
-    free_csr_matrix(mnode->CT);
+    free_CSR_matrix(mnode->C);
+    free_CSR_matrix(mnode->CT);
     free(mnode->idx_map_C);
     free(mnode->idx_map_CT);
     free(mnode->idx_map_Hf);
@@ -140,7 +140,7 @@ static void jacobian_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int nnz = m * n * 2 * k;
-    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz);
+    CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, nnz);
 
     int nnz_idx = 0;
     for (int i = 0; i < node->size; i++)
@@ -237,7 +237,7 @@ static void jacobian_init_chain_rule(expr *node)
     mnode->term1_CSR = YT_kron_I_alloc(m, k, n, f->work->jacobian_csc);
     mnode->term2_CSR = I_kron_X_alloc(m, k, n, g->work->jacobian_csc);
     int max_nnz = mnode->term1_CSR->nnz + mnode->term2_CSR->nnz;
-    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, max_nnz);
+    CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, max_nnz);
     sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, jac);
     node->jacobian = new_sparse_matrix(jac);
 }
@@ -278,7 +278,7 @@ static void wsum_hess_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int total_nnz = 2 * m * k * n;
-    CSR_matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, total_nnz);
+    CSR_matrix *hess = new_CSR_matrix(node->n_vars, node->n_vars, total_nnz);
     int nnz = 0;
     int *Hi = hess->i;
     int *Hp = hess->p;

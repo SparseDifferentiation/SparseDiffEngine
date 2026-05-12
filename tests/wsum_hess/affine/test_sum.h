@@ -16,7 +16,7 @@ const char *test_wsum_hess_sum_exp_linear(void)
     double Ax[6] = {1, 1, 2, 3, 1, -1};
     int Ai[6] = {0, 1, 0, 1, 0, 1};
     int Ap[4] = {0, 2, 4, 6};
-    CSR_matrix *A = new_csr_matrix(3, 2, 6);
+    CSR_matrix *A = new_CSR_matrix(3, 2, 6);
     memcpy(A->x, Ax, 6 * sizeof(double));
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
@@ -32,7 +32,7 @@ const char *test_wsum_hess_sum_exp_linear(void)
               check_wsum_hess(sum_node, x_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sum_node);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
 
     return 0;
 }

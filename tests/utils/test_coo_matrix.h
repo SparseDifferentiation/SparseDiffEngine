@@ -13,7 +13,7 @@ const char *test_csr_to_coo(void)
      * [0.0  3.0  4.0]
      * [5.0  0.0  6.0]
      */
-    CSR_matrix *A = new_csr_matrix(3, 3, 6);
+    CSR_matrix *A = new_CSR_matrix(3, 3, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {0, 1, 1, 2, 0, 2};
     int Ap[4] = {0, 2, 4, 6};
@@ -36,7 +36,7 @@ const char *test_csr_to_coo(void)
     mu_assert("vals incorrect", cmp_double_array(coo->x, expected_x, 6));
 
     free_coo_matrix(coo);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
 
     return 0;
 }
@@ -48,7 +48,7 @@ const char *test_csr_to_coo_lower_triangular(void)
      * [2  5  6]
      * [3  6  9]
      */
-    CSR_matrix *A = new_csr_matrix(3, 3, 9);
+    CSR_matrix *A = new_CSR_matrix(3, 3, 9);
     int Ap[4] = {0, 3, 6, 9};
     int Ai[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     double Ax[9] = {1, 2, 3, 2, 5, 6, 3, 6, 9};
@@ -74,14 +74,14 @@ const char *test_csr_to_coo_lower_triangular(void)
               cmp_int_array(coo->value_map, expected_map, 6));
 
     free_coo_matrix(coo);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
 
     return 0;
 }
 
 const char *test_refresh_lower_triangular_coo(void)
 {
-    CSR_matrix *A = new_csr_matrix(3, 3, 9);
+    CSR_matrix *A = new_CSR_matrix(3, 3, 9);
     int Ap[4] = {0, 3, 6, 9};
     int Ai[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     double Ax[9] = {1, 2, 3, 2, 5, 6, 3, 6, 9};
@@ -98,7 +98,7 @@ const char *test_refresh_lower_triangular_coo(void)
     mu_assert("refresh vals incorrect", cmp_double_array(coo->x, expected_x, 6));
 
     free_coo_matrix(coo);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
 
     return 0;
 }

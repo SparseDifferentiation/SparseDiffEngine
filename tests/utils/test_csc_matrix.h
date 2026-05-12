@@ -21,7 +21,7 @@
  */
 const char *test_ATA_alloc_simple(void)
 {
-    CSC_matrix *A = new_csc_matrix(4, 3, 6);
+    CSC_matrix *A = new_CSC_matrix(4, 3, 6);
     int Ap[4] = {0, 2, 3, 6};
     int Ai[5] = {0, 2, 1, 2, 1};
     memcpy(A->p, Ap, 4 * sizeof(int));
@@ -36,8 +36,8 @@ const char *test_ATA_alloc_simple(void)
     mu_assert("i incorrect", cmp_int_array(C->i, expected_i, C->nnz));
     mu_assert("nnz incorrect", C->nnz == 5);
 
-    free_csr_matrix(C);
-    free_csc_matrix(A);
+    free_CSR_matrix(C);
+    free_CSC_matrix(A);
 
     return 0;
 }
@@ -58,7 +58,7 @@ const char *test_ATA_alloc_simple(void)
 const char *test_ATA_alloc_diagonal_like(void)
 {
     /* Create A in CSC_matrix format (3 rows, 4 cols, 4 nonzeros) */
-    CSC_matrix *A = new_csc_matrix(3, 4, 4);
+    CSC_matrix *A = new_CSC_matrix(3, 4, 4);
     int Ap[5] = {0, 1, 2, 3, 4};
     int Ai[4] = {0, 1, 2, 0};
     memcpy(A->p, Ap, 5 * sizeof(int));
@@ -72,8 +72,8 @@ const char *test_ATA_alloc_diagonal_like(void)
     mu_assert("i incorrect", cmp_int_array(C->i, expected_i, C->nnz));
     mu_assert("nnz incorrect", C->nnz == 6);
 
-    free_csr_matrix(C);
-    free_csc_matrix(A);
+    free_CSR_matrix(C);
+    free_CSC_matrix(A);
 
     return 0;
 }
@@ -81,7 +81,7 @@ const char *test_ATA_alloc_diagonal_like(void)
 const char *test_ATA_alloc_random(void)
 {
     /* Create A in CSC_matrix format  */
-    CSC_matrix *A = new_csc_matrix(10, 15, 15);
+    CSC_matrix *A = new_CSC_matrix(10, 15, 15);
     int Ap[16] = {0, 1, 1, 1, 1, 4, 5, 6, 7, 8, 9, 11, 11, 11, 13, 15};
     int Ai[15] = {5, 0, 6, 9, 0, 5, 1, 3, 6, 0, 6, 3, 6, 6, 8};
     double Ax[15] = {7, 4, 8, 5, 7, 3, 7, 8, 5, 4, 8, 8, 3, 6, 5};
@@ -109,8 +109,8 @@ const char *test_ATA_alloc_random(void)
         288., 144., 128., 90.,  144., 182., 108., 288., 180., 288., 108., 241.};
     mu_assert("x incorrect", cmp_double_array(C->x, Cx_correct, C->nnz));
 
-    free_csr_matrix(C);
-    free_csc_matrix(A);
+    free_CSR_matrix(C);
+    free_CSC_matrix(A);
 
     return 0;
 }
@@ -120,7 +120,7 @@ const char *test_ATA_alloc_random2(void)
     /* Create A in CSC_matrix format  */
     int m = 15;
     int n = 10;
-    CSC_matrix *A = new_csc_matrix(m, n, 15);
+    CSC_matrix *A = new_CSC_matrix(m, n, 15);
     int Ap[11] = {0, 2, 4, 6, 6, 9, 12, 12, 14, 14, 15};
     int Ai[15] = {9, 12, 3, 4, 1, 6, 4, 8, 13, 1, 3, 7, 5, 13, 6};
     double Ax[15] = {0.99, 0.9,  0.51, 0.64, 0.39, 0.29, 0.26, 0.91,
@@ -147,8 +147,8 @@ const char *test_ATA_alloc_random2(void)
                              0.032857,  0.116699};
     mu_assert("x incorrect", cmp_double_array(C->x, Cx_correct, C->nnz));
 
-    free_csr_matrix(C);
-    free_csc_matrix(A);
+    free_CSR_matrix(C);
+    free_CSC_matrix(A);
 
     return 0;
 }
@@ -162,7 +162,7 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
      */
     int m = 4;
     int n = 3;
-    CSC_matrix *A = new_csc_matrix(m, n, 6);
+    CSC_matrix *A = new_CSC_matrix(m, n, 6);
     int Ap_A[4] = {0, 2, 4, 6};
     int Ai_A[6] = {0, 2, 1, 3, 0, 2};
     double Ax_A[6] = {1.0, 4.0, 3.0, 6.0, 2.0, 5.0};
@@ -177,7 +177,7 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
      * [0.0  4.0]
      */
     int p = 2;
-    CSC_matrix *B = new_csc_matrix(m, p, 4);
+    CSC_matrix *B = new_CSC_matrix(m, p, 4);
     int Bp[3] = {0, 2, 4};
     int Bi[4] = {0, 2, 1, 3};
     double Bx[4] = {1.0, 3.0, 2.0, 4.0};
@@ -203,9 +203,9 @@ const char *test_BTA_alloc_and_BTDA_fill(void)
     double expected_x[3] = {37.0, 47.0, 108.0};
     mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 3));
 
-    free_csr_matrix(C);
-    free_csc_matrix(A);
-    free_csc_matrix(B);
+    free_CSR_matrix(C);
+    free_CSC_matrix(A);
+    free_CSC_matrix(B);
 
     return 0;
 }

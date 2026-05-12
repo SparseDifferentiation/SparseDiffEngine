@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-CSR_matrix *new_csr_matrix(int m, int n, int nnz)
+CSR_matrix *new_CSR_matrix(int m, int n, int nnz)
 {
     CSR_matrix *matrix = (CSR_matrix *) SP_MALLOC(sizeof(CSR_matrix));
     matrix->p = (int *) SP_CALLOC(m + 1, sizeof(int));
@@ -39,7 +39,7 @@ CSR_matrix *new_csr_matrix(int m, int n, int nnz)
 
 CSR_matrix *new_csr(const CSR_matrix *A)
 {
-    CSR_matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *copy = new_CSR_matrix(A->m, A->n, A->nnz);
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
     memcpy(copy->x, A->x, A->nnz * sizeof(double));
@@ -48,13 +48,13 @@ CSR_matrix *new_csr(const CSR_matrix *A)
 
 CSR_matrix *new_csr_copy_sparsity(const CSR_matrix *A)
 {
-    CSR_matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *copy = new_CSR_matrix(A->m, A->n, A->nnz);
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
     return copy;
 }
 
-void free_csr_matrix(CSR_matrix *matrix)
+void free_CSR_matrix(CSR_matrix *matrix)
 {
     if (matrix)
     {
@@ -65,7 +65,7 @@ void free_csr_matrix(CSR_matrix *matrix)
     }
 }
 
-void copy_csr_matrix(const CSR_matrix *A, CSR_matrix *C)
+void copy_CSR_matrix(const CSR_matrix *A, CSR_matrix *C)
 {
     C->m = A->m;
     C->n = A->n;
@@ -135,7 +135,7 @@ void DA_fill_values(const double *d, const CSR_matrix *A, CSR_matrix *C)
 
 CSR_matrix *transpose(const CSR_matrix *A, int *iwork)
 {
-    CSR_matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
+    CSR_matrix *AT = new_CSR_matrix(A->n, A->m, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -181,7 +181,7 @@ CSR_matrix *transpose(const CSR_matrix *A, int *iwork)
 CSR_matrix *AT_alloc(const CSR_matrix *A, int *iwork)
 {
     /* Allocate A^T and compute sparsity pattern without filling values */
-    CSR_matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
+    CSR_matrix *AT = new_CSR_matrix(A->n, A->m, A->nnz);
 
     int i, j;
     int *count = iwork;

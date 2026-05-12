@@ -74,7 +74,7 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_matrix *A)
 
     expr *node = new_transpose(left_matmul);
 
-    free_csr_matrix(AT);
+    free_CSR_matrix(AT);
     free(work_transpose);
     return node;
 }

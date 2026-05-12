@@ -65,7 +65,7 @@ static void jacobian_init_impl(expr *node)
         total_nnz += A->p[row + 1] - A->p[row];
     }
 
-    CSR_matrix *jac = new_csr_matrix(1, node->n_vars, total_nnz);
+    CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, total_nnz);
 
     // ---------------------------------------------------------------
     // fill sparsity pattern and idx_map

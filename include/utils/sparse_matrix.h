@@ -36,7 +36,7 @@ typedef struct sparse_matrix
 matrix *new_sparse_matrix(CSR_matrix *A);
 
 /* Convenience: allocate a sparse_matrix of shape (m, n) with capacity for
-   nnz entries. Equivalent to new_sparse_matrix(new_csr_matrix(m, n, nnz)).
+   nnz entries. Equivalent to new_sparse_matrix(new_CSR_matrix(m, n, nnz)).
    Sparsity pattern and values are uninitialized. */
 matrix *new_sparse_matrix_alloc(int m, int n, int nnz);
 

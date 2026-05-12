@@ -64,7 +64,7 @@ const char *test_jacobian_elementwise_mult_3(void)
          0 0 1 1 3 0 0 0 0 0
          0 0 1 -1 1 0 0 0 0 0]
     */
-    CSR_matrix *A = new_csr_matrix(3, 10, 9);
+    CSR_matrix *A = new_CSR_matrix(3, 10, 9);
     double Ax_vals[9] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
     int Ai[9] = {2, 3, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 5, 8};
@@ -78,7 +78,7 @@ const char *test_jacobian_elementwise_mult_3(void)
          0 0 0 0 0 0 0 1 -2 1]
 
     */
-    CSR_matrix *B = new_csr_matrix(3, 10, 9);
+    CSR_matrix *B = new_CSR_matrix(3, 10, 9);
     double Bx_vals[9] = {1.0, 3.0, 1.0, 1.0, 4.0, 1.0, -2.0, 1.0};
     int Bi[9] = {7, 8, 7, 8, 9, 7, 8, 9};
     int Bp[4] = {0, 2, 5, 8};
@@ -113,8 +113,8 @@ const char *test_jacobian_elementwise_mult_3(void)
     mu_assert("vals fail", cmp_values(node->jacobian, vals, 16));
     mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 3, 16));
     free_expr(node);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
     return 0;
 }
 
@@ -128,7 +128,7 @@ const char *test_jacobian_elementwise_mult_4(void)
          0 0 1 1 3 0 0 0 0 0
          0 0 1 -1 1 0 0 0 0 0]
     */
-    CSR_matrix *A = new_csr_matrix(3, 10, 9);
+    CSR_matrix *A = new_CSR_matrix(3, 10, 9);
     double Ax_vals[9] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
     int Ai[9] = {2, 3, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 5, 8};
@@ -157,6 +157,6 @@ const char *test_jacobian_elementwise_mult_4(void)
     mu_assert("vals fail", cmp_values(node->jacobian, vals, 8));
     mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 3, 8));
     free_expr(node);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     return 0;
 }

@@ -21,6 +21,7 @@
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,12 +33,12 @@ static void permuted_dense_free(matrix *self)
     free(pd->col_inv);
     free(pd->row_inv);
     /* csr_cache->x aliases pd->X (set in permuted_dense_to_csr_alloc); NULL it
-       so free_csr_matrix doesn't double-free the shared buffer. */
+       so free_CSR_matrix doesn't double-free the shared buffer. */
     if (pd->csr_cache != NULL)
     {
         pd->csr_cache->x = NULL;
     }
-    free_csr_matrix(pd->csr_cache);
+    free_CSR_matrix(pd->csr_cache);
     free(pd->X);
     free(pd->dwork);
     free(pd->iwork);
@@ -359,7 +360,7 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->X = (double *) SP_MALLOC(sz * sizeof(double));
     pd->base.x = pd->X;
     /* `dwork` sized for the Y-buffer role (Y = diag(d_perm) X) used by ATDA /
-       BTDA_pd_pd. BTA_csr_pd_alloc / BTA_pd_csr_alloc upgrade this to a
+       BTDA_pd_pd. BTA_pd_csr_alloc / BTA_csr_pd_alloc upgrade this to a
        larger gather buffer when their output PD will instead play that role. */
     pd->dwork_size = sz;
     pd->dwork = (double *) SP_MALLOC(pd->dwork_size * sizeof(double));
@@ -406,12 +407,12 @@ static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A)
     int m0 = A->m0;
     int n0 = A->n0;
     int m = A->base.m;
-    CSR_matrix *C = new_csr_matrix(m, A->base.n, m0 * n0);
+    CSR_matrix *C = new_CSR_matrix(m, A->base.n, m0 * n0);
 
     /* Alias C->x to A->X: the dense block layout already matches what the
        CSR_matrix view's value array would hold, so values are always live with no
        memcpy needed. The PD owns the buffer; permuted_dense_free nulls
-       C->x before free_csr_matrix to avoid double-free. */
+       C->x before free_CSR_matrix to avoid double-free. */
     free(C->x);
     C->x = A->X;
 
@@ -476,7 +477,7 @@ void permuted_dense_ATDA_fill_values(const permuted_dense *A, const double *d,
                 A->dwork, n0, 0.0, C->X, n0);
 }
 
-matrix *BTA_pd_pd_alloc(const permuted_dense *A, const permuted_dense *B)
+matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
 {
     /* if A and B have no overlapping rows, then C = BT @ A is empty */
     if (!has_overlap(A->row_perm, A->m0, B->row_perm, B->m0, 0))
@@ -544,7 +545,7 @@ static inline int sorted_intersect_indices(const int *a, int a_len, const int *b
     return s;
 }
 
-void BTA_pd_pd_fill_values(const permuted_dense *A, const permuted_dense *B,
+void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
                            permuted_dense *C)
 {
     /* C may be empty if there is no overlap in row permutations */
@@ -597,8 +598,8 @@ void BTA_pd_pd_fill_values(const permuted_dense *A, const permuted_dense *B,
                 B->dwork, B->n0, A->dwork, A->n0, 0.0, C->X, A->n0);
 }
 
-void BTDA_pd_pd_fill_values(const permuted_dense *A, const double *d,
-                            const permuted_dense *B, permuted_dense *C)
+void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
+                            const permuted_dense *A, permuted_dense *C)
 {
     /* C may be empty if there is no overlap in row permutations of A and B */
     if (C->base.nnz == 0)
@@ -609,118 +610,18 @@ void BTDA_pd_pd_fill_values(const permuted_dense *A, const double *d,
     /* d == NULL means plain BT @ A */
     if (d == NULL)
     {
-        BTA_pd_pd_fill_values(A, B, C);
+        BTA_pd_pd_fill_values(B, A, C);
         return;
     }
 
     /* C = BT @ (DA) */
     permuted_dense *DA = (permuted_dense *) A->base.copy_sparsity(&A->base);
     permuted_dense_DA_fill_values(d, A, DA);
-    BTA_pd_pd_fill_values(DA, B, C);
+    BTA_pd_pd_fill_values(B, DA, C);
     free_matrix(&DA->base);
 }
 
-matrix *BTA_csr_pd_alloc(const CSR_matrix *A, const permuted_dense *B)
-{
-    /* Cij != 0 only if i is in B's column permutation and column j of A
-      overlaps with column i of B. */
-
-    /* Gather the union of columns appearing in A's rows at positions
-       row_perm_B. Use a bitmap of size A->n for O(nnz) collection. */
-    int p = A->n;
-    char *seen = (char *) SP_CALLOC(p, sizeof(char));
-    int s_A = 0;
-    for (int kk = 0; kk < B->m0; kk++)
-    {
-        int row = B->row_perm[kk];
-        for (int e = A->p[row]; e < A->p[row + 1]; e++)
-        {
-            int j = A->i[e];
-            if (!seen[j])
-            {
-                seen[j] = 1;
-                s_A++;
-            }
-        }
-    }
-
-    int *col_active = (int *) SP_MALLOC((s_A > 0 ? s_A : 1) * sizeof(int));
-    int idx = 0;
-    for (int j = 0; j < p; j++)
-    {
-        if (seen[j])
-        {
-            col_active[idx++] = j;
-        }
-    }
-
-    matrix *C =
-        new_permuted_dense(B->base.n, p, B->n0, s_A, B->col_perm, col_active, NULL);
-    free(col_active);
-    free(seen);
-
-    /* Upgrade `dwork` (currently sized for the Y-role at m0_C * n0_C = B->n0 *
-       s_A) to fit the gather buffer A_sub_dense used by BTA_csr_pd /
-       BTDA_csr_pd_fill_values: shape (B->m0, s_A) row-major. The dgemm
-       reads it as (B->m0, s_A), so size B->m0 * s_A doubles suffices. */
-    permuted_dense *C_pd = (permuted_dense *) C;
-    size_t gather_size = B->m0 * s_A;
-    if (gather_size > C_pd->dwork_size)
-    {
-        free(C_pd->dwork);
-        C_pd->dwork_size = gather_size;
-        C_pd->dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
-    }
-    return C;
-}
-
-/* Note: when A_csr is a leaf-variable Jacobian (each row has a single entry
-   at column var_id + k, value 1), A_sub_dense is a permuted identity and
-   the dgemm reduces to X_C = X_B^T — a pure transpose with no multiplication
-   needed. A fast path can detect this and skip the dgemm; deferred until a
-   workload shows the savings matter. */
-void BTA_csr_pd_fill_values(const CSR_matrix *A_csr, const permuted_dense *B,
-                            permuted_dense *C)
-{
-    int m0 = B->m0;
-    int dn_B = B->n0;
-    int s_A = C->n0;
-
-    if (s_A == 0 || m0 == 0)
-    {
-        /* Output dense block is empty; nothing to fill. */
-        return;
-    }
-
-    /* Use C->col_inv (pre-built by new_permuted_dense) as col_inv_out and
-       C->dwork as A_sub_dense; both are owned by C. dwork is sized at alloc
-       time to cover m0 * s_A; only that prefix is touched. */
-    double *A_sub_dense = C->dwork;
-    size_t used = m0 * s_A;
-    memset(A_sub_dense, 0, used * sizeof(double));
-
-    for (int kk = 0; kk < m0; kk++)
-    {
-        int row = B->row_perm[kk];
-        for (int e = A_csr->p[row]; e < A_csr->p[row + 1]; e++)
-        {
-            int j = A_csr->i[e];
-            int jj = C->col_inv[j];
-            /* jj should always be valid (we built col_perm from these entries),
-               but guard against asymmetry between alloc and fill calls. */
-            if (jj >= 0)
-            {
-                A_sub_dense[kk * s_A + jj] = A_csr->x[e];
-            }
-        }
-    }
-
-    /* C->X = X_B^T @ A_sub_dense */
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dn_B, s_A, m0, 1.0, B->X,
-                dn_B, A_sub_dense, s_A, 0.0, C->X, s_A);
-}
-
-matrix *BTA_pd_csr_alloc(const permuted_dense *A, const CSR_matrix *B_csr)
+matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
 {
     /* Gather the union of columns appearing in B's rows at positions
        row_perm_A. Bitmap of size B_csr->n for O(nnz) collection. */
@@ -757,8 +658,8 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *A, const CSR_matrix *B_csr)
     free(seen);
 
     /* Upgrade `dwork` (currently sized for the Y-role at m0_C * n0_C = r_B *
-       A->n0) to fit the gather buffer B_sub_dense used by BTA_pd_csr /
-       BTDA_pd_csr_fill_values: shape (A->m0, r_B) row-major. */
+       A->n0) to fit the gather buffer B_sub_dense used by BTA_csr_pd /
+       BTDA_csr_pd_fill_values: shape (A->m0, r_B) row-major. */
     permuted_dense *C_pd = (permuted_dense *) C;
     size_t gather_size = A->m0 * r_B;
     if (gather_size > C_pd->dwork_size)
@@ -775,7 +676,7 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *A, const CSR_matrix *B_csr)
    the dgemm reduces to X_C = X_A — a pure copy with no multiplication
    needed. A fast path can detect this and skip the dgemm; deferred until a
    workload shows the savings matter. */
-void BTA_pd_csr_fill_values(const permuted_dense *A, const CSR_matrix *B_csr,
+void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
                             permuted_dense *C)
 {
     int m0 = A->m0;
@@ -814,47 +715,10 @@ void BTA_pd_csr_fill_values(const permuted_dense *A, const CSR_matrix *B_csr,
                 B_sub_dense, r_B, A->X, dn_A, 0.0, C->X, dn_A);
 }
 
-/* BTDA variant of BTA_csr_pd: C->X = X_B^T diag(d) A_sub_dense. Folds d
+/* BTDA variant of BTA_csr_pd: C->X = B_sub_dense^T diag(d) X_A. Folds d
    into the scatter step. */
-void BTDA_csr_pd_fill_values(const CSR_matrix *A_csr, const double *d,
-                             const permuted_dense *B, permuted_dense *C)
-{
-    int m0 = B->m0;
-    int dn_B = B->n0;
-    int s_A = C->n0;
-
-    if (s_A == 0 || m0 == 0)
-    {
-        return;
-    }
-
-    double *A_sub_dense = C->dwork;
-    size_t used = m0 * s_A;
-    memset(A_sub_dense, 0, used * sizeof(double));
-
-    for (int kk = 0; kk < m0; kk++)
-    {
-        int row = B->row_perm[kk];
-        double dk = d ? d[row] : 1.0;
-        for (int e = A_csr->p[row]; e < A_csr->p[row + 1]; e++)
-        {
-            int j = A_csr->i[e];
-            int jj = C->col_inv[j];
-            if (jj >= 0)
-            {
-                A_sub_dense[kk * s_A + jj] = dk * A_csr->x[e];
-            }
-        }
-    }
-
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dn_B, s_A, m0, 1.0, B->X,
-                dn_B, A_sub_dense, s_A, 0.0, C->X, s_A);
-}
-
-/* BTDA variant of BTA_pd_csr: C->X = B_sub_dense^T diag(d) X_A. Folds d
-   into the scatter step. */
-void BTDA_pd_csr_fill_values(const permuted_dense *A, const double *d,
-                             const CSR_matrix *B_csr, permuted_dense *C)
+void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
+                             const permuted_dense *A, permuted_dense *C)
 {
     int m0 = A->m0;
     int dn_A = A->n0;
@@ -944,11 +808,13 @@ matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     return C;
 }
 
-void BA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
-                           permuted_dense *C)
+void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
+                           const CSC_matrix *A, permuted_dense *C)
 {
-    /* C[i, j] = bi^T @ ajj, where bi is the ith row of Bs dense block and ajj is
-    the jjth column of A's sparse block (column jj = C->col_perm[j]) */
+    /* C[i, j] = bi^T @ ajj, where bi is the ith row of B_X (length n0_B,
+       row stride n0_B) and ajj is the jjth column of A's sparse block
+       (column jj = C->col_perm[j]). inv maps A's row indices to positions
+       in B_X (entries with inv[r] == -1 are skipped). */
 
     /* row i of C */
     for (int i = 0; i < C->m0; i++)
@@ -963,8 +829,56 @@ void BA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
             int start = A->p[jj];
             int len = A->p[jj + 1] - start;
             /* we compute entry C[i, j] */
-            ci[j] = sparse_dot_dense(A->x + start, A->i + start, len, B->col_inv,
-                                     B->X + i * B->n0);
+            ci[j] =
+                sparse_dot_dense(A->x + start, A->i + start, len, inv, B + i * n0_B);
         }
     }
+}
+
+/* C = B^T @ A where A is Sparse (CSC) and B is PD. Same output structure as
+   BTA_pd_csr_alloc — built directly by scanning A's CSC columns with
+   idxs_hits_set against row_perm_B. */
+matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
+{
+    /* col_active[jj] is set of columns j of A whose nonzero pattern hits
+       at least one row in row_perm_B. col_inv built against row_perm_B
+       via B->row_inv. */
+    iVec *col_active = iVec_new(8);
+    for (int j = 0; j < A->n; j++)
+    {
+        int start = A->p[j];
+        int len = A->p[j + 1] - start;
+        if (idxs_hits_set(A->i + start, len, B->row_inv))
+        {
+            iVec_append(col_active, j);
+        }
+    }
+
+    /* Same shape and permutations as BTA_pd_csr_alloc:
+       shape (B->base.n, A->n), m0 = B->n0, n0 = |col_active|,
+       row_perm = B->col_perm, col_perm = col_active. */
+    matrix *C = new_permuted_dense(B->base.n, A->n, B->n0, col_active->len,
+                                   B->col_perm, col_active->data, NULL);
+    iVec_free(col_active);
+    return C;
+}
+
+/* C = B^T diag(d) A = (diag (d) B)^T A */
+void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
+                             const CSC_matrix *A, permuted_dense *C)
+{
+    int m0 = B->m0;
+    int n0 = B->n0;
+
+    /* conpute B->dwork = (diag(d) B)^T */
+    for (int kk = 0; kk < m0; kk++)
+    {
+        double dk = d[B->row_perm[kk]];
+        for (int ii = 0; ii < n0; ii++)
+        {
+            B->dwork[ii * m0 + kk] = dk * B->X[kk * n0 + ii];
+        }
+    }
+
+    BA_pd_csc_fill_values(B->dwork, m0, B->row_inv, A, C);
 }

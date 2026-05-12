@@ -17,7 +17,7 @@ const char *test_csr_to_csc_split(void)
      * [0.0  2.0  0.0  0.0  0.0]
      * [0.0  0.0  0.0  4.0  0.0]
      */
-    CSR_matrix *A = new_csr_matrix(4, 5, 5);
+    CSR_matrix *A = new_CSR_matrix(4, 5, 5);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
     int Ai[5] = {0, 4, 2, 1, 3};
     int Ap[5] = {0, 2, 3, 4, 5};
@@ -47,8 +47,8 @@ const char *test_csr_to_csc_split(void)
     mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 5));
 
     free(iwork);
-    free_csr_matrix(A);
-    free_csc_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(C);
 
     return 0;
 }
@@ -62,7 +62,7 @@ const char *test_csc_to_csr_sparsity(void)
      * [0.0  4.0  0.0  0.0  0.0]
      * [0.0  0.0  0.0  5.0  0.0]
      */
-    CSC_matrix *A = new_csc_matrix(4, 5, 5);
+    CSC_matrix *A = new_CSC_matrix(4, 5, 5);
     double Ax[5] = {1.0, 4.0, 3.0, 5.0, 2.0};
     int Ai[5] = {0, 2, 1, 3, 0};
     int Ap[6] = {0, 1, 2, 3, 4, 5};
@@ -91,8 +91,8 @@ const char *test_csc_to_csr_sparsity(void)
     mu_assert("C nnz incorrect", C->nnz == 5);
 
     free(iwork);
-    free_csc_matrix(A);
-    free_csr_matrix(C);
+    free_CSC_matrix(A);
+    free_CSR_matrix(C);
 
     return 0;
 }
@@ -101,7 +101,7 @@ const char *test_csc_to_csr_sparsity(void)
 const char *test_csc_to_csr_values(void)
 {
     /* Create a 4x5 CSC_matrix matrix A */
-    CSC_matrix *A = new_csc_matrix(4, 5, 5);
+    CSC_matrix *A = new_CSC_matrix(4, 5, 5);
     double Ax[5] = {1.0, 4.0, 3.0, 5.0, 2.0};
     int Ai[5] = {0, 2, 1, 3, 0};
     int Ap[6] = {0, 1, 2, 3, 4, 5};
@@ -124,8 +124,8 @@ const char *test_csc_to_csr_values(void)
     mu_assert("C vals incorrect", cmp_double_array(C->x, Cx_correct, 5));
 
     free(iwork);
-    free_csc_matrix(A);
-    free_csr_matrix(C);
+    free_CSC_matrix(A);
+    free_CSR_matrix(C);
 
     return 0;
 }
@@ -138,7 +138,7 @@ const char *test_csr_csc_csr_roundtrip(void)
      * [0.0  4.0  5.0  0.0]
      * [6.0  0.0  7.0  8.0]
      */
-    CSR_matrix *A = new_csr_matrix(3, 4, 8);
+    CSR_matrix *A = new_CSR_matrix(3, 4, 8);
     double Ax[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     int Ai[8] = {0, 1, 3, 1, 2, 0, 2, 3};
     int Ap[4] = {0, 3, 5, 8};
@@ -163,9 +163,9 @@ const char *test_csr_csc_csr_roundtrip(void)
 
     free(iwork_csc);
     free(iwork_csr);
-    free_csr_matrix(A);
-    free_csc_matrix(B);
-    free_csr_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(B);
+    free_CSR_matrix(C);
 
     return 0;
 }

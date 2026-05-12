@@ -9,7 +9,7 @@ const char *test_check_jacobian_composite_exp(void)
 {
     double u_vals[6] = {0, 0, 1, 2, 3, 0};
 
-    CSR_matrix *A = new_csr_matrix(2, 6, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 6, 6);
     double Ax[6] = {3, 2, 1, 2, 1, 1};
     int Ai[6] = {2, 3, 4, 2, 3, 4};
     int Ap[3] = {0, 3, 6};
@@ -25,7 +25,7 @@ const char *test_check_jacobian_composite_exp(void)
               check_jacobian_num(exp_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_node);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     return 0;
 }
 
@@ -36,7 +36,7 @@ const char *test_check_wsum_hess_exp_composite(void)
     double Ax[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     int Ai[] = {0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4};
     int Ap[] = {0, 5, 10, 15};
-    CSR_matrix *A_csr = new_csr_matrix(3, 5, 15);
+    CSR_matrix *A_csr = new_CSR_matrix(3, 5, 15);
     memcpy(A_csr->x, Ax, 15 * sizeof(double));
     memcpy(A_csr->i, Ai, 15 * sizeof(int));
     memcpy(A_csr->p, Ap, 4 * sizeof(int));
@@ -49,6 +49,6 @@ const char *test_check_wsum_hess_exp_composite(void)
               check_wsum_hess(exp_node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_node);
-    free_csr_matrix(A_csr);
+    free_CSR_matrix(A_csr);
     return 0;
 }

@@ -90,8 +90,8 @@ const char *test_jacobian_Ax_Bx_multiply(void)
               check_jacobian_num(multiply, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(multiply);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
     return 0;
 }
 
@@ -110,8 +110,8 @@ const char *test_jacobian_AX_BX_multiply(void)
               check_jacobian_num(multiply, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(multiply);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
     return 0;
 }
 
@@ -123,7 +123,7 @@ const char *test_jacobian_quad_form_Ax(void)
     CSR_matrix *A = new_csr_random(3, 4, 1.0);
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] */
-    CSR_matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_matrix *Q = new_CSR_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};
@@ -140,8 +140,8 @@ const char *test_jacobian_quad_form_Ax(void)
               check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(node);
-    free_csr_matrix(A);
-    free_csr_matrix(Q);
+    free_CSR_matrix(A);
+    free_CSR_matrix(Q);
     return 0;
 }
 
@@ -151,7 +151,7 @@ const char *test_jacobian_quad_form_exp(void)
     double u_vals[3] = {0.5, 1.0, 1.5};
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] */
-    CSR_matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_matrix *Q = new_CSR_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};
@@ -167,7 +167,7 @@ const char *test_jacobian_quad_form_exp(void)
               check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(node);
-    free_csr_matrix(Q);
+    free_CSR_matrix(Q);
     return 0;
 }
 
@@ -225,8 +225,8 @@ const char *test_jacobian_matmul_Ax_By(void)
               check_jacobian_num(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(Z);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
     return 0;
 }
 
@@ -249,8 +249,8 @@ const char *test_jacobian_matmul_sin_Ax_cos_Bx(void)
               check_jacobian_num(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(Z);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
     return 0;
 }
 

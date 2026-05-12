@@ -52,7 +52,7 @@ static void jacobian_init_impl(expr *node)
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
+        CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, x->size);
         jac->p[0] = 0;
         jac->p[1] = x->size;
 
@@ -71,7 +71,7 @@ static void jacobian_init_impl(expr *node)
 
         /* allocate the right number of nnz */
         int nnz = count_nonzero_cols_csc(J_csc);
-        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, nnz);
+        CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, nnz);
         jac->p[0] = 0;
         jac->p[1] = nnz;
 
@@ -131,7 +131,7 @@ static void wsum_hess_init_impl(expr *node)
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
+        CSR_matrix *H = new_CSR_matrix(node->n_vars, node->n_vars, Q->nnz);
 
         /* set global row pointers */
         memcpy(H->p + x->var_id, Q->p, (x->size + 1) * sizeof(int));
@@ -234,11 +234,11 @@ static void eval_wsum_hess(expr *node, const double *w)
 static void free_type_data(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
-    free_csr_matrix(qnode->Q);
+    free_CSR_matrix(qnode->Q);
     qnode->Q = NULL;
     if (qnode->QJf != NULL)
     {
-        free_csc_matrix(qnode->QJf);
+        free_CSC_matrix(qnode->QJf);
         qnode->QJf = NULL;
     }
 }
@@ -262,8 +262,8 @@ expr *new_quad_form(expr *left, CSR_matrix *Q)
     expr_retain(left);
 
     /* Set type-specific field */
-    qnode->Q = new_csr_matrix(Q->m, Q->n, Q->nnz);
-    copy_csr_matrix(Q, qnode->Q);
+    qnode->Q = new_CSR_matrix(Q->m, Q->n, Q->nnz);
+    copy_CSR_matrix(Q, qnode->Q);
 
     /* dwork stores the result of Q @ f(x) in the forward pass */
     node->work->dwork = (double *) SP_MALLOC(left->size * sizeof(double));

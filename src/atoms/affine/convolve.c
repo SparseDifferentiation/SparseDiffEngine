@@ -77,7 +77,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(child);
 
     /* Build convolution matrix of size (m+n-1) x n with m*n nonzeros */
-    cnode->T = new_csr_matrix(m + n - 1, n, m * n);
+    cnode->T = new_CSR_matrix(m + n - 1, n, m * n);
     conv_matrix_fill_sparsity(cnode->T, m, n);
     conv_matrix_fill_values(cnode->T, a);
 
@@ -142,8 +142,8 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     convolve_expr *cnode = (convolve_expr *) node;
-    free_csr_matrix(cnode->T);
-    free_csc_matrix(cnode->Jchild_CSC);
+    free_CSR_matrix(cnode->T);
+    free_CSC_matrix(cnode->Jchild_CSC);
     free_expr(cnode->param_source);
 }
 

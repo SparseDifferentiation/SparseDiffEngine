@@ -48,7 +48,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
      */
 
     /* Create A matrix (5x10) */
-    CSR_matrix *A = new_csr_matrix(5, 10, 10);
+    CSR_matrix *A = new_CSR_matrix(5, 10, 10);
     double Ax[10] = {-1.44165273, -1.13687223, 0.55892257,  0.24912193,  0.84959744,
                      -0.23998915, 0.5913356,   -1.21627912, -0.50379166, 0.41531801};
     int Ai[10] = {1, 2, 4, 8, 2, 3, 8, 9, 1, 2};
@@ -58,7 +58,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     memcpy(A->p, Ap, 6 * sizeof(int));
 
     /* Create B matrix (5x10) */
-    CSR_matrix *B = new_csr_matrix(5, 10, 10);
+    CSR_matrix *B = new_CSR_matrix(5, 10, 10);
     double Bx[10] = {1.27549062,  0.04194731, -0.4356034,  0.405574,   1.34670487,
                      -0.57738638, 0.9411464,  -0.31563179, 1.90831766, -0.89802958};
     int Bi[10] = {0, 3, 5, 7, 0, 5, 0, 3, 7, 9};
@@ -102,8 +102,8 @@ const char *test_wsum_hess_multiply_sparse_random(void)
 
     /* Cleanup */
     free_expr(mult_node);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
 
     return 0;
 }
@@ -129,7 +129,7 @@ const char *test_wsum_hess_multiply_linear_ops(void)
      */
 
     /* Create CSR_matrix matrix A */
-    CSR_matrix *A = new_csr_matrix(4, 3, 6);
+    CSR_matrix *A = new_CSR_matrix(4, 3, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {0, 2, 1, 0, 2, 1};
     int Ap[5] = {0, 2, 3, 5, 6};
@@ -138,7 +138,7 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     memcpy(A->p, Ap, 5 * sizeof(int));
 
     /* Create CSR_matrix matrix B */
-    CSR_matrix *B = new_csr_matrix(4, 3, 8);
+    CSR_matrix *B = new_CSR_matrix(4, 3, 8);
     double Bx[8] = {1.0, 4.0, 2.0, 7.0, 3.0, 2.0, 4.0, -1.0};
     int Bi[8] = {0, 2, 1, 2, 0, 2, 1, 2};
     int Bp[5] = {0, 2, 4, 6, 8};
@@ -182,8 +182,8 @@ const char *test_wsum_hess_multiply_linear_ops(void)
 
     /* Cleanup */
     free_expr(mult_node);
-    free_csr_matrix(A);
-    free_csr_matrix(B);
+    free_CSR_matrix(A);
+    free_CSR_matrix(B);
 
     return 0;
 }

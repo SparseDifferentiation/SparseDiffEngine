@@ -17,13 +17,14 @@
 
    theta (n x 1), w (m x 1)  : variables (n_vars = n + m)
    A     (m x n)             : dense constant
-   y     (m x 1)              : constant in {-1, +1}, wrapped as PARAM_FIXED
+   y     (m x 1)             : constant in {-1, +1}, wrapped as PARAM_FIXED
 
    Forward pass is excluded from timing. */
 const char *profile_trimmed_log_reg(void)
 {
     int m = 2000;
     int n = 785;
+    int N_HESS_ITERS = 10;
     int n_vars = n + m;
 
     /* ---- Random inputs ---- */
@@ -63,31 +64,32 @@ const char *profile_trimmed_log_reg(void)
     /* Forward (untimed). */
     obj->forward(obj, u);
 
-    /* ---- Time eval_jacobian and eval_wsum_hess ---- */
     double w_one = 1.0;
     Timer t_jac, t_hess;
     clock_gettime(CLOCK_MONOTONIC, &t_jac.start);
     obj->eval_jacobian(obj);
     clock_gettime(CLOCK_MONOTONIC, &t_jac.end);
 
+    obj->eval_wsum_hess(obj, &w_one); /* warm-up */
     clock_gettime(CLOCK_MONOTONIC, &t_hess.start);
-    obj->eval_wsum_hess(obj, &w_one);
+    for (int it = 0; it < N_HESS_ITERS; it++)
+    {
+        obj->eval_wsum_hess(obj, &w_one);
+    }
     clock_gettime(CLOCK_MONOTONIC, &t_hess.end);
 
     double sec_jac = GET_ELAPSED_SECONDS(t_jac);
-    double sec_hess = GET_ELAPSED_SECONDS(t_hess);
+    double sec_hess = GET_ELAPSED_SECONDS(t_hess) / N_HESS_ITERS;
 
     printf("\n");
-    printf("                          Jacobian      Hessian        Total\n");
-    printf("  trimmed_log_reg:      %10.6fs  %10.6fs  %10.6fs\n", sec_jac, sec_hess,
-           sec_jac + sec_hess);
+    printf("trimmed_log_reg (m=%d, n=%d):\n", m, n);
+    printf("  jacobian = %10.6fs   hessian = %10.6fs  (avg over %d)\n",
+           sec_jac, sec_hess, N_HESS_ITERS);
 
-    /* ---- Cleanup ---- */
     free_expr(obj);
     free(A_data);
     free(y_data);
     free(u);
-
     return 0;
 }
 

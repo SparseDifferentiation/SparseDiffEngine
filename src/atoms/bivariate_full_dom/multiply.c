@@ -84,7 +84,7 @@ static void wsum_hess_init_impl(expr *node)
     {
         assert(y->var_id != NOT_A_VARIABLE);
         CSR_matrix *hess =
-            new_csr_matrix(node->n_vars, node->n_vars, 2 * node->size);
+            new_CSR_matrix(node->n_vars, node->n_vars, 2 * node->size);
 
         int i, var1_id, var2_id;
 
@@ -274,7 +274,7 @@ static void free_type_data(expr *node)
 {
     elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
     free_matrix(mul_node->cross_C);
-    free_csr_matrix(mul_node->CSR_work2);
+    free_CSR_matrix(mul_node->CSR_work2);
     free(mul_node->idx_map_C);
     free(mul_node->idx_map_CT);
     free(mul_node->idx_map_Hx);

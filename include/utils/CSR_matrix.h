@@ -15,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef CSR_MATRIX_H
-#define CSR_MATRIX_H
+#ifndef CSR_matrix_H
+#define CSR_matrix_H
 #include <stdbool.h>
 
 /* CSR_matrix (Compressed Sparse Row) matrix Format
@@ -40,11 +40,11 @@ typedef struct CSR_matrix
 } CSR_matrix;
 
 /* constructors and destructors */
-CSR_matrix *new_csr_matrix(int m, int n, int nnz);
+CSR_matrix *new_CSR_matrix(int m, int n, int nnz);
 CSR_matrix *new_csr(const CSR_matrix *A);
 CSR_matrix *new_csr_copy_sparsity(const CSR_matrix *A);
-void free_csr_matrix(CSR_matrix *matrix);
-void copy_csr_matrix(const CSR_matrix *A, CSR_matrix *C);
+void free_CSR_matrix(CSR_matrix *matrix);
+void copy_CSR_matrix(const CSR_matrix *A, CSR_matrix *C);
 
 /* transpose functionality (iwork must be of size A->n) */
 CSR_matrix *transpose(const CSR_matrix *A, int *iwork);
@@ -70,4 +70,4 @@ double csr_get_value(const CSR_matrix *A, int row, int col);
    only upper triangle. C must be pre-allocated with sufficient nnz */
 void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_matrix *C);
 
-#endif /* CSR_MATRIX_H */
+#endif /* CSR_matrix_H */

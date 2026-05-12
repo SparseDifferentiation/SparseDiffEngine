@@ -90,7 +90,7 @@ static void jacobian_init_impl(expr *node)
     CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
     /* we never have to store more than the child's nnz */
-    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
+    CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, Jx->nnz);
     node->work->iwork = SP_MALLOC(MAX(jac->n, Jx->nnz) * sizeof(int));
     snode->idx_map = SP_MALLOC(Jx->nnz * sizeof(int));
 

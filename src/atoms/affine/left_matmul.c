@@ -95,8 +95,8 @@ static void free_type_data(expr *node)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     free_matrix(lnode->A);
     free_matrix(lnode->AT);
-    free_csc_matrix(lnode->Jchild_CSC);
-    free_csc_matrix(lnode->J_CSC);
+    free_CSC_matrix(lnode->Jchild_CSC);
+    free_CSC_matrix(lnode->J_CSC);
     free(lnode->csc_to_csr_work);
     if (lnode->param_source != NULL)
     {

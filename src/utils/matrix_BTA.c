@@ -23,19 +23,20 @@ matrix *BTA_matrices_alloc(matrix *A, matrix *B)
 
     if (pd_A && pd_B)
     {
-        return BTA_pd_pd_alloc(pd_A, pd_B);
+        return BTA_pd_pd_alloc(pd_B, pd_A);
     }
     if (pd_B)
     {
-        /* A is Sparse, B is PD */
-        CSR_matrix *A_csr = A->to_csr(A);
-        return BTA_csr_pd_alloc(A_csr, pd_B);
+        /* A is Sparse, B is PD — CSC kernel (see permuted_dense.{h,c}). */
+        sparse_matrix *sm_A = (sparse_matrix *) A;
+        A->refresh_csc_values(A);
+        return BTA_pd_csc_alloc(pd_B, sm_A->csc_cache);
     }
     if (pd_A)
     {
         /* A is PD, B is Sparse */
         CSR_matrix *B_csr = B->to_csr(B);
-        return BTA_pd_csr_alloc(pd_A, B_csr);
+        return BTA_csr_pd_alloc(B_csr, pd_A);
     }
 
     /* Both Sparse: delegate to CSC_matrix BTA. Caller must ensure caches are fresh.
@@ -55,19 +56,20 @@ void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C)
 
     if (pd_A && pd_B)
     {
-        BTDA_pd_pd_fill_values(pd_A, d, pd_B, (permuted_dense *) C);
+        BTDA_pd_pd_fill_values(pd_B, d, pd_A, (permuted_dense *) C);
         return;
     }
     if (pd_B)
     {
-        CSR_matrix *A_csr = A->to_csr(A);
-        BTDA_csr_pd_fill_values(A_csr, d, pd_B, (permuted_dense *) C);
+        sparse_matrix *sm_A = (sparse_matrix *) A;
+        A->refresh_csc_values(A);
+        BTDA_pd_csc_fill_values(pd_B, d, sm_A->csc_cache, (permuted_dense *) C);
         return;
     }
     if (pd_A)
     {
         CSR_matrix *B_csr = B->to_csr(B);
-        BTDA_pd_csr_fill_values(pd_A, d, B_csr, (permuted_dense *) C);
+        BTDA_csr_pd_fill_values(B_csr, d, pd_A, (permuted_dense *) C);
         return;
     }
 

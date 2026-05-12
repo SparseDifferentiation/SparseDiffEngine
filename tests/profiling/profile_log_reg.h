@@ -81,7 +81,7 @@ const char *profile_log_reg(void)
 
     /* CSR_matrix scaffolding for the row-sum step (PD owns the cached CSR_matrix view). */
     CSR_matrix *Jlog_csr = Jlog_M->to_csr(Jlog_M);
-    CSR_matrix *Jobj_csr = new_csr_matrix(1, n, n);
+    CSR_matrix *Jobj_csr = new_CSR_matrix(1, n, n);
     int *iwork = (int *) malloc((size_t) m * n * sizeof(int));
     int *idx_map = (int *) malloc((size_t) m * n * sizeof(int));
     sum_all_rows_csr_alloc(Jlog_csr, Jobj_csr, iwork, idx_map);
@@ -161,7 +161,7 @@ const char *profile_log_reg(void)
     free(w_ones);
     free(iwork);
     free(idx_map);
-    free_csr_matrix(Jobj_csr);
+    free_CSR_matrix(Jobj_csr);
     /* Jlog_csr is owned by Jlog_M's cache; released by free_matrix below. */
     free_matrix(H_pd_M);
     free_matrix(Jlog_M);

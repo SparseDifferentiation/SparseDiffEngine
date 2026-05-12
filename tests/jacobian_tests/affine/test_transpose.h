@@ -11,7 +11,7 @@
 const char *test_jacobian_transpose(void)
 {
     // A = [1 2; 3 4]
-    CSR_matrix *A = new_csr_matrix(2, 2, 4);
+    CSR_matrix *A = new_CSR_matrix(2, 2, 4);
     int A_p[3] = {0, 2, 4};
     int A_i[4] = {0, 1, 0, 1};
     double A_x[4] = {1, 2, 3, 4};
@@ -37,7 +37,7 @@ const char *test_jacobian_transpose(void)
     mu_assert("sparsity fail",
               cmp_sparsity(transpose_AX->jacobian, expected_p, expected_i, 4, 8));
     free_expr(transpose_AX);
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     return 0;
 }
 

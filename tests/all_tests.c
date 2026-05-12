@@ -60,13 +60,14 @@
 #include "problem/test_problem.h"
 #include "utils/test_cblas.h"
 #include "utils/test_coo_matrix.h"
-#include "utils/test_csc_matrix.h"
+#include "utils/test_CSC_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
-#include "utils/test_csr_matrix.h"
+#include "utils/test_CSR_matrix.h"
 #include "utils/test_linalg_sparse_matmuls.h"
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
 #include "utils/test_matrix_BTA.h"
+#include "old-code/test_old_permuted_dense.h"
 #include "utils/test_permuted_dense.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
@@ -104,6 +105,7 @@
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
+#include "profiling/profile_BTA_pd_csr_vs_csc.h"
 #include "profiling/profile_left_matmul.h"
 #include "profiling/profile_log_reg.h"
 #include "profiling/profile_trimmed_log_reg.h"
@@ -382,12 +384,13 @@ int main(void)
     mu_run_test(test_permuted_dense_BTA_empty_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTA_partial_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
-    mu_run_test(test_BTA_csr_pd_basic, tests_run);
-    mu_run_test(test_BTA_csr_pd_leaf_variable, tests_run);
-    mu_run_test(test_BTA_csr_pd_no_overlap, tests_run);
+    mu_run_test(test_BTA_pd_csc_matches_csr, tests_run);
     mu_run_test(test_BTA_pd_csr_basic, tests_run);
     mu_run_test(test_BTA_pd_csr_leaf_variable, tests_run);
     mu_run_test(test_BTA_pd_csr_no_overlap, tests_run);
+    mu_run_test(test_BTA_csr_pd_basic, tests_run);
+    mu_run_test(test_BTA_csr_pd_leaf_variable, tests_run);
+    mu_run_test(test_BTA_csr_pd_no_overlap, tests_run);
     mu_run_test(test_BTDA_matrices_pd_pd, tests_run);
     mu_run_test(test_BTDA_matrices_csr_pd, tests_run);
     mu_run_test(test_BTDA_matrices_pd_csr, tests_run);
@@ -438,6 +441,7 @@ int main(void)
     mu_run_test(profile_left_matmul, tests_run);
     mu_run_test(profile_log_reg, tests_run);
     mu_run_test(profile_trimmed_log_reg, tests_run);
+    mu_run_test(profile_BTA_pd_csr_vs_csc, tests_run);
 #endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);

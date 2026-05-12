@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-CSC_matrix *new_csc_matrix(int m, int n, int nnz)
+CSC_matrix *new_CSC_matrix(int m, int n, int nnz)
 {
     CSC_matrix *matrix = (CSC_matrix *) SP_MALLOC(sizeof(CSC_matrix));
     if (!matrix) return NULL;
@@ -47,7 +47,7 @@ CSC_matrix *new_csc_matrix(int m, int n, int nnz)
     return matrix;
 }
 
-void free_csc_matrix(CSC_matrix *matrix)
+void free_CSC_matrix(CSC_matrix *matrix)
 {
     if (matrix)
     {
@@ -102,7 +102,7 @@ CSR_matrix *ATA_alloc(const CSC_matrix *A)
     }
 
     /* Allocate C and symmetrize it */
-    CSR_matrix *C = new_csr_matrix(n, n, nnz);
+    CSR_matrix *C = new_CSR_matrix(n, n, nnz);
     symmetrize_csr(Cp, Ci->data, n, C);
 
     /* free workspace */
@@ -205,7 +205,7 @@ void ATDA_fill_values(const CSC_matrix *A, const double *d, CSR_matrix *C)
 
 CSC_matrix *csr_to_csc_alloc(const CSR_matrix *A, int *iwork)
 {
-    CSC_matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
+    CSC_matrix *C = new_CSC_matrix(A->m, A->n, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -268,7 +268,7 @@ void csr_to_csc_fill_values(const CSR_matrix *A, CSC_matrix *C, int *iwork)
 
 CSR_matrix *csc_to_csr_alloc(const CSC_matrix *A, int *iwork)
 {
-    CSR_matrix *C = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *C = new_CSR_matrix(A->m, A->n, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -378,7 +378,7 @@ CSR_matrix *BTA_alloc(const CSC_matrix *A, const CSC_matrix *B)
     }
 
     /* Allocate C */
-    CSR_matrix *C = new_csr_matrix(p, n, nnz);
+    CSR_matrix *C = new_CSR_matrix(p, n, nnz);
     memcpy(C->p, Cp, (p + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
 
@@ -525,7 +525,7 @@ CSC_matrix *symBA_alloc(const CSR_matrix *B, const CSC_matrix *A)
 
     /* allocate C and copy the computed structure */
     int total_nnz = Cp[n];
-    CSC_matrix *C = new_csc_matrix(m, n, total_nnz);
+    CSC_matrix *C = new_CSC_matrix(m, n, total_nnz);
     memcpy(C->p, Cp, (n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, total_nnz * sizeof(int));
 

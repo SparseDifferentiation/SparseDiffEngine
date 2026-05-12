@@ -49,8 +49,8 @@ static void sparse_block_left_mult_values(const matrix *self, const CSC_matrix *
 static void sparse_free(matrix *self)
 {
     sparse_matrix *sm = (sparse_matrix *) self;
-    free_csr_matrix(sm->csr);
-    free_csc_matrix(sm->csc_cache);
+    free_CSR_matrix(sm->csr);
+    free_CSC_matrix(sm->csc_cache);
     free(sm->csc_iwork);
     free(sm);
 }
@@ -110,7 +110,7 @@ static struct permuted_dense *sparse_as_permuted_dense(matrix *self)
 static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
 {
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    CSR_matrix *J = new_csr_matrix(n_idxs, self->n, Jx->nnz);
+    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, Jx->nnz);
 
     J->p[0] = 0;
     for (int i = 0; i < n_idxs; i++)
@@ -140,7 +140,7 @@ static matrix *sparse_promote_alloc(matrix *self, int size)
 {
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     int row_nnz = Jx->nnz;
-    CSR_matrix *J = new_csr_matrix(size, self->n, size * row_nnz);
+    CSR_matrix *J = new_CSR_matrix(size, self->n, size * row_nnz);
 
     for (int row = 0; row < size; row++)
     {
@@ -181,7 +181,7 @@ static matrix *sparse_broadcast_alloc(matrix *self, broadcast_type type, int d1,
         total_nnz = Jx->nnz * out_m;
     }
 
-    CSR_matrix *J = new_csr_matrix(out_m, self->n, total_nnz);
+    CSR_matrix *J = new_CSR_matrix(out_m, self->n, total_nnz);
 
     if (type == BROADCAST_ROW)
     {
@@ -255,7 +255,7 @@ static matrix *sparse_diag_vec_alloc(matrix *self)
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     int n = self->m;
     int out_m = n * n;
-    CSR_matrix *J = new_csr_matrix(out_m, self->n, Jx->nnz);
+    CSR_matrix *J = new_CSR_matrix(out_m, self->n, Jx->nnz);
 
     int nnz = 0;
     int next_diag = 0;
@@ -334,7 +334,7 @@ matrix *new_sparse_matrix(CSR_matrix *A)
 
 matrix *new_sparse_matrix_alloc(int m, int n, int nnz)
 {
-    return new_sparse_matrix(new_csr_matrix(m, n, nnz));
+    return new_sparse_matrix(new_CSR_matrix(m, n, nnz));
 }
 
 matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork)

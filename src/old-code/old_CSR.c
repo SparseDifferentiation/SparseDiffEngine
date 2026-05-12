@@ -28,7 +28,7 @@ CSR_matrix *block_diag_repeat_csr(const CSR_matrix *A, int p)
     int n = A->n;
     int nnz = A->nnz;
 
-    CSR_matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+    CSR_matrix *A_kron = new_CSR_matrix(m * p, n * p, nnz * p);
 
     int nnz_cursor = 0;
     for (int block = 0; block < p; block++)
@@ -63,7 +63,7 @@ CSR_matrix *kron_identity_csr(const CSR_matrix *A, int p)
     int n = A->n;
     int nnz = A->nnz;
 
-    CSR_matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+    CSR_matrix *A_kron = new_CSR_matrix(m * p, n * p, nnz * p);
 
     int nnz_cursor = 0;
     for (int row_block = 0; row_block < m; row_block++)
@@ -159,7 +159,7 @@ void Ax_csr_wo_offset(const CSR_matrix *A, const double *x, double *y)
 
 void diag_csr_mult(const double *d, const CSR_matrix *A, CSR_matrix *C)
 {
-    copy_csr_matrix(A, C);
+    copy_CSR_matrix(A, C);
 
     for (int row = 0; row < C->m; row++)
     {

@@ -28,7 +28,7 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init_impl(expr *node)
 {
-    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, node->size);
+    CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, node->size);
     for (int j = 0; j < node->size; j++)
     {
         jac->p[j] = j;

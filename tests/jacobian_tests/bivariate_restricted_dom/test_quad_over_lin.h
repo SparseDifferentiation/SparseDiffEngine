@@ -63,7 +63,7 @@ const char *test_quad_over_lin3(void)
     // A = [0 0 1 2 3 0 0 0
     //      0 0 4 5 6 0 0]
 
-    CSR_matrix *A = new_csr_matrix(2, 8, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 8, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {2, 3, 4, 2, 3, 4};
     int Ap[3] = {0, 3, 6};
@@ -90,7 +90,7 @@ const char *test_quad_over_lin3(void)
     mu_assert("sparsity fail",
               cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 1, 4));
 
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     free_expr(node);
     return 0;
 }
@@ -103,7 +103,7 @@ const char *test_quad_over_lin4(void)
     //      0 0 0 0 0 4 5 6
     //
 
-    CSR_matrix *A = new_csr_matrix(2, 8, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 8, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {5, 6, 7, 5, 6, 7};
     int Ap[3] = {0, 3, 6};
@@ -130,7 +130,7 @@ const char *test_quad_over_lin4(void)
     mu_assert("sparsity fail",
               cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 1, 4));
 
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     free_expr(node);
     return 0;
 }
@@ -143,7 +143,7 @@ const char *test_quad_over_lin5(void)
     //      0 2 0 0 0 4 5 6
     //
 
-    CSR_matrix *A = new_csr_matrix(2, 8, 9);
+    CSR_matrix *A = new_CSR_matrix(2, 8, 9);
     double Ax[9] = {1, 3, 1.0, 2.0, 3.0, 2, 4.0, 5.0, 6.0};
     int Ai[9] = {0, 3, 5, 6, 7, 1, 5, 6, 7};
     int Ap[3] = {0, 5, 9};
@@ -170,7 +170,7 @@ const char *test_quad_over_lin5(void)
     mu_assert("sparsity fail",
               cmp_sparsity(node->jacobian, expected_Ap, expected_Ai, 1, 7));
 
-    free_csr_matrix(A);
+    free_CSR_matrix(A);
     free_expr(node);
     return 0;
 }

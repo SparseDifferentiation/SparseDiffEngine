@@ -34,7 +34,7 @@ const char *test_YT_kron_I(void)
     int m = 2, k = 2, n = 2;
 
     /* J is 4x3 CSC_matrix */
-    CSC_matrix *J = new_csc_matrix(4, 3, 5);
+    CSC_matrix *J = new_CSC_matrix(4, 3, 5);
     int Jp[4] = {0, 2, 3, 5};
     int Ji[5] = {0, 2, 1, 0, 3};
     double Jx[5] = {1.0, 3.0, 1.0, 2.0, 1.0};
@@ -60,8 +60,8 @@ const char *test_YT_kron_I(void)
     YT_kron_I_fill_values(m, k, n, Y, J, C);
     mu_assert("C values", cmp_double_array(C->x, exp_x, 8));
 
-    free_csr_matrix(C);
-    free_csc_matrix(J);
+    free_CSR_matrix(C);
+    free_CSC_matrix(J);
     return NULL;
 }
 
@@ -86,7 +86,7 @@ const char *test_YT_kron_I_larger(void)
     int m = 3, k = 2, n = 3;
 
     /* J is 6x4 CSC_matrix */
-    CSC_matrix *J = new_csc_matrix(6, 4, 8);
+    CSC_matrix *J = new_CSC_matrix(6, 4, 8);
     int Jp[5] = {0, 2, 4, 6, 8};
     int Ji[8] = {0, 3, 2, 4, 1, 5, 0, 3};
     double Jx[8] = {1.0, 2.0, 3.0, 1.0, 1.0, 4.0, 2.0, 1.0};
@@ -113,8 +113,8 @@ const char *test_YT_kron_I_larger(void)
     YT_kron_I_fill_values(m, k, n, Y, J, C);
     mu_assert("C2 values", cmp_double_array(C->x, exp_x, 18));
 
-    free_csr_matrix(C);
-    free_csc_matrix(J);
+    free_CSR_matrix(C);
+    free_CSC_matrix(J);
     return NULL;
 }
 
@@ -144,7 +144,7 @@ const char *test_I_kron_X(void)
     int m = 2, k = 2, n = 2;
 
     /* J is 4x3 CSC_matrix */
-    CSC_matrix *J = new_csc_matrix(4, 3, 5);
+    CSC_matrix *J = new_CSC_matrix(4, 3, 5);
     int Jp[4] = {0, 2, 3, 5};
     int Ji[5] = {0, 2, 1, 0, 3};
     double Jx[5] = {1.0, 3.0, 1.0, 2.0, 1.0};
@@ -170,8 +170,8 @@ const char *test_I_kron_X(void)
     I_kron_X_fill_values(m, k, n, X, J, C);
     mu_assert("C values", cmp_double_array(C->x, exp_x, 10));
 
-    free_csr_matrix(C);
-    free_csc_matrix(J);
+    free_CSR_matrix(C);
+    free_CSC_matrix(J);
     return NULL;
 }
 
@@ -195,7 +195,7 @@ const char *test_I_kron_X_larger(void)
     int m = 3, k = 2, n = 2;
 
     /* J is 4x4 CSC_matrix */
-    CSC_matrix *J = new_csc_matrix(4, 4, 7);
+    CSC_matrix *J = new_CSC_matrix(4, 4, 7);
     int Jp[5] = {0, 2, 3, 5, 7};
     int Ji[7] = {0, 3, 1, 1, 2, 0, 3};
     double Jx[7] = {1.0, 2.0, 3.0, 1.0, 4.0, 2.0, 1.0};
@@ -222,7 +222,7 @@ const char *test_I_kron_X_larger(void)
     I_kron_X_fill_values(m, k, n, X, J, C);
     mu_assert("C2 values", cmp_double_array(C->x, exp_x, 21));
 
-    free_csr_matrix(C);
-    free_csc_matrix(J);
+    free_CSR_matrix(C);
+    free_CSC_matrix(J);
     return NULL;
 }
