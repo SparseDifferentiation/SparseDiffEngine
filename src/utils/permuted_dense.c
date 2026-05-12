@@ -63,20 +63,18 @@ static matrix *permuted_dense_vtable_copy_sparsity(const matrix *self)
 static void permuted_dense_vtable_DA_fill_values(const double *d, const matrix *self,
                                                  matrix *out)
 {
-    permuted_dense_DA_fill_values(d, (const permuted_dense *) self,
-                                  (permuted_dense *) out);
+    DA_pd_fill_values(d, (const permuted_dense *) self, (permuted_dense *) out);
 }
 
 static matrix *permuted_dense_vtable_ATA_alloc(matrix *self)
 {
-    return permuted_dense_ATA_alloc((const permuted_dense *) self);
+    return ATA_pd_alloc((const permuted_dense *) self);
 }
 
 static void permuted_dense_vtable_ATDA_fill_values(const matrix *self,
                                                    const double *d, matrix *out)
 {
-    permuted_dense_ATDA_fill_values((const permuted_dense *) self, d,
-                                    (permuted_dense *) out);
+    ATDA_pd_fill_values((const permuted_dense *) self, d, (permuted_dense *) out);
 }
 
 /* Forward decl; definition lower in the file. */
@@ -438,8 +436,7 @@ static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A)
     return C;
 }
 
-void permuted_dense_DA_fill_values(const double *d, const permuted_dense *A,
-                                   permuted_dense *C)
+void DA_pd_fill_values(const double *d, const permuted_dense *A, permuted_dense *C)
 {
     int m0 = A->m0;
     int n0 = A->n0;
@@ -450,7 +447,7 @@ void permuted_dense_DA_fill_values(const double *d, const permuted_dense *A,
     }
 }
 
-matrix *permuted_dense_ATA_alloc(const permuted_dense *A)
+matrix *ATA_pd_alloc(const permuted_dense *A)
 {
     int n = A->base.n;
     /* C = AT @ A has a dense block of size n0 x n0, with row and column index
@@ -460,8 +457,7 @@ matrix *permuted_dense_ATA_alloc(const permuted_dense *A)
     return new_permuted_dense(n, n, A->n0, A->n0, A->col_perm, A->col_perm, NULL);
 }
 
-void permuted_dense_ATDA_fill_values(const permuted_dense *A, const double *d,
-                                     permuted_dense *C)
+void ATDA_pd_fill_values(const permuted_dense *A, const double *d, permuted_dense *C)
 {
     int m0 = A->m0;
     int n0 = A->n0;
@@ -617,7 +613,7 @@ void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
 
     /* C = BT @ (DA) */
     permuted_dense *DA = (permuted_dense *) A->base.copy_sparsity(&A->base);
-    permuted_dense_DA_fill_values(d, A, DA);
+    DA_pd_fill_values(d, A, DA);
     BTA_pd_pd_fill_values(B, DA, C);
     free_matrix(&DA->base);
 }
@@ -786,8 +782,8 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
    and the right operand A is supplied as a transposed-layout raw buffer
    (row j of A_T = m0_A contiguous doubles = the j-th column of A's dense
    block). Transposed-output sibling of BA_pd_csc_fill_values. */
-static void BTA_csc_pd_fill_values(const CSC_matrix *B, const double *A_T,
-                                   int m0_A, const int *inv, permuted_dense *C)
+static void BTA_csc_pd_fill_values(const CSC_matrix *B, const double *A_T, int m0_A,
+                                   const int *inv, permuted_dense *C)
 {
     /* C[i_C, j_C] = dot(col C->row_perm[i_C] of B, row j_C of A_T). */
     for (int i_C = 0; i_C < C->m0; i_C++)

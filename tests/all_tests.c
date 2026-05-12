@@ -55,6 +55,7 @@
 #include "jacobian_tests/other/test_prod_axis_zero.h"
 #include "jacobian_tests/other/test_quad_form.h"
 #include "numerical_diff/test_numerical_diff.h"
+#include "old-code/test_old_permuted_dense.h"
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
@@ -67,7 +68,6 @@
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
 #include "utils/test_matrix.h"
 #include "utils/test_matrix_BTA.h"
-#include "old-code/test_old_permuted_dense.h"
 #include "utils/test_permuted_dense.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
@@ -367,9 +367,9 @@ int main(void)
     mu_run_test(test_permuted_dense_to_csr_full, tests_run);
     mu_run_test(test_permuted_dense_to_csr_single_row, tests_run);
     mu_run_test(test_permuted_dense_to_csr_single_col, tests_run);
-    mu_run_test(test_permuted_dense_DA_fill_values, tests_run);
-    mu_run_test(test_permuted_dense_ATA_alloc, tests_run);
-    mu_run_test(test_permuted_dense_ATDA_fill_values, tests_run);
+    mu_run_test(test_DA_pd_fill_values, tests_run);
+    mu_run_test(test_ATA_pd_alloc, tests_run);
+    mu_run_test(test_ATDA_pd_fill_values, tests_run);
     mu_run_test(test_permuted_dense_times_csc, tests_run);
     mu_run_test(test_permuted_dense_times_csc_no_active, tests_run);
     mu_run_test(test_permuted_dense_to_csr_lazy, tests_run);

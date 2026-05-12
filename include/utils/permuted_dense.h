@@ -86,15 +86,14 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
    free the returned CSR_matrix — it's released by free_matrix on the PD. */
 
 /* Fill values of C = diag(d) @ A where len(d) = number of (global) rows of A */
-void permuted_dense_DA_fill_values(const double *d, const permuted_dense *A,
-                                   permuted_dense *C);
+void DA_pd_fill_values(const double *d, const permuted_dense *A, permuted_dense *C);
 
 /* Allocate new permuted dense for C = AT @ A */
-matrix *permuted_dense_ATA_alloc(const permuted_dense *A);
+matrix *ATA_pd_alloc(const permuted_dense *A);
 
 /* Fill values of C = AT @ diag(d) @ A */
-void permuted_dense_ATDA_fill_values(const permuted_dense *A, const double *d,
-                                     permuted_dense *C);
+void ATDA_pd_fill_values(const permuted_dense *A, const double *d,
+                         permuted_dense *C);
 
 /* Allocate new permuted dense forC = BT @ A where A and B are both permuted_dense.
    (If B and A have no overlapping rows, then C is empty) */
@@ -127,8 +126,6 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 /* Fill values of C = B^T @ diag(d) @ A where B is PD and A is CSC */
 void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
                              const CSC_matrix *A, permuted_dense *C);
-
-// ------------------- OK SO FAR
 
 /* Allocate new permuted_dense for C = B^T @ A where B is Sparse CSC and A is PD. */
 matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A);

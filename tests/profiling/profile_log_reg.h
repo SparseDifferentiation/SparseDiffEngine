@@ -73,13 +73,14 @@ const char *profile_log_reg(void)
     permuted_dense *A_pd = (permuted_dense *) A_pd_M;
     matrix *Jlog_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, NULL);
     permuted_dense *Jlog_pd = (permuted_dense *) Jlog_M;
-    matrix *H_pd_M = permuted_dense_ATA_alloc(A_pd);
+    matrix *H_pd_M = ATA_pd_alloc(A_pd);
     permuted_dense *H_pd = (permuted_dense *) H_pd_M;
 
     free(full_rows);
     free(full_cols);
 
-    /* CSR_matrix scaffolding for the row-sum step (PD owns the cached CSR_matrix view). */
+    /* CSR_matrix scaffolding for the row-sum step (PD owns the cached CSR_matrix
+     * view). */
     CSR_matrix *Jlog_csr = Jlog_M->to_csr(Jlog_M);
     CSR_matrix *Jobj_csr = new_CSR_matrix(1, n, n);
     int *iwork = (int *) malloc((size_t) m * n * sizeof(int));
@@ -97,21 +98,21 @@ const char *profile_log_reg(void)
        dwork) as sigmas read by local_wsum_hess. */
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.start);
     log_obj->local_jacobian(log_obj, log_obj->work->dwork);
-    permuted_dense_DA_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
+    DA_pd_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
     memset(Jobj_csr->x, 0, Jobj_csr->nnz * sizeof(double));
     accumulator(Jlog_csr->x, Jlog_csr->nnz, idx_map, Jobj_csr->x);
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.end);
     clock_gettime(CLOCK_MONOTONIC, &t_b_hess.start);
     log_obj->local_wsum_hess(log_obj, d2, w_ones);
-    permuted_dense_ATDA_fill_values(A_pd, d2, H_pd);
+    ATDA_pd_fill_values(A_pd, d2, H_pd);
     clock_gettime(CLOCK_MONOTONIC, &t_b_hess.end);
     double sec_b_jac = GET_ELAPSED_SECONDS(t_b_jac);
     double sec_b_hess = GET_ELAPSED_SECONDS(t_b_hess);
 
     printf("\n");
     printf("                            Jacobian      Hessian        Total\n");
-    printf("  Path A (engine CSR_matrix/CSC_matrix): %10.6fs  %10.6fs  %10.6fs\n", sec_a_jac,
-           sec_a_hess, sec_a_jac + sec_a_hess);
+    printf("  Path A (engine CSR_matrix/CSC_matrix): %10.6fs  %10.6fs  %10.6fs\n",
+           sec_a_jac, sec_a_hess, sec_a_jac + sec_a_hess);
     printf("  Path B (permuted_dense): %10.6fs  %10.6fs  %10.6fs\n", sec_b_jac,
            sec_b_hess, sec_b_jac + sec_b_hess);
     printf("  Speedup (A / B):         %10.2fx %10.2fx %10.2fx\n",

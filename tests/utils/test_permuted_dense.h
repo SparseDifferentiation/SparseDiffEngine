@@ -130,7 +130,7 @@ const char *test_permuted_dense_to_csr_single_col(void)
 
    PD is the 5x6 matrix from the basic to_csr test, with d a length-5
    global-row diagonal including a negative and zero entry. */
-const char *test_permuted_dense_DA_fill_values(void)
+const char *test_DA_pd_fill_values(void)
 {
     int row_perm[3] = {1, 2, 4};
     int col_perm[2] = {0, 3};
@@ -142,7 +142,7 @@ const char *test_permuted_dense_DA_fill_values(void)
     permuted_dense *pd = (permuted_dense *) M;
     permuted_dense *pd_out = (permuted_dense *) M_out;
 
-    permuted_dense_DA_fill_values(d, pd, pd_out);
+    DA_pd_fill_values(d, pd, pd_out);
 
     /* Ground truth: build CSR_matrix of self, run DA_fill_values, compare. */
     CSR_matrix *csr = M->to_csr(M);
@@ -161,7 +161,7 @@ const char *test_permuted_dense_DA_fill_values(void)
 /* ATA_alloc: structure-only check. Output is 6x6 with a 2x2 dense block at
    perms {0, 3} (= self.col_perm on both sides). Values are uninitialized
    here; ATDA_fill_values is the value-producing op. */
-const char *test_permuted_dense_ATA_alloc(void)
+const char *test_ATA_pd_alloc(void)
 {
     int row_perm[3] = {1, 2, 4};
     int col_perm[2] = {0, 3};
@@ -170,7 +170,7 @@ const char *test_permuted_dense_ATA_alloc(void)
     matrix *M = new_permuted_dense(5, 6, 3, 2, row_perm, col_perm, X);
     permuted_dense *pd = (permuted_dense *) M;
 
-    matrix *M_ata = permuted_dense_ATA_alloc(pd);
+    matrix *M_ata = ATA_pd_alloc(pd);
     permuted_dense *pd_ata = (permuted_dense *) M_ata;
 
     int perm_expected[2] = {0, 3};
@@ -189,7 +189,7 @@ const char *test_permuted_dense_ATA_alloc(void)
 /* ATDA: same 5x6 PD, d with negative + zero entries to catch sign bugs.
    Hand-computed: d_perm = [-1.5, 0, 2.5], Y = diag(d_perm) X gives
    [[-1.5,-3],[0,0],[12.5,15]], and X^T Y = [[61,72],[72,84]]. */
-const char *test_permuted_dense_ATDA_fill_values(void)
+const char *test_ATDA_pd_fill_values(void)
 {
     int row_perm[3] = {1, 2, 4};
     int col_perm[2] = {0, 3};
@@ -199,9 +199,9 @@ const char *test_permuted_dense_ATDA_fill_values(void)
     matrix *M = new_permuted_dense(5, 6, 3, 2, row_perm, col_perm, X);
     permuted_dense *pd = (permuted_dense *) M;
 
-    matrix *M_out = permuted_dense_ATA_alloc(pd);
+    matrix *M_out = ATA_pd_alloc(pd);
     permuted_dense *pd_out = (permuted_dense *) M_out;
-    permuted_dense_ATDA_fill_values(pd, d, pd_out);
+    ATDA_pd_fill_values(pd, d, pd_out);
 
     double X_expected[4] = {61.0, 72.0, 72.0, 84.0};
     mu_assert("X", cmp_double_array(pd_out->X, X_expected, 4));
@@ -729,7 +729,7 @@ const char *test_permuted_dense_BTDA_decomposition(void)
     /* tmp has the same sparsity as A. */
     matrix *tmp_m = A_m->copy_sparsity(A_m);
     permuted_dense *tmp = (permuted_dense *) tmp_m;
-    permuted_dense_DA_fill_values(w, A, tmp);
+    DA_pd_fill_values(w, A, tmp);
 
     matrix *C_m = BTA_pd_pd_alloc(B, tmp);
     permuted_dense *C = (permuted_dense *) C_m;
