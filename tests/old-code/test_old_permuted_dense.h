@@ -61,8 +61,7 @@ const char *test_BTA_pd_csr_basic(void)
     double *A_d = (double *) calloc(4 * 5, sizeof(double));
     double *B_d = (double *) calloc(4 * 4, sizeof(double));
     for (int i = 0; i < A->m; i++)
-        for (int e = A->p[i]; e < A->p[i + 1]; e++)
-            A_d[i * 5 + A->i[e]] = A->x[e];
+        for (int e = A->p[i]; e < A->p[i + 1]; e++) A_d[i * 5 + A->i[e]] = A->x[e];
     for (int kk = 0; kk < B->m0; kk++)
         for (int jj = 0; jj < B->n0; jj++)
             B_d[B->row_perm[kk] * 4 + B->col_perm[jj]] = B->X[kk * B->n0 + jj];
@@ -235,8 +234,7 @@ const char *test_BTA_csr_pd_basic(void)
         for (int jj = 0; jj < A->n0; jj++)
             A_d[A->row_perm[kk] * 5 + A->col_perm[jj]] = A->X[kk * A->n0 + jj];
     for (int i = 0; i < B->m; i++)
-        for (int e = B->p[i]; e < B->p[i + 1]; e++)
-            B_d[i * 4 + B->i[e]] = B->x[e];
+        for (int e = B->p[i]; e < B->p[i + 1]; e++) B_d[i * 4 + B->i[e]] = B->x[e];
 
     double C_ref[4 * 5];
     memset(C_ref, 0, sizeof C_ref);

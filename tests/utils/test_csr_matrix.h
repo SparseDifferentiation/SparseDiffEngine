@@ -318,7 +318,8 @@ const char *test_sum_block_of_rows_csr(void)
 }
 const char *test_sum_evenly_spaced_rows_csr(void)
 {
-    /* Create a 9x4 CSR_matrix matrix A (same as test_sum_block_of_rows_csr) and sum evenly
+    /* Create a 9x4 CSR_matrix matrix A (same as test_sum_block_of_rows_csr) and sum
+    evenly
      * spaced rows With row_spacing=3:
 
 

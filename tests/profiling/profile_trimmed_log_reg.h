@@ -83,8 +83,8 @@ const char *profile_trimmed_log_reg(void)
 
     printf("\n");
     printf("trimmed_log_reg (m=%d, n=%d):\n", m, n);
-    printf("  jacobian = %10.6fs   hessian = %10.6fs  (avg over %d)\n",
-           sec_jac, sec_hess, N_HESS_ITERS);
+    printf("  jacobian = %10.6fs   hessian = %10.6fs  (avg over %d)\n", sec_jac,
+           sec_hess, N_HESS_ITERS);
 
     free_expr(obj);
     free(A_data);

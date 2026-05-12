@@ -32,7 +32,7 @@
    strictly increasing order; the constructor asserts this. */
 typedef struct permuted_dense
 {
-    matrix base;           /* base.m, base.n = global ambient dimensions */
+    matrix base;
     int m0;                /* rows of dense block (= len(row_perm))      */
     int n0;                /* cols of dense block (= len(col_perm))      */
     int *row_perm;         /* row_perm[ii] in [0, base.m), sorted        */

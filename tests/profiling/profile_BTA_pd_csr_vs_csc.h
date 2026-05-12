@@ -49,14 +49,23 @@ static void run_bench_one_density(int m, int n0_B, int n_A, int nnz_per_row,
             int c = rand() % n_A;
             int dup = 0;
             for (int k = 0; k < picked; k++)
-                if (cols[k] == c) { dup = 1; break; }
+                if (cols[k] == c)
+                {
+                    dup = 1;
+                    break;
+                }
             if (!dup) cols[picked++] = c;
         }
         /* Insertion sort to keep CSR column-index invariant. */
         for (int a = 1; a < nnz_per_row; a++)
         {
-            int v = cols[a]; int b = a - 1;
-            while (b >= 0 && cols[b] > v) { cols[b + 1] = cols[b]; b--; }
+            int v = cols[a];
+            int b = a - 1;
+            while (b >= 0 && cols[b] > v)
+            {
+                cols[b + 1] = cols[b];
+                b--;
+            }
             cols[b + 1] = v;
         }
         for (int k = 0; k < nnz_per_row; k++)
@@ -125,7 +134,7 @@ const char *profile_BTA_pd_csr_vs_csc(void)
 
     printf("\nBTA pd × sparse fill benchmark (m=%d, n0_B=%d, n_A=%d, %d iters):\n",
            m, n0_B, n_A, N_ITERS);
-    run_bench_one_density(m, n0_B, n_A,  1, N_ITERS, "leaf-var (1 nnz/row):");
+    run_bench_one_density(m, n0_B, n_A, 1, N_ITERS, "leaf-var (1 nnz/row):");
     run_bench_one_density(m, n0_B, n_A, 50, N_ITERS, "dense-ish (50 nnz/row):");
     return 0;
 }

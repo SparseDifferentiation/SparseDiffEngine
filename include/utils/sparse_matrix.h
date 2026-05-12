@@ -20,8 +20,8 @@
 
 #include "matrix.h"
 
-/* Sparse matrix wrapping CSR_matrix. csc_cache is a lazily-built CSC_matrix mirror used by
-   the chain-rule ATA / ATDA paths; it's allocated on first need and refilled
+/* Sparse matrix wrapping CSR_matrix. csc_cache is a lazily-built CSC_matrix mirror
+   used by the chain-rule ATA / ATDA paths; it's allocated on first need and refilled
    by refresh_csc_values. csc_iwork is the workspace for csr_to_csc. */
 typedef struct sparse_matrix
 {

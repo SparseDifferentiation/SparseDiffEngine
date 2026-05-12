@@ -133,10 +133,10 @@ typedef struct left_matmul_expr
     void (*refresh_param_values)(struct left_matmul_expr *);
 
     /* When true, jacobian_init_impl produces a permuted_dense node->jacobian
-       directly (skipping the CSC_matrix mirror machinery). Set by new_left_matmul_dense
-       when A is a constant dense matrix, child is a leaf variable, and
-       n_blocks == 1 — in that case the Jacobian is exactly A placed in the
-       variable's column slot, which is naturally a full-dense permuted_dense. */
+       directly (skipping the CSC_matrix mirror machinery). Set by
+       new_left_matmul_dense when A is a constant dense matrix, child is a leaf
+       variable, and n_blocks == 1 — in that case the Jacobian is exactly A placed in
+       the variable's column slot, which is naturally a full-dense permuted_dense. */
     bool produce_pd_jacobian;
 } left_matmul_expr;
 

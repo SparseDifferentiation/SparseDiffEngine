@@ -84,8 +84,8 @@ typedef struct matrix
        polymorphism). copy_sparsity returns a matrix of same shape and type as
        self; DA_fill_values writes diag(d) * self into out; ATA_alloc allocates
        a matrix with sparsity of self^T * self; ATDA_fill_values fills out with
-       self^T * diag(d) * self; to_csr returns a CSR_matrix view of self (constant-time
-       for sparse_matrix, lazily built/refreshed for other types). */
+       self^T * diag(d) * self; to_csr returns a CSR_matrix view of self
+       (constant-time for sparse_matrix, lazily built/refreshed for other types). */
     struct matrix *(*copy_sparsity)(const struct matrix *self);
     void (*DA_fill_values)(const double *d, const struct matrix *self,
                            struct matrix *out);
@@ -133,8 +133,8 @@ typedef struct matrix
     struct matrix *(*diag_vec_alloc)(struct matrix *self);
     void (*diag_vec_fill_values)(struct matrix *self, struct matrix *out);
 
-    /* Refresh any internal caches (e.g. a CSC_matrix mirror) so subsequent ATA / ATDA
-       calls reflect the current values. Atoms whose child Jacobian is affine
+    /* Refresh any internal caches (e.g. a CSC_matrix mirror) so subsequent ATA /
+       ATDA calls reflect the current values. Atoms whose child Jacobian is affine
        can skip this on iterations after the first; non-affine children must
        call it before every chain-rule call. No-op for types that don't have
        a cache (e.g. permuted_dense). */
