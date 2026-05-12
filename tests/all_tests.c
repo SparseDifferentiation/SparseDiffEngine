@@ -230,6 +230,7 @@ int main(void)
     mu_run_test(test_jacobian_convolve, tests_run);
     mu_run_test(test_jacobian_convolve_composite, tests_run);
     mu_run_test(test_jacobian_transpose, tests_run);
+    mu_run_test(test_jacobian_transpose_pd_preserved, tests_run);
     mu_run_test(test_diag_mat_jacobian_variable, tests_run);
     mu_run_test(test_diag_mat_jacobian_of_log, tests_run);
     mu_run_test(test_upper_tri_jacobian_variable, tests_run);

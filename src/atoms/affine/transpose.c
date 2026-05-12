@@ -16,9 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
-#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -46,45 +44,31 @@ static void jacobian_init_impl(expr *node)
 {
     expr *child = node->left;
     jacobian_init(child);
-    CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
-    CSR_matrix *J = new_CSR_matrix(node->size, node->n_vars, Jc->nnz);
 
-    /* fill sparsity */
+    int n_out = node->size;
     int d1 = node->d1;
     int d2 = node->d2;
-    int nnz = 0;
-    J->p[0] = 0;
 
-    /* 'k' is the old row that gets swapped to 'row'*/
-    int k, len;
-    for (int row = 0; row < J->m; ++row)
+    /* The transpose's Jacobian is a row permutation of the child's:
+       J_node[r, :] = J_child[k(r), :] where k(r) = (r/d1) + (r%d1)*d2. */
+    int *indices = (int *) SP_MALLOC(n_out * sizeof(int));
+    for (int r = 0; r < n_out; r++)
     {
-        k = (row / d1) + (row % d1) * d2;
-        len = Jc->p[k + 1] - Jc->p[k];
-        memcpy(J->i + nnz, Jc->i + Jc->p[k], len * sizeof(int));
-        nnz += len;
-        J->p[row + 1] = nnz;
+        indices[r] = (r / d1) + (r % d1) * d2;
     }
 
-    node->jacobian = new_sparse_matrix(J);
+    node->jacobian = child->jacobian->index_alloc(child->jacobian, indices, n_out);
+
+    /* save indices for eval_jacobian */
+    node->work->iwork = indices;
 }
 
 static void eval_jacobian(expr *node)
 {
     expr *child = node->left;
     child->eval_jacobian(child);
-    CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
-
-    int d1 = node->d1;
-    int d2 = node->d2;
-    int nnz = 0;
-    for (int row = 0; row < node->jacobian->m; ++row)
-    {
-        int k = (row / d1) + (row % d1) * d2;
-        int len = Jc->p[k + 1] - Jc->p[k];
-        memcpy(node->jacobian->x + nnz, Jc->x + Jc->p[k], len * sizeof(double));
-        nnz += len;
-    }
+    child->jacobian->index_fill_values(child->jacobian, node->work->iwork,
+                                       node->size, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
