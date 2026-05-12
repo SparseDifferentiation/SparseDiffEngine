@@ -561,8 +561,10 @@ void BTA_pd_pd_fill_values(const permuted_dense *A, const permuted_dense *B,
         return;
     }
 
-    /* find intersection of row permutations. We use C->iwork as the storage
-       for idx_A | idx_B (back-to-back) and grow it in place if too small */
+    // -----------------------------------------------------------------------
+    // find intersection of row permutations. We use C->iwork as the storage
+    // for idx_A | idx_B (back-to-back) and grow it in place if too small
+    // -----------------------------------------------------------------------
     int max_s = MIN(A->m0, B->m0);
     size_t needed = 2 * (size_t) max_s;
     if (C->iwork_size < needed)
@@ -577,9 +579,11 @@ void BTA_pd_pd_fill_values(const permuted_dense *A, const permuted_dense *B,
                                      idx_B);
     assert(s > 0);
 
-    /* Gather the matching rows into A->dwork and B->dwork (space is sufficient
-       since A->dwork has at least space for A's full block, and we only need part
-       of it. Same comment applies to B->dwork). */
+    // ------------------------------------------------------------------------
+    // Gather the matching rows into A->dwork and B->dwork (space is sufficient
+    // since A->dwork has at least space for A's full block, and we only need
+    // part of it. Same comment applies to B->dwork).
+    // ------------------------------------------------------------------------
     for (int k = 0; k < s; k++)
     {
         memcpy(A->dwork + k * A->n0, A->X + idx_A[k] * A->n0,
@@ -900,9 +904,7 @@ static inline bool idxs_hits_set(const int *idxs, int len, const int *inv)
 
 /* Inner product of a sparse vector (vals[0..len) at positions idxs[0..len))
    with a dense vector, where inv maps each idxs value to a position in
-   'dense' (inv[k] == -1 means skip that entry). Returns
-       Σ_e  vals[e] * dense[inv[idxs[e]]]
-   over e where inv[idxs[e]] != -1. */
+   'dense' (inv[k] == -1 means skip that entry). */
 static inline double sparse_dot_dense(const double *vals, const int *idxs, int len,
                                       const int *inv, const double *dense)
 {
@@ -910,7 +912,10 @@ static inline double sparse_dot_dense(const double *vals, const int *idxs, int l
     for (int e = 0; e < len; e++)
     {
         int kk = inv[idxs[e]];
-        if (kk == -1) continue;
+        if (kk == -1)
+        {
+            continue;
+        }
         sum += vals[e] * dense[kk];
     }
     return sum;
@@ -919,9 +924,9 @@ static inline double sparse_dot_dense(const double *vals, const int *idxs, int l
 matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
 {
     /* Cij != 0 if row i of B overlaps with column j of A. So we loop through
-    the columns of A. For each column of A, we check if it has any nonzeros in rows
-    that are in B's col_perm. If yes, column j of C will have a nonzero block
-    corresponding to the rows of B */
+    the columns of A. For each column of A, we check if it has any nonzeros in
+    rows that are in B's col_perm. If yes, column j of C will have a nonzero
+    block corresponding to the rows of B */
     iVec *col_perm_C = iVec_new(10);
     for (int j = 0; j < A->n; j++)
     {
@@ -954,10 +959,10 @@ void BA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
         for (int j = 0; j < C->n0; j++)
         {
 
-            /* we compute entry C[i, j] */
             int jj = C->col_perm[j];
             int start = A->p[jj];
             int len = A->p[jj + 1] - start;
+            /* we compute entry C[i, j] */
             ci[j] = sparse_dot_dense(A->x + start, A->i + start, len, B->col_inv,
                                      B->X + i * B->n0);
         }
