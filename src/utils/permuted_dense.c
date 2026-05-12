@@ -671,50 +671,6 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
     return C;
 }
 
-/* Note: when B_csr is a leaf-variable Jacobian (each row has a single entry
-   at column var_id + k, value 1), B_sub_dense is an identity matrix and
-   the dgemm reduces to X_C = X_A — a pure copy with no multiplication
-   needed. A fast path can detect this and skip the dgemm; deferred until a
-   workload shows the savings matter. */
-void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
-                            permuted_dense *C)
-{
-    int m0 = A->m0;
-    int dn_A = A->n0;
-    int r_B = C->m0;
-
-    if (r_B == 0 || m0 == 0)
-    {
-        /* Output dense block is empty; nothing to fill. */
-        return;
-    }
-
-    /* Use C->row_inv (pre-built by new_permuted_dense) as row_inv_out and
-       C->dwork as B_sub_dense; both are owned by C. dwork is sized at alloc
-       time to cover m0 * r_B; only that prefix is touched. */
-    double *B_sub_dense = C->dwork;
-    size_t used = m0 * r_B;
-    memset(B_sub_dense, 0, used * sizeof(double));
-
-    for (int kk = 0; kk < m0; kk++)
-    {
-        int row = A->row_perm[kk];
-        for (int e = B_csr->p[row]; e < B_csr->p[row + 1]; e++)
-        {
-            int i = B_csr->i[e];
-            int ii = C->row_inv[i];
-            if (ii >= 0)
-            {
-                B_sub_dense[kk * r_B + ii] = B_csr->x[e];
-            }
-        }
-    }
-
-    /* C->X = B_sub_dense^T @ X_A */
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, r_B, dn_A, m0, 1.0,
-                B_sub_dense, r_B, A->X, dn_A, 0.0, C->X, dn_A);
-}
-
 /* BTDA variant of BTA_csr_pd: C->X = B_sub_dense^T diag(d) X_A. Folds d
    into the scatter step. */
 void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
@@ -835,14 +791,12 @@ void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
     }
 }
 
-/* C = B^T @ A where A is Sparse (CSC) and B is PD. Same output structure as
-   BTA_pd_csr_alloc — built directly by scanning A's CSC columns with
-   idxs_hits_set against row_perm_B. */
 matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
 {
-    /* col_active[jj] is set of columns j of A whose nonzero pattern hits
-       at least one row in row_perm_B. col_inv built against row_perm_B
-       via B->row_inv. */
+    /* Cij != 0 if column i of B overlaps with column j of A. So we loop
+    through the columns of A. For each column of A, we check if it has any
+    nonzeros in rows that are in B's row_perm. If yes, column j of C will
+    have a nonzero block corresponding to the columns of B */
     iVec *col_active = iVec_new(8);
     for (int j = 0; j < A->n; j++)
     {
@@ -854,9 +808,6 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
         }
     }
 
-    /* Same shape and permutations as BTA_pd_csr_alloc:
-       shape (B->base.n, A->n), m0 = B->n0, n0 = |col_active|,
-       row_perm = B->col_perm, col_perm = col_active. */
     matrix *C = new_permuted_dense(B->base.n, A->n, B->n0, col_active->len,
                                    B->col_perm, col_active->data, NULL);
     iVec_free(col_active);

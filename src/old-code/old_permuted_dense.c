@@ -153,3 +153,46 @@ void BTDA_pd_csr_fill_values(const permuted_dense *B, const double *d,
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, dn_B, s_A, m0, 1.0, B->X,
                 dn_B, A_sub_dense, s_A, 0.0, C->X, s_A);
 }
+
+/* No-d BTA fill for the production CSR-pd kernel (B=CSR, A=PD). Moved out
+   of src/utils/permuted_dense.c because production always supplies
+   chain-rule weights through BTDA_csr_pd_fill_values; kept here for the
+   direct unit tests in tests/old-code/test_old_permuted_dense.h. */
+void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
+                            permuted_dense *C)
+{
+    int m0 = A->m0;
+    int dn_A = A->n0;
+    int r_B = C->m0;
+
+    if (r_B == 0 || m0 == 0)
+    {
+        /* Output dense block is empty; nothing to fill. */
+        return;
+    }
+
+    /* Use C->row_inv (pre-built by new_permuted_dense) as row_inv_out and
+       C->dwork as B_sub_dense; both are owned by C. dwork is sized at alloc
+       time to cover m0 * r_B; only that prefix is touched. */
+    double *B_sub_dense = C->dwork;
+    size_t used = m0 * r_B;
+    memset(B_sub_dense, 0, used * sizeof(double));
+
+    for (int kk = 0; kk < m0; kk++)
+    {
+        int row = A->row_perm[kk];
+        for (int e = B_csr->p[row]; e < B_csr->p[row + 1]; e++)
+        {
+            int i = B_csr->i[e];
+            int ii = C->row_inv[i];
+            if (ii >= 0)
+            {
+                B_sub_dense[kk * r_B + ii] = B_csr->x[e];
+            }
+        }
+    }
+
+    /* C->X = B_sub_dense^T @ X_A */
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, r_B, dn_A, m0, 1.0,
+                B_sub_dense, r_B, A->X, dn_A, 0.0, C->X, dn_A);
+}

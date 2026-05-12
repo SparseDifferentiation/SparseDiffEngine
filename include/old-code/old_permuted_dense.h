@@ -52,4 +52,12 @@ void BTA_pd_csr_fill_values(const permuted_dense *B, const CSR_matrix *A,
 void BTDA_pd_csr_fill_values(const permuted_dense *B, const double *d,
                              const CSR_matrix *A, permuted_dense *C);
 
+/* Legacy no-d BTA fill for the production CSR-pd kernel (B=CSR, A=PD).
+   Production path always supplies chain-rule weights via
+   BTDA_csr_pd_fill_values (in src/utils/permuted_dense.c); the no-d variant
+   is kept here for the direct unit tests in tests/old-code. C must have the
+   structure produced by BTA_csr_pd_alloc (declared in utils/permuted_dense.h). */
+void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
+                            permuted_dense *C);
+
 #endif /* OLD_PERMUTED_DENSE_H */

@@ -103,7 +103,13 @@ matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A);
 void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
                            permuted_dense *C);
 
-/* Allocate new permuted dense for C = B @ A where B is PD and A is CSC */
+/* Fill values of C = BT @ diag(d) @ A where A and B are both permuted dense. */
+void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
+                            const permuted_dense *A, permuted_dense *C);
+
+/* Allocate new permuted dense for C = B @ A where B is PD and A is CSC.
+   This function is currently never used in production, but we keep it
+   here because it is simple and might be useful in the future. */
 matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 
 /* Fill values of C = B @ A where B is value buffer to permuted dense and A is CSC.
@@ -114,6 +120,13 @@ matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
                            const CSC_matrix *A, permuted_dense *C);
 
+/* Allocate new permuted dense for C = B^T @ A where B is PD and A is CSC */
+matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
+
+/* Fill values of C = B^T @ diag(d) @ A where B is PD and A is CSC */
+void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
+                             const CSC_matrix *A, permuted_dense *C);
+
 // ------------------- OK SO FAR
 
 /* Allocate a new permuted_dense for C = B^T @ A where B is Sparse (CSR_matrix)
@@ -122,29 +135,12 @@ void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
    Dense block size = (|row_active|, n0_A). Values uninitialized. */
 matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A);
 
-/* Fill C->X = B_sub^T @ X_A, where B_sub is B's rows at positions
-   row_perm_A, columns restricted to C's row_perm, scattered to a dense
-   buffer. C must have the structure produced by BTA_csr_pd_alloc(B, A). */
-void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
-                            permuted_dense *C);
-
 /* BTDA variants — fold a diagonal d into the BTA computation. Each fills
    C->X = B^T diag(d) A (d may be NULL for plain B^T A). C must have the
-   structure produced by the corresponding BTA *_alloc function. */
+   structure produced by the corresponding BTA *_alloc function.
+   The no-d BTA_csr_pd_fill_values variant is unused in production; the
+   legacy version lives in include/old-code/old_permuted_dense.h. */
 void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
                              const permuted_dense *A, permuted_dense *C);
-void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
-                            const permuted_dense *A, permuted_dense *C);
-
-/* CSC-based (PD, Sparse) BTA / BTDA kernels — production path. Alloc is a
-   single pass over A's CSC columns; the fill kernel transposes B's dense
-   block into B->dwork (folding d in) and delegates to
-   BA_pd_csc_fill_values. d MUST be non-NULL — production callers always
-   supply chain-rule weights; for plain B^T A pass d = {1, 1, …, 1}.
-   See include/old-code/old_permuted_dense.h for the legacy CSR equivalents
-   kept as reference implementations. */
-matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
-void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
-                             const CSC_matrix *A, permuted_dense *C);
 
 #endif /* PERMUTED_DENSE_H */
