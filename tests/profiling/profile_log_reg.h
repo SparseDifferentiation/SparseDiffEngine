@@ -16,9 +16,9 @@
 
 /* Profile and validate Jacobian + Hessian of obj = sum(logistic(A x)).
 
-   Path A: the engine's expression DAG (CSR/CSC chain rule).
-   Path B: hardcoded chain rule using Permuted_Dense kernels for the dense
-           linear algebra (DA and ATDA), plus the engine's CSR row-sum
+   Path A: the engine's expression DAG (CSR_matrix/CSC_matrix chain rule).
+   Path B: hardcoded chain rule using permuted_dense kernels for the dense
+           linear algebra (DA and ATDA), plus the engine's CSR_matrix row-sum
            primitives for J_sum.
 
    Forward pass is excluded from timing. */
@@ -69,19 +69,19 @@ const char *profile_log_reg(void)
     for (int i = 0; i < m; i++) full_rows[i] = i;
     for (int j = 0; j < n; j++) full_cols[j] = j;
 
-    Matrix *A_pd_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, A_data);
-    Permuted_Dense *A_pd = (Permuted_Dense *) A_pd_M;
-    Matrix *Jlog_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, NULL);
-    Permuted_Dense *Jlog_pd = (Permuted_Dense *) Jlog_M;
-    Matrix *H_pd_M = permuted_dense_ATA_alloc(A_pd);
-    Permuted_Dense *H_pd = (Permuted_Dense *) H_pd_M;
+    matrix *A_pd_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, A_data);
+    permuted_dense *A_pd = (permuted_dense *) A_pd_M;
+    matrix *Jlog_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, NULL);
+    permuted_dense *Jlog_pd = (permuted_dense *) Jlog_M;
+    matrix *H_pd_M = permuted_dense_ATA_alloc(A_pd);
+    permuted_dense *H_pd = (permuted_dense *) H_pd_M;
 
     free(full_rows);
     free(full_cols);
 
-    /* CSR scaffolding for the row-sum step (PD owns the cached CSR view). */
-    CSR_Matrix *Jlog_csr = Jlog_M->to_csr(Jlog_M);
-    CSR_Matrix *Jobj_csr = new_csr_matrix(1, n, n);
+    /* CSR_matrix scaffolding for the row-sum step (PD owns the cached CSR_matrix view). */
+    CSR_matrix *Jlog_csr = Jlog_M->to_csr(Jlog_M);
+    CSR_matrix *Jobj_csr = new_csr_matrix(1, n, n);
     int *iwork = (int *) malloc((size_t) m * n * sizeof(int));
     int *idx_map = (int *) malloc((size_t) m * n * sizeof(int));
     sum_all_rows_csr_alloc(Jlog_csr, Jobj_csr, iwork, idx_map);
@@ -110,16 +110,16 @@ const char *profile_log_reg(void)
 
     printf("\n");
     printf("                            Jacobian      Hessian        Total\n");
-    printf("  Path A (engine CSR/CSC): %10.6fs  %10.6fs  %10.6fs\n", sec_a_jac,
+    printf("  Path A (engine CSR_matrix/CSC_matrix): %10.6fs  %10.6fs  %10.6fs\n", sec_a_jac,
            sec_a_hess, sec_a_jac + sec_a_hess);
-    printf("  Path B (Permuted_Dense): %10.6fs  %10.6fs  %10.6fs\n", sec_b_jac,
+    printf("  Path B (permuted_dense): %10.6fs  %10.6fs  %10.6fs\n", sec_b_jac,
            sec_b_hess, sec_b_jac + sec_b_hess);
     printf("  Speedup (A / B):         %10.2fx %10.2fx %10.2fx\n",
            sec_a_jac / sec_b_jac, sec_a_hess / sec_b_hess,
            (sec_a_jac + sec_a_hess) / (sec_b_jac + sec_b_hess));
 
     /* ---- Compare Jacobian (1 x n, both have full sparsity) ---- */
-    CSR_Matrix *J_a = obj->jacobian->to_csr(obj->jacobian);
+    CSR_matrix *J_a = obj->jacobian->to_csr(obj->jacobian);
     mu_assert("J n mismatch", J_a->n == Jobj_csr->n);
     mu_assert("J nnz mismatch", J_a->nnz == Jobj_csr->nnz);
     double max_J_diff = 0.0;
@@ -131,12 +131,12 @@ const char *profile_log_reg(void)
     printf("  Jacobian max abs diff:   %10.3e\n", max_J_diff);
     mu_assert("Jacobian mismatch", max_J_diff < 1e-10);
 
-    /* ---- Compare Hessian (n x n): scatter Path A's CSR into a dense
+    /* ---- Compare Hessian (n x n): scatter Path A's CSR_matrix into a dense
        n x n array, compare to H_pd->X (already dense row-major).
-       Extract the CSR view ONCE: PD's to_csr does an O(dense_m * dense_n)
+       Extract the CSR_matrix view ONCE: PD's to_csr does an O(m0 * n0)
        memcpy refresh per call, so calling it inside the inner loop is
        quadratically expensive. ---- */
-    CSR_Matrix *H_a = obj->wsum_hess->to_csr(obj->wsum_hess);
+    CSR_matrix *H_a = obj->wsum_hess->to_csr(obj->wsum_hess);
     double *H_a_dense = (double *) calloc((size_t) n * n, sizeof(double));
     for (int i = 0; i < n; i++)
     {

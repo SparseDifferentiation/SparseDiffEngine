@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "utils/matrix_sum.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>

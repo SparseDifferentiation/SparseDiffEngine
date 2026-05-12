@@ -31,7 +31,7 @@ const char *test_jacobian_prod_axis_zero(void)
     jacobian_init(p);
     p->eval_jacobian(p);
 
-    /* CSR format for 3x8 Jacobian with block diagonal structure */
+    /* CSR_matrix format for 3x8 Jacobian with block diagonal structure */
     double expected_Ax[6] = {2.0, 1.0, 4.0, 3.0, 6.0, 5.0};
     int expected_Ap[4] = {0, 2, 4, 6};
     int expected_Ai[6] = {1, 2, 3, 4, 5, 6};

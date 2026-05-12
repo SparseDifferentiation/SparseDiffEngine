@@ -17,8 +17,8 @@ const char *test_jacobian_right_matmul_log(void)
     double x_vals[4] = {1.0, 3.0, 2.0, 4.0}; // column-wise vectorization
     expr *x = new_variable(2, 2, 0, 4);
 
-    /* Create sparse matrix A in CSR format (2x3) */
-    CSR_Matrix *A = new_csr_matrix(2, 3, 4);
+    /* Create sparse matrix A in CSR_matrix format (2x3) */
+    CSR_matrix *A = new_csr_matrix(2, 3, 4);
     int A_p[3] = {0, 2, 4};
     int A_i[4] = {0, 2, 0, 2};
     double A_x[4] = {1.0, 2.0, 3.0, 4.0};
@@ -66,8 +66,8 @@ const char *test_jacobian_right_matmul_log_vector(void)
     double x_vals[3] = {1.0, 2.0, 3.0};
     expr *x = new_variable(1, 3, 0, 3);
 
-    /* Create sparse matrix A in CSR format (3x2) */
-    CSR_Matrix *A = new_csr_matrix(3, 2, 4);
+    /* Create sparse matrix A in CSR_matrix format (3x2) */
+    CSR_matrix *A = new_csr_matrix(3, 2, 4);
     int A_p[4] = {0, 1, 3, 4};
     int A_i[4] = {0, 0, 1, 1};
     double A_x[4] = {1.0, 2.0, 3.0, 4.0};

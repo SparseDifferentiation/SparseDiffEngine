@@ -10,7 +10,7 @@ const char *test_upper_tri_jacobian_variable(void)
 {
     /* upper_tri of a 4x4 variable (16 vars total)
      * Row-major upper tri indices: [4, 8, 12, 9, 13, 14]
-     * Jacobian is 6x16 CSR: row k has a single 1.0 at col indices[k] */
+     * Jacobian is 6x16 CSR_matrix: row k has a single 1.0 at col indices[k] */
     double u[16];
     for (int k = 0; k < 16; k++)
     {

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/int_double_pair.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
@@ -25,9 +25,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
+CSR_matrix *new_csr_matrix(int m, int n, int nnz)
 {
-    CSR_Matrix *matrix = (CSR_Matrix *) SP_MALLOC(sizeof(CSR_Matrix));
+    CSR_matrix *matrix = (CSR_matrix *) SP_MALLOC(sizeof(CSR_matrix));
     matrix->p = (int *) SP_CALLOC(m + 1, sizeof(int));
     matrix->i = (int *) SP_CALLOC(nnz, sizeof(int));
     matrix->x = (double *) SP_MALLOC(nnz * sizeof(double));
@@ -37,24 +37,24 @@ CSR_Matrix *new_csr_matrix(int m, int n, int nnz)
     return matrix;
 }
 
-CSR_Matrix *new_csr(const CSR_Matrix *A)
+CSR_matrix *new_csr(const CSR_matrix *A)
 {
-    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
     memcpy(copy->x, A->x, A->nnz * sizeof(double));
     return copy;
 }
 
-CSR_Matrix *new_csr_copy_sparsity(const CSR_Matrix *A)
+CSR_matrix *new_csr_copy_sparsity(const CSR_matrix *A)
 {
-    CSR_Matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *copy = new_csr_matrix(A->m, A->n, A->nnz);
     memcpy(copy->p, A->p, (A->m + 1) * sizeof(int));
     memcpy(copy->i, A->i, A->nnz * sizeof(int));
     return copy;
 }
 
-void free_csr_matrix(CSR_Matrix *matrix)
+void free_csr_matrix(CSR_matrix *matrix)
 {
     if (matrix)
     {
@@ -65,7 +65,7 @@ void free_csr_matrix(CSR_Matrix *matrix)
     }
 }
 
-void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C)
+void copy_csr_matrix(const CSR_matrix *A, CSR_matrix *C)
 {
     C->m = A->m;
     C->n = A->n;
@@ -75,7 +75,7 @@ void copy_csr_matrix(const CSR_Matrix *A, CSR_Matrix *C)
     memcpy(C->x, A->x, A->nnz * sizeof(double));
 }
 
-void Ax_csr(const CSR_Matrix *A, const double *x, double *y, int col_offset)
+void Ax_csr(const CSR_matrix *A, const double *x, double *y, int col_offset)
 {
     for (int row = 0; row < A->m; row++)
     {
@@ -88,7 +88,7 @@ void Ax_csr(const CSR_Matrix *A, const double *x, double *y, int col_offset)
     }
 }
 
-int count_nonzero_cols(const CSR_Matrix *A, bool *col_nz)
+int count_nonzero_cols(const CSR_matrix *A, bool *col_nz)
 {
     for (int row = 0; row < A->m; row++)
     {
@@ -120,7 +120,7 @@ void insert_idx(int idx, int *arr, int len)
     arr[j] = idx;
 }
 
-void DA_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
+void DA_fill_values(const double *d, const CSR_matrix *A, CSR_matrix *C)
 {
     memcpy(C->x, A->x, A->nnz * sizeof(double));
 
@@ -133,9 +133,9 @@ void DA_fill_values(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
     }
 }
 
-CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
+CSR_matrix *transpose(const CSR_matrix *A, int *iwork)
 {
-    CSR_Matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
+    CSR_matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -178,10 +178,10 @@ CSR_Matrix *transpose(const CSR_Matrix *A, int *iwork)
     return AT;
 }
 
-CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork)
+CSR_matrix *AT_alloc(const CSR_matrix *A, int *iwork)
 {
     /* Allocate A^T and compute sparsity pattern without filling values */
-    CSR_Matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
+    CSR_matrix *AT = new_csr_matrix(A->n, A->m, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -223,7 +223,7 @@ CSR_Matrix *AT_alloc(const CSR_Matrix *A, int *iwork)
     return AT;
 }
 
-void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
+void AT_fill_values(const CSR_matrix *A, CSR_matrix *AT, int *iwork)
 {
     /* Fill values of A^T given sparsity pattern is already computed */
     int i, j;
@@ -241,7 +241,7 @@ void AT_fill_values(const CSR_Matrix *A, CSR_Matrix *AT, int *iwork)
     }
 }
 
-double csr_get_value(const CSR_Matrix *A, int row, int col)
+double csr_get_value(const CSR_matrix *A, int row, int col)
 {
     for (int j = A->p[row]; j < A->p[row + 1]; j++)
     {
@@ -253,7 +253,7 @@ double csr_get_value(const CSR_Matrix *A, int row, int col)
     return 0.0;
 }
 
-void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_Matrix *C)
+void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_matrix *C)
 {
     int i, j, col;
 

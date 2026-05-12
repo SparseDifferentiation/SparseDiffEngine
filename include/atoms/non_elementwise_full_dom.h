@@ -20,9 +20,9 @@
 
 #include "expr.h"
 #include "subexpr.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 
-expr *new_quad_form(expr *child, CSR_Matrix *Q);
+expr *new_quad_form(expr *child, CSR_matrix *Q);
 
 /* product of all entries, without axis argument */
 expr *new_prod(expr *child);

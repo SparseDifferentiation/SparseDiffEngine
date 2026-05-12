@@ -83,10 +83,10 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
     int *cols = iwork;
     int *col_to_pos = iwork; /* reused after qsort */
     int nnz = 0;
-    CSR_Matrix *H_obj =
+    CSR_matrix *H_obj =
         prob->objective->wsum_hess->to_csr(prob->objective->wsum_hess);
-    CSR_Matrix *H_c;
-    CSR_Matrix *H = prob->lagrange_hessian;
+    CSR_matrix *H_c;
+    CSR_matrix *H = prob->lagrange_hessian;
     H->p[0] = 0;
 
     // ----------------------------------------------------------------------
@@ -177,7 +177,7 @@ void problem_init_jacobian(problem *prob)
     {
         expr *c = prob->constraints[i];
         jacobian_init(c);
-        CSR_Matrix *Jc = c->jacobian->to_csr(c->jacobian);
+        CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
         nnz += Jc->nnz;
 
         if (c->is_affine(c))
@@ -193,14 +193,14 @@ void problem_init_jacobian(problem *prob)
     prob->jacobian = new_csr_matrix(prob->total_constraint_size, prob->n_vars, nnz);
 
     /* set sparsity pattern of jacobian */
-    CSR_Matrix *H = prob->jacobian;
+    CSR_matrix *H = prob->jacobian;
     H->p[0] = 0;
     int row_offset = 0;
     int nnz_offset = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-        CSR_Matrix *Jc = c->jacobian->to_csr(c->jacobian);
+        CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
 
         for (int r = 1; r <= Jc->m; r++)
         {
@@ -469,7 +469,7 @@ void problem_gradient(problem *prob)
 
     /* copy sparse jacobian to dense gradient */
     memset(prob->gradient_values, 0, prob->n_vars * sizeof(double));
-    CSR_Matrix *jac = prob->objective->jacobian->to_csr(prob->objective->jacobian);
+    CSR_matrix *jac = prob->objective->jacobian->to_csr(prob->objective->jacobian);
     for (int k = jac->p[0]; k < jac->p[1]; k++)
     {
         prob->gradient_values[jac->i[k]] = jac->x[k];
@@ -485,7 +485,7 @@ void problem_jacobian(problem *prob)
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     bool first_call = !prob->jacobian_called;
 
-    CSR_Matrix *J = prob->jacobian;
+    CSR_matrix *J = prob->jacobian;
     int nnz_offset = 0;
 
     for (int i = 0; i < prob->n_constraints; i++)
@@ -539,7 +539,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     // ------------------------------------------------------------------------
     //           assemble Lagrange hessian using index map
     // ------------------------------------------------------------------------
-    CSR_Matrix *H = prob->lagrange_hessian;
+    CSR_matrix *H = prob->lagrange_hessian;
     int *idx_map = prob->hess_idx_map;
 
     /* zero out hessian before adding contribution from obj and constraints */
@@ -552,7 +552,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     /* accumulate constraint functions */
     for (int i = 0; i < prob->n_constraints; i++)
     {
-        Matrix *c_hess = constrs[i]->wsum_hess;
+        matrix *c_hess = constrs[i]->wsum_hess;
         accumulator(c_hess->x, c_hess->nnz, idx_map + offset, H->x);
         offset += c_hess->nnz;
     }

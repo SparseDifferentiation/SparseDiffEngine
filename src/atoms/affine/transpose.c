@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -45,8 +46,8 @@ static void jacobian_init_impl(expr *node)
 {
     expr *child = node->left;
     jacobian_init(child);
-    CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
-    CSR_Matrix *J = new_csr_matrix(node->size, node->n_vars, Jc->nnz);
+    CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
+    CSR_matrix *J = new_csr_matrix(node->size, node->n_vars, Jc->nnz);
 
     /* fill sparsity */
     int d1 = node->d1;
@@ -72,7 +73,7 @@ static void eval_jacobian(expr *node)
 {
     expr *child = node->left;
     child->eval_jacobian(child);
-    CSR_Matrix *Jc = child->jacobian->to_csr(child->jacobian);
+    CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
 
     int d1 = node->d1;
     int d2 = node->d2;

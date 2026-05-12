@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>

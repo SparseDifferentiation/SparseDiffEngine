@@ -15,7 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "utils/CSC_Matrix.h"
+#include "utils/sparse_matrix.h"
+
+#include "utils/CSC_matrix.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/matrix.h"
 #include "utils/mini_numpy.h"
@@ -23,30 +25,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void sparse_block_left_mult_vec(const Matrix *self, const double *x,
+static void sparse_block_left_mult_vec(const matrix *self, const double *x,
                                        double *y, int p)
 {
-    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
     block_left_multiply_vec(sm->csr, x, y, p);
 }
 
-static CSC_Matrix *sparse_block_left_mult_sparsity(const Matrix *self,
-                                                   const CSC_Matrix *J, int p)
+static CSC_matrix *sparse_block_left_mult_sparsity(const matrix *self,
+                                                   const CSC_matrix *J, int p)
 {
-    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
     return block_left_multiply_fill_sparsity(sm->csr, J, p);
 }
 
-static void sparse_block_left_mult_values(const Matrix *self, const CSC_Matrix *J,
-                                          CSC_Matrix *C)
+static void sparse_block_left_mult_values(const matrix *self, const CSC_matrix *J,
+                                          CSC_matrix *C)
 {
-    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
     block_left_multiply_fill_values(sm->csr, J, C);
 }
 
-static void sparse_free(Matrix *self)
+static void sparse_free(matrix *self)
 {
-    Sparse_Matrix *sm = (Sparse_Matrix *) self;
+    sparse_matrix *sm = (sparse_matrix *) self;
     free_csr_matrix(sm->csr);
     free_csc_matrix(sm->csc_cache);
     free(sm->csc_iwork);
@@ -54,61 +56,61 @@ static void sparse_free(Matrix *self)
 }
 
 /* Forward decl: ctor is referenced by copy_sparsity below. */
-Matrix *new_sparse_matrix(CSR_Matrix *A);
+matrix *new_sparse_matrix(CSR_matrix *A);
 
-/* Build the CSC cache structure if absent. Values are NOT filled here; caller
+/* Build the CSC_matrix cache structure if absent. Values are NOT filled here; caller
    must call refresh_csc_values before consuming. ATA_alloc only needs structure,
    so it's safe to call after build_csc_structure alone. */
-static void build_csc_structure_if_absent(Sparse_Matrix *sm)
+static void build_csc_structure_if_absent(sparse_matrix *sm)
 {
     if (sm->csc_cache != NULL) return;
     sm->csc_iwork = (int *) SP_MALLOC(sm->csr->n * sizeof(int));
     sm->csc_cache = csr_to_csc_alloc(sm->csr, sm->csc_iwork);
 }
 
-static Matrix *sparse_copy_sparsity(const Matrix *self)
+static matrix *sparse_copy_sparsity(const matrix *self)
 {
-    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
     return new_sparse_matrix(new_csr_copy_sparsity(sm->csr));
 }
 
-static void sparse_DA_fill_values(const double *d, const Matrix *self, Matrix *out)
+static void sparse_DA_fill_values(const double *d, const matrix *self, matrix *out)
 {
-    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
-    Sparse_Matrix *sm_out = (Sparse_Matrix *) out;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
+    sparse_matrix *sm_out = (sparse_matrix *) out;
     DA_fill_values(d, sm->csr, sm_out->csr);
 }
 
-static Matrix *sparse_ATA_alloc(Matrix *self)
+static matrix *sparse_ATA_alloc(matrix *self)
 {
-    Sparse_Matrix *sm = (Sparse_Matrix *) self;
+    sparse_matrix *sm = (sparse_matrix *) self;
     build_csc_structure_if_absent(sm);
     return new_sparse_matrix(ATA_alloc(sm->csc_cache));
 }
 
 /* Caller must have called refresh_csc_values since the last change to csr->x. */
-static void sparse_ATDA_fill_values(const Matrix *self, const double *d, Matrix *out)
+static void sparse_ATDA_fill_values(const matrix *self, const double *d, matrix *out)
 {
-    const Sparse_Matrix *sm = (const Sparse_Matrix *) self;
-    Sparse_Matrix *sm_out = (Sparse_Matrix *) out;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
+    sparse_matrix *sm_out = (sparse_matrix *) out;
     ATDA_fill_values(sm->csc_cache, d, sm_out->csr);
 }
 
-static CSR_Matrix *sparse_to_csr(Matrix *self)
+static CSR_matrix *sparse_to_csr(matrix *self)
 {
-    return ((Sparse_Matrix *) self)->csr;
+    return ((sparse_matrix *) self)->csr;
 }
 
-static struct Permuted_Dense *sparse_as_permuted_dense(Matrix *self)
+static struct permuted_dense *sparse_as_permuted_dense(matrix *self)
 {
     (void) self;
     return NULL;
 }
 
-static Matrix *sparse_index_alloc(Matrix *self, const int *indices, int n_idxs)
+static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
-    CSR_Matrix *J = new_csr_matrix(n_idxs, self->n, Jx->nnz);
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
+    CSR_matrix *J = new_csr_matrix(n_idxs, self->n, Jx->nnz);
 
     J->p[0] = 0;
     for (int i = 0; i < n_idxs; i++)
@@ -122,11 +124,11 @@ static Matrix *sparse_index_alloc(Matrix *self, const int *indices, int n_idxs)
     return new_sparse_matrix(J);
 }
 
-static void sparse_index_fill_values(Matrix *self, const int *indices, int n_idxs,
-                                     Matrix *out)
+static void sparse_index_fill_values(matrix *self, const int *indices, int n_idxs,
+                                     matrix *out)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
-    CSR_Matrix *J = ((Sparse_Matrix *) out)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
+    CSR_matrix *J = ((sparse_matrix *) out)->csr;
     for (int i = 0; i < n_idxs; i++)
     {
         int len = J->p[i + 1] - J->p[i];
@@ -134,11 +136,11 @@ static void sparse_index_fill_values(Matrix *self, const int *indices, int n_idx
     }
 }
 
-static Matrix *sparse_promote_alloc(Matrix *self, int size)
+static matrix *sparse_promote_alloc(matrix *self, int size)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     int row_nnz = Jx->nnz;
-    CSR_Matrix *J = new_csr_matrix(size, self->n, size * row_nnz);
+    CSR_matrix *J = new_csr_matrix(size, self->n, size * row_nnz);
 
     for (int row = 0; row < size; row++)
     {
@@ -150,9 +152,9 @@ static Matrix *sparse_promote_alloc(Matrix *self, int size)
     return new_sparse_matrix(J);
 }
 
-static void sparse_promote_fill_values(Matrix *self, Matrix *out)
+static void sparse_promote_fill_values(matrix *self, matrix *out)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     int row_nnz = Jx->nnz;
     for (int row = 0; row < out->m; row++)
     {
@@ -160,10 +162,10 @@ static void sparse_promote_fill_values(Matrix *self, Matrix *out)
     }
 }
 
-static Matrix *sparse_broadcast_alloc(Matrix *self, broadcast_type type, int d1,
+static matrix *sparse_broadcast_alloc(matrix *self, broadcast_type type, int d1,
                                       int d2)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     int out_m = d1 * d2;
     int total_nnz;
     if (type == BROADCAST_ROW)
@@ -179,7 +181,7 @@ static Matrix *sparse_broadcast_alloc(Matrix *self, broadcast_type type, int d1,
         total_nnz = Jx->nnz * out_m;
     }
 
-    CSR_Matrix *J = new_csr_matrix(out_m, self->n, total_nnz);
+    CSR_matrix *J = new_csr_matrix(out_m, self->n, total_nnz);
 
     if (type == BROADCAST_ROW)
     {
@@ -224,10 +226,10 @@ static Matrix *sparse_broadcast_alloc(Matrix *self, broadcast_type type, int d1,
     return new_sparse_matrix(J);
 }
 
-static void sparse_broadcast_fill_values(Matrix *self, broadcast_type type, int d1,
-                                         int d2, Matrix *out)
+static void sparse_broadcast_fill_values(matrix *self, broadcast_type type, int d1,
+                                         int d2, matrix *out)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     if (type == BROADCAST_ROW)
     {
         int acc = 0;
@@ -248,12 +250,12 @@ static void sparse_broadcast_fill_values(Matrix *self, broadcast_type type, int 
     }
 }
 
-static Matrix *sparse_diag_vec_alloc(Matrix *self)
+static matrix *sparse_diag_vec_alloc(matrix *self)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
     int n = self->m;
     int out_m = n * n;
-    CSR_Matrix *J = new_csr_matrix(out_m, self->n, Jx->nnz);
+    CSR_matrix *J = new_csr_matrix(out_m, self->n, Jx->nnz);
 
     int nnz = 0;
     int next_diag = 0;
@@ -274,10 +276,10 @@ static Matrix *sparse_diag_vec_alloc(Matrix *self)
     return new_sparse_matrix(J);
 }
 
-static void sparse_diag_vec_fill_values(Matrix *self, Matrix *out)
+static void sparse_diag_vec_fill_values(matrix *self, matrix *out)
 {
-    CSR_Matrix *Jx = ((Sparse_Matrix *) self)->csr;
-    CSR_Matrix *J = ((Sparse_Matrix *) out)->csr;
+    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
+    CSR_matrix *J = ((sparse_matrix *) out)->csr;
     int n = self->m;
     for (int i = 0; i < n; i++)
     {
@@ -287,15 +289,15 @@ static void sparse_diag_vec_fill_values(Matrix *self, Matrix *out)
     }
 }
 
-/* Build CSC structure on first call; refill values from csr->x on every call. */
-static void sparse_refresh_csc_values(Matrix *self)
+/* Build CSC_matrix structure on first call; refill values from csr->x on every call. */
+static void sparse_refresh_csc_values(matrix *self)
 {
-    Sparse_Matrix *sm = (Sparse_Matrix *) self;
+    sparse_matrix *sm = (sparse_matrix *) self;
     build_csc_structure_if_absent(sm);
     csr_to_csc_fill_values(sm->csr, sm->csc_cache, sm->csc_iwork);
 }
 
-static void wire_vtable(Sparse_Matrix *sm)
+static void wire_vtable(sparse_matrix *sm)
 {
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
@@ -318,9 +320,9 @@ static void wire_vtable(Sparse_Matrix *sm)
     sm->base.free_fn = sparse_free;
 }
 
-Matrix *new_sparse_matrix(CSR_Matrix *A)
+matrix *new_sparse_matrix(CSR_matrix *A)
 {
-    Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
+    sparse_matrix *sm = (sparse_matrix *) SP_CALLOC(1, sizeof(sparse_matrix));
     sm->base.m = A->m;
     sm->base.n = A->n;
     sm->base.nnz = A->nnz;
@@ -330,15 +332,15 @@ Matrix *new_sparse_matrix(CSR_Matrix *A)
     return &sm->base;
 }
 
-Matrix *new_sparse_matrix_alloc(int m, int n, int nnz)
+matrix *new_sparse_matrix_alloc(int m, int n, int nnz)
 {
     return new_sparse_matrix(new_csr_matrix(m, n, nnz));
 }
 
-Matrix *sparse_matrix_trans(const Sparse_Matrix *self, int *iwork)
+matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork)
 {
-    CSR_Matrix *AT = transpose(self->csr, iwork);
-    Sparse_Matrix *sm = (Sparse_Matrix *) SP_CALLOC(1, sizeof(Sparse_Matrix));
+    CSR_matrix *AT = transpose(self->csr, iwork);
+    sparse_matrix *sm = (sparse_matrix *) SP_CALLOC(1, sizeof(sparse_matrix));
     sm->base.m = AT->m;
     sm->base.n = AT->n;
     sm->base.nnz = AT->nnz;

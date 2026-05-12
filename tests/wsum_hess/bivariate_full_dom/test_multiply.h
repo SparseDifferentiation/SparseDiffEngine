@@ -41,14 +41,14 @@ const char *test_wsum_hess_multiply_1(void)
 const char *test_wsum_hess_multiply_sparse_random(void)
 {
     /* Test with larger random sparse matrices
-     * A: 5x10 CSR matrix
-     * B: 5x10 CSR matrix
+     * A: 5x10 CSR_matrix matrix
+     * B: 5x10 CSR_matrix matrix
      * x: 10-dimensional variable with var_id = 0, n_vars = 10
      * Expected Hessian: 10x10 sparse matrix
      */
 
     /* Create A matrix (5x10) */
-    CSR_Matrix *A = new_csr_matrix(5, 10, 10);
+    CSR_matrix *A = new_csr_matrix(5, 10, 10);
     double Ax[10] = {-1.44165273, -1.13687223, 0.55892257,  0.24912193,  0.84959744,
                      -0.23998915, 0.5913356,   -1.21627912, -0.50379166, 0.41531801};
     int Ai[10] = {1, 2, 4, 8, 2, 3, 8, 9, 1, 2};
@@ -58,7 +58,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     memcpy(A->p, Ap, 6 * sizeof(int));
 
     /* Create B matrix (5x10) */
-    CSR_Matrix *B = new_csr_matrix(5, 10, 10);
+    CSR_matrix *B = new_csr_matrix(5, 10, 10);
     double Bx[10] = {1.27549062,  0.04194731, -0.4356034,  0.405574,   1.34670487,
                      -0.57738638, 0.9411464,  -0.31563179, 1.90831766, -0.89802958};
     int Bi[10] = {0, 3, 5, 7, 0, 5, 0, 3, 7, 9};
@@ -85,7 +85,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     double w[5] = {0.50646339, 0.44756224, 0.67295241, 0.16424956, 0.03031469};
     mult_node->eval_wsum_hess(mult_node, w);
 
-    /* Expected Hessian in CSR format (10x10) */
+    /* Expected Hessian in CSR_matrix format (10x10) */
     int expected_p[11] = {0, 6, 9, 13, 18, 19, 20, 20, 22, 25, 29};
     int expected_i[29] = {1, 2, 3, 4, 8, 9, 0, 7, 9, 0, 3, 7, 9, 0, 2,
                           3, 8, 9, 0, 8, 1, 2, 0, 3, 5, 0, 1, 2, 3};
@@ -128,8 +128,8 @@ const char *test_wsum_hess_multiply_linear_ops(void)
      *  [ 75.  18.  76.]]
      */
 
-    /* Create CSR matrix A */
-    CSR_Matrix *A = new_csr_matrix(4, 3, 6);
+    /* Create CSR_matrix matrix A */
+    CSR_matrix *A = new_csr_matrix(4, 3, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {0, 2, 1, 0, 2, 1};
     int Ap[5] = {0, 2, 3, 5, 6};
@@ -137,8 +137,8 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 5 * sizeof(int));
 
-    /* Create CSR matrix B */
-    CSR_Matrix *B = new_csr_matrix(4, 3, 8);
+    /* Create CSR_matrix matrix B */
+    CSR_matrix *B = new_csr_matrix(4, 3, 8);
     double Bx[8] = {1.0, 4.0, 2.0, 7.0, 3.0, 2.0, 4.0, -1.0};
     int Bi[8] = {0, 2, 1, 2, 0, 2, 1, 2};
     int Bp[5] = {0, 2, 4, 6, 8};
@@ -167,7 +167,7 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     mult_node->eval_wsum_hess(mult_node, w);
 
     /* Check sparsity pattern and values */
-    /* Expected CSR format:
+    /* Expected CSR_matrix format:
      * indptr: [0, 2, 4, 7]
      * indices: [0, 2, 1, 2, 0, 1, 2]
      * data: [74.0, 75.0, 216.0, 18.0, 75.0, 18.0, 76.0]

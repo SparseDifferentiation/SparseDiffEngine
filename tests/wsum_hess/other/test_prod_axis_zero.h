@@ -75,7 +75,7 @@ const char *test_wsum_hess_prod_axis_zero_mixed_zeros(void)
 {
     /* x is 5x3 variable, global index 1, total 16 vars
      * x = [1, 1, 1, 1, 1, 2, 0, 3, 4, 5, 1, 0, 0, 2, 3] (column-major)
-     * Matrix (column-major):
+     * matrix (column-major):
      *     [1, 2, 1]
      *     [1, 0, 0]
      *     [1, 3, 0]
@@ -196,7 +196,7 @@ const char *test_wsum_hess_prod_axis_zero_one_zero(void)
     /* Test with a column that has exactly 1 zero
      * x is 2x2 variable, global index 1, total 5 vars
      * x = [1.0, 1.0, 2.0, 0.0] (column-major)
-     * Matrix (column-major):
+     * matrix (column-major):
      *     [1, 2]
      *     [1, 0]
      *

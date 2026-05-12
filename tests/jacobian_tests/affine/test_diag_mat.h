@@ -10,7 +10,7 @@ const char *test_diag_mat_jacobian_variable(void)
 {
     /* diag_mat of a 2x2 variable (4 vars total)
      * Diagonal indices in column-major: [0, 3]
-     * Jacobian is 2x4 CSR: row 0 has col 0, row 1 has col 3 */
+     * Jacobian is 2x4 CSR_matrix: row 0 has col 0, row 1 has col 3 */
     double u[4] = {1.0, 2.0, 3.0, 4.0};
     expr *var = new_variable(2, 2, 0, 4);
     expr *dm = new_diag_mat(var);

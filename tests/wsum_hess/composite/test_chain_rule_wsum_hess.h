@@ -123,8 +123,8 @@ const char *test_wsum_hess_Ax_Bx_multiply(void)
     double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
     double w[2] = {1.33, 2.1};
 
-    CSR_Matrix *A = new_csr_random(2, 2, 1.0);
-    CSR_Matrix *B = new_csr_random(2, 2, 1.0);
+    CSR_matrix *A = new_csr_random(2, 2, 1.0);
+    CSR_matrix *B = new_csr_random(2, 2, 1.0);
     expr *x = new_variable(2, 1, 1, 4);
     expr *Ax = new_left_matmul(NULL, x, A);
     expr *Bx = new_left_matmul(NULL, x, B);
@@ -159,8 +159,8 @@ const char *test_wsum_hess_AX_BX_multiply(void)
     double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
     double w[4] = {1.1, 2.2, 3.3, 4.4};
 
-    CSR_Matrix *A = new_csr_random(2, 2, 1.0);
-    CSR_Matrix *B = new_csr_random(2, 2, 1.0);
+    CSR_matrix *A = new_csr_random(2, 2, 1.0);
+    CSR_matrix *B = new_csr_random(2, 2, 1.0);
     expr *X = new_variable(2, 2, 0, 4);
     expr *AX = new_left_matmul(NULL, X, A);
     expr *BX = new_left_matmul(NULL, X, B);
@@ -180,8 +180,8 @@ const char *test_wsum_hess_multiply_deep_composite(void)
     double u_vals[4] = {1.0, 2.0, 3.0, 4.0};
     double w[4] = {1.1, 2.2, 3.3, 4.4};
 
-    CSR_Matrix *A = new_csr_random(2, 2, 1.0);
-    CSR_Matrix *B = new_csr_random(2, 2, 1.0);
+    CSR_matrix *A = new_csr_random(2, 2, 1.0);
+    CSR_matrix *B = new_csr_random(2, 2, 1.0);
     expr *X = new_variable(2, 2, 0, 8);
     expr *Y = new_variable(2, 2, 0, 8);
     expr *AX = new_left_matmul(NULL, X, A);
@@ -205,10 +205,10 @@ const char *test_wsum_hess_quad_form_Ax(void)
     double u_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     double w = 1.0;
 
-    CSR_Matrix *A = new_csr_random(3, 4, 1.0);
+    CSR_matrix *A = new_csr_random(3, 4, 1.0);
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] (symmetric) */
-    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_matrix *Q = new_csr_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};
@@ -234,10 +234,10 @@ const char *test_wsum_hess_quad_form_sin_Ax(void)
     double u_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     double w = 2.0;
 
-    CSR_Matrix *A = new_csr_random(3, 4, 1.0);
+    CSR_matrix *A = new_csr_random(3, 4, 1.0);
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] (symmetric) */
-    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_matrix *Q = new_csr_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};
@@ -303,8 +303,8 @@ const char *test_wsum_hess_matmul_Ax_By(void)
     double u_vals[10] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
     double w[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
 
-    CSR_Matrix *A = new_csr_random(3, 2, 1.0);
-    CSR_Matrix *B = new_csr_random(2, 3, 1.0);
+    CSR_matrix *A = new_csr_random(3, 2, 1.0);
+    CSR_matrix *B = new_csr_random(2, 3, 1.0);
 
     expr *X = new_variable(2, 2, 0, 10);
     expr *Y = new_variable(3, 2, 4, 10);
@@ -327,8 +327,8 @@ const char *test_wsum_hess_matmul_sin_Ax_cos_Bx(void)
     double u_vals[6] = {0.5, 1.0, 1.5, 2.0, 2.5, 3.0};
     double w[4] = {1.0, 2.0, 3.0, 4.0};
 
-    CSR_Matrix *A = new_csr_random(2, 3, 1.0);
-    CSR_Matrix *B = new_csr_random(2, 3, 1.0);
+    CSR_matrix *A = new_csr_random(2, 3, 1.0);
+    CSR_matrix *B = new_csr_random(2, 3, 1.0);
 
     expr *X = new_variable(3, 2, 0, 6);
     expr *AX = new_left_matmul(NULL, X, A); /* 2x2 */
@@ -368,7 +368,7 @@ const char *test_wsum_hess_quad_form_exp(void)
     double w = 3.0;
 
     /* Q = [1 2 0; 2 3 0; 0 0 4] (symmetric) */
-    CSR_Matrix *Q = new_csr_matrix(3, 3, 5);
+    CSR_matrix *Q = new_csr_matrix(3, 3, 5);
     double Qx[5] = {1.0, 2.0, 2.0, 3.0, 4.0};
     int Qi[5] = {0, 1, 0, 1, 2};
     int Qp[4] = {0, 2, 4, 5};

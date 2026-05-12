@@ -17,9 +17,10 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/mini_numpy.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>

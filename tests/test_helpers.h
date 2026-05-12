@@ -2,7 +2,7 @@
 #define TEST_HELPERS_H
 
 #include "expr.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/matrix.h"
 
 /* Compare two double arrays directly
@@ -13,17 +13,17 @@ int cmp_double_array(const double *actual, const double *expected, int size);
  * Returns 1 if all values match, 0 otherwise */
 int cmp_int_array(const int *actual, const int *expected, int size);
 
-/* Verify M has shape (m, *) with exactly nnz entries, and that M's CSR
+/* Verify M has shape (m, *) with exactly nnz entries, and that M's CSR_matrix
  * row pointers and column indices match exp_p (length m+1) and exp_i
  * (length nnz). Returns 1 on full match, 0 otherwise. */
-int cmp_sparsity(Matrix *M, const int *exp_p, const int *exp_i, int m, int nnz);
+int cmp_sparsity(matrix *M, const int *exp_p, const int *exp_i, int m, int nnz);
 
 /* Verify M has nnz entries and that its value array matches exp_x of
  * length nnz. Returns 1 on full match, 0 otherwise. */
-int cmp_values(const Matrix *M, const double *exp_x, int nnz);
+int cmp_values(const matrix *M, const double *exp_x, int nnz);
 
-/* Create a random m x n CSR matrix with approximate nonzero density
+/* Create a random m x n CSR_matrix matrix with approximate nonzero density
  * in [0, 1]. Nonzero values are standard Gaussian (Box-Muller). */
-CSR_Matrix *new_csr_random(int m, int n, double density);
+CSR_matrix *new_csr_random(int m, int n, double density);
 
 #endif /* TEST_HELPERS_H */

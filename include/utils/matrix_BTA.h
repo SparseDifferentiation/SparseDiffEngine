@@ -20,13 +20,13 @@
    as_permuted_dense() on both operands. */
 
 /* Allocate sparsity for C = B^T A. */
-Matrix *BTA_matrices_alloc(Matrix *A, Matrix *B);
+matrix *BTA_matrices_alloc(matrix *A, matrix *B);
 
 /* Fill out->x = B^T diag(d) A (d may be NULL for plain B^T A). out must
    have the structure produced by BTA_matrices_alloc(A, B). For the
    (Sparse, Sparse) path, the caller must ensure both operands' csc_caches
    are fresh (via refresh_csc_values) before calling; the dispatcher does
    not refresh. */
-void BTDA_matrices_fill_values(Matrix *A, const double *d, Matrix *B, Matrix *C);
+void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C);
 
 #endif /* MATRIX_BTA_H */

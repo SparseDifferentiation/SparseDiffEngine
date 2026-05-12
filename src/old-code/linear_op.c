@@ -17,7 +17,8 @@
  */
 #include "old-code/old_affine.h"
 #include "subexpr.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -85,7 +86,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     (void) w;
 }
 
-expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
+expr *new_linear(expr *u, const CSR_matrix *A, const double *b)
 {
     assert(u->d2 == 1);
     /* Allocate the type-specific struct */
@@ -98,7 +99,7 @@ expr *new_linear(expr *u, const CSR_Matrix *A, const double *b)
     expr_retain(u);
 
     /* Store A directly as the jacobian (linear op jacobian is constant) */
-    CSR_Matrix *jac = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *jac = new_csr_matrix(A->m, A->n, A->nnz);
     copy_csr_matrix(A, jac);
     node->jacobian = new_sparse_matrix(jac);
 

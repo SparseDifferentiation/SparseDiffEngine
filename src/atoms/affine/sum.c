@@ -19,6 +19,7 @@
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -86,10 +87,10 @@ static void jacobian_init_impl(expr *node)
 
     /* initialize child's jacobian */
     jacobian_init(x);
-    CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
+    CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
     /* we never have to store more than the child's nnz */
-    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
+    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, Jx->nnz);
     node->work->iwork = SP_MALLOC(MAX(jac->n, Jx->nnz) * sizeof(int));
     snode->idx_map = SP_MALLOC(Jx->nnz * sizeof(int));
 

@@ -17,12 +17,13 @@
  */
 #include "atoms/bivariate_full_dom.h"
 #include "subexpr.h"
-#include "utils/CSC_Matrix.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSC_matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/CSR_sum.h"
 #include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/mini_numpy.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -41,10 +42,10 @@
 // column positions (offset by j in the Y-variable indexing).
 // ------------------------------------------------------------------------------
 
-static CSR_Matrix *build_cross_hessian_sparsity(int m, int k, int n)
+static CSR_matrix *build_cross_hessian_sparsity(int m, int k, int n)
 {
     int total_nnz = m * k * n;
-    CSR_Matrix *B = new_csr_matrix(m * k, k * n, total_nnz);
+    CSR_matrix *B = new_csr_matrix(m * k, k * n, total_nnz);
     int idx = 0;
 
     for (int j = 0; j < k; j++)
@@ -64,7 +65,7 @@ static CSR_Matrix *build_cross_hessian_sparsity(int m, int k, int n)
 }
 
 static void fill_cross_hessian_values(int m, int k, int n, const double *w,
-                                      CSR_Matrix *B)
+                                      CSR_matrix *B)
 {
     int idx = 0;
     for (int j = 0; j < k; j++)
@@ -139,7 +140,7 @@ static void jacobian_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int nnz = m * n * 2 * k;
-    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz);
+    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, nnz);
 
     int nnz_idx = 0;
     for (int i = 0; i < node->size; i++)
@@ -183,7 +184,7 @@ static void eval_jacobian_no_chain_rule(expr *node)
     expr *y = node->right;
     int m = x->d1;
     int k = x->d2;
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
     double *Jx = jac->x;
 
     for (int i = 0; i < node->size; i++)
@@ -236,7 +237,7 @@ static void jacobian_init_chain_rule(expr *node)
     mnode->term1_CSR = YT_kron_I_alloc(m, k, n, f->work->jacobian_csc);
     mnode->term2_CSR = I_kron_X_alloc(m, k, n, g->work->jacobian_csc);
     int max_nnz = mnode->term1_CSR->nnz + mnode->term2_CSR->nnz;
-    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, max_nnz);
+    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, max_nnz);
     sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, jac);
     node->jacobian = new_sparse_matrix(jac);
 }
@@ -277,7 +278,7 @@ static void wsum_hess_init_no_chain_rule(expr *node)
     int k = x->d2;
     int n = y->d2;
     int total_nnz = 2 * m * k * n;
-    CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, total_nnz);
+    CSR_matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, total_nnz);
     int nnz = 0;
     int *Hi = hess->i;
     int *Hp = hess->p;
@@ -420,8 +421,8 @@ static void wsum_hess_init_chain_rule(expr *node)
     int m = f->d1;
     int k = f->d2;
     int n = g->d2;
-    CSC_Matrix *Jf = f->work->jacobian_csc;
-    CSC_Matrix *Jg = g->work->jacobian_csc;
+    CSC_matrix *Jf = f->work->jacobian_csc;
+    CSC_matrix *Jg = g->work->jacobian_csc;
 
     /* initialize C = Jf^T @ B @ Jg = Jf^T @ (B @ Jg) */
     mnode->B = build_cross_hessian_sparsity(m, k, n);
@@ -441,7 +442,7 @@ static void wsum_hess_init_chain_rule(expr *node)
 
     /* sum the four terms and fill idx maps */
     int *maps[4];
-    CSR_Matrix *hess =
+    CSR_matrix *hess =
         sum_4_csr_alloc(mnode->C, mnode->CT, f->wsum_hess->to_csr(f->wsum_hess),
                         g->wsum_hess->to_csr(g->wsum_hess), maps);
     node->wsum_hess = new_sparse_matrix(hess);
@@ -468,10 +469,10 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     int n = g->d2;
     bool is_f_affine = f->is_affine(f);
     bool is_g_affine = g->is_affine(g);
-    CSC_Matrix *Jf = f->work->jacobian_csc;
-    CSC_Matrix *Jg = g->work->jacobian_csc;
+    CSC_matrix *Jf = f->work->jacobian_csc;
+    CSC_matrix *Jg = g->work->jacobian_csc;
 
-    /* refresh child Jacobian CSC values (cache if affine) */
+    /* refresh child Jacobian CSC_matrix values (cache if affine) */
     if (!f->work->jacobian_csc_filled)
     {
         csr_to_csc_fill_values(f->jacobian->to_csr(f->jacobian), Jf, f->work->csc_work);
@@ -481,7 +482,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
         }
     }
 
-    /* refresh child Jacobian CSC values (cache if affine) */
+    /* refresh child Jacobian CSC_matrix values (cache if affine) */
     if (!g->work->jacobian_csc_filled)
     {
         csr_to_csc_fill_values(g->jacobian->to_csr(g->jacobian), Jg, g->work->csc_work);

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 #include "utils/CSR_sum.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/int_double_pair.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
+void sum_csr_alloc(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C)
 {
     /* A and B must be different from C */
     assert(A != C && B != C);
@@ -81,7 +81,7 @@ void sum_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
     C->p[A->m] = C->nnz;
 }
 
-void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
+void sum_csr_fill_values(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C)
 {
     /* Assumes C->p and C->i already contain the sparsity pattern of A+B.
        Fills only C->x accordingly. */
@@ -113,8 +113,8 @@ void sum_csr_fill_values(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C
     }
 }
 
-void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *B,
-                                         CSR_Matrix *C, const double *d1,
+void sum_scaled_csr_matrices_fill_values(const CSR_matrix *A, const CSR_matrix *B,
+                                         CSR_matrix *C, const double *d1,
                                          const double *d2)
 {
     /* Assumes C->p and C->i already contain the sparsity pattern of A+B.
@@ -148,7 +148,7 @@ void sum_scaled_csr_matrices_fill_values(const CSR_Matrix *A, const CSR_Matrix *
 }
 
 /* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
-void sum_block_of_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
                                  int row_block_size, int *iwork, int *idx_map)
 {
     assert(A->m % row_block_size == 0);
@@ -220,7 +220,7 @@ void sum_block_of_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
 }
 
 /* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
-void sum_evenly_spaced_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
                                       int row_spacing, int *iwork, int *idx_map)
 {
     assert(C->m == row_spacing);
@@ -294,7 +294,7 @@ void accumulator(const double *vals, int nnz, const int *idx_map, double *out)
     }
 }
 
-void accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map, double *out,
+void accumulator_with_spacing(const CSR_matrix *A, const int *idx_map, double *out,
                               int spacing)
 {
     /* don't forget to initialze accumulator to 0 before calling this */
@@ -307,7 +307,7 @@ void accumulator_with_spacing(const CSR_Matrix *A, const int *idx_map, double *o
     }
 }
 
-void sum_all_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C, int *iwork,
+void sum_all_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C, int *iwork,
                             int *idx_map)
 {
     // -------------------------------------------------------------------
@@ -354,23 +354,23 @@ void sum_all_rows_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C, int *iwork,
 
 /*
  * Sums evenly spaced rows from A into a single row in C and fills an index map.
- * A: input CSR matrix
- * C: output CSR matrix (must have m=1)
+ * A: input CSR_matrix matrix
+ * C: output CSR_matrix matrix (must have m=1)
  * spacing: row spacing
  * iwork: workspace of size at least max(A->n, A->nnz)
  * idx_map: output index map, size at least A->nnz
  */
-CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
-                            const CSR_Matrix *C, const CSR_Matrix *D,
+CSR_matrix *sum_4_csr_alloc(const CSR_matrix *A, const CSR_matrix *B,
+                            const CSR_matrix *C, const CSR_matrix *D,
                             int *idx_maps[4])
 {
-    const CSR_Matrix *inputs[4] = {A, B, C, D};
+    const CSR_matrix *inputs[4] = {A, B, C, D};
     int m = A->m;
     int n = A->n;
     int nnz_ub = A->nnz + B->nnz + C->nnz + D->nnz;
 
     /* allocate output and index maps */
-    CSR_Matrix *out = new_csr_matrix(m, n, nnz_ub);
+    CSR_matrix *out = new_csr_matrix(m, n, nnz_ub);
     for (int k = 0; k < 4; k++)
     {
         idx_maps[k] = (int *) SP_MALLOC(inputs[k]->nnz * sizeof(int));
@@ -430,7 +430,7 @@ CSR_Matrix *sum_4_csr_alloc(const CSR_Matrix *A, const CSR_Matrix *B,
     return out;
 }
 
-void sum_spaced_rows_into_row_csr_alloc(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_spaced_rows_into_row_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
                                         int spacing, int *iwork, int *idx_map)
 {
     assert(C->m == 1);

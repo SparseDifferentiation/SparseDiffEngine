@@ -101,7 +101,7 @@ void I_kron_XT_vec(int m, int k, int n, const double *X, const double *w, double
     }
 }
 
-void conv_matrix_fill_sparsity(CSR_Matrix *T_csr, int m, int n)
+void conv_matrix_fill_sparsity(CSR_matrix *T_csr, int m, int n)
 {
     int nnz = 0;
     for (int r = 0; r < T_csr->m; r++)
@@ -118,7 +118,7 @@ void conv_matrix_fill_sparsity(CSR_Matrix *T_csr, int m, int n)
     T_csr->p[T_csr->m] = nnz;
 }
 
-void conv_matrix_fill_values(CSR_Matrix *T_csr, const double *a)
+void conv_matrix_fill_values(CSR_matrix *T_csr, const double *a)
 {
     for (int r = 0; r < T_csr->m; r++)
     {

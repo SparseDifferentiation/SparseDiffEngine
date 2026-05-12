@@ -20,7 +20,7 @@
 
 #include "expr.h"
 #include "utils/COO_Matrix.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/Timer.h"
 #include <stdbool.h>
 
@@ -59,8 +59,8 @@ typedef struct problem
     double *gradient_values;
 
     /* allocated by problem_init_derivatives */
-    CSR_Matrix *jacobian;
-    CSR_Matrix *lagrange_hessian;
+    CSR_matrix *jacobian;
+    CSR_matrix *lagrange_hessian;
     int *hess_idx_map; /* maps all wsum_hess nnz to lagrange_hessian */
     COO_Matrix *jacobian_coo;
     COO_Matrix *lagrange_hessian_coo; /* lower triangular part stored in COO */

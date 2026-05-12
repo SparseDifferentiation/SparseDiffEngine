@@ -18,8 +18,8 @@
 #ifndef EXPR_H
 #define EXPR_H
 
-#include "utils/CSC_Matrix.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSC_matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/matrix.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -45,16 +45,16 @@ typedef struct
 {
     double *dwork;
     int *iwork;
-    CSC_Matrix *jacobian_csc;
-    int *csc_work; /* for CSR-CSC conversion */
+    CSC_matrix *jacobian_csc;
+    int *csc_work; /* for CSR_matrix-CSC_matrix conversion */
 
     /* jacobian_csc_filled is only used for affine functions to avoid redundant
        conversions. Could become relevant for non-affine functions if we start
        supporting common subexpressions on the Python side. */
     bool jacobian_csc_filled;
     double *local_jac_diag; /* cached f'(g(x)) diagonal */
-    Matrix *hess_term1;     /* Jg^T D Jg workspace */
-    Matrix *hess_term2;     /* child wsum_hess workspace */
+    matrix *hess_term1;     /* Jg^T D Jg workspace */
+    matrix *hess_term2;     /* child wsum_hess workspace */
 } Expr_Work;
 
 /* Base expression node structure */
@@ -71,8 +71,8 @@ typedef struct expr
     //                     oracle related quantities
     // ------------------------------------------------------------------------
     double *value;
-    Matrix *jacobian;
-    Matrix *wsum_hess;
+    matrix *jacobian;
+    matrix *wsum_hess;
     forward_fn forward;
     jacobian_init_fn jacobian_init_impl;
     wsum_hess_init_fn wsum_hess_init_impl;
@@ -111,7 +111,7 @@ void free_expr(expr *node);
 void jacobian_init(expr *node);
 void wsum_hess_init(expr *node);
 
-/* Initialize CSC form of the Jacobian from the CSR Jacobian.
+/* Initialize CSC_matrix form of the Jacobian from the CSR_matrix Jacobian.
  * Must be called after jacobian_init. */
 void jacobian_csc_init(expr *node);
 

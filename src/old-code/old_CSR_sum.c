@@ -16,13 +16,13 @@
  * limitations under the License.
  */
 #include "old-code/old_CSR_sum.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/int_double_pair.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
+void sum_csr_matrices(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C)
 {
     /* A and B must be different from C */
     assert(A != C && B != C);
@@ -84,7 +84,7 @@ void sum_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C)
     C->p[A->m] = C->nnz;
 }
 
-void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matrix *C,
+void sum_scaled_csr_matrices(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C,
                              const double *d1, const double *d2)
 {
     C->nnz = 0;
@@ -150,7 +150,7 @@ void sum_scaled_csr_matrices(const CSR_Matrix *A, const CSR_Matrix *B, CSR_Matri
     C->p[A->m] = C->nnz;
 }
 
-void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C, int_double_pair *pairs)
+void sum_all_rows_csr(const CSR_matrix *A, CSR_matrix *C, int_double_pair *pairs)
 {
     assert(C->m == 1);
     C->n = A->n;
@@ -185,7 +185,7 @@ void sum_all_rows_csr(const CSR_Matrix *A, CSR_Matrix *C, int_double_pair *pairs
     C->p[1] = C->nnz;
 }
 
-void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_block_of_rows_csr(const CSR_matrix *A, CSR_matrix *C,
                            int_double_pair *pairs, int row_block_size)
 {
     assert(A->m % row_block_size == 0);
@@ -238,7 +238,7 @@ void sum_block_of_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
     }
 }
 
-void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_evenly_spaced_rows_csr(const CSR_matrix *A, CSR_matrix *C,
                                 int_double_pair *pairs, int row_spacing)
 {
     assert(C->m == row_spacing);
@@ -286,7 +286,7 @@ void sum_evenly_spaced_rows_csr(const CSR_Matrix *A, CSR_Matrix *C,
     }
 }
 
-void sum_spaced_rows_into_row_csr(const CSR_Matrix *A, CSR_Matrix *C,
+void sum_spaced_rows_into_row_csr(const CSR_matrix *A, CSR_matrix *C,
                                   int_double_pair *pairs, int offset, int spacing)
 {
     assert(C->m == 1);

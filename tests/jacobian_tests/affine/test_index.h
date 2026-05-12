@@ -53,7 +53,7 @@ const char *test_index_jacobian_of_variable(void)
 
     /* Jacobian is 2x3 with pattern: row 0 selects col 0, row 1 selects col 2 */
     double expected_x[2] = {1.0, 1.0};
-    int expected_p[3] = {0, 1, 2}; /* CSR row ptrs */
+    int expected_p[3] = {0, 1, 2}; /* CSR_matrix row ptrs */
     int expected_i[2] = {0, 2};    /* column indices */
 
     mu_assert("vals fail", cmp_values(idx->jacobian, expected_x, 2));

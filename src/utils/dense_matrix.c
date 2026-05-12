@@ -22,16 +22,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct Permuted_Dense *dense_as_permuted_dense(Matrix *self)
+static struct permuted_dense *dense_as_permuted_dense(matrix *self)
 {
     (void) self;
     return NULL;
 }
 
-static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *y,
+static void dense_block_left_mult_vec(const matrix *A, const double *x, double *y,
                                       int p)
 {
-    const Dense_Matrix *dm = (const Dense_Matrix *) A;
+    const dense_matrix *dm = (const dense_matrix *) A;
     int m = dm->base.m;
     int n = dm->base.n;
 
@@ -48,17 +48,17 @@ static void dense_block_left_mult_vec(const Matrix *A, const double *x, double *
                 n, 0.0, y, m);
 }
 
-static void dense_free(Matrix *A)
+static void dense_free(matrix *A)
 {
-    Dense_Matrix *dm = (Dense_Matrix *) A;
+    dense_matrix *dm = (dense_matrix *) A;
     free(dm->x);
     free(dm->work);
     free(dm);
 }
 
-Matrix *new_dense_matrix(int m, int n, const double *data)
+matrix *new_dense_matrix(int m, int n, const double *data)
 {
-    Dense_Matrix *dm = (Dense_Matrix *) SP_CALLOC(1, sizeof(Dense_Matrix));
+    dense_matrix *dm = (dense_matrix *) SP_CALLOC(1, sizeof(dense_matrix));
     dm->base.m = m;
     dm->base.n = n;
     dm->base.nnz = m * n;
@@ -77,7 +77,7 @@ Matrix *new_dense_matrix(int m, int n, const double *data)
     return &dm->base;
 }
 
-Matrix *dense_matrix_trans(const Dense_Matrix *A)
+matrix *dense_matrix_trans(const dense_matrix *A)
 {
     int m = A->base.m;
     int n = A->base.n;
@@ -85,7 +85,7 @@ Matrix *dense_matrix_trans(const Dense_Matrix *A)
 
     A_transpose(AT_x, A->x, m, n);
 
-    Matrix *result = new_dense_matrix(n, m, AT_x);
+    matrix *result = new_dense_matrix(n, m, AT_x);
     free(AT_x);
     return result;
 }

@@ -18,6 +18,7 @@
 #include "atoms/affine.h"
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -55,7 +56,7 @@ static void jacobian_init_impl(expr *node)
     // ---------------------------------------------------------------
     //    count total nnz and allocate matrix with sufficient space
     // ---------------------------------------------------------------
-    const CSR_Matrix *A = x->jacobian->to_csr(x->jacobian);
+    const CSR_matrix *A = x->jacobian->to_csr(x->jacobian);
     int total_nnz = 0;
     int row_spacing = x->d1 + 1;
 
@@ -64,7 +65,7 @@ static void jacobian_init_impl(expr *node)
         total_nnz += A->p[row + 1] - A->p[row];
     }
 
-    CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, total_nnz);
+    CSR_matrix *jac = new_csr_matrix(1, node->n_vars, total_nnz);
 
     // ---------------------------------------------------------------
     // fill sparsity pattern and idx_map

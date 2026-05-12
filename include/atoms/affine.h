@@ -20,7 +20,7 @@
 
 #include "expr.h"
 #include "subexpr.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 
 expr *new_add(expr *left, expr *right);
 expr *new_neg(expr *child);
@@ -45,7 +45,7 @@ expr *new_transpose(expr *child);
 /* Left matrix multiplication: A @ f(x) where A is a constant sparse matrix.
    param_node is NULL for fixed constants. We currently do not support sparse
    parameters, so param_node should always be null. */
-expr *new_left_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
+expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A);
 
 /* Left matrix multiplication: A @ f(x) where A is a constant dense matrix
    (in row-major, m x n, with values given by 'data') or a parameter
@@ -59,7 +59,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
 /* Right matrix multiplication: f(x) @ A where A is a constant sparse matrix.
    We currently do not support sparse parameters, so param_node should always be
    null. */
-expr *new_right_matmul(expr *param_node, expr *u, const CSR_Matrix *A);
+expr *new_right_matmul(expr *param_node, expr *u, const CSR_matrix *A);
 
 /* Right matrix multiplication: f(x) @ A where A is a constant dense matrix
    (in row-major, m x n, with values given by 'data') or a parameter

@@ -13,7 +13,7 @@ static int is_close(double a, double b)
     return fabs(a - b) <= fmax(ABS_TOL, REL_TOL * fmax(fabs(a), fabs(b)));
 }
 
-static void csr_to_dense(const CSR_Matrix *A, double *dense)
+static void csr_to_dense(const CSR_matrix *A, double *dense)
 {
     for (int row = 0; row < A->m; row++)
     {
@@ -98,9 +98,9 @@ int check_jacobian_num(expr *node, const double *u, double h)
     return result;
 }
 
-/* Compute g = J^T w where J is CSR (m x n) and w has m entries.
+/* Compute g = J^T w where J is CSR_matrix (m x n) and w has m entries.
  * Result written into g (size n), which must be zero-initialized. */
-static void csr_transpose_mult_vec(const CSR_Matrix *J, const double *w, double *g)
+static void csr_transpose_mult_vec(const CSR_matrix *J, const double *w, double *g)
 {
     for (int row = 0; row < J->m; row++)
     {
@@ -127,11 +127,11 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
 
     memcpy(u_work, u, n * sizeof(double));
 
-    /* Hoist the CSR view once. For Sparse_Matrix (the only type used by tests
+    /* Hoist the CSR_matrix view once. For sparse_matrix (the only type used by tests
        that reach here), csr->x aliases node->jacobian->x, so eval_jacobian
        writes inside the loop update jac->x in place. A PD-backed Jacobian
        would need a per-iteration to_csr refresh; not exercised today. */
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     for (int j = 0; j < n; j++)
     {

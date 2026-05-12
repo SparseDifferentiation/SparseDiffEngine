@@ -17,9 +17,10 @@
  */
 #include "atoms/elementwise_full_dom.h"
 #include "subexpr.h"
-#include "utils/CSC_Matrix.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSC_matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/matrix_sum.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +33,7 @@ void jacobian_init_elementwise(expr *node)
     /* if the variable is a child */
     if (child->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, node->size);
+        CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, node->size);
         for (int j = 0; j < node->size; j++)
         {
             jac->p[j] = j;
@@ -81,7 +82,7 @@ void wsum_hess_init_elementwise(expr *node)
     /* if the variable is a child */
     if (id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
+        CSR_matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
 
         for (i = 0; i < node->size; i++)
         {
@@ -139,7 +140,7 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
     {
         if (child->is_affine(child))
         {
-            /* Refresh the child Jacobian's CSC mirror once; subsequent calls
+            /* Refresh the child Jacobian's CSC_matrix mirror once; subsequent calls
                skip since the affine child's values don't change. */
             if (!child->work->jacobian_csc_filled)
             {

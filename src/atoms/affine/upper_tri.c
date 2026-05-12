@@ -40,7 +40,7 @@ expr *new_upper_tri(expr *child)
     int *indices = NULL;
     if (n_elems > 0)
     {
-        indices = (int *) malloc((size_t) n_elems * sizeof(int));
+        indices = (int *) malloc(n_elems * sizeof(int));
         int k = 0;
         for (int i = 0; i < n; i++)
         {

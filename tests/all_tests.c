@@ -379,6 +379,7 @@ int main(void)
     mu_run_test(test_permuted_dense_broadcast_col, tests_run);
     mu_run_test(test_permuted_dense_diag_vec, tests_run);
     mu_run_test(test_permuted_dense_BTA_matching_row_perm, tests_run);
+    mu_run_test(test_permuted_dense_BTA_empty_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTA_partial_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
     mu_run_test(test_BTA_csr_pd_basic, tests_run);

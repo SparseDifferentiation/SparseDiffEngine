@@ -17,9 +17,10 @@
  */
 #include "atoms/non_elementwise_full_dom.h"
 #include "subexpr.h"
-#include "utils/CSC_Matrix.h"
+#include "utils/CSC_matrix.h"
 #include "utils/matrix_sum.h"
 #include "utils/cblas_wrapper.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
@@ -35,7 +36,7 @@ static void forward(expr *node, const double *u)
     x->forward(x, u);
 
     /* local forward pass  */
-    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    CSR_matrix *Q = ((quad_form_expr *) node)->Q;
     Ax_csr(Q, x->value, node->work->dwork, 0);
     node->value[0] = 0.0;
 
@@ -51,7 +52,7 @@ static void jacobian_init_impl(expr *node)
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
+        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
         jac->p[0] = 0;
         jac->p[1] = x->size;
 
@@ -66,11 +67,11 @@ static void jacobian_init_impl(expr *node)
         /* chain rule: J = 2 * (Q @ f(x))^T * J_f */
         jacobian_init(x);
         jacobian_csc_init(x);
-        CSC_Matrix *J_csc = x->work->jacobian_csc;
+        CSC_matrix *J_csc = x->work->jacobian_csc;
 
         /* allocate the right number of nnz */
         int nnz = count_nonzero_cols_csc(J_csc);
-        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, nnz);
+        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, nnz);
         jac->p[0] = 0;
         jac->p[1] = nnz;
 
@@ -90,8 +91,8 @@ static void jacobian_init_impl(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
-    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    CSR_matrix *Q = ((quad_form_expr *) node)->Q;
+    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     if (x->var_id != NOT_A_VARIABLE)
     {
@@ -125,12 +126,12 @@ static void eval_jacobian(expr *node)
 
 static void wsum_hess_init_impl(expr *node)
 {
-    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    CSR_matrix *Q = ((quad_form_expr *) node)->Q;
     expr *x = node->left;
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
+        CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, Q->nnz);
 
         /* set global row pointers */
         memcpy(H->p + x->var_id, Q->p, (x->size + 1) * sizeof(int));
@@ -160,10 +161,10 @@ static void wsum_hess_init_impl(expr *node)
 
         /* jacobian_csc_init(x) already called in jacobian_init */
         quad_form_expr *qnode = (quad_form_expr *) node;
-        CSC_Matrix *Jf = x->work->jacobian_csc;
+        CSC_matrix *Jf = x->work->jacobian_csc;
 
         /* term1 = Jf^T W Jf = Jf^T B*/
-        CSC_Matrix *B = symBA_alloc(Q, Jf);
+        CSC_matrix *B = symBA_alloc(Q, Jf);
         qnode->QJf = B;
         node->work->hess_term1 = new_sparse_matrix(BTA_alloc(Jf, B));
 
@@ -183,7 +184,7 @@ static void wsum_hess_init_impl(expr *node)
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    CSR_Matrix *Q = ((quad_form_expr *) node)->Q;
+    CSR_matrix *Q = ((quad_form_expr *) node)->Q;
     expr *x = node->left;
     double two_w = 2.0 * w[0];
 
@@ -196,8 +197,8 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
     else
     {
-        /* fill the CSC representation of the Jacobian of the child */
-        CSC_Matrix *Jf = x->work->jacobian_csc;
+        /* fill the CSC_matrix representation of the Jacobian of the child */
+        CSC_matrix *Jf = x->work->jacobian_csc;
         if (!x->work->jacobian_csc_filled)
         {
             csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jf, x->work->csc_work);
@@ -208,8 +209,8 @@ static void eval_wsum_hess(expr *node, const double *w)
             }
         }
 
-        CSC_Matrix *QJf = ((quad_form_expr *) node)->QJf;
-        CSR_Matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
+        CSC_matrix *QJf = ((quad_form_expr *) node)->QJf;
+        CSR_matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
         BA_fill_values(Q, Jf, QJf);
@@ -249,7 +250,7 @@ static bool is_affine(const expr *node)
     return false;
 }
 
-expr *new_quad_form(expr *left, CSR_Matrix *Q)
+expr *new_quad_form(expr *left, CSR_matrix *Q)
 {
     assert(left->d1 == 1 || left->d2 == 1); /* left must be a vector */
     quad_form_expr *qnode = (quad_form_expr *) SP_CALLOC(1, sizeof(quad_form_expr));

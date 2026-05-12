@@ -20,22 +20,22 @@
 
 #include "matrix.h"
 
-/* Polymorphic wrappers over CSR_sum. A, B, and C must all be Sparse_Matrix-
+/* Polymorphic wrappers over CSR_sum. A, B, and C must all be sparse_matrix-
    backed for now; the union sparsity of A+B is general sparse, so a
-   Permuted_Dense output is not supported.
+   permuted_dense output is not supported.
 
    sum_matrices_alloc fills C's sparsity pattern and re-syncs C's base.nnz
-   from the underlying CSR (sum_csr_alloc may shrink nnz below the
+   from the underlying CSR_matrix (sum_csr_alloc may shrink nnz below the
    over-allocated max). */
-void sum_matrices_alloc(Matrix *A, Matrix *B, Matrix *C);
+void sum_matrices_alloc(matrix *A, matrix *B, matrix *C);
 
 /* Fills C's values; assumes C already has the union sparsity pattern of
    A and B (typically produced by sum_matrices_alloc). */
-void sum_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C);
+void sum_matrices_fill_values(matrix *A, matrix *B, matrix *C);
 
 /* Fills C's values for C = diag(d1) * A + diag(d2) * B; assumes C already
    has the union sparsity pattern of A and B. */
-void sum_scaled_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C,
+void sum_scaled_matrices_fill_values(matrix *A, matrix *B, matrix *C,
                                      const double *d1, const double *d2);
 
 #endif /* MATRIX_SUM_H */

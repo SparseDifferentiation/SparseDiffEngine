@@ -28,7 +28,7 @@ expr *new_diag_mat(expr *child)
     assert(child->d1 == child->d2);
     int n = child->d1;
 
-    int *indices = (int *) malloc((size_t) n * sizeof(int));
+    int *indices = (int *) malloc(n * sizeof(int));
     for (int i = 0; i < n; i++)
     {
         indices[i] = i * (n + 1);

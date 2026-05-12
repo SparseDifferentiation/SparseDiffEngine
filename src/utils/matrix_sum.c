@@ -18,19 +18,19 @@
 #include "utils/matrix_sum.h"
 #include "utils/CSR_sum.h"
 
-void sum_matrices_alloc(Matrix *A, Matrix *B, Matrix *C)
+void sum_matrices_alloc(matrix *A, matrix *B, matrix *C)
 {
-    CSR_Matrix *cc = C->to_csr(C);
+    CSR_matrix *cc = C->to_csr(C);
     sum_csr_alloc(A->to_csr(A), B->to_csr(B), cc);
     C->nnz = cc->nnz;
 }
 
-void sum_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C)
+void sum_matrices_fill_values(matrix *A, matrix *B, matrix *C)
 {
     sum_csr_fill_values(A->to_csr(A), B->to_csr(B), C->to_csr(C));
 }
 
-void sum_scaled_matrices_fill_values(Matrix *A, Matrix *B, Matrix *C,
+void sum_scaled_matrices_fill_values(matrix *A, matrix *B, matrix *C,
                                      const double *d1, const double *d2)
 {
     sum_scaled_csr_matrices_fill_values(A->to_csr(A), B->to_csr(B), C->to_csr(C),

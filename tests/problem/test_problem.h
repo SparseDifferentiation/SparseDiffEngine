@@ -175,7 +175,7 @@ const char *test_problem_jacobian(void)
     problem_constraint_forward(prob, u);
     problem_jacobian(prob);
 
-    CSR_Matrix *jac = prob->jacobian;
+    CSR_matrix *jac = prob->jacobian;
 
     /* Check dimensions */
     mu_assert("jac rows wrong", jac->m == 2);
@@ -239,7 +239,7 @@ const char *test_problem_jacobian_multi(void)
     problem_constraint_forward(prob, u);
     problem_jacobian(prob);
 
-    CSR_Matrix *jac = prob->jacobian;
+    CSR_matrix *jac = prob->jacobian;
 
     /* Check dimensions: 4 rows (2 + 2), 2 cols */
     mu_assert("jac rows wrong", jac->m == 4);
@@ -322,7 +322,7 @@ const char *test_problem_hessian(void)
     double w_obj = 2.0;
     problem_hessian(prob, w_obj, w);
 
-    CSR_Matrix *H = prob->lagrange_hessian;
+    CSR_matrix *H = prob->lagrange_hessian;
 
     /* Check dimensions: 3x3 symmetric */
     mu_assert("H rows wrong", H->m == 3);

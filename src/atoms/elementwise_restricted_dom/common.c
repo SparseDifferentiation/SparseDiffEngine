@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/elementwise_restricted_dom.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <stdlib.h>
 
@@ -23,7 +24,7 @@ void jacobian_init_restricted(expr *node)
 {
     expr *child = node->left;
 
-    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, node->size);
+    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, node->size);
     for (int j = 0; j < node->size; j++)
     {
         jac->p[j] = j;
@@ -39,7 +40,7 @@ void wsum_hess_init_restricted(expr *node)
     int id = child->var_id;
     int i;
 
-    CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
+    CSR_matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, node->size);
 
     for (i = 0; i < node->size; i++)
     {

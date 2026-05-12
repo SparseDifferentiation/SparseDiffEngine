@@ -4,6 +4,7 @@
 #include "minunit.h"
 #include "test_helpers.h"
 #include "utils/dense_matrix.h"
+#include "utils/sparse_matrix.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,7 +14,7 @@
 const char *test_dense_matrix_mult_vec(void)
 {
     double data[] = {1.0, 2.0, 3.0, 4.0};
-    Matrix *A = new_dense_matrix(2, 2, data);
+    matrix *A = new_dense_matrix(2, 2, data);
 
     double x[] = {1.0, 2.0};
     double y[2] = {0.0, 0.0};
@@ -33,7 +34,7 @@ const char *test_dense_matrix_mult_vec(void)
 const char *test_dense_matrix_mult_vec_blocks(void)
 {
     double data[] = {1.0, 2.0, 3.0, 4.0};
-    Matrix *A = new_dense_matrix(2, 2, data);
+    matrix *A = new_dense_matrix(2, 2, data);
 
     double x[] = {1.0, 2.0, 3.0, 4.0};
     double y[4] = {0};
@@ -51,8 +52,8 @@ const char *test_dense_matrix_mult_vec_blocks(void)
    A = [1 2 3; 4 5 6] (2x3), x = [1; 2; 3], p = 1 */
 const char *test_sparse_vs_dense_mult_vec(void)
 {
-    /* Build CSR for A = [1 2 3; 4 5 6] */
-    CSR_Matrix *csr = new_csr_matrix(2, 3, 6);
+    /* Build CSR_matrix for A = [1 2 3; 4 5 6] */
+    CSR_matrix *csr = new_csr_matrix(2, 3, 6);
     int Ap[3] = {0, 3, 6};
     int Ai[6] = {0, 1, 2, 0, 1, 2};
     double Ax[6] = {1, 2, 3, 4, 5, 6};
@@ -62,8 +63,8 @@ const char *test_sparse_vs_dense_mult_vec(void)
 
     double dense_data[] = {1, 2, 3, 4, 5, 6};
 
-    Matrix *sparse = new_sparse_matrix(csr);
-    Matrix *dense = new_dense_matrix(2, 3, dense_data);
+    matrix *sparse = new_sparse_matrix(csr);
+    matrix *dense = new_dense_matrix(2, 3, dense_data);
 
     double x[] = {1.0, 2.0, 3.0};
     double y_sparse[2] = {0};
@@ -83,14 +84,14 @@ const char *test_sparse_vs_dense_mult_vec(void)
 const char *test_dense_matrix_trans(void)
 {
     double data[] = {1, 2, 3, 4, 5, 6}; /* 2x3 */
-    Matrix *A = new_dense_matrix(2, 3, data);
-    Matrix *AT = dense_matrix_trans((const Dense_Matrix *) A);
+    matrix *A = new_dense_matrix(2, 3, data);
+    matrix *AT = dense_matrix_trans((const dense_matrix *) A);
 
     mu_assert("transpose m", AT->m == 3);
     mu_assert("transpose n", AT->n == 2);
 
     /* AT should be [1 4; 2 5; 3 6] stored row-major */
-    Dense_Matrix *dm = (Dense_Matrix *) AT;
+    dense_matrix *dm = (dense_matrix *) AT;
     double AT_expected[6] = {1.0, 4.0, 2.0, 5.0, 3.0, 6.0};
     mu_assert("AT vals incorrect", cmp_double_array(dm->x, AT_expected, 6));
 
@@ -103,7 +104,7 @@ const char *test_dense_matrix_trans(void)
    A = [1 2; 3 4], x = [1; 2; 3; 4], p = 2 */
 const char *test_sparse_vs_dense_mult_vec_blocks(void)
 {
-    CSR_Matrix *csr = new_csr_matrix(2, 2, 4);
+    CSR_matrix *csr = new_csr_matrix(2, 2, 4);
     int Ap[3] = {0, 2, 4};
     int Ai[4] = {0, 1, 0, 1};
     double Ax[4] = {1, 2, 3, 4};
@@ -113,8 +114,8 @@ const char *test_sparse_vs_dense_mult_vec_blocks(void)
 
     double dense_data[] = {1, 2, 3, 4};
 
-    Matrix *sparse = new_sparse_matrix(csr);
-    Matrix *dense = new_dense_matrix(2, 2, dense_data);
+    matrix *sparse = new_sparse_matrix(csr);
+    matrix *dense = new_dense_matrix(2, 2, dense_data);
 
     double x[] = {1.0, 2.0, 3.0, 4.0};
     double y_sparse[4] = {0};

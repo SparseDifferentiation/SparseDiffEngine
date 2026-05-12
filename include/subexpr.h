@@ -19,8 +19,8 @@
 #define SUBEXPR_H
 
 #include "expr.h"
-#include "utils/CSC_Matrix.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSC_matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/matrix.h"
 
 /* Forward declaration */
@@ -40,7 +40,7 @@ typedef struct parameter_expr
 } parameter_expr;
 
 /* Linear operator: y = A * x + b
- * The matrix A is stored as node->jacobian (CSR). */
+ * The matrix A is stored as node->jacobian (CSR_matrix). */
 typedef struct linear_op_expr
 {
     expr base;
@@ -58,8 +58,8 @@ typedef struct power_expr
 typedef struct quad_form_expr
 {
     expr base;
-    CSR_Matrix *Q;
-    CSC_Matrix *QJf; /* Q * J_f in CSC (for chain rule hessian) */
+    CSR_matrix *Q;
+    CSC_matrix *QJf; /* Q * J_f in CSC_matrix (for chain rule hessian) */
 } quad_form_expr;
 
 /* Sum reduction along an axis */
@@ -102,15 +102,15 @@ typedef struct hstack_expr
     expr base;
     expr **args;
     int n_args;
-    CSR_Matrix *CSR_work; /* for summing Hessians of children */
+    CSR_matrix *CSR_work; /* for summing Hessians of children */
 } hstack_expr;
 
 /* Elementwise multiplication */
 typedef struct elementwise_mult_expr
 {
     expr base;
-    Matrix *cross_C;       /* C  = Jg2^T diag(w) Jg1 (Sparse or PD) */
-    CSR_Matrix *CSR_work2; /* CT = C^T (always CSR) */
+    matrix *cross_C;       /* C  = Jg2^T diag(w) Jg1 (Sparse or PD) */
+    CSR_matrix *CSR_work2; /* CT = C^T (always CSR_matrix) */
     int *idx_map_C;        /* C[j]  -> wsum_hess pos */
     int *idx_map_CT;       /* CT[j] -> wsum_hess pos */
     int *idx_map_Hx;       /* x->wsum_hess[j] -> pos */
@@ -123,20 +123,20 @@ important distinction compared to linear_op_expr. */
 typedef struct left_matmul_expr
 {
     expr base;
-    Matrix *A;
-    Matrix *AT;
+    matrix *A;
+    matrix *AT;
     int n_blocks;
-    CSC_Matrix *Jchild_CSC;
-    CSC_Matrix *J_CSC;
+    CSC_matrix *Jchild_CSC;
+    CSC_matrix *J_CSC;
     int *csc_to_csr_work;
     expr *param_source;
     void (*refresh_param_values)(struct left_matmul_expr *);
 
-    /* When true, jacobian_init_impl produces a Permuted_Dense node->jacobian
-       directly (skipping the CSC mirror machinery). Set by new_left_matmul_dense
+    /* When true, jacobian_init_impl produces a permuted_dense node->jacobian
+       directly (skipping the CSC_matrix mirror machinery). Set by new_left_matmul_dense
        when A is a constant dense matrix, child is a leaf variable, and
        n_blocks == 1 — in that case the Jacobian is exactly A placed in the
-       variable's column slot, which is naturally a full-dense Permuted_Dense. */
+       variable's column slot, which is naturally a full-dense permuted_dense. */
     bool produce_pd_jacobian;
 } left_matmul_expr;
 
@@ -158,7 +158,7 @@ typedef struct vector_mult_expr
 /* 1D convolution: y = conv(a, child) where a is a length-m kernel held by
  * param_source. Output has size (m + n - 1) where n is the child length.
  * Forward and wsum_hess backprop are computed as direct loops; for Jacobian
- * we materialize T(a) as a CSR once at jacobian_init and reuse the engine's
+ * we materialize T(a) as a CSR_matrix once at jacobian_init and reuse the engine's
  * block-left-mult machinery for composite children. */
 typedef struct convolve_expr
 {
@@ -166,8 +166,8 @@ typedef struct convolve_expr
     expr *param_source; /* length-m kernel */
     int m;              /* kernel length */
     int n;              /* input length */
-    CSR_Matrix *T;      /* (m+n-1) x n convolution matrix */
-    CSC_Matrix *Jchild_CSC;
+    CSR_matrix *T;      /* (m+n-1) x n convolution matrix */
+    CSC_matrix *Jchild_CSC;
 } convolve_expr;
 
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
@@ -176,16 +176,16 @@ typedef struct matmul_expr
 {
     expr base;
     /* Jacobian workspace */
-    CSR_Matrix *term1_CSR; /* (Y^T x I_m) @ J_f */
-    CSR_Matrix *term2_CSR; /* (I_n x X) @ J_g */
+    CSR_matrix *term1_CSR; /* (Y^T x I_m) @ J_f */
+    CSR_matrix *term2_CSR; /* (I_n x X) @ J_g */
 
     /* Hessian workspace (composite only) */
-    CSR_Matrix *B;       /* cross-Hessian B(w), mk x kn */
-    CSR_Matrix *BJg;     /* B @ J_g */
-    CSC_Matrix *BJg_CSC; /* BJg in CSC */
-    int *BJg_csc_work;   /* CSR-to-CSC workspace */
-    CSR_Matrix *C;       /* J_f^T @ B @ J_g */
-    CSR_Matrix *CT;      /* C^T */
+    CSR_matrix *B;       /* cross-Hessian B(w), mk x kn */
+    CSR_matrix *BJg;     /* B @ J_g */
+    CSC_matrix *BJg_CSC; /* BJg in CSC_matrix */
+    int *BJg_csc_work;   /* CSR_matrix-to-CSC_matrix workspace */
+    CSR_matrix *C;       /* J_f^T @ B @ J_g */
+    CSR_matrix *CT;      /* C^T */
     int *idx_map_C;
     int *idx_map_CT;
     int *idx_map_Hf;

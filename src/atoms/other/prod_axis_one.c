@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/non_elementwise_full_dom.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
@@ -81,7 +82,7 @@ static void jacobian_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, x->size);
+        CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, x->size);
 
         /* set row pointers (each row has d2 nnzs) */
         for (int row = 0; row < x->d1; row++)
@@ -162,7 +163,7 @@ static void wsum_hess_init_impl(expr *node)
         /* each row i has d2-1 non-zero entries, with column indices corresponding to
            the columns in that row (except the diagonal element). */
         int nnz = x->d1 * x->d2 * (x->d2 - 1);
-        CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, nnz);
+        CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, nnz);
 
         /* fill sparsity pattern */
         int nnz_per_row = x->d2 - 1;
@@ -206,7 +207,7 @@ static inline void wsum_hess_row_no_zeros(expr *node, const double *w, int row,
                                           int d2)
 {
     expr *x = node->left;
-    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     double scale = w[row] * node->value[row];
 
     /* for each variable xk in this row, fill in Hessian entries
@@ -233,7 +234,7 @@ static inline void wsum_hess_row_one_zero(expr *node, const double *w, int row,
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
-    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     double *H_vals = H->x;
     int p = pnode->zero_index[row]; /* zero column index */
     double w_prod = w[row] * pnode->prod_nonzero[row];
@@ -278,7 +279,7 @@ static inline void wsum_hess_row_two_zeros(expr *node, const double *w, int row,
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
-    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     double *H_vals = H->x;
 
     /* find indices p and q where row has zeros */
@@ -331,7 +332,7 @@ static inline void wsum_hess_row_two_zeros(expr *node, const double *w, int row,
 
 static inline void wsum_hess_row_many_zeros(expr *node, int row, int d2)
 {
-    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     double *H_vals = H->x;
     expr *x = node->left;
 

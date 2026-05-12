@@ -15,16 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "utils/CSC_Matrix.h"
+#include "utils/CSC_matrix.h"
 #include "utils/iVec.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
+CSC_matrix *new_csc_matrix(int m, int n, int nnz)
 {
-    CSC_Matrix *matrix = (CSC_Matrix *) SP_MALLOC(sizeof(CSC_Matrix));
+    CSC_matrix *matrix = (CSC_matrix *) SP_MALLOC(sizeof(CSC_matrix));
     if (!matrix) return NULL;
 
     matrix->p = (int *) SP_MALLOC((n + 1) * sizeof(int));
@@ -47,7 +47,7 @@ CSC_Matrix *new_csc_matrix(int m, int n, int nnz)
     return matrix;
 }
 
-void free_csc_matrix(CSC_Matrix *matrix)
+void free_csc_matrix(CSC_matrix *matrix)
 {
     if (matrix)
     {
@@ -58,7 +58,7 @@ void free_csc_matrix(CSC_Matrix *matrix)
     }
 }
 
-CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
+CSR_matrix *ATA_alloc(const CSC_matrix *A)
 {
     /* A is m x n, A^T A is n x n */
     int n = A->n;
@@ -102,7 +102,7 @@ CSR_Matrix *ATA_alloc(const CSC_Matrix *A)
     }
 
     /* Allocate C and symmetrize it */
-    CSR_Matrix *C = new_csr_matrix(n, n, nnz);
+    CSR_matrix *C = new_csr_matrix(n, n, nnz);
     symmetrize_csr(Cp, Ci->data, n, C);
 
     /* free workspace */
@@ -169,7 +169,7 @@ static inline double sparse_wdot(const double *a_x, const int *a_i, int a_nnz,
     return sum;
 }
 
-void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
+void ATDA_fill_values(const CSC_matrix *A, const double *d, CSR_matrix *C)
 {
     int j, ii, jj;
     for (ii = 0; ii < C->m; ii++)
@@ -203,9 +203,9 @@ void ATDA_fill_values(const CSC_Matrix *A, const double *d, CSR_Matrix *C)
     }
 }
 
-CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)
+CSC_matrix *csr_to_csc_alloc(const CSR_matrix *A, int *iwork)
 {
-    CSC_Matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
+    CSC_matrix *C = new_csc_matrix(A->m, A->n, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -247,7 +247,7 @@ CSC_Matrix *csr_to_csc_alloc(const CSR_Matrix *A, int *iwork)
     return C;
 }
 
-void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
+void csr_to_csc_fill_values(const CSR_matrix *A, CSC_matrix *C, int *iwork)
 {
     int i, j;
     int *count = iwork;
@@ -266,9 +266,9 @@ void csr_to_csc_fill_values(const CSR_Matrix *A, CSC_Matrix *C, int *iwork)
     }
 }
 
-CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork)
+CSR_matrix *csc_to_csr_alloc(const CSC_matrix *A, int *iwork)
 {
-    CSR_Matrix *C = new_csr_matrix(A->m, A->n, A->nnz);
+    CSR_matrix *C = new_csr_matrix(A->m, A->n, A->nnz);
 
     int i, j;
     int *count = iwork;
@@ -312,7 +312,7 @@ CSR_Matrix *csc_to_csr_alloc(const CSC_Matrix *A, int *iwork)
     return C;
 }
 
-void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
+void csc_to_csr_fill_values(const CSC_matrix *A, CSR_matrix *C, int *iwork)
 {
     int i, j;
     int *count = iwork;
@@ -332,7 +332,7 @@ void csc_to_csr_fill_values(const CSC_Matrix *A, CSR_Matrix *C, int *iwork)
     }
 }
 
-CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
+CSR_matrix *BTA_alloc(const CSC_matrix *A, const CSC_matrix *B)
 {
     /* A is m x n, B is m x p, C = B^T A is p x n */
     int n = A->n;
@@ -378,7 +378,7 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     }
 
     /* Allocate C */
-    CSR_Matrix *C = new_csr_matrix(p, n, nnz);
+    CSR_matrix *C = new_csr_matrix(p, n, nnz);
     memcpy(C->p, Cp, (p + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
 
@@ -389,7 +389,7 @@ CSR_Matrix *BTA_alloc(const CSC_Matrix *A, const CSC_Matrix *B)
     return C;
 }
 
-void yTA_fill_values(const CSC_Matrix *A, const double *y, CSR_Matrix *C)
+void yTA_fill_values(const CSC_matrix *A, const double *y, CSR_matrix *C)
 {
     for (int col = 0; col < A->n; col++)
     {
@@ -413,9 +413,9 @@ void yTA_fill_values(const CSC_Matrix *A, const double *y, CSR_Matrix *C)
     }
 }
 
-/* computes C = B^T * D * A in CSR */
-void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
-                      CSR_Matrix *C)
+/* computes C = B^T * D * A in CSR_matrix */
+void BTDA_fill_values(const CSC_matrix *A, const CSC_matrix *B, const double *d,
+                      CSR_matrix *C)
 {
     int i, j, jj;
     for (i = 0; i < C->m; i++)
@@ -446,7 +446,7 @@ void BTDA_fill_values(const CSC_Matrix *A, const CSC_Matrix *B, const double *d,
  * faster when Q is dense, since it touches each Q entry exactly once.
  * The sparse_dot approach below is simpler but redundantly scans
  * column j of A for each nonzero row of C. */
-void BA_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A, CSC_Matrix *C)
+void BA_fill_values(const CSR_matrix *Q, const CSC_matrix *A, CSC_matrix *C)
 {
     /* fill values of C = Q * A, given the sparsity pattern of C. */
     int i, j, ii;
@@ -467,10 +467,10 @@ void BA_fill_values(const CSR_Matrix *Q, const CSC_Matrix *A, CSC_Matrix *C)
     }
 }
 
-CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
+CSC_matrix *symBA_alloc(const CSR_matrix *B, const CSC_matrix *A)
 {
     /* Allocate C = B * A (sparsity only). B must be symmetric.
-     * B is CSR (m x m), A is CSC (m x n), C is CSC (m x n).
+     * B is CSR_matrix (m x m), A is CSC_matrix (m x n), C is CSC_matrix (m x n).
      *
      * Column j of C is B * a_j = sum_k A_{k,j} B[:, k], so the nonzero
      * rows of column j of C are the union of the nonzero rows of B[:, k].
@@ -525,7 +525,7 @@ CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
 
     /* allocate C and copy the computed structure */
     int total_nnz = Cp[n];
-    CSC_Matrix *C = new_csc_matrix(m, n, total_nnz);
+    CSC_matrix *C = new_csc_matrix(m, n, total_nnz);
     memcpy(C->p, Cp, (n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, total_nnz * sizeof(int));
 
@@ -536,7 +536,7 @@ CSC_Matrix *symBA_alloc(const CSR_Matrix *B, const CSC_Matrix *A)
     return C;
 }
 
-int count_nonzero_cols_csc(const CSC_Matrix *A)
+int count_nonzero_cols_csc(const CSC_matrix *A)
 {
     int count = 0;
     for (int j = 0; j < A->n; j++)

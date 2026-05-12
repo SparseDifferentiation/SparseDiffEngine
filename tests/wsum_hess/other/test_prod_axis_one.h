@@ -47,7 +47,7 @@ const char *test_wsum_hess_prod_axis_one_no_zeros(void)
                              /* Var 6 (row 1, col 2): [8, 4] (excludes col 2) */
                              8.0, 4.0};
 
-    /* Row pointers (monotonically increasing for valid CSR format) */
+    /* Row pointers (monotonically increasing for valid CSR_matrix format) */
     int expected_p[9] = {0, 0, 2, 4, 6, 8, 10, 12, 12};
 
     /* Column indices (each row of the matrix interacts with its own columns,
@@ -141,7 +141,7 @@ const char *test_wsum_hess_prod_axis_one_one_zero(void)
     expected_x[16] = 18.0;
     expected_x[17] = 9.0;
 
-    /* Row pointers (monotonically increasing for valid CSR format) */
+    /* Row pointers (monotonically increasing for valid CSR_matrix format) */
     int expected_p[11] = {0, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
 
     /* Column indices (each row of the matrix interacts with its own columns,
@@ -210,7 +210,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
     memset(expected_x, 0, sizeof(expected_x));
 
     /* For a 5x3 matrix with var_id=1, each row has 2 nnz (d2-1):
-     * CSR row pointers: p[i] = (i-1)*2 for i in [1,15]
+     * CSR_matrix row pointers: p[i] = (i-1)*2 for i in [1,15]
      *   Var 1 (matrix [0,0]): p[1]=0
      *   Var 2 (matrix [1,0]): p[2]=2
      *   Var 3 (matrix [2,0]): p[3]=4
@@ -293,7 +293,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
     expected_x[28] = 25.0; /* 75/(3*1) */
     expected_x[29] = 5.0;  /* 75/(3*5) */
 
-    /* Row pointers (monotonically increasing for valid CSR format) */
+    /* Row pointers (monotonically increasing for valid CSR_matrix format) */
     int expected_p[17] = {0,  0,  2,  4,  6,  8,  10, 12, 14,
                           16, 18, 20, 22, 24, 26, 28, 30};
 

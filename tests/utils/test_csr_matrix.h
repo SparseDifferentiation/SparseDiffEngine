@@ -6,18 +6,18 @@
 #include "old-code/old_CSR.h"
 #include "old-code/old_CSR_sum.h"
 #include "test_helpers.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 
 const char *test_diag_csr_mult(void)
 {
-    /* Create a 3x3 CSR matrix A:
+    /* Create a 3x3 CSR_matrix matrix A:
      * [1.0  2.0  0.0]
      * [0.0  3.0  4.0]
      * [5.0  0.0  6.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 3, 6);
+    CSR_matrix *A = new_csr_matrix(3, 3, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {0, 1, 1, 2, 0, 2};
     int Ap[4] = {0, 2, 4, 6};
@@ -31,7 +31,7 @@ const char *test_diag_csr_mult(void)
      * [0.0  9.0  12.0]
      * [2.5  0.0  3.0]
      */
-    CSR_Matrix *C = new_csr_matrix(3, 3, 6);
+    CSR_matrix *C = new_csr_matrix(3, 3, 6);
     diag_csr_mult(d, A, C);
 
     double Ax_correct[6] = {2.0, 4.0, 9.0, 12.0, 2.5, 3.0};
@@ -55,7 +55,7 @@ const char *test_diag_csr_mult(void)
 */
 const char *test_csr_sum(void)
 {
-    CSR_Matrix *A = new_csr_matrix(3, 3, 5);
+    CSR_matrix *A = new_csr_matrix(3, 3, 5);
     double Ax[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
     int Ai[5] = {0, 2, 1, 0, 2};
     int Ap[4] = {0, 2, 3, 5};
@@ -63,7 +63,7 @@ const char *test_csr_sum(void)
     memcpy(A->i, Ai, 5 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
 
-    CSR_Matrix *B = new_csr_matrix(3, 3, 4);
+    CSR_matrix *B = new_csr_matrix(3, 3, 4);
     double Bx[4] = {1.0, 2.0, 3.0, 6.0};
     int Bi[4] = {1, 0, 2, 1};
     int Bp[4] = {0, 1, 3, 4};
@@ -71,7 +71,7 @@ const char *test_csr_sum(void)
     memcpy(B->i, Bi, 4 * sizeof(int));
     memcpy(B->p, Bp, 4 * sizeof(int));
 
-    CSR_Matrix *C = new_csr_matrix(3, 3, 9);
+    CSR_matrix *C = new_csr_matrix(3, 3, 9);
     sum_csr_matrices(A, B, C);
 
     double Cx_correct[9] = {1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 6.0, 5.0};
@@ -97,7 +97,7 @@ const char *test_csr_sum(void)
 */
 const char *test_csr_sum2(void)
 {
-    CSR_Matrix *A = new_csr_matrix(3, 3, 5);
+    CSR_matrix *A = new_csr_matrix(3, 3, 5);
     double Ax[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
     int Ai[5] = {0, 2, 2, 0, 2};
     int Ap[4] = {0, 2, 3, 5};
@@ -105,7 +105,7 @@ const char *test_csr_sum2(void)
     memcpy(A->i, Ai, 5 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
 
-    CSR_Matrix *B = new_csr_matrix(3, 3, 4);
+    CSR_matrix *B = new_csr_matrix(3, 3, 4);
     double Bx[4] = {1.0, 2.0, 3.0, 6.0};
     int Bi[4] = {1, 0, 2, 1};
     int Bp[4] = {0, 1, 3, 4};
@@ -113,7 +113,7 @@ const char *test_csr_sum2(void)
     memcpy(B->i, Bi, 4 * sizeof(int));
     memcpy(B->p, Bp, 4 * sizeof(int));
 
-    CSR_Matrix *C = new_csr_matrix(3, 3, 8);
+    CSR_matrix *C = new_csr_matrix(3, 3, 8);
     sum_csr_matrices(A, B, C);
 
     double Cx_correct[8] = {1, 1, 2, 2, 6, 4, 6, 5};
@@ -134,7 +134,7 @@ const char *test_csr_sum2(void)
 
 const char *test_transpose(void)
 {
-    CSR_Matrix *A = new_csr_matrix(4, 5, 5);
+    CSR_matrix *A = new_csr_matrix(4, 5, 5);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
     int Ai[5] = {0, 4, 1, 0, 1};
     int Ap[5] = {0, 2, 3, 4, 5};
@@ -143,7 +143,7 @@ const char *test_transpose(void)
     memcpy(A->p, Ap, 5 * sizeof(int));
 
     int iwork[5];
-    CSR_Matrix *AT = transpose(A, iwork);
+    CSR_matrix *AT = transpose(A, iwork);
     double ATx_correct[5] = {1.0, 2.0, 3.0, 4.0, 1.0};
     int ATi_correct[5] = {0, 2, 1, 3, 0};
     int ATp_correct[6] = {0, 2, 4, 4, 4, 5};
@@ -167,7 +167,7 @@ A = [1 0 0 0 1
 */
 const char *test_csr_vecmat_values_sparse(void)
 {
-    CSR_Matrix *A = new_csr_matrix(4, 5, 5);
+    CSR_matrix *A = new_csr_matrix(4, 5, 5);
     double Ax[5] = {1.0, 1.0, 3.0, 2.0, 4.0};
     int Ai[5] = {0, 4, 1, 0, 1};
     int Ap[5] = {0, 2, 3, 4, 5};
@@ -177,7 +177,7 @@ const char *test_csr_vecmat_values_sparse(void)
 
     double z[4] = {1.0, 2.0, 3.0, 4.0};
 
-    CSR_Matrix *C = new_csr_matrix(1, 3, 3);
+    CSR_matrix *C = new_csr_matrix(1, 3, 3);
     double Cx[3] = {0.0, 0.0, 0.0};
     int Ci[3] = {0, 1, 4};
     int Cp[2] = {0, 3};
@@ -187,7 +187,7 @@ const char *test_csr_vecmat_values_sparse(void)
 
     int iwork[5];
 
-    CSR_Matrix *AT = transpose(A, iwork);
+    CSR_matrix *AT = transpose(A, iwork);
 
     Ax_csr_fill_values(AT, z, C);
 
@@ -204,7 +204,7 @@ const char *test_csr_vecmat_values_sparse(void)
 }
 const char *test_sum_all_rows_csr(void)
 {
-    /* Create a 3x4 CSR matrix A:
+    /* Create a 3x4 CSR_matrix matrix A:
      * [1.0  2.0  0.0  0.0]
      * [0.0  3.0  4.0  0.0]
      * [5.0  0.0  6.0  7.0]
@@ -212,14 +212,14 @@ const char *test_sum_all_rows_csr(void)
      * Sum all rows should give:
      * [6.0  5.0  10.0  7.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 4, 7);
+    CSR_matrix *A = new_csr_matrix(3, 4, 7);
     double Ax[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
     int Ai[7] = {0, 1, 1, 2, 0, 2, 3};
     int Ap[4] = {0, 2, 4, 7};
     memcpy(A->x, Ax, 7 * sizeof(double));
     memcpy(A->i, Ai, 7 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
-    CSR_Matrix *C = new_csr_matrix(1, 4, 4);
+    CSR_matrix *C = new_csr_matrix(1, 4, 4);
     int_double_pair *pairs = new_int_double_pair_array(7);
     sum_all_rows_csr(A, C, pairs);
     double Cx_correct[4] = {6.0, 5.0, 10.0, 7.0};
@@ -239,7 +239,7 @@ const char *test_sum_all_rows_csr(void)
 }
 const char *test_sum_block_of_rows_csr(void)
 {
-    /* Create a 9x4 CSR matrix A and sum blocks of size 3
+    /* Create a 9x4 CSR_matrix matrix A and sum blocks of size 3
      * Block 0 (rows 0-2):
      * [1.0  2.0  0.0  0.0]
      * [0.0  3.0  1.0  0.0]
@@ -260,7 +260,7 @@ const char *test_sum_block_of_rows_csr(void)
      *
      * Result C should be 3x4 matrix with the sums above
      */
-    CSR_Matrix *A = new_csr_matrix(9, 4, 18);
+    CSR_matrix *A = new_csr_matrix(9, 4, 18);
 
     double Ax[18] = {1.0, 2.0,  /* row 0 */
                      3.0, 1.0,  /* row 1 */
@@ -289,7 +289,7 @@ const char *test_sum_block_of_rows_csr(void)
     memcpy(A->p, Ap, 10 * sizeof(int));
 
     /* Allocate C for 3 blocks and enough space for all nonzeros */
-    CSR_Matrix *C = new_csr_matrix(3, 4, 12);
+    CSR_matrix *C = new_csr_matrix(3, 4, 12);
     int_double_pair *pairs = new_int_double_pair_array(18);
 
     sum_block_of_rows_csr(A, C, pairs, 3);
@@ -318,11 +318,11 @@ const char *test_sum_block_of_rows_csr(void)
 }
 const char *test_sum_evenly_spaced_rows_csr(void)
 {
-    /* Create a 9x4 CSR matrix A (same as test_sum_block_of_rows_csr) and sum evenly
+    /* Create a 9x4 CSR_matrix matrix A (same as test_sum_block_of_rows_csr) and sum evenly
      * spaced rows With row_spacing=3:
 
 
-    A = 9x4 CSR matrix:
+    A = 9x4 CSR_matrix matrix:
             1 2 0 0
             0 3 1 0
             0 0 4 5
@@ -338,7 +338,7 @@ const char *test_sum_evenly_spaced_rows_csr(void)
             row 1: sum of rows 1, 4, 7 = [1 4 6 0]
             row 2: sum of rows 2, 5, 8 = [3 2 4 11]
     */
-    CSR_Matrix *A = new_csr_matrix(9, 4, 18);
+    CSR_matrix *A = new_csr_matrix(9, 4, 18);
 
     double Ax[18] = {1.0, 2.0,  /* row 0 */
                      3.0, 1.0,  /* row 1 */
@@ -367,7 +367,7 @@ const char *test_sum_evenly_spaced_rows_csr(void)
     memcpy(A->p, Ap, 10 * sizeof(int));
 
     /* Allocate C for 3 rows (row_spacing=3) and enough space for all nonzeros */
-    CSR_Matrix *C = new_csr_matrix(3, 4, 10);
+    CSR_matrix *C = new_csr_matrix(3, 4, 10);
     int_double_pair *pairs = new_int_double_pair_array(18);
 
     sum_evenly_spaced_rows_csr(A, C, pairs, 3);
@@ -396,12 +396,12 @@ const char *test_sum_evenly_spaced_rows_csr(void)
 }
 const char *test_AT_alloc_and_fill(void)
 {
-    /* Create a 3x4 CSR matrix A:
+    /* Create a 3x4 CSR_matrix matrix A:
      * [1.0  0.0  2.0  0.0]
      * [0.0  3.0  0.0  4.0]
      * [5.0  0.0  6.0  0.0]
      */
-    CSR_Matrix *A = new_csr_matrix(3, 4, 6);
+    CSR_matrix *A = new_csr_matrix(3, 4, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     int Ai[6] = {0, 2, 1, 3, 0, 2};
     int Ap[4] = {0, 2, 4, 6};
@@ -411,7 +411,7 @@ const char *test_AT_alloc_and_fill(void)
 
     /* Allocate A^T (should be 4x3) */
     int *iwork = (int *) malloc(A->n * sizeof(int));
-    CSR_Matrix *AT = AT_alloc(A, iwork);
+    CSR_matrix *AT = AT_alloc(A, iwork);
 
     /* Fill values of A^T */
     AT_fill_values(A, AT, iwork);
@@ -454,7 +454,7 @@ const char *test_kron_identity_csr(void)
      * [3  0 | 0  0 | 4  0]
      * [0  3 | 0  0 | 0  4]
      */
-    CSR_Matrix *A = new_csr_matrix(2, 3, 4);
+    CSR_matrix *A = new_csr_matrix(2, 3, 4);
     double Ax[4] = {1.0, 2.0, 3.0, 4.0};
     int Ai[4] = {0, 2, 0, 2};
     int Ap[3] = {0, 2, 4};
@@ -462,7 +462,7 @@ const char *test_kron_identity_csr(void)
     memcpy(A->i, Ai, 4 * sizeof(int));
     memcpy(A->p, Ap, 3 * sizeof(int));
 
-    CSR_Matrix *result = kron_identity_csr(A, 2);
+    CSR_matrix *result = kron_identity_csr(A, 2);
 
     /* Expected: 4x6 with 8 nonzeros
      * Row 0: [1, 0, 0, 0, 2, 0] -> cols {0, 4}, vals {1, 2}

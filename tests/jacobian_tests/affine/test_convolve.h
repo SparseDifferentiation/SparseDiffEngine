@@ -18,7 +18,7 @@ const char *test_jacobian_convolve(void)
      *    [3, 2, 1],
      *    [0, 3, 2],
      *    [0, 0, 3]]
-     * stored in CSR with nnz = 9, shape 5 x 3. */
+     * stored in CSR_matrix with nnz = 9, shape 5 x 3. */
     double kernel[3] = {1.0, 2.0, 3.0};
     expr *kernel_param = new_parameter(3, 1, PARAM_FIXED, 3, kernel);
     expr *x = new_variable(3, 1, 0, 3);

@@ -16,11 +16,11 @@
  * limitations under the License.
  */
 #include "old-code/old_CSR.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include <assert.h>
 #include <string.h>
 
-CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p)
+CSR_matrix *block_diag_repeat_csr(const CSR_matrix *A, int p)
 {
     assert(p > 0);
 
@@ -28,7 +28,7 @@ CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p)
     int n = A->n;
     int nnz = A->nnz;
 
-    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+    CSR_matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
 
     int nnz_cursor = 0;
     for (int block = 0; block < p; block++)
@@ -55,7 +55,7 @@ CSR_Matrix *block_diag_repeat_csr(const CSR_Matrix *A, int p)
     return A_kron;
 }
 
-CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p)
+CSR_matrix *kron_identity_csr(const CSR_matrix *A, int p)
 {
     assert(p > 0);
 
@@ -63,7 +63,7 @@ CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p)
     int n = A->n;
     int nnz = A->nnz;
 
-    CSR_Matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
+    CSR_matrix *A_kron = new_csr_matrix(m * p, n * p, nnz * p);
 
     int nnz_cursor = 0;
     for (int row_block = 0; row_block < m; row_block++)
@@ -90,7 +90,7 @@ CSR_Matrix *kron_identity_csr(const CSR_Matrix *A, int p)
     return A_kron;
 }
 
-void Ax_csr_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C)
+void Ax_csr_fill_values(const CSR_matrix *AT, const double *z, CSR_matrix *C)
 {
     int A_ncols = AT->m;
 
@@ -116,7 +116,7 @@ void Ax_csr_fill_values(const CSR_Matrix *AT, const double *z, CSR_Matrix *C)
     }
 }
 
-void csr_insert_value(CSR_Matrix *A, int col_idx, double value)
+void csr_insert_value(CSR_matrix *A, int col_idx, double value)
 {
     assert(A->m == 1);
 
@@ -144,7 +144,7 @@ void csr_insert_value(CSR_Matrix *A, int col_idx, double value)
     A->nnz++;
 }
 
-void Ax_csr_wo_offset(const CSR_Matrix *A, const double *x, double *y)
+void Ax_csr_wo_offset(const CSR_matrix *A, const double *x, double *y)
 {
     for (int row = 0; row < A->m; row++)
     {
@@ -157,7 +157,7 @@ void Ax_csr_wo_offset(const CSR_Matrix *A, const double *x, double *y)
     }
 }
 
-void diag_csr_mult(const double *d, const CSR_Matrix *A, CSR_Matrix *C)
+void diag_csr_mult(const double *d, const CSR_matrix *A, CSR_matrix *C)
 {
     copy_csr_matrix(A, C);
 

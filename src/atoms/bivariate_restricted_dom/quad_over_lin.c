@@ -17,7 +17,8 @@
  */
 #include "atoms/bivariate_restricted_dom.h"
 #include "subexpr.h"
-#include "utils/CSC_Matrix.h"
+#include "utils/CSC_matrix.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
@@ -58,7 +59,7 @@ static void jacobian_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, x->size + 1);
+        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, x->size + 1);
         jac->p[0] = 0;
         jac->p[1] = x->size + 1;
 
@@ -88,9 +89,9 @@ static void jacobian_init_impl(expr *node)
         /* compute required allocation and allocate jacobian */
         bool *col_nz = (bool *) SP_CALLOC(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
-        CSR_Matrix *Jx = x->jacobian->to_csr(x->jacobian);
+        CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
         int nonzero_cols = count_nonzero_cols(Jx, col_nz);
-        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
+        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */
         jac->nnz = 0;
@@ -125,7 +126,7 @@ static void jacobian_init_impl(expr *node)
 
         node->jacobian = new_sparse_matrix(jac);
 
-        /* prepare CSC form of child jacobian for chain rule.
+        /* prepare CSC_matrix form of child jacobian for chain rule.
          * For a linear operator the values are constant, so fill
          * them once here. */
         jacobian_csc_init(x);
@@ -137,7 +138,7 @@ static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
-    CSR_Matrix *jac = node->jacobian->to_csr(node->jacobian);
+    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
@@ -168,7 +169,7 @@ static void eval_jacobian(expr *node)
             node->work->dwork[j] = (2.0 * x->value[j]) / y->value[0];
         }
 
-        /* chain rule (no derivative wrt y) using CSC format */
+        /* chain rule (no derivative wrt y) using CSC_matrix format */
         yTA_fill_values(x->work->jacobian_csc, node->work->dwork, jac);
 
         /* insert derivative wrt y at right place (for correctness this assumes
@@ -188,7 +189,7 @@ static void wsum_hess_init_impl(expr *node)
     /* if left node is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
+        CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 3 * x->size + 1);
         node->wsum_hess = new_sparse_matrix(H);
 
         /* if x has lower idx than y*/

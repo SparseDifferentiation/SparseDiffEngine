@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-COO_Matrix *new_coo_matrix(const CSR_Matrix *A)
+COO_Matrix *new_coo_matrix(const CSR_matrix *A)
 {
     COO_Matrix *coo = (COO_Matrix *) SP_MALLOC(sizeof(COO_Matrix));
     coo->m = A->m;
@@ -45,7 +45,7 @@ COO_Matrix *new_coo_matrix(const CSR_Matrix *A)
     return coo;
 }
 
-COO_Matrix *new_coo_matrix_lower_triangular(const CSR_Matrix *A)
+COO_Matrix *new_coo_matrix_lower_triangular(const CSR_matrix *A)
 {
     /* Pass 1: count lower-triangular entries (col <= row) */
     int count = 0;

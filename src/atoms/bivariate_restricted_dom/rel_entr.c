@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/bivariate_restricted_dom.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
@@ -45,7 +46,7 @@ static void forward_vector_args(expr *node, const double *u)
 
 static void jacobian_init_vectors_args(expr *node)
 {
-    CSR_Matrix *jac = new_csr_matrix(node->size, node->n_vars, 2 * node->size);
+    CSR_matrix *jac = new_csr_matrix(node->size, node->n_vars, 2 * node->size);
 
     expr *x = node->left;
     expr *y = node->right;
@@ -101,7 +102,7 @@ static void eval_jacobian_vector_args(expr *node)
 
 static void wsum_hess_init_vector_args(expr *node)
 {
-    CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->size);
+    CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, 4 * node->size);
     expr *x = node->left;
     expr *y = node->right;
 

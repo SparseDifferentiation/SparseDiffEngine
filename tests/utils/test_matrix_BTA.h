@@ -3,9 +3,10 @@
 
 #include "minunit.h"
 #include "test_helpers.h"
-#include "utils/CSR_Matrix.h"
+#include "utils/CSR_matrix.h"
 #include "utils/matrix_BTA.h"
 #include "utils/permuted_dense.h"
+#include "utils/sparse_matrix.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,20 +21,20 @@ const char *test_BTDA_matrices_pd_pd(void)
     double XB[4] = {5.0, 6.0, 7.0, 8.0};
     double d[2] = {2.0, -1.5};
 
-    Matrix *A_m = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_A, XA);
-    Matrix *B_m = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_B, XB);
+    matrix *A_m = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_A, XA);
+    matrix *B_m = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_B, XB);
 
     /* Wrapper path. */
-    Matrix *C_m = BTA_matrices_alloc(A_m, B_m);
+    matrix *C_m = BTA_matrices_alloc(A_m, B_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
     /* Direct primitive path on independent operands. */
-    Matrix *A2 = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_A, XA);
-    Matrix *B2 = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_B, XB);
-    Matrix *C2 =
-        permuted_dense_BTA_alloc((Permuted_Dense *) A2, (Permuted_Dense *) B2);
-    BTDA_pd_pd_fill_values((Permuted_Dense *) A2, d, (Permuted_Dense *) B2,
-                           (Permuted_Dense *) C2);
+    matrix *A2 = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_A, XA);
+    matrix *B2 = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_B, XB);
+    matrix *C2 =
+        permuted_dense_BTA_alloc((permuted_dense *) A2, (permuted_dense *) B2);
+    BTDA_pd_pd_fill_values((permuted_dense *) A2, d, (permuted_dense *) B2,
+                           (permuted_dense *) C2);
 
     mu_assert("values", cmp_double_array(C_m->x, C2->x, C_m->nnz));
 
@@ -46,12 +47,12 @@ const char *test_BTDA_matrices_pd_pd(void)
     return 0;
 }
 
-/* Wrapper dispatch sanity: (CSR, PD). Compare against direct
+/* Wrapper dispatch sanity: (CSR_matrix, PD). Compare against direct
    BTDA_csr_pd_fill_values. */
 const char *test_BTDA_matrices_csr_pd(void)
 {
-    /* A: 4x5 CSR */
-    CSR_Matrix *A = new_csr_matrix(4, 5, 5);
+    /* A: 4x5 CSR_matrix */
+    CSR_matrix *A = new_csr_matrix(4, 5, 5);
     A->p[0] = 0;
     A->p[1] = 2;
     A->p[2] = 3;
@@ -61,22 +62,22 @@ const char *test_BTDA_matrices_csr_pd(void)
     double Ax[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
     memcpy(A->i, Ai, sizeof Ai);
     memcpy(A->x, Ax, sizeof Ax);
-    Matrix *A_m = new_sparse_matrix(A);
+    matrix *A_m = new_sparse_matrix(A);
 
     /* B: 4x4 PD, row_perm = [1, 3], col_perm = [0, 2]. */
     int row_perm_B[2] = {1, 3};
     int col_perm_B[2] = {0, 2};
     double XB[4] = {10.0, 20.0, 30.0, 40.0};
-    Matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
+    matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
 
     double d[4] = {1.0, -2.0, 0.5, 3.0};
 
     /* Wrapper path. */
-    Matrix *C_m = BTA_matrices_alloc(A_m, B_m);
+    matrix *C_m = BTA_matrices_alloc(A_m, B_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
     /* Direct primitive path. */
-    CSR_Matrix *A2 = new_csr_matrix(4, 5, 5);
+    CSR_matrix *A2 = new_csr_matrix(4, 5, 5);
     A2->p[0] = 0;
     A2->p[1] = 2;
     A2->p[2] = 3;
@@ -84,10 +85,10 @@ const char *test_BTDA_matrices_csr_pd(void)
     A2->p[4] = 5;
     memcpy(A2->i, Ai, sizeof Ai);
     memcpy(A2->x, Ax, sizeof Ax);
-    Matrix *B2_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
-    Permuted_Dense *B2 = (Permuted_Dense *) B2_m;
-    Matrix *C2 = BTA_csr_pd_alloc(A2, B2);
-    BTDA_csr_pd_fill_values(A2, d, B2, (Permuted_Dense *) C2);
+    matrix *B2_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
+    permuted_dense *B2 = (permuted_dense *) B2_m;
+    matrix *C2 = BTA_csr_pd_alloc(A2, B2);
+    BTDA_csr_pd_fill_values(A2, d, B2, (permuted_dense *) C2);
 
     mu_assert("values", cmp_double_array(C_m->x, C2->x, C_m->nnz));
 
@@ -100,7 +101,7 @@ const char *test_BTDA_matrices_csr_pd(void)
     return 0;
 }
 
-/* Wrapper dispatch sanity: (PD, CSR). Compare against direct
+/* Wrapper dispatch sanity: (PD, CSR_matrix). Compare against direct
    BTDA_pd_csr_fill_values. */
 const char *test_BTDA_matrices_pd_csr(void)
 {
@@ -108,10 +109,10 @@ const char *test_BTDA_matrices_pd_csr(void)
     int row_perm_A[2] = {1, 3};
     int col_perm_A[2] = {0, 2};
     double XA[4] = {1.0, 2.0, 3.0, 4.0};
-    Matrix *A_m = new_permuted_dense(4, 5, 2, 2, row_perm_A, col_perm_A, XA);
+    matrix *A_m = new_permuted_dense(4, 5, 2, 2, row_perm_A, col_perm_A, XA);
 
-    /* B: 4x4 CSR. */
-    CSR_Matrix *B = new_csr_matrix(4, 4, 5);
+    /* B: 4x4 CSR_matrix. */
+    CSR_matrix *B = new_csr_matrix(4, 4, 5);
     B->p[0] = 0;
     B->p[1] = 2;
     B->p[2] = 3;
@@ -121,18 +122,18 @@ const char *test_BTDA_matrices_pd_csr(void)
     double Bx[5] = {10.0, 20.0, 30.0, 40.0, 50.0};
     memcpy(B->i, Bi, sizeof Bi);
     memcpy(B->x, Bx, sizeof Bx);
-    Matrix *B_m = new_sparse_matrix(B);
+    matrix *B_m = new_sparse_matrix(B);
 
     double d[4] = {1.0, -2.0, 0.5, 3.0};
 
     /* Wrapper path. */
-    Matrix *C_m = BTA_matrices_alloc(A_m, B_m);
+    matrix *C_m = BTA_matrices_alloc(A_m, B_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
     /* Direct primitive path. */
-    Matrix *A2_m = new_permuted_dense(4, 5, 2, 2, row_perm_A, col_perm_A, XA);
-    Permuted_Dense *A2 = (Permuted_Dense *) A2_m;
-    CSR_Matrix *B2 = new_csr_matrix(4, 4, 5);
+    matrix *A2_m = new_permuted_dense(4, 5, 2, 2, row_perm_A, col_perm_A, XA);
+    permuted_dense *A2 = (permuted_dense *) A2_m;
+    CSR_matrix *B2 = new_csr_matrix(4, 4, 5);
     B2->p[0] = 0;
     B2->p[1] = 2;
     B2->p[2] = 3;
@@ -140,8 +141,8 @@ const char *test_BTDA_matrices_pd_csr(void)
     B2->p[4] = 5;
     memcpy(B2->i, Bi, sizeof Bi);
     memcpy(B2->x, Bx, sizeof Bx);
-    Matrix *C2 = BTA_pd_csr_alloc(A2, B2);
-    BTDA_pd_csr_fill_values(A2, d, B2, (Permuted_Dense *) C2);
+    matrix *C2 = BTA_pd_csr_alloc(A2, B2);
+    BTDA_pd_csr_fill_values(A2, d, B2, (permuted_dense *) C2);
 
     mu_assert("values", cmp_double_array(C_m->x, C2->x, C_m->nnz));
 

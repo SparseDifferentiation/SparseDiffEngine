@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "utils/CSR_sum.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
@@ -56,7 +57,7 @@ static void jacobian_init_impl(expr *node)
         nnz += hnode->args[i]->jacobian->nnz;
     }
 
-    CSR_Matrix *A = new_csr_matrix(node->size, node->n_vars, nnz);
+    CSR_matrix *A = new_csr_matrix(node->size, node->n_vars, nnz);
 
     /* precompute sparsity pattern of this node's jacobian */
     int row_offset = 0;
@@ -65,7 +66,7 @@ static void jacobian_init_impl(expr *node)
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
-        CSR_Matrix *B = child->jacobian->to_csr(child->jacobian);
+        CSR_matrix *B = child->jacobian->to_csr(child->jacobian);
 
         /* copy columns */
         memcpy(A->i + A->nnz, B->i, B->nnz * sizeof(int));
@@ -111,14 +112,14 @@ static void wsum_hess_init_impl(expr *node)
 
     /* worst-case scenario the nnz of node->wsum_hess is the sum of children's
        nnz */
-    CSR_Matrix *H = new_csr_matrix(node->n_vars, node->n_vars, nnz);
+    CSR_matrix *H = new_csr_matrix(node->n_vars, node->n_vars, nnz);
     hnode->CSR_work = new_csr_matrix(node->n_vars, node->n_vars, nnz);
 
     /* fill sparsity pattern */
     H->nnz = 0;
     for (int i = 0; i < hnode->n_args; i++)
     {
-        Matrix *child_hess = hnode->args[i]->wsum_hess;
+        matrix *child_hess = hnode->args[i]->wsum_hess;
         copy_csr_matrix(H, hnode->CSR_work);
         sum_csr_alloc(hnode->CSR_work, child_hess->to_csr(child_hess), H);
     }
@@ -128,7 +129,7 @@ static void wsum_hess_init_impl(expr *node)
 static void wsum_hess_eval(expr *node, const double *w)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    CSR_Matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     int row_offset = 0;
     memset(H->x, 0, H->nnz * sizeof(double));
 

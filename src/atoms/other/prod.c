@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/non_elementwise_full_dom.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
@@ -71,7 +72,7 @@ static void jacobian_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        CSR_Matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
+        CSR_matrix *jac = new_csr_matrix(1, node->n_vars, x->size);
         jac->p[0] = 0;
         jac->p[1] = x->size;
         for (int j = 0; j < x->size; j++)
@@ -130,10 +131,10 @@ static void wsum_hess_init_impl(expr *node)
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
-        /* allocate n_vars x n_vars CSR matrix with dense block */
+        /* allocate n_vars x n_vars CSR_matrix matrix with dense block */
         int block_size = x->size;
         int nnz = block_size * block_size;
-        CSR_Matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
+        CSR_matrix *hess = new_csr_matrix(node->n_vars, node->n_vars, nnz);
 
         /* fill row pointers for the dense block */
         for (int i = 0; i < block_size; i++)

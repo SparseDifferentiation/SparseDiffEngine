@@ -30,3 +30,22 @@ void sort_int_array(int *array, int size)
 {
     qsort(array, size, sizeof(int), compare_int_asc);
 }
+
+bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
+                 int b_offset)
+{
+    int ai = 0, bi = 0;
+    while (ai < a_len && bi < b_len)
+    {
+        if (a_idx[ai] == b_idx[bi] - b_offset) return true;
+        if (a_idx[ai] < b_idx[bi] - b_offset)
+        {
+            ai++;
+        }
+        else
+        {
+            bi++;
+        }
+    }
+    return false;
+}

@@ -11,14 +11,14 @@
 
 const char *test_linear_op(void)
 {
-    /* create CSR matrix
+    /* create CSR_matrix matrix
      A = [0 0 2 3 0 0]
          [0 0 1 0 2 0]
          [0 0 3 4 5 0] */
     double Ax[7] = {2.0, 3.0, 1.0, 2.0, 3.0, 4.0, 5.0};
     int Ai[7] = {2, 3, 2, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 4, 7};
-    CSR_Matrix *A = new_csr_matrix(3, 6, 7);
+    CSR_matrix *A = new_csr_matrix(3, 6, 7);
     memcpy(A->x, Ax, 7 * sizeof(double));
     memcpy(A->i, Ai, 7 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));

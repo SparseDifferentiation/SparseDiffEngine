@@ -8,7 +8,7 @@
 const char *test_diag_mat_forward(void)
 {
     /* 3x3 matrix variable (column-major): [1,2,3,4,5,6,7,8,9]
-     * Matrix:  1 4 7
+     * matrix:  1 4 7
      *          2 5 8
      *          3 6 9
      * Diagonal: (0,0)=1, (1,1)=5, (2,2)=9 */

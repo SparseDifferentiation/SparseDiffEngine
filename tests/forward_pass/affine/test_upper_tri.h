@@ -8,7 +8,7 @@
 const char *test_upper_tri_forward_4x4(void)
 {
     /* 4x4 matrix variable (column-major): [1..16]
-     * Matrix:  1  5   9  13
+     * matrix:  1  5   9  13
      *          2  6  10  14
      *          3  7  11  15
      *          4  8  12  16
