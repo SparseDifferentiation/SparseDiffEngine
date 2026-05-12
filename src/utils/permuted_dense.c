@@ -476,7 +476,7 @@ void permuted_dense_ATDA_fill_values(const permuted_dense *A, const double *d,
                 A->dwork, n0, 0.0, C->X, n0);
 }
 
-matrix *permuted_dense_BTA_alloc(const permuted_dense *A, const permuted_dense *B)
+matrix *BTA_pd_pd_alloc(const permuted_dense *A, const permuted_dense *B)
 {
     /* if A and B have no overlapping rows, then C = BT @ A is empty */
     if (!has_overlap(A->row_perm, A->m0, B->row_perm, B->m0, 0))
@@ -616,19 +616,22 @@ void BTDA_pd_pd_fill_values(const permuted_dense *A, const double *d,
     free_matrix(&DA->base);
 }
 
-matrix *BTA_csr_pd_alloc(const CSR_matrix *A_csr, const permuted_dense *B)
+matrix *BTA_csr_pd_alloc(const CSR_matrix *A, const permuted_dense *B)
 {
+    /* Cij != 0 only if i is in B's column permutation and column j of A
+      overlaps with column i of B. */
+
     /* Gather the union of columns appearing in A's rows at positions
-       row_perm_B. Use a bitmap of size A_csr->n for O(nnz) collection. */
-    int p = A_csr->n;
+       row_perm_B. Use a bitmap of size A->n for O(nnz) collection. */
+    int p = A->n;
     char *seen = (char *) SP_CALLOC(p, sizeof(char));
     int s_A = 0;
     for (int kk = 0; kk < B->m0; kk++)
     {
         int row = B->row_perm[kk];
-        for (int e = A_csr->p[row]; e < A_csr->p[row + 1]; e++)
+        for (int e = A->p[row]; e < A->p[row + 1]; e++)
         {
-            int j = A_csr->i[e];
+            int j = A->i[e];
             if (!seen[j])
             {
                 seen[j] = 1;
@@ -881,49 +884,82 @@ void BTDA_pd_csr_fill_values(const permuted_dense *A, const double *d,
                 B_sub_dense, r_B, A->X, dn_A, 0.0, C->X, dn_A);
 }
 
-matrix *permuted_dense_times_csc_alloc(const permuted_dense *A, const CSC_matrix *J)
+/* Return true if any of the 'len' integers in 'indices' exist in the set
+   marked by 'inv' (inv[k] != -1 iff k is in the set). */
+static inline bool idxs_hits_set(const int *idxs, int len, const int *inv)
 {
-    /* Active columns: those with at least one structural nonzero in a row
-       of col_perm_A. col_inv[r] != -1 iff r is in col_perm_A. */
-    iVec *col_perm_C = iVec_new(8);
-    for (int j = 0; j < J->n; j++)
+    for (int ii = 0; ii < len; ii++)
     {
-        for (int e = J->p[j]; e < J->p[j + 1]; e++)
+        if (inv[idxs[ii]] != -1)
         {
-            if (A->col_inv[J->i[e]] != -1)
-            {
-                iVec_append(col_perm_C, j);
-                break;
-            }
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Inner product of a sparse vector (vals[0..len) at positions idxs[0..len))
+   with a dense vector, where inv maps each idxs value to a position in
+   'dense' (inv[k] == -1 means skip that entry). Returns
+       Σ_e  vals[e] * dense[inv[idxs[e]]]
+   over e where inv[idxs[e]] != -1. */
+static inline double sparse_dot_dense(const double *vals, const int *idxs, int len,
+                                      const int *inv, const double *dense)
+{
+    double sum = 0.0;
+    for (int e = 0; e < len; e++)
+    {
+        int kk = inv[idxs[e]];
+        if (kk == -1) continue;
+        sum += vals[e] * dense[kk];
+    }
+    return sum;
+}
+
+matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
+{
+    /* Cij != 0 if row i of B overlaps with column j of A. So we loop through
+    the columns of A. For each column of A, we check if it has any nonzeros in rows
+    that are in B's col_perm. If yes, column j of C will have a nonzero block
+    corresponding to the rows of B */
+    iVec *col_perm_C = iVec_new(10);
+    for (int j = 0; j < A->n; j++)
+    {
+        int start = A->p[j];
+        int len = A->p[j + 1] - start;
+        if (idxs_hits_set(A->i + start, len, B->col_inv))
+        {
+            iVec_append(col_perm_C, j);
         }
     }
 
-    matrix *C = new_permuted_dense(A->base.m, J->n, A->m0, col_perm_C->len,
-                                   A->row_perm, col_perm_C->data, NULL);
+    matrix *C = new_permuted_dense(B->base.m, A->n, B->m0, col_perm_C->len,
+                                   B->row_perm, col_perm_C->data, NULL);
     iVec_free(col_perm_C);
     return C;
 }
 
-void permuted_dense_times_csc_fill_values(const permuted_dense *A,
-                                          const CSC_matrix *J, permuted_dense *C)
+void BA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
+                           permuted_dense *C)
 {
-    int m0 = A->m0;
-    int n0_A = A->n0;
-    int n0_C = C->n0;
+    /* C[i, j] = bi^T @ ajj, where bi is the ith row of Bs dense block and ajj is
+    the jjth column of A's sparse block (column jj = C->col_perm[j]) */
 
-    /* Each entry (r, val) of J in active columns with r in col_perm_A
-       contributes val * A.X[:, kk] to C.X[:, jj], where kk = col_inv[r]
-       and jj is the position of the column in col_perm_C. Columns of X
-       and C.X are accessed via row-major strides. */
-    memset(C->X, 0, m0 * n0_C * sizeof(double));
-    for (int jj = 0; jj < n0_C; jj++)
+    /* row i of C */
+    for (int i = 0; i < C->m0; i++)
     {
-        int col = C->col_perm[jj];
-        for (int e = J->p[col]; e < J->p[col + 1]; e++)
+        double *ci = C->X + i * C->n0;
+
+        /* col j of C  */
+        for (int j = 0; j < C->n0; j++)
         {
-            int kk = A->col_inv[J->i[e]];
-            if (kk == -1) continue;
-            cblas_daxpy(m0, J->x[e], A->X + kk, n0_A, C->X + jj, n0_C);
+
+            /* we compute entry C[i, j] */
+            int jj = C->col_perm[j];
+            int start = A->p[jj];
+            int len = A->p[jj + 1] - start;
+            ci[j] = sparse_dot_dense(A->x + start, A->i + start, len, B->col_inv,
+                                     B->X + i * B->n0);
         }
     }
 }

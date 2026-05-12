@@ -232,9 +232,9 @@ const char *test_permuted_dense_times_csc(void)
     memcpy(J->i, Ji, 4 * sizeof(int));
     memcpy(J->x, Jx, 4 * sizeof(double));
 
-    matrix *M_out = permuted_dense_times_csc_alloc(pd, J);
+    matrix *M_out = BA_pd_csc_alloc(pd, J);
     permuted_dense *pd_out = (permuted_dense *) M_out;
-    permuted_dense_times_csc_fill_values(pd, J, pd_out);
+    BA_pd_csc_fill_values(pd, J, pd_out);
 
     int row_perm_expected[3] = {1, 2, 4};
     int col_perm_expected[2] = {1, 3};
@@ -273,9 +273,9 @@ const char *test_permuted_dense_times_csc_no_active(void)
     memcpy(J->i, Ji, 2 * sizeof(int));
     memcpy(J->x, Jx, 2 * sizeof(double));
 
-    matrix *M_out = permuted_dense_times_csc_alloc(pd, J);
+    matrix *M_out = BA_pd_csc_alloc(pd, J);
     permuted_dense *pd_out = (permuted_dense *) M_out;
-    permuted_dense_times_csc_fill_values(pd, J, pd_out);
+    BA_pd_csc_fill_values(pd, J, pd_out);
 
     mu_assert("m", M_out->m == 5);
     mu_assert("n", M_out->n == 2);
@@ -579,7 +579,7 @@ const char *test_permuted_dense_BTA_matching_row_perm(void)
     permuted_dense *A = (permuted_dense *) A_m;
     permuted_dense *B = (permuted_dense *) B_m;
 
-    matrix *C_m = permuted_dense_BTA_alloc(A, B);
+    matrix *C_m = BTA_pd_pd_alloc(A, B);
     permuted_dense *C = (permuted_dense *) C_m;
 
     mu_assert("out m", C_m->m == 4); /* B.n */
@@ -604,7 +604,7 @@ const char *test_permuted_dense_BTA_matching_row_perm(void)
 }
 
 /* BTA with empty row intersection: row_perm_A = [0, 2], row_perm_B = [1, 3].
-   permuted_dense_BTA_alloc should return an empty C (nnz = 0); the fill
+   BTA_pd_pd_alloc should return an empty C (nnz = 0); the fill
    kernels should short-circuit without crashing. */
 const char *test_permuted_dense_BTA_empty_overlap(void)
 {
@@ -619,7 +619,7 @@ const char *test_permuted_dense_BTA_empty_overlap(void)
     permuted_dense *A = (permuted_dense *) A_m;
     permuted_dense *B = (permuted_dense *) B_m;
 
-    matrix *C_m = permuted_dense_BTA_alloc(A, B);
+    matrix *C_m = BTA_pd_pd_alloc(A, B);
     permuted_dense *C = (permuted_dense *) C_m;
 
     mu_assert("out m", C_m->m == 4); /* B.n */
@@ -662,7 +662,7 @@ const char *test_permuted_dense_BTA_partial_overlap(void)
     permuted_dense *A = (permuted_dense *) A_m;
     permuted_dense *B = (permuted_dense *) B_m;
 
-    matrix *C_m = permuted_dense_BTA_alloc(A, B);
+    matrix *C_m = BTA_pd_pd_alloc(A, B);
     permuted_dense *C = (permuted_dense *) C_m;
     BTA_pd_pd_fill_values(A, B, C);
 
@@ -729,7 +729,7 @@ const char *test_permuted_dense_BTDA_decomposition(void)
     permuted_dense *tmp = (permuted_dense *) tmp_m;
     permuted_dense_DA_fill_values(w, A, tmp);
 
-    matrix *C_m = permuted_dense_BTA_alloc(tmp, B);
+    matrix *C_m = BTA_pd_pd_alloc(tmp, B);
     permuted_dense *C = (permuted_dense *) C_m;
     BTA_pd_pd_fill_values(tmp, B, C);
 

@@ -31,8 +31,7 @@ const char *test_BTDA_matrices_pd_pd(void)
     /* Direct primitive path on independent operands. */
     matrix *A2 = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_A, XA);
     matrix *B2 = new_permuted_dense(2, 4, 2, 2, row_perm, col_perm_B, XB);
-    matrix *C2 =
-        permuted_dense_BTA_alloc((permuted_dense *) A2, (permuted_dense *) B2);
+    matrix *C2 = BTA_pd_pd_alloc((permuted_dense *) A2, (permuted_dense *) B2);
     BTDA_pd_pd_fill_values((permuted_dense *) A2, d, (permuted_dense *) B2,
                            (permuted_dense *) C2);
 

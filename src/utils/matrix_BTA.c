@@ -23,7 +23,7 @@ matrix *BTA_matrices_alloc(matrix *A, matrix *B)
 
     if (pd_A && pd_B)
     {
-        return permuted_dense_BTA_alloc(pd_A, pd_B);
+        return BTA_pd_pd_alloc(pd_A, pd_B);
     }
     if (pd_B)
     {
@@ -38,7 +38,8 @@ matrix *BTA_matrices_alloc(matrix *A, matrix *B)
         return BTA_pd_csr_alloc(pd_A, B_csr);
     }
 
-    /* Both Sparse: delegate to CSC_matrix BTA. Caller must ensure caches are fresh. */
+    /* Both Sparse: delegate to CSC_matrix BTA. Caller must ensure caches are fresh.
+     */
     sparse_matrix *sm_A = (sparse_matrix *) A;
     sparse_matrix *sm_B = (sparse_matrix *) B;
     A->refresh_csc_values(A);

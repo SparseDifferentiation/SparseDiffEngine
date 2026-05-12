@@ -59,7 +59,7 @@ typedef struct permuted_dense
     /* Mutable int scratch. Currently only used to hold the row-intersection
        index arrays idx_A / idx_B in BTA_pd_pd_fill_values and the
        slow path of BTDA_pd_pd_fill_values; allocated by
-       permuted_dense_BTA_alloc for those outputs (NULL on PDs from other
+       BTA_pd_pd_alloc for those outputs (NULL on PDs from other
        allocators). Fill kernels fall back to a per-call SP_MALLOC if
        iwork_size is too small. */
     int *iwork;
@@ -97,7 +97,7 @@ void permuted_dense_ATDA_fill_values(const permuted_dense *A, const double *d,
 
 /* Fill sparsity of C = BT @ A where A and B are both permuted_dense.
    (If B and A have no overlapping rows, then C is empty) */
-matrix *permuted_dense_BTA_alloc(const permuted_dense *A, const permuted_dense *B);
+matrix *BTA_pd_pd_alloc(const permuted_dense *A, const permuted_dense *B);
 
 /* Fill values of C = BT @ A where A and B are both permuted dense. */
 void BTA_pd_pd_fill_values(const permuted_dense *A, const permuted_dense *B,
@@ -107,13 +107,13 @@ void BTA_pd_pd_fill_values(const permuted_dense *A, const permuted_dense *B,
    and B is PD. Output is PD with row_perm = B->col_perm and col_perm = the
    sorted union of columns appearing in A's rows at positions row_perm_B.
    Dense block size = (B->n0, |col_active|). Values uninitialized. */
-matrix *BTA_csr_pd_alloc(const CSR_matrix *A_csr, const permuted_dense *B);
+matrix *BTA_csr_pd_alloc(const CSR_matrix *A, const permuted_dense *B);
 
 /* Fill C->X = X_B^T @ A_sub_dense, where A_sub_dense is A's rows at
    positions row_perm_B, columns restricted to C's col_perm, scattered
    to a dense buffer. C must have the structure produced by
-   BTA_csr_pd_alloc(A_csr, B). */
-void BTA_csr_pd_fill_values(const CSR_matrix *A_csr, const permuted_dense *B,
+   BTA_csr_pd_alloc(A, B). */
+void BTA_csr_pd_fill_values(const CSR_matrix *A, const permuted_dense *B,
                             permuted_dense *C);
 
 /* Allocate a new permuted_dense for C = B^T @ A where A is PD and B is
@@ -142,12 +142,12 @@ void BTDA_pd_pd_fill_values(const permuted_dense *A, const double *d,
    (A->base.m, J->n) with row_perm = A->row_perm and col_perm equal
    to the sorted list of columns of J that have at least one structural
    nonzero in some row in A->col_perm. Values are uninitialized. */
-matrix *permuted_dense_times_csc_alloc(const permuted_dense *A, const CSC_matrix *J);
+matrix *BA_pd_csc_alloc(const permuted_dense *A, const CSC_matrix *J);
 
 /* Fill C.X[ii, jj] = sum_kk A.X[ii, kk] * J[col_perm_A[kk],
    col_perm_C[jj]]. C must have the structure produced by
-   permuted_dense_times_csc_alloc(A, J). */
-void permuted_dense_times_csc_fill_values(const permuted_dense *A,
+   BA_pd_csc_alloc(A, J). */
+void BA_pd_csc_fill_values(const permuted_dense *A,
                                           const CSC_matrix *J, permuted_dense *C);
 
 #endif /* PERMUTED_DENSE_H */
