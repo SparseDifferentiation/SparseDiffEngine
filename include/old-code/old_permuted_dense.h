@@ -52,12 +52,25 @@ void BTA_pd_csr_fill_values(const permuted_dense *B, const CSR_matrix *A,
 void BTDA_pd_csr_fill_values(const permuted_dense *B, const double *d,
                              const CSR_matrix *A, permuted_dense *C);
 
-/* Legacy no-d BTA fill for the production CSR-pd kernel (B=CSR, A=PD).
-   Production path always supplies chain-rule weights via
-   BTDA_csr_pd_fill_values (in src/utils/permuted_dense.c); the no-d variant
-   is kept here for the direct unit tests in tests/old-code. C must have the
-   structure produced by BTA_csr_pd_alloc (declared in utils/permuted_dense.h). */
+/* Legacy CSR-pd kernels (B=CSR, A=PD), formerly in src/utils/permuted_dense.c.
+   Production now dispatches the (PD A, sparse B) branch through CSC-pd
+   kernels (BTA_csc_pd_alloc / BTDA_csc_pd_fill_values in utils/permuted_dense.h),
+   so these CSR variants live here as reference implementations and as
+   targets for the direct unit tests in tests/old-code. */
+
+/* Allocate a new permuted_dense for C = B^T A where B is CSR-sparse and A
+   is PD. Output is PD with row_perm = the sorted union of columns appearing
+   in B's rows at positions row_perm_A, and col_perm = A->col_perm. */
+matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A);
+
+/* No-d BTA fill. C must have the structure produced by BTA_csr_pd_alloc. */
 void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
                             permuted_dense *C);
+
+/* BTDA variant: C->X = B_sub_dense^T diag(d) X_A. d may be NULL (treated
+   as identity scaling). C must have the structure produced by
+   BTA_csr_pd_alloc. */
+void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
+                             const permuted_dense *A, permuted_dense *C);
 
 #endif /* OLD_PERMUTED_DENSE_H */

@@ -4,10 +4,12 @@
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
 #include "test_helpers.h"
+#include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
 #include "utils/matrix_BTA.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
+#include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -102,7 +104,7 @@ const char *test_BTDA_matrices_csr_pd(void)
 }
 
 /* Wrapper dispatch sanity: (PD, CSR_matrix). Compare against direct
-   BTDA_csr_pd_fill_values. */
+   BTDA_csc_pd_fill_values. */
 const char *test_BTDA_matrices_pd_csr(void)
 {
     /* A: 4x5 PD, row_perm = [1, 3], col_perm = [0, 2]. */
@@ -130,19 +132,24 @@ const char *test_BTDA_matrices_pd_csr(void)
     matrix *C_m = BTA_matrices_alloc(A_m, B_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
-    /* Direct primitive path. */
+    /* Direct primitive path: production now dispatches the (PD, Sparse)
+       branch through CSC-pd kernels. Build a CSC view of B and call
+       BTA_csc_pd_alloc + BTDA_csc_pd_fill_values to match. */
     matrix *A2_m = new_permuted_dense(4, 5, 2, 2, row_perm_A, col_perm_A, XA);
     permuted_dense *A2 = (permuted_dense *) A2_m;
-    CSR_matrix *B2 = new_CSR_matrix(4, 4, 5);
-    B2->p[0] = 0;
-    B2->p[1] = 2;
-    B2->p[2] = 3;
-    B2->p[3] = 4;
-    B2->p[4] = 5;
-    memcpy(B2->i, Bi, sizeof Bi);
-    memcpy(B2->x, Bx, sizeof Bx);
-    matrix *C2 = BTA_csr_pd_alloc(B2, A2);
-    BTDA_csr_pd_fill_values(B2, d, A2, (permuted_dense *) C2);
+    CSR_matrix *B2_csr = new_CSR_matrix(4, 4, 5);
+    B2_csr->p[0] = 0;
+    B2_csr->p[1] = 2;
+    B2_csr->p[2] = 3;
+    B2_csr->p[3] = 4;
+    B2_csr->p[4] = 5;
+    memcpy(B2_csr->i, Bi, sizeof Bi);
+    memcpy(B2_csr->x, Bx, sizeof Bx);
+    int *iwork = (int *) malloc(MAX(B2_csr->m, B2_csr->n) * sizeof(int));
+    CSC_matrix *B2_csc = csr_to_csc_alloc(B2_csr, iwork);
+    csr_to_csc_fill_values(B2_csr, B2_csc, iwork);
+    matrix *C2 = BTA_csc_pd_alloc(B2_csc, A2);
+    BTDA_csc_pd_fill_values(B2_csc, d, A2, (permuted_dense *) C2);
 
     mu_assert("values", cmp_double_array(C_m->x, C2->x, C_m->nnz));
 
@@ -150,7 +157,9 @@ const char *test_BTDA_matrices_pd_csr(void)
     free_matrix(B_m);
     free_matrix(A_m);
     free_matrix(C2);
-    free_CSR_matrix(B2);
+    free_CSC_matrix(B2_csc);
+    free_CSR_matrix(B2_csr);
+    free(iwork);
     free_matrix(A2_m);
     return 0;
 }

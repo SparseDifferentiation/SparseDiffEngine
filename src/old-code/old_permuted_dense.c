@@ -154,10 +154,61 @@ void BTDA_pd_csr_fill_values(const permuted_dense *B, const double *d,
                 dn_B, A_sub_dense, s_A, 0.0, C->X, s_A);
 }
 
-/* No-d BTA fill for the production CSR-pd kernel (B=CSR, A=PD). Moved out
-   of src/utils/permuted_dense.c because production always supplies
-   chain-rule weights through BTDA_csr_pd_fill_values; kept here for the
-   direct unit tests in tests/old-code/test_old_permuted_dense.h. */
+/* Legacy CSR-pd kernels (B=CSR, A=PD), formerly in src/utils/permuted_dense.c.
+   Production now goes through BTA_csc_pd_alloc / BTDA_csc_pd_fill_values;
+   these are kept here for reference + direct unit tests. */
+
+matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
+{
+    /* Gather the union of columns appearing in B's rows at positions
+       row_perm_A. Bitmap of size B_csr->n for O(nnz) collection. */
+    int q = B_csr->n;
+    char *seen = (char *) SP_CALLOC(q, sizeof(char));
+    int r_B = 0;
+    for (int kk = 0; kk < A->m0; kk++)
+    {
+        int row = A->row_perm[kk];
+        for (int e = B_csr->p[row]; e < B_csr->p[row + 1]; e++)
+        {
+            int i = B_csr->i[e];
+            if (!seen[i])
+            {
+                seen[i] = 1;
+                r_B++;
+            }
+        }
+    }
+
+    int *row_active = (int *) SP_MALLOC((r_B > 0 ? r_B : 1) * sizeof(int));
+    int idx = 0;
+    for (int i = 0; i < q; i++)
+    {
+        if (seen[i])
+        {
+            row_active[idx++] = i;
+        }
+    }
+
+    matrix *C =
+        new_permuted_dense(q, A->base.n, r_B, A->n0, row_active, A->col_perm, NULL);
+    free(row_active);
+    free(seen);
+
+    /* Upgrade `dwork` (currently sized for the Y-role at m0_C * n0_C = r_B *
+       A->n0) to fit the gather buffer B_sub_dense used by BTA_csr_pd /
+       BTDA_csr_pd_fill_values: shape (A->m0, r_B) row-major. */
+    permuted_dense *C_pd = (permuted_dense *) C;
+    size_t gather_size = A->m0 * r_B;
+    if (gather_size > C_pd->dwork_size)
+    {
+        free(C_pd->dwork);
+        C_pd->dwork_size = gather_size;
+        C_pd->dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
+    }
+    return C;
+}
+
+/* No-d BTA fill for the legacy CSR-pd kernel. */
 void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
                             permuted_dense *C)
 {
@@ -193,6 +244,43 @@ void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
     }
 
     /* C->X = B_sub_dense^T @ X_A */
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, r_B, dn_A, m0, 1.0,
+                B_sub_dense, r_B, A->X, dn_A, 0.0, C->X, dn_A);
+}
+
+/* BTDA variant: C->X = B_sub_dense^T diag(d) X_A. Folds d into the scatter
+   step. d may be NULL (treated as identity). */
+void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
+                             const permuted_dense *A, permuted_dense *C)
+{
+    int m0 = A->m0;
+    int dn_A = A->n0;
+    int r_B = C->m0;
+
+    if (r_B == 0 || m0 == 0)
+    {
+        return;
+    }
+
+    double *B_sub_dense = C->dwork;
+    size_t used = m0 * r_B;
+    memset(B_sub_dense, 0, used * sizeof(double));
+
+    for (int kk = 0; kk < m0; kk++)
+    {
+        int row = A->row_perm[kk];
+        double dk = d ? d[row] : 1.0;
+        for (int e = B_csr->p[row]; e < B_csr->p[row + 1]; e++)
+        {
+            int i = B_csr->i[e];
+            int ii = C->row_inv[i];
+            if (ii >= 0)
+            {
+                B_sub_dense[kk * r_B + ii] = dk * B_csr->x[e];
+            }
+        }
+    }
+
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, r_B, dn_A, m0, 1.0,
                 B_sub_dense, r_B, A->X, dn_A, 0.0, C->X, dn_A);
 }

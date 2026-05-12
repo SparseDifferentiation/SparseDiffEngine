@@ -49,8 +49,9 @@ typedef struct permuted_dense
        operate on this PD. Two non-overlapping roles (a given fill call uses
        at most one):
          - Y-buffer: holds diag(d_perm) X for ATDA / BTDA_pd_pd (size m0*n0).
-         - gather:   holds densified CSR rows for BTA/BTDA_csr_pd /
-                     _pd_csr (size depends on the input PD's dimensions).
+         - transpose: holds (diag(d) X)^T for the BA_pd_csc-based BTDA
+                     kernels (BTDA_pd_csc and, transitively, BTDA_csc_pd
+                     via its delegate). Size m0*n0 doubles.
        Sized at alloc time for the largest role this PD could play. Functions
        taking a const permuted_dense * may still mutate `dwork`. */
     double *dwork;
@@ -129,18 +130,11 @@ void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
 
 // ------------------- OK SO FAR
 
-/* Allocate a new permuted_dense for C = B^T @ A where B is Sparse (CSR_matrix)
-   and A is PD. Output is PD with row_perm = the sorted union of columns
-   appearing in B's rows at positions row_perm_A, and col_perm = col_perm_A.
-   Dense block size = (|row_active|, n0_A). Values uninitialized. */
-matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A);
+/* Allocate new permuted_dense for C = B^T @ A where B is Sparse CSC and A is PD. */
+matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A);
 
-/* BTDA variants — fold a diagonal d into the BTA computation. Each fills
-   C->X = B^T diag(d) A (d may be NULL for plain B^T A). C must have the
-   structure produced by the corresponding BTA *_alloc function.
-   The no-d BTA_csr_pd_fill_values variant is unused in production; the
-   legacy version lives in include/old-code/old_permuted_dense.h. */
-void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
+/* Fill values of C = B^T @ diag(d) @ A where B is CSC and A is PD */
+void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
                              const permuted_dense *A, permuted_dense *C);
 
 #endif /* PERMUTED_DENSE_H */
