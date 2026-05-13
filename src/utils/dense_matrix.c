@@ -42,6 +42,13 @@ static void dense_block_left_mult_vec(const matrix *A, const double *x, double *
                 n, 0.0, y, m);
 }
 
+static void dense_block_left_mult_values(const matrix *A, const CSC_matrix *J,
+                                         CSC_matrix *C)
+{
+    const dense_matrix *dm = (const dense_matrix *) A;
+    I_kron_A_fill_values(A, J, C, dm->work);
+}
+
 static void dense_free(matrix *A)
 {
     dense_matrix *dm = (dense_matrix *) A;
@@ -58,7 +65,7 @@ matrix *new_dense_matrix(int m, int n, const double *data)
     dm->base.nnz = m * n;
     dm->base.block_left_mult_vec = dense_block_left_mult_vec;
     dm->base.block_left_mult_sparsity = I_kron_A_alloc;
-    dm->base.block_left_mult_values = I_kron_A_fill_values;
+    dm->base.block_left_mult_values = dense_block_left_mult_values;
     dm->base.free_fn = dense_free;
     dm->x = (double *) SP_MALLOC(m * n * sizeof(double));
     if (data != NULL)

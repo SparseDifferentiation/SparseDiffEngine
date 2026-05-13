@@ -18,6 +18,7 @@
 #include "utils/permuted_dense.h"
 #include "utils/cblas_wrapper.h"
 #include "utils/iVec.h"
+#include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -77,8 +78,9 @@ static void permuted_dense_vtable_ATDA_fill_values(const matrix *self,
     ATDA_pd_fill_values((const permuted_dense *) self, d, (permuted_dense *) out);
 }
 
-/* Forward decl; definition lower in the file. */
+/* Forward decls; definitions lower in the file. */
 static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A);
+static void permuted_dense_ensure_dwork(const permuted_dense *pd_const, size_t size);
 
 /* Lazy CSR_matrix view: allocate structure on first call, then return the cache.
    The cache's x array aliases pd->X (see permuted_dense_to_csr_alloc), so
@@ -328,6 +330,44 @@ static void permuted_dense_vtable_diag_vec_fill_values(matrix *self, matrix *out
     memcpy(out_pd->X, pd->X, pd->m0 * pd->n0 * sizeof(double));
 }
 
+/* ===== Operator-role adapters: PD acting as the constant left operand of
+   left_matmul. Currently restricted to full-block PDs (m0 == m, n0 == n,
+   identity perms) — that's the case dense_matrix covers today. */
+
+static void permuted_dense_vtable_block_left_mult_vec(const matrix *A,
+                                                      const double *x, double *y,
+                                                      int p)
+{
+    assert(((const permuted_dense *) A)->m0 == A->m &&
+           ((const permuted_dense *) A)->n0 == A->n);
+    /* y (p x m) = x (p x n) * A^T (n x m), all row-major. Matches the
+       dense_matrix implementation; A->x is the row-major value buffer. */
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, p, A->m, A->n, 1.0, x,
+                A->n, A->x, A->n, 0.0, y, A->m);
+}
+
+static CSC_matrix *permuted_dense_vtable_block_left_mult_sparsity(const matrix *A,
+                                                                  const CSC_matrix *J,
+                                                                  int p)
+{
+    const permuted_dense *pd = (const permuted_dense *) A;
+    assert(pd->m0 == A->m && pd->n0 == A->n);
+    /* Pre-size dwork for the subsequent block_left_mult_values fill, which
+       densifies a sparse column of J (size A->n) before applying A. Honors
+       the no-alloc-in-fill rule. */
+    permuted_dense_ensure_dwork(pd, (size_t) A->n);
+    return I_kron_A_alloc(A, J, p);
+}
+
+static void permuted_dense_vtable_block_left_mult_values(const matrix *A,
+                                                         const CSC_matrix *J,
+                                                         CSC_matrix *C)
+{
+    const permuted_dense *pd = (const permuted_dense *) A;
+    assert(pd->m0 == A->m && pd->n0 == A->n);
+    I_kron_A_fill_values(A, J, C, pd->dwork);
+}
+
 matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
                            const int *col_perm, const double *X_data)
 {
@@ -353,6 +393,10 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->base.m = m;
     pd->base.n = n;
     pd->base.nnz = m0 * n0;
+    pd->base.block_left_mult_vec = permuted_dense_vtable_block_left_mult_vec;
+    pd->base.block_left_mult_sparsity =
+        permuted_dense_vtable_block_left_mult_sparsity;
+    pd->base.block_left_mult_values = permuted_dense_vtable_block_left_mult_values;
     pd->base.copy_sparsity = permuted_dense_vtable_copy_sparsity;
     pd->base.DA_fill_values = permuted_dense_vtable_DA_fill_values;
     pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;

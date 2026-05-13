@@ -363,6 +363,8 @@ int main(void)
     mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
     mu_run_test(test_dense_matrix_trans, tests_run);
     mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
+    mu_run_test(test_pd_operator_block_left_mult_vec, tests_run);
+    mu_run_test(test_pd_operator_vs_dense_block_left_mult, tests_run);
     mu_run_test(test_permuted_dense_to_csr_basic, tests_run);
     mu_run_test(test_permuted_dense_to_csr_empty, tests_run);
     mu_run_test(test_permuted_dense_to_csr_full, tests_run);

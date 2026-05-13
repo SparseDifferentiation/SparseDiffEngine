@@ -23,10 +23,15 @@
 #include "matrix.h"
 
 /* C = (I_p kron A) @ J via the polymorphic matrix interface.
- * A is dense m x n, J is (n*p) x k in CSC_matrix, C is (m*p) x k in CSC_matrix. */
+ * A is dense m x n, J is (n*p) x k in CSC_matrix, C is (m*p) x k in CSC_matrix.
+ * `work` must be sized at least A->n doubles — used as a scratch buffer when
+ * a sparse column of J needs to be densified before dgemv. The caller is
+ * responsible for sizing it (typically pre-sized in the corresponding
+ * sparsity-build step). */
 // TODO: maybe we can replace these with I_kron_X functionality?
 CSC_matrix *I_kron_A_alloc(const matrix *A, const CSC_matrix *J, int p);
-void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C);
+void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C,
+                          double *work);
 
 /* Sparsity and values of C = (Y^T kron I_m) @ J where Y is k x n, J is (m*k) x p,
    and C is (m*n) x p. Y is given in column-major dense format. */

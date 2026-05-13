@@ -91,16 +91,16 @@ CSC_matrix *I_kron_A_alloc(const matrix *A, const CSC_matrix *J, int p)
     return C;
 }
 
-void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C)
+void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C,
+                          double *work)
 {
-    const dense_matrix *dm = (const dense_matrix *) A;
-    int m = dm->base.m;
-    int n = dm->base.n;
+    int m = A->m;
+    int n = A->n;
     int k = J->n;
 
     int i, j, s, block, block_start, block_end, start, end;
 
-    double *j_dense = dm->work;
+    double *j_dense = work;
 
     /* for each column of J (and C) */
     for (j = 0; j < k; j++)
@@ -131,7 +131,7 @@ void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C)
                 /* Fast path: C column segment = val * A[:, row_in_block] */
                 int row_in_block = J->i[start] - block_start;
                 double val = J->x[start];
-                cblas_dcopy(m, dm->x + row_in_block, n, C->x + i, 1);
+                cblas_dcopy(m, A->x + row_in_block, n, C->x + i, 1);
                 if (val != 1.0)
                 {
                     cblas_dscal(m, val, C->x + i, 1);
@@ -147,7 +147,7 @@ void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C)
                     j_dense[J->i[s] - block_start] = J->x[s];
                 }
 
-                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, dm->x, n,
+                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, A->x, n,
                             j_dense, 1, 0.0, C->x + i, 1);
             }
         }
