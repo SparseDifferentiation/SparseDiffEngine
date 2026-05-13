@@ -363,6 +363,10 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
 
         lnode->A = new_permuted_dense_full(m, n, data);
         lnode->AT = lnode->A->transpose_alloc(lnode->A);
+        /* transpose_alloc only sets up structure; we must also fill values
+           or AT->X is uninitialized. eval_wsum_hess uses AT->X via
+           AT->block_left_mult_vec, so missing this corrupts every Hessian. */
+        lnode->A->transpose_fill_values(lnode->A, lnode->AT);
 
         /* If the child is a leaf variable and there are no blocks, the Jacobian
            is exactly A placed in the variable's column slot — a full-dense
