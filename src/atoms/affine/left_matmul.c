@@ -17,12 +17,13 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
-#include "utils/dense_matrix.h"
+#include "utils/mini_numpy.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* This file implement the atom 'left_matmul' corresponding to the operation y =
    A @ f(x), where A is a given matrix and f(x) is an arbitrary expression.
@@ -118,9 +119,10 @@ static void jacobian_init_impl(expr *node)
     /* initialize child's jacobian */
     jacobian_init(x);
 
-    /* Fast path: A is a constant dense_matrix, child is a leaf variable, and
-       there are no Kronecker blocks. The Jacobian is A placed at the variable's
-       column slot — a full-dense permuted_dense. Skip the CSC_matrix mirror entirely. */
+    /* Fast path: A is a constant full-block PD operator, child is a leaf
+       variable, and there are no Kronecker blocks. The Jacobian is A placed
+       at the variable's column slot — a full-dense permuted_dense. Skip the
+       CSC_matrix mirror entirely. */
     if (lnode->produce_pd_jacobian)
     {
         int m_loc = lnode->A->m;
@@ -128,9 +130,9 @@ static void jacobian_init_impl(expr *node)
         int *col_perm = (int *) SP_MALLOC(lnode->A->n * sizeof(int));
         for (int i = 0; i < m_loc; i++) row_perm[i] = i;
         for (int j = 0; j < lnode->A->n; j++) col_perm[j] = x->var_id + j;
-        dense_matrix *dm = (dense_matrix *) lnode->A;
         node->jacobian = new_permuted_dense(m_loc, node->n_vars, m_loc,
-                                            lnode->A->n, row_perm, col_perm, dm->x);
+                                            lnode->A->n, row_perm, col_perm,
+                                            lnode->A->x);
         free(row_perm);
         free(col_perm);
         return;
@@ -198,16 +200,14 @@ static void eval_wsum_hess(expr *node, const double *w)
 
 static void refresh_dense_left(left_matmul_expr *lnode)
 {
-    dense_matrix *dm_A = (dense_matrix *) lnode->A;
-    dense_matrix *dm_AT = (dense_matrix *) lnode->AT;
-    int m = dm_A->base.m;
-    int n = dm_A->base.n;
+    int m = lnode->A->m;
+    int n = lnode->A->n;
 
     /* The parameter represents the A in left_matmul_dense(A, x) in column-major.
        In this diffengine, we store A in row-major order. Hence, param->vals
        actually corresponds to the transpose of A, and we transpose AT to get A. */
-    memcpy(dm_AT->x, lnode->param_source->value, m * n * sizeof(double));
-    A_transpose(dm_A->x, dm_AT->x, n, m);
+    memcpy(lnode->AT->x, lnode->param_source->value, m * n * sizeof(double));
+    A_transpose(lnode->A->x, lnode->AT->x, n, m);
 }
 
 expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
@@ -320,8 +320,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
         lnode->refresh_param_values = refresh_dense_left;
 
         /* A and AT buffers are filled by refresh_dense_left from the parameter. */
-        lnode->A = new_dense_matrix(m, n, NULL);
-        lnode->AT = new_dense_matrix(n, m, NULL);
+        lnode->A = new_permuted_dense_full(m, n, NULL);
+        lnode->AT = new_permuted_dense_full(n, m, NULL);
         node->needs_parameter_refresh = true;
     }
     /* constant matrix case */
@@ -333,8 +333,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
             exit(1);
         }
 
-        lnode->A = new_dense_matrix(m, n, data);
-        lnode->AT = dense_matrix_trans((const dense_matrix *) lnode->A);
+        lnode->A = new_permuted_dense_full(m, n, data);
+        lnode->AT = lnode->A->transpose_alloc(lnode->A);
 
         /* If the child is a leaf variable and there are no blocks, the Jacobian
            is exactly A placed in the variable's column slot — a full-dense

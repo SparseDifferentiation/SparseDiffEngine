@@ -18,8 +18,8 @@
 #include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
 #include "utils/cblas_wrapper.h"
-#include "utils/dense_matrix.h"
 #include "utils/iVec.h"
+#include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>

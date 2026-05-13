@@ -100,8 +100,8 @@ static matrix *permuted_dense_vtable_transpose_alloc(const matrix *self)
     const permuted_dense *pd = (const permuted_dense *) self;
     /* Swap (m, n), (m0, n0), and (row_perm, col_perm). The constructor
        asserts strict increase of both perms, which holds by construction. */
-    return new_permuted_dense(pd->base.n, pd->base.m, pd->n0, pd->m0,
-                              pd->col_perm, pd->row_perm, NULL);
+    return new_permuted_dense(pd->base.n, pd->base.m, pd->n0, pd->m0, pd->col_perm,
+                              pd->row_perm, NULL);
 }
 
 static void permuted_dense_vtable_transpose_fill_values(const matrix *self,
@@ -332,23 +332,33 @@ static void permuted_dense_vtable_diag_vec_fill_values(matrix *self, matrix *out
 
 /* ===== Operator-role adapters: PD acting as the constant left operand of
    left_matmul. Currently restricted to full-block PDs (m0 == m, n0 == n,
-   identity perms) — that's the case dense_matrix covers today. */
+   identity perms) — the only operator shape any caller needs today. */
 
 static void permuted_dense_vtable_block_left_mult_vec(const matrix *A,
                                                       const double *x, double *y,
                                                       int p)
 {
+    /* Full-block precondition: A->x is a single contiguous row-major m x n
+       block (perms are identity). For a non-trivial PD, A->x still points
+       at pd->X but X only stores the values at the permuted positions; the
+       layout below assumes a full m x n matrix, hence the assert. */
     assert(((const permuted_dense *) A)->m0 == A->m &&
            ((const permuted_dense *) A)->n0 == A->n);
-    /* y (p x m) = x (p x n) * A^T (n x m), all row-major. Matches the
-       dense_matrix implementation; A->x is the row-major value buffer. */
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, p, A->m, A->n, 1.0, x,
-                A->n, A->x, A->n, 0.0, y, A->m);
+
+    /* y = kron(I_p, A) @ x via a single dgemm.
+       Input x is p blocks of length n (block-interleaved); output y is p
+       blocks of length m. That's identical in memory to row-major matrices
+       of shape (p, n) and (p, m) respectively, so we can compute
+           y (p x m) = x (p x n) * A^T (n x m)
+       in one shot. CblasRowMajor + CblasNoTrans on x + CblasTrans on A
+       gives exactly that. */
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, p, A->m, A->n, 1.0, x, A->n,
+                A->x, A->n, 0.0, y, A->m);
 }
 
-static CSC_matrix *permuted_dense_vtable_block_left_mult_sparsity(const matrix *A,
-                                                                  const CSC_matrix *J,
-                                                                  int p)
+static CSC_matrix *
+permuted_dense_vtable_block_left_mult_sparsity(const matrix *A, const CSC_matrix *J,
+                                               int p)
 {
     const permuted_dense *pd = (const permuted_dense *) A;
     assert(pd->m0 == A->m && pd->n0 == A->n);
@@ -465,6 +475,18 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     }
 
     return &pd->base;
+}
+
+matrix *new_permuted_dense_full(int m, int n, const double *data)
+{
+    int *row_perm = (int *) SP_MALLOC(m * sizeof(int));
+    int *col_perm = (int *) SP_MALLOC(n * sizeof(int));
+    for (int i = 0; i < m; i++) row_perm[i] = i;
+    for (int j = 0; j < n; j++) col_perm[j] = j;
+    matrix *out = new_permuted_dense(m, n, m, n, row_perm, col_perm, data);
+    free(row_perm);
+    free(col_perm);
+    return out;
 }
 
 static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A)

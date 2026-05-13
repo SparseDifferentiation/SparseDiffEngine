@@ -33,6 +33,9 @@ void scaled_ones(double *result, int size, double value);
 /* Naive implementation of Z = X @ Y, X is m x k, Y is k x n, Z is m x n */
 void mat_mat_mult(const double *X, const double *Y, double *Z, int m, int k, int n);
 
+/* Row-major dense transpose: AT[j*m + i] = A[i*n + j] for an m x n A. */
+void A_transpose(double *AT, const double *A, int m, int n);
+
 /* Compute v = (Y kron I_m) @ w where Y is k x n (col-major), len(w) = m * n, and
    len(v) = m * k.  Equivalently, reshape w as the m x n matrix W (col-major) and
    compute v = vec(W @ Y^T). */

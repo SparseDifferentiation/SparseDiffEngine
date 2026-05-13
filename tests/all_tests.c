@@ -358,13 +358,12 @@ int main(void)
     mu_run_test(test_csr_to_coo, tests_run);
     mu_run_test(test_csr_to_coo_lower_triangular, tests_run);
     mu_run_test(test_refresh_lower_triangular_coo, tests_run);
-    mu_run_test(test_dense_matrix_mult_vec, tests_run);
-    mu_run_test(test_dense_matrix_mult_vec_blocks, tests_run);
-    mu_run_test(test_sparse_vs_dense_mult_vec, tests_run);
-    mu_run_test(test_dense_matrix_trans, tests_run);
-    mu_run_test(test_sparse_vs_dense_mult_vec_blocks, tests_run);
+    mu_run_test(test_pd_mult_vec_basic, tests_run);
+    mu_run_test(test_pd_mult_vec_blocks, tests_run);
+    mu_run_test(test_sparse_vs_pd_mult_vec, tests_run);
+    mu_run_test(test_pd_trans_full_block, tests_run);
+    mu_run_test(test_sparse_vs_pd_mult_vec_blocks, tests_run);
     mu_run_test(test_pd_operator_block_left_mult_vec, tests_run);
-    mu_run_test(test_pd_operator_vs_dense_block_left_mult, tests_run);
     mu_run_test(test_permuted_dense_to_csr_basic, tests_run);
     mu_run_test(test_permuted_dense_to_csr_empty, tests_run);
     mu_run_test(test_permuted_dense_to_csr_full, tests_run);

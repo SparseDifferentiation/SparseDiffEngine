@@ -82,6 +82,10 @@ typedef struct permuted_dense
 matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
                            const int *col_perm, const double *X_data);
 
+/* Convenience constructor for the trivial-perm case: row_perm = [0..m-1],
+   col_perm = [0..n-1], dense block fills the full (m, n) shape. */
+matrix *new_permuted_dense_full(int m, int n, const double *data);
+
 /* CSR_matrix view: callers should use the vtable, i.e. base.to_csr(base). The PD
    owns and caches the returned CSR_matrix; its value array aliases self->X,
    so values are always live with no separate fill needed. Callers must not

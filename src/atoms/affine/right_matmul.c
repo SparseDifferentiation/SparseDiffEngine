@@ -18,10 +18,11 @@
 #include "atoms/affine.h"
 #include "subexpr.h"
 #include "utils/CSR_matrix.h"
-#include "utils/dense_matrix.h"
+#include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* This file implements the atom 'right_matmul' corresponding to the operation y =
    f(x) @ A, where A is a given matrix and f(x) is an arbitrary expression.
@@ -44,10 +45,10 @@ static void refresh_dense_right(left_matmul_expr *lnode)
        Furthermore, lnode->param_source->value corresponds to the column-major
        version of A, which is BT (an m x n matrix) */
 
-    dense_matrix *B = (dense_matrix *) lnode->AT;
-    dense_matrix *BT = (dense_matrix *) lnode->A;
-    int m = B->base.n;
-    int n = B->base.m;
+    matrix *B = lnode->AT;
+    matrix *BT = lnode->A;
+    int m = B->n;
+    int n = B->m;
 
     memcpy(BT->x, lnode->param_source->value, m * n * sizeof(double));
     A_transpose(B->x, BT->x, m, n);

@@ -69,6 +69,17 @@ void mat_mat_mult(const double *X, const double *Y, double *Z, int m, int k, int
     }
 }
 
+void A_transpose(double *AT, const double *A, int m, int n)
+{
+    for (int i = 0; i < m; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            AT[j * m + i] = A[i * n + j];
+        }
+    }
+}
+
 void Y_kron_I_vec(int m, int k, int n, const double *Y, const double *w, double *v)
 {
     for (int j = 0; j < k; j++)
