@@ -17,6 +17,7 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
+#include "utils/matrix_BTA.h"
 #include "utils/mini_numpy.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
@@ -137,6 +138,18 @@ static void jacobian_init_impl(expr *node)
         return;
     }
 
+    /* PD A + composite child: route through the polymorphic dispatcher.
+       The dispatcher handles both PD and sparse child Jacobians internally,
+       so no x->jacobian->is_permuted_dense check here. */
+    if (lnode->n_blocks == 1 && lnode->A->is_permuted_dense &&
+        lnode->param_source == NULL)
+    {
+        node->jacobian =
+            BA_pd_matrices_alloc((permuted_dense *) lnode->A, x->jacobian);
+        lnode->produce_pd_jacobian_from_child = true;
+        return;
+    }
+
     /* General path via CSC_matrix mirror. */
     lnode->Jchild_CSC =
         csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
@@ -155,6 +168,20 @@ static void eval_jacobian(expr *node)
 
     /* Fast path: PD Jacobian backed by constant A. Values never change. */
     if (lnode->produce_pd_jacobian) return;
+
+    /* PD A + composite child: refresh values via the dispatcher. Values
+       always need recomputing because the child's Jacobian may change
+       (this branch fires even for affine children today — see
+       multiply.c::jacobian_csc_filled for a possible future
+       affine-tracking cache that would skip the dgemm). */
+    if (lnode->produce_pd_jacobian_from_child)
+    {
+        x->eval_jacobian(x);
+        x->jacobian->refresh_csc_values(x->jacobian); /* no-op for PD */
+        BA_pd_matrices_fill_values((permuted_dense *) lnode->A, x->jacobian,
+                                   (permuted_dense *) node->jacobian);
+        return;
+    }
 
     CSC_matrix *Jchild_CSC = lnode->Jchild_CSC;
     CSC_matrix *J_CSC = lnode->J_CSC;

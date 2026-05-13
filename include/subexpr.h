@@ -138,6 +138,13 @@ typedef struct left_matmul_expr
        variable, and n_blocks == 1 — in that case the Jacobian is exactly A placed in
        the variable's column slot, which is naturally a full-dense permuted_dense. */
     bool produce_pd_jacobian;
+
+    /* When true, jacobian_init_impl built node->jacobian via
+       BA_pd_matrices_alloc(lnode->A, x->jacobian) — i.e. A is a constant
+       full-block PD and the (composite) child has a polymorphic Jacobian
+       that the dispatcher routes on. eval_jacobian then refreshes values
+       via BA_pd_matrices_fill_values. */
+    bool produce_pd_jacobian_from_child;
 } left_matmul_expr;
 
 /* Scalar multiplication: y = a * child where a comes from param_source */
