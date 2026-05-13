@@ -5,6 +5,7 @@
 #include "old-code/old_permuted_dense.h"
 #include "test_helpers.h"
 #include "utils/CSC_matrix.h"
+#include "utils/matrix_BTA.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
 #include "utils/utils.h"
@@ -952,6 +953,46 @@ const char *test_BA_pd_matrices_pd_csc(void)
     mu_assert("row_perm", cmp_int_array(C->row_perm, expected_row_perm, 2));
     mu_assert("col_perm", cmp_int_array(C->col_perm, expected_col_perm, 2));
     double expected_X[4] = {5.0, 6.0, 15.0, 18.0};
+    mu_assert("X", cmp_double_array(C->X, expected_X, 4));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    free_matrix(B_m);
+    return 0;
+}
+
+/* BA_pd_matrices fast path: B->col_perm == A->row_perm exactly, so the
+   slow-path gather is skipped and one cblas_dgemm runs directly on
+   B->X and A->X.
+   B (2x4) row_perm=[0,1], col_perm=[1,3], X_B=[[1,2],[3,4]].
+   A (4x3) row_perm=[1,3], col_perm=[0,2], X_A=[[5,6],[7,8]].
+   Matching col_perm_B == row_perm_A == [1,3] triggers the fast path.
+   Hand-computed C (2x3) nonzero at cols {0,2}: X_C=[[19,22],[43,50]]. */
+const char *test_BA_pd_matrices_fast_path(void)
+{
+    int row_perm_B[2] = {0, 1};
+    int col_perm_B[2] = {1, 3};
+    double XB[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *B_m = new_permuted_dense(2, 4, 2, 2, row_perm_B, col_perm_B, XB);
+
+    int row_perm_A[2] = {1, 3};
+    int col_perm_A[2] = {0, 2};
+    double XA[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *A_m = new_permuted_dense(4, 3, 2, 2, row_perm_A, col_perm_A, XA);
+
+    matrix *C_m = BA_pd_matrices_alloc((permuted_dense *) B_m, A_m);
+    BA_pd_matrices_fill_values((permuted_dense *) B_m, A_m, (permuted_dense *) C_m);
+
+    permuted_dense *C = (permuted_dense *) C_m;
+    mu_assert("dim m", C_m->m == 2);
+    mu_assert("dim n", C_m->n == 3);
+    mu_assert("m0", C->m0 == 2);
+    mu_assert("n0", C->n0 == 2);
+    int expected_row_perm[2] = {0, 1};
+    int expected_col_perm[2] = {0, 2};
+    mu_assert("row_perm", cmp_int_array(C->row_perm, expected_row_perm, 2));
+    mu_assert("col_perm", cmp_int_array(C->col_perm, expected_col_perm, 2));
+    double expected_X[4] = {19.0, 22.0, 43.0, 50.0};
     mu_assert("X", cmp_double_array(C->X, expected_X, 4));
 
     free_matrix(C_m);

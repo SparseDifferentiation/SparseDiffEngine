@@ -139,15 +139,6 @@ matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A);
 void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
                           permuted_dense *C);
 
-/* Polymorphic dispatcher: C = B @ A where B is PD and A is any matrix
-   type (permuted_dense or sparse_matrix). C is always PD. Routes on A's
-   type — mirrors the BTA_matrices_alloc style in matrix_BTA.c. For the
-   sparse-A branch the caller must refresh A's csc_cache values before
-   BA_pd_matrices_fill_values (same contract as BTDA_matrices_fill_values). */
-matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A);
-void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
-                                permuted_dense *C);
-
 /* Allocate new permuted dense for C = B^T @ A where B is PD and A is CSC */
 matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 

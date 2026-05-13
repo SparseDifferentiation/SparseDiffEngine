@@ -69,3 +69,29 @@ void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C)
     sparse_matrix *sm_C = (sparse_matrix *) C;
     BTDA_fill_values(sm_A->csc_cache, sm_B->csc_cache, d, sm_C->csr);
 }
+
+matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A)
+{
+    if (A->is_permuted_dense)
+    {
+        return BA_pd_pd_alloc(B, (const permuted_dense *) A);
+    }
+    /* A is sparse — use the existing BA_pd_csc_* kernels. Ensure the
+       csc_cache structure exists at alloc time. */
+    sparse_matrix *sm_A = (sparse_matrix *) A;
+    sparse_matrix_ensure_csc_cache(sm_A);
+    return BA_pd_csc_alloc(B, sm_A->csc_cache);
+}
+
+void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
+                                permuted_dense *C)
+{
+    if (A->is_permuted_dense)
+    {
+        BA_pd_pd_fill_values(B, (const permuted_dense *) A, C);
+        return;
+    }
+    /* A is sparse — caller must have refreshed sm_A->csc_cache values. */
+    sparse_matrix *sm_A = (sparse_matrix *) A;
+    BA_pd_csc_fill_values(B->X, B->n0, B->col_inv, sm_A->csc_cache, C);
+}
