@@ -15,8 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef COO_MATRIX_H
-#define COO_MATRIX_H
+#ifndef COO_matrix_H
+#define COO_matrix_H
 
 #include "CSR_matrix.h"
 
@@ -32,7 +32,7 @@
  * - n: number of columns
  * - nnz: number of nonzero entries
  */
-typedef struct COO_Matrix
+typedef struct COO_matrix
 {
     int *rows;
     int *cols;
@@ -41,20 +41,19 @@ typedef struct COO_Matrix
     int m;
     int n;
     int nnz;
-} COO_Matrix;
+} COO_matrix;
 
-/* Construct a COO matrix from a CSR_matrix matrix */
-COO_Matrix *new_coo_matrix(const CSR_matrix *A);
+/* COO from CSR */
+COO_matrix *new_COO_matrix(const CSR_matrix *A);
 
-/* Construct a COO matrix containing only the lower-triangular
- * entries (col <= row) of a symmetric CSR_matrix matrix. Populates
- * value_map so that refresh_lower_triangular_coo can update
- * values without recomputing structure. */
-COO_Matrix *new_coo_matrix_lower_triangular(const CSR_matrix *A);
+/* Construct COO containing only the lower-triangular entries (col <= row) of a
+   symmetric CSR. Populates value_map so that refresh_lower_triangular_coo can
+   update values without recomputing structure. */
+COO_matrix *new_COO_matrix_lower_triangular(const CSR_matrix *A);
 
 /* Refresh COO values from a new CSR_matrix value array using value_map */
-void refresh_lower_triangular_coo(COO_Matrix *coo, const double *vals);
+void refresh_lower_triangular_coo(COO_matrix *coo, const double *vals);
 
-void free_coo_matrix(COO_Matrix *matrix);
+void free_COO_matrix(COO_matrix *matrix);
 
-#endif /* COO_MATRIX_H */
+#endif /* COO_matrix_H */

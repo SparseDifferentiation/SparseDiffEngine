@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"

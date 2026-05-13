@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include "utils/int_double_pair.h"
 #include "utils/sparse_matrix.h"
@@ -94,7 +95,8 @@ static void eval_jacobian(expr *node)
 
     /* local jacobian */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator_with_spacing(x->jacobian->to_csr(x->jacobian), tnode->idx_map, node->jacobian->x, x->d1 + 1);
+    accumulator_with_spacing(x->jacobian->to_csr(x->jacobian), tnode->idx_map,
+                             node->jacobian->x, x->d1 + 1);
 }
 
 /* Placeholders for Hessian-related functions */

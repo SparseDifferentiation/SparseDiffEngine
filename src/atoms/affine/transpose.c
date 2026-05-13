@@ -87,7 +87,6 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     int d2 = node->d2;
     int d1 = node->d1;
-    // TODO: meaybe more efficient to do this with memcpy first
 
     /* evaluate hessian of child at Kw */
     for (int i = 0; i < d2; ++i)

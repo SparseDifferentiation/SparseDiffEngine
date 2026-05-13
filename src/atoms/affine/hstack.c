@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "subexpr.h"
 #include "utils/CSR_sum.h"
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
@@ -94,7 +95,8 @@ static void eval_jacobian(expr *node)
         expr *child = hnode->args[i];
         child->eval_jacobian(child);
         /* copy values */
-        memcpy(node->jacobian->x + node->jacobian->nnz, child->jacobian->x, child->jacobian->nnz * sizeof(double));
+        memcpy(node->jacobian->x + node->jacobian->nnz, child->jacobian->x,
+               child->jacobian->nnz * sizeof(double));
         node->jacobian->nnz += child->jacobian->nnz;
     }
 }
@@ -138,7 +140,8 @@ static void wsum_hess_eval(expr *node, const double *w)
         expr *child = hnode->args[i];
         child->eval_wsum_hess(child, w + row_offset);
         copy_CSR_matrix(H, hnode->CSR_work);
-        sum_csr_fill_values(hnode->CSR_work, child->wsum_hess->to_csr(child->wsum_hess), H);
+        sum_csr_fill_values(hnode->CSR_work,
+                            child->wsum_hess->to_csr(child->wsum_hess), H);
         row_offset += child->size;
     }
 }

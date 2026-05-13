@@ -52,6 +52,7 @@ static void sparse_free(matrix *self)
     free_CSR_matrix(sm->csr);
     free_CSC_matrix(sm->csc_cache);
     free(sm->csc_iwork);
+    free(sm->transpose_iwork);
     free(sm);
 }
 
@@ -60,8 +61,8 @@ matrix *new_sparse_matrix(CSR_matrix *A);
 
 /* Build the CSC_matrix cache structure if absent. Values are NOT filled here; caller
    must call refresh_csc_values before consuming. ATA_alloc only needs structure,
-   so it's safe to call after build_csc_structure alone. */
-static void build_csc_structure_if_absent(sparse_matrix *sm)
+   so it's safe to call without a subsequent refresh. */
+void sparse_matrix_ensure_csc_cache(sparse_matrix *sm)
 {
     if (sm->csc_cache != NULL) return;
     sm->csc_iwork = (int *) SP_MALLOC(sm->csr->n * sizeof(int));
@@ -84,7 +85,7 @@ static void sparse_DA_fill_values(const double *d, const matrix *self, matrix *o
 static matrix *sparse_ATA_alloc(matrix *self)
 {
     sparse_matrix *sm = (sparse_matrix *) self;
-    build_csc_structure_if_absent(sm);
+    sparse_matrix_ensure_csc_cache(sm);
     return new_sparse_matrix(ATA_alloc(sm->csc_cache));
 }
 
@@ -101,10 +102,21 @@ static CSR_matrix *sparse_to_csr(matrix *self)
     return ((sparse_matrix *) self)->csr;
 }
 
-static struct permuted_dense *sparse_as_permuted_dense(matrix *self)
+static matrix *sparse_transpose_alloc(const matrix *self)
 {
-    (void) self;
-    return NULL;
+    const sparse_matrix *sm = (const sparse_matrix *) self;
+    int *iwork = (int *) SP_MALLOC(sm->csr->n * sizeof(int));
+    CSR_matrix *AT = AT_alloc(sm->csr, iwork);
+    sparse_matrix *out = (sparse_matrix *) new_sparse_matrix(AT);
+    out->transpose_iwork = iwork;
+    return &out->base;
+}
+
+static void sparse_transpose_fill_values(const matrix *self, matrix *out)
+{
+    const sparse_matrix *sm_in = (const sparse_matrix *) self;
+    sparse_matrix *sm_out = (sparse_matrix *) out;
+    AT_fill_values(sm_in->csr, sm_out->csr, sm_out->transpose_iwork);
 }
 
 static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
@@ -293,7 +305,7 @@ static void sparse_diag_vec_fill_values(matrix *self, matrix *out)
 static void sparse_refresh_csc_values(matrix *self)
 {
     sparse_matrix *sm = (sparse_matrix *) self;
-    build_csc_structure_if_absent(sm);
+    sparse_matrix_ensure_csc_cache(sm);
     csr_to_csc_fill_values(sm->csr, sm->csc_cache, sm->csc_iwork);
 }
 
@@ -307,7 +319,8 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.ATA_alloc = sparse_ATA_alloc;
     sm->base.ATDA_fill_values = sparse_ATDA_fill_values;
     sm->base.to_csr = sparse_to_csr;
-    sm->base.as_permuted_dense = sparse_as_permuted_dense;
+    sm->base.transpose_alloc = sparse_transpose_alloc;
+    sm->base.transpose_fill_values = sparse_transpose_fill_values;
     sm->base.index_alloc = sparse_index_alloc;
     sm->base.index_fill_values = sparse_index_fill_values;
     sm->base.promote_alloc = sparse_promote_alloc;

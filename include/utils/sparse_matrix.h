@@ -29,6 +29,10 @@ typedef struct sparse_matrix
     CSR_matrix *csr;
     CSC_matrix *csc_cache;
     int *csc_iwork;
+    int *transpose_iwork; /* sized csr->n; allocated by sparse_transpose_alloc
+                             on the output sm and reused by
+                             sparse_transpose_fill_values. NULL when this
+                             sm wasn't produced by transpose_alloc. */
 } sparse_matrix;
 
 /* Constructor. Takes ownership of A; the caller must not free A separately
@@ -42,5 +46,11 @@ matrix *new_sparse_matrix_alloc(int m, int n, int nnz);
 
 /* Transpose helper */
 matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork);
+
+/* Build the CSC_matrix cache structure if absent. Idempotent; structure-only,
+   values are NOT filled (use refresh_csc_values for that). Exposed so the
+   bivariate dispatchers in matrix_BTA can prepare sparsity without touching
+   uninitialized values during the init phase. */
+void sparse_matrix_ensure_csc_cache(sparse_matrix *sm);
 
 #endif /* SPARSE_MATRIX_H */

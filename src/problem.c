@@ -251,7 +251,7 @@ void problem_init_jacobian_coo(problem *prob)
     problem_init_jacobian(prob);
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    prob->jacobian_coo = new_coo_matrix(prob->jacobian);
+    prob->jacobian_coo = new_COO_matrix(prob->jacobian);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
 }
@@ -262,7 +262,7 @@ void problem_init_hessian_coo_lower_triangular(problem *prob)
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     prob->lagrange_hessian_coo =
-        new_coo_matrix_lower_triangular(prob->lagrange_hessian);
+        new_COO_matrix_lower_triangular(prob->lagrange_hessian);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
 }
@@ -347,8 +347,8 @@ void free_problem(problem *prob)
     free(prob->gradient_values);
     free_CSR_matrix(prob->jacobian);
     free_CSR_matrix(prob->lagrange_hessian);
-    free_coo_matrix(prob->jacobian_coo);
-    free_coo_matrix(prob->lagrange_hessian_coo);
+    free_COO_matrix(prob->jacobian_coo);
+    free_COO_matrix(prob->lagrange_hessian_coo);
     free(prob->hess_idx_map);
 
     /* Release expression references (decrements refcount) */

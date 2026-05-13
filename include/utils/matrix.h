@@ -20,10 +20,7 @@
 
 #include "CSC_matrix.h"
 #include "CSR_matrix.h"
-
-/* Forward declaration; full definition in permuted_dense.h. Used by the
-   as_permuted_dense vtable getter. */
-struct permuted_dense;
+#include <stdbool.h>
 
 /* Broadcast shape used by the broadcast atom and its vtable methods. */
 typedef enum
@@ -71,6 +68,11 @@ typedef struct matrix
     int m, n, nnz; /* shape and nnz*/
     double *x;     /* non-owning pointer to the value buffer */
 
+    /* True iff self is a permuted_dense; lets bivariate dispatchers route to
+       type-specialized kernels without a vtable call. Set by the concrete
+       constructor (false by default via CALLOC). */
+    bool is_permuted_dense;
+
     /* Operators for the left-multiply matrix in left_matmul. */
     void (*block_left_mult_vec)(const struct matrix *self, const double *x,
                                 double *y, int p);
@@ -94,10 +96,12 @@ typedef struct matrix
                              struct matrix *out);
     CSR_matrix *(*to_csr)(struct matrix *self);
 
-    /* Returns self downcast to permuted_dense if self is PD-backed, NULL
-       otherwise. Used by bivariate dispatchers to route to type-specialized
-       kernels. */
-    struct permuted_dense *(*as_permuted_dense)(struct matrix *self);
+    /* Transpose: returns a matrix of shape (self->n, self->m), same concrete
+       type as self. transpose_alloc sets up sparsity; transpose_fill_values
+       fills values into out, which must have been produced by a prior
+       transpose_alloc on a matrix with the same sparsity as self. */
+    struct matrix *(*transpose_alloc)(const struct matrix *self);
+    void (*transpose_fill_values)(const struct matrix *self, struct matrix *out);
 
     /* Row-selection / indexing: returns a new matrix that selects rows
        indices[0..n_idxs) of self. Output shape is (n_idxs, self->n). The

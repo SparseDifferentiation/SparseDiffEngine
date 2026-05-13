@@ -109,12 +109,12 @@ typedef struct hstack_expr
 typedef struct elementwise_mult_expr
 {
     expr base;
-    matrix *cross_C;       /* C  = Jg2^T diag(w) Jg1 (Sparse or PD) */
-    CSR_matrix *CSR_work2; /* CT = C^T (always CSR_matrix) */
-    int *idx_map_C;        /* C[j]  -> wsum_hess pos */
-    int *idx_map_CT;       /* CT[j] -> wsum_hess pos */
-    int *idx_map_Hx;       /* x->wsum_hess[j] -> pos */
-    int *idx_map_Hy;       /* y->wsum_hess[j] -> pos */
+    matrix *C;       /* C  = Jg2^T diag(w) Jg1 (Sparse or PD) */
+    matrix *CT;      /* CT = C^T; same concrete type as C */
+    int *idx_map_C;  /* C[j]  -> wsum_hess pos */
+    int *idx_map_CT; /* CT[j] -> wsum_hess pos */
+    int *idx_map_Hx; /* x->wsum_hess[j] -> pos */
+    int *idx_map_Hy; /* y->wsum_hess[j] -> pos */
 } elementwise_mult_expr;
 
 /* Left matrix multiplication: y = A * f(x) where f(x) is an expression. Note that

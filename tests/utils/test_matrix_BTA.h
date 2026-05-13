@@ -74,8 +74,11 @@ const char *test_BTDA_matrices_csr_pd(void)
 
     double d[4] = {1.0, -2.0, 0.5, 3.0};
 
-    /* Wrapper path. */
+    /* Wrapper path. Dispatchers don't touch sparse_matrix internals — caller
+       owns csc_cache structure and values. */
+    sparse_matrix_ensure_csc_cache((sparse_matrix *) A_m);
     matrix *C_m = BTA_matrices_alloc(A_m, B_m);
+    A_m->refresh_csc_values(A_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
     /* Direct primitive path. */
@@ -128,8 +131,11 @@ const char *test_BTDA_matrices_pd_csr(void)
 
     double d[4] = {1.0, -2.0, 0.5, 3.0};
 
-    /* Wrapper path. */
+    /* Wrapper path. Dispatchers don't touch sparse_matrix internals — caller
+       owns csc_cache structure and values. */
+    sparse_matrix_ensure_csc_cache((sparse_matrix *) B_m);
     matrix *C_m = BTA_matrices_alloc(A_m, B_m);
+    B_m->refresh_csc_values(B_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
     /* Direct primitive path: production now dispatches the (PD, Sparse)

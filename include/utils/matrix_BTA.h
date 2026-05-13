@@ -14,19 +14,19 @@
 
 #include "matrix.h"
 
-/* Polymorphic dispatchers for C = B^T A and C = B^T diag(d) A. The output
+/* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A. The output
    type depends on the input types: (PD, PD) → PD, (Sparse, PD) → PD,
-   (PD, Sparse) → PD, (Sparse, Sparse) → Sparse. Dispatched via
-   as_permuted_dense() on both operands. */
+   (PD, Sparse) → PD, (Sparse, Sparse) → Sparse. (Here PD = permuted_dense.)
 
-/* Allocate sparsity for C = B^T A. */
+   Contract: neither function touches sparse_matrix internals. The caller must,
+   before calling either function, ensure each Sparse operand's csc_cache
+   exists (sparse_matrix_ensure_csc_cache). Before BTDA_matrices_fill_values
+   the caller must also refresh the cache values (refresh_csc_values). */
+
+/* Allocate sparsity for C = BT @ A. */
 matrix *BTA_matrices_alloc(matrix *A, matrix *B);
 
-/* Fill out->x = B^T diag(d) A (d may be NULL for plain B^T A). out must
-   have the structure produced by BTA_matrices_alloc(A, B). For the
-   (Sparse, Sparse) path, the caller must ensure both operands' csc_caches
-   are fresh (via refresh_csc_values) before calling; the dispatcher does
-   not refresh. */
+/* Fill values of C = BT @ diag(d) @ A. */
 void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C);
 
 #endif /* MATRIX_BTA_H */

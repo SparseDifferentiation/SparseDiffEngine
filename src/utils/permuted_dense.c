@@ -83,11 +83,6 @@ static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A);
 /* Lazy CSR_matrix view: allocate structure on first call, then return the cache.
    The cache's x array aliases pd->X (see permuted_dense_to_csr_alloc), so
    values are always live without a per-call refresh. */
-static struct permuted_dense *permuted_dense_as_permuted_dense(matrix *self)
-{
-    return (permuted_dense *) self;
-}
-
 static CSR_matrix *permuted_dense_to_csr(matrix *self)
 {
     permuted_dense *pd = (permuted_dense *) self;
@@ -96,6 +91,32 @@ static CSR_matrix *permuted_dense_to_csr(matrix *self)
         pd->csr_cache = permuted_dense_to_csr_alloc(pd);
     }
     return pd->csr_cache;
+}
+
+static matrix *permuted_dense_vtable_transpose_alloc(const matrix *self)
+{
+    const permuted_dense *pd = (const permuted_dense *) self;
+    /* Swap (m, n), (m0, n0), and (row_perm, col_perm). The constructor
+       asserts strict increase of both perms, which holds by construction. */
+    return new_permuted_dense(pd->base.n, pd->base.m, pd->n0, pd->m0,
+                              pd->col_perm, pd->row_perm, NULL);
+}
+
+static void permuted_dense_vtable_transpose_fill_values(const matrix *self,
+                                                        matrix *out)
+{
+    const permuted_dense *pd_in = (const permuted_dense *) self;
+    permuted_dense *pd_out = (permuted_dense *) out;
+    int m0 = pd_in->m0;
+    int n0 = pd_in->n0;
+    /* pd_out has shape (n0, m0); transpose pd_in->X into pd_out->X. */
+    for (int ii = 0; ii < m0; ii++)
+    {
+        for (int jj = 0; jj < n0; jj++)
+        {
+            pd_out->X[jj * m0 + ii] = pd_in->X[ii * n0 + jj];
+        }
+    }
 }
 
 static matrix *permuted_dense_vtable_index_alloc(matrix *self, const int *indices,
@@ -337,7 +358,9 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;
     pd->base.ATDA_fill_values = permuted_dense_vtable_ATDA_fill_values;
     pd->base.to_csr = permuted_dense_to_csr;
-    pd->base.as_permuted_dense = permuted_dense_as_permuted_dense;
+    pd->base.transpose_alloc = permuted_dense_vtable_transpose_alloc;
+    pd->base.transpose_fill_values = permuted_dense_vtable_transpose_fill_values;
+    pd->base.is_permuted_dense = true;
     pd->base.index_alloc = permuted_dense_vtable_index_alloc;
     pd->base.index_fill_values = permuted_dense_vtable_index_fill_values;
     pd->base.promote_alloc = permuted_dense_vtable_promote_alloc;
@@ -601,13 +624,6 @@ void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
     /* C may be empty if there is no overlap in row permutations of A and B */
     if (C->base.nnz == 0)
     {
-        return;
-    }
-
-    /* d == NULL means plain BT @ A */
-    if (d == NULL)
-    {
-        BTA_pd_pd_fill_values(B, A, C);
         return;
     }
 

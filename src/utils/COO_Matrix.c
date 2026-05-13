@@ -15,14 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "utils/COO_Matrix.h"
+#include "utils/COO_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 
-COO_Matrix *new_coo_matrix(const CSR_matrix *A)
+COO_matrix *new_COO_matrix(const CSR_matrix *A)
 {
-    COO_Matrix *coo = (COO_Matrix *) SP_MALLOC(sizeof(COO_Matrix));
+    COO_matrix *coo = (COO_matrix *) SP_MALLOC(sizeof(COO_matrix));
     coo->m = A->m;
     coo->n = A->n;
     coo->nnz = A->nnz;
@@ -45,7 +45,7 @@ COO_Matrix *new_coo_matrix(const CSR_matrix *A)
     return coo;
 }
 
-COO_Matrix *new_coo_matrix_lower_triangular(const CSR_matrix *A)
+COO_matrix *new_COO_matrix_lower_triangular(const CSR_matrix *A)
 {
     /* Pass 1: count lower-triangular entries (col <= row) */
     int count = 0;
@@ -60,7 +60,7 @@ COO_Matrix *new_coo_matrix_lower_triangular(const CSR_matrix *A)
         }
     }
 
-    COO_Matrix *coo = (COO_Matrix *) SP_MALLOC(sizeof(COO_Matrix));
+    COO_matrix *coo = (COO_matrix *) SP_MALLOC(sizeof(COO_matrix));
     coo->m = A->m;
     coo->n = A->n;
     coo->nnz = count;
@@ -89,7 +89,7 @@ COO_Matrix *new_coo_matrix_lower_triangular(const CSR_matrix *A)
     return coo;
 }
 
-void refresh_lower_triangular_coo(COO_Matrix *coo, const double *vals)
+void refresh_lower_triangular_coo(COO_matrix *coo, const double *vals)
 {
     for (int i = 0; i < coo->nnz; i++)
     {
@@ -97,7 +97,7 @@ void refresh_lower_triangular_coo(COO_Matrix *coo, const double *vals)
     }
 }
 
-void free_coo_matrix(COO_Matrix *matrix)
+void free_COO_matrix(COO_matrix *matrix)
 {
     if (matrix)
     {

@@ -19,7 +19,6 @@
 #define AFFINE_H
 
 #include "expr.h"
-#include "subexpr.h"
 #include "utils/CSR_matrix.h"
 
 expr *new_add(expr *left, expr *right);

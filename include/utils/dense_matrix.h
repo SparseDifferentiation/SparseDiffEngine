@@ -20,6 +20,8 @@
 
 #include "matrix.h"
 
+/* TODO: do we need this matrix class? */
+
 /* Dense matrix (row-major) */
 typedef struct dense_matrix
 {

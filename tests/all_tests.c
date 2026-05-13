@@ -60,7 +60,7 @@
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_cblas.h"
-#include "utils/test_coo_matrix.h"
+#include "utils/test_COO_matrix.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
 #include "utils/test_csr_matrix.h"

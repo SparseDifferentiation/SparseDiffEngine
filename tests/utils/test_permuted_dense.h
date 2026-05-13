@@ -634,7 +634,6 @@ const char *test_permuted_dense_BTA_empty_overlap(void)
     BTA_pd_pd_fill_values(B, A, C);
     double d[4] = {1.0, 1.0, 1.0, 1.0};
     BTDA_pd_pd_fill_values(B, d, A, C);
-    BTDA_pd_pd_fill_values(B, NULL, A, C);
 
     free_matrix(C_m);
     free_matrix(B_m);

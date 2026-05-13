@@ -53,7 +53,7 @@ const char *test_jacobian_transpose(void)
           block X is row-permuted: X_out[i, :] = X_c[k(i), :]. */
 const char *test_jacobian_transpose_pd_preserved(void)
 {
-    double A_data[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+    double A_data[12] = {1.0, 2.0, 3.0, 4.0,  5.0,  6.0,
                          7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
     expr *u = new_variable(2, 1, 0, 2);
     expr *AU = new_left_matmul_dense(NULL, u, 6, 2, A_data);
@@ -66,8 +66,8 @@ const char *test_jacobian_transpose_pd_preserved(void)
     T->eval_jacobian(T);
 
     /* Structural: output Jacobian must be a PD. */
-    permuted_dense *pd_T = T->jacobian->as_permuted_dense(T->jacobian);
-    mu_assert("transpose Jacobian should be PD", pd_T != NULL);
+    mu_assert("transpose Jacobian should be PD", T->jacobian->is_permuted_dense);
+    permuted_dense *pd_T = (permuted_dense *) T->jacobian;
     mu_assert("global m", T->jacobian->m == 6);
     mu_assert("global n", T->jacobian->n == 2);
     mu_assert("m0", pd_T->m0 == 6);
@@ -78,11 +78,11 @@ const char *test_jacobian_transpose_pd_preserved(void)
     mu_assert("col_perm", cmp_int_array(pd_T->col_perm, expected_col_perm, 2));
 
     /* Numerical: X_out rows = A rows permuted by k(r) = [0,3,1,4,2,5]. */
-    double expected_X[12] = {1.0, 2.0,    /* row 0 from A row 0 */
-                             7.0, 8.0,    /* row 1 from A row 3 */
-                             3.0, 4.0,    /* row 2 from A row 1 */
-                             9.0, 10.0,   /* row 3 from A row 4 */
-                             5.0, 6.0,    /* row 4 from A row 2 */
+    double expected_X[12] = {1.0,  2.0,   /* row 0 from A row 0 */
+                             7.0,  8.0,   /* row 1 from A row 3 */
+                             3.0,  4.0,   /* row 2 from A row 1 */
+                             9.0,  10.0,  /* row 3 from A row 4 */
+                             5.0,  6.0,   /* row 4 from A row 2 */
                              11.0, 12.0}; /* row 5 from A row 5 */
     mu_assert("X values", cmp_double_array(pd_T->X, expected_X, 12));
 

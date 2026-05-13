@@ -4,7 +4,7 @@
 
 #include "minunit.h"
 #include "test_helpers.h"
-#include "utils/COO_Matrix.h"
+#include "utils/COO_matrix.h"
 
 const char *test_csr_to_coo(void)
 {
@@ -21,7 +21,7 @@ const char *test_csr_to_coo(void)
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
 
-    COO_Matrix *coo = new_coo_matrix(A);
+    COO_matrix *coo = new_COO_matrix(A);
 
     mu_assert("m incorrect", coo->m == 3);
     mu_assert("n incorrect", coo->n == 3);
@@ -35,7 +35,7 @@ const char *test_csr_to_coo(void)
     mu_assert("cols incorrect", cmp_int_array(coo->cols, expected_cols, 6));
     mu_assert("vals incorrect", cmp_double_array(coo->x, expected_x, 6));
 
-    free_coo_matrix(coo);
+    free_COO_matrix(coo);
     free_CSR_matrix(A);
 
     return 0;
@@ -56,7 +56,7 @@ const char *test_csr_to_coo_lower_triangular(void)
     memcpy(A->i, Ai, 9 * sizeof(int));
     memcpy(A->x, Ax, 9 * sizeof(double));
 
-    COO_Matrix *coo = new_coo_matrix_lower_triangular(A);
+    COO_matrix *coo = new_COO_matrix_lower_triangular(A);
 
     mu_assert("ltri m incorrect", coo->m == 3);
     mu_assert("ltri n incorrect", coo->n == 3);
@@ -73,7 +73,7 @@ const char *test_csr_to_coo_lower_triangular(void)
     mu_assert("ltri value_map incorrect",
               cmp_int_array(coo->value_map, expected_map, 6));
 
-    free_coo_matrix(coo);
+    free_COO_matrix(coo);
     free_CSR_matrix(A);
 
     return 0;
@@ -89,7 +89,7 @@ const char *test_refresh_lower_triangular_coo(void)
     memcpy(A->i, Ai, 9 * sizeof(int));
     memcpy(A->x, Ax, 9 * sizeof(double));
 
-    COO_Matrix *coo = new_coo_matrix_lower_triangular(A);
+    COO_matrix *coo = new_COO_matrix_lower_triangular(A);
 
     double vals2[9] = {10, 20, 30, 20, 50, 60, 30, 60, 90};
     refresh_lower_triangular_coo(coo, vals2);
@@ -97,7 +97,7 @@ const char *test_refresh_lower_triangular_coo(void)
     double expected_x[6] = {10, 20, 50, 30, 60, 90};
     mu_assert("refresh vals incorrect", cmp_double_array(coo->x, expected_x, 6));
 
-    free_coo_matrix(coo);
+    free_COO_matrix(coo);
     free_CSR_matrix(A);
 
     return 0;
