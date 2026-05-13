@@ -380,12 +380,11 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->col_perm = (int *) SP_MALLOC(n0 * sizeof(int));
     pd->X = (double *) SP_MALLOC(sz * sizeof(double));
     pd->base.x = pd->X;
-    /* `dwork` sized for the Y-buffer role (Y = diag(d_perm) X) used by ATDA /
-       BTDA_pd_pd, and for the (diag(d) X)^T transpose in BTDA_pd_csc. The
-       legacy old-code BTA_pd_csr_alloc / BTA_csr_pd_alloc upgrade this to a
-       larger gather buffer when their output PD will instead play that role. */
-    pd->dwork_size = sz;
-    pd->dwork = (double *) SP_MALLOC(pd->dwork_size * sizeof(double));
+    /* dwork is allocated lazily by kernels via permuted_dense_ensure_dwork.
+       SP_CALLOC above already zeroed dwork / dwork_size, but make it
+       explicit. */
+    pd->dwork = NULL;
+    pd->dwork_size = 0;
     pd->col_inv = (int *) SP_MALLOC(n * sizeof(int));
     pd->row_inv = (int *) SP_MALLOC(m * sizeof(int));
 
@@ -470,6 +469,20 @@ void DA_pd_fill_values(const double *d, const permuted_dense *A, permuted_dense 
     }
 }
 
+/* Ensure pd->dwork is sized at least `size` doubles. Grows in place;
+   contents are NOT preserved. Called from allocator functions so that the
+   corresponding fill kernels never need to allocate. Takes a const pointer
+   and casts internally — this matches the dwork contract (header) that
+   dwork is mutable through a const permuted_dense *. */
+static void permuted_dense_ensure_dwork(const permuted_dense *pd_const, size_t size)
+{
+    permuted_dense *pd = (permuted_dense *) pd_const;
+    if (pd->dwork_size >= size) return;
+    free(pd->dwork);
+    pd->dwork = (double *) SP_MALLOC(size * sizeof(double));
+    pd->dwork_size = size;
+}
+
 matrix *ATA_pd_alloc(const permuted_dense *A)
 {
     int n = A->base.n;
@@ -477,6 +490,10 @@ matrix *ATA_pd_alloc(const permuted_dense *A)
        sets given by A's col_perm. (This follows from Cij = ai^T aj where
        ai and aj are columns of A. Here, ai and aj always have overlapping entries,
        so Cij != 0 for (i, j) in A->col_perm x A->col_perm) */
+
+    /* Pre-size A's dwork for the ATDA fill (Y-buffer = diag(d_perm) X). */
+    permuted_dense_ensure_dwork(A, (size_t) A->m0 * A->n0);
+
     return new_permuted_dense(n, n, A->n0, A->n0, A->col_perm, A->col_perm, NULL);
 }
 
@@ -509,6 +526,12 @@ matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
        index sets given by B->col_perm and A->col_perm, respectively */
     matrix *C = new_permuted_dense(B->base.n, A->base.n, B->n0, A->n0, B->col_perm,
                                    A->col_perm, NULL);
+
+    /* Pre-size A's and B's dwork for the BTA fill slow path (gathered row
+       buffers). Worst-case size is `m0 * n0` per operand; over-allocating
+       here lets the fill kernel never touch malloc. */
+    permuted_dense_ensure_dwork(A, (size_t) A->m0 * A->n0);
+    permuted_dense_ensure_dwork(B, (size_t) B->m0 * B->n0);
 
     /* Pre-allocate C->iwork for idx_A + idx_B in BTA / BTDA_pd_pd slow paths
        (each needs at most max_s = MIN(A->m0, B->m0) ints; we store both
@@ -601,9 +624,8 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     assert(s > 0);
 
     // ------------------------------------------------------------------------
-    // Gather the matching rows into A->dwork and B->dwork (space is sufficient
-    // since A->dwork has at least space for A's full block, and we only need
-    // part of it. Same comment applies to B->dwork).
+    // Gather the matching rows into A->dwork and B->dwork. dwork is pre-sized
+    // by BTA_pd_pd_alloc (one ensure_dwork call per operand at alloc time).
     // ------------------------------------------------------------------------
     for (int k = 0; k < s; k++)
     {
@@ -741,6 +763,10 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     matrix *C = new_permuted_dense(B->base.n, A->n, B->n0, col_active->len,
                                    B->col_perm, col_active->data, NULL);
     iVec_free(col_active);
+
+    /* Pre-size B's dwork for the BTDA fill (holds (diag(d) B)^T). */
+    permuted_dense_ensure_dwork(B, (size_t) B->m0 * B->n0);
+
     return C;
 }
 
@@ -791,6 +817,10 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
     matrix *C = new_permuted_dense(B->n, A->base.n, row_active->len, A->n0,
                                    row_active->data, A->col_perm, NULL);
     iVec_free(row_active);
+
+    /* Pre-size A's dwork for the BTDA fill (holds (diag(d_perm) X_A)^T). */
+    permuted_dense_ensure_dwork(A, (size_t) A->m0 * A->n0);
+
     return C;
 }
 
@@ -831,6 +861,7 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
     int n0_A = A->n0;
 
     /* A->dwork = (diag(d_perm) X_A)^T, row-major shape (n0_A, m0_A).
+       Pre-sized by BTA_csc_pd_alloc; no allocation in fill.
        Column j of (diag(d) X_A) lives contiguously in dwork as row j —
        which is exactly the layout BTA_csc_pd_fill_values wants. */
     for (int kk = 0; kk < m0_A; kk++)

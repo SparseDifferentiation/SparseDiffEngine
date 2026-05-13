@@ -52,8 +52,10 @@ typedef struct permuted_dense
          - transpose: holds (diag(d) X)^T for the BA_pd_csc-based BTDA
                      kernels (BTDA_pd_csc and, transitively, BTDA_csc_pd
                      via its delegate). Size m0*n0 doubles.
-       Sized at alloc time for the largest role this PD could play. Functions
-       taking a const permuted_dense * may still mutate `dwork`. */
+       Allocated lazily on the first kernel that needs it; grown in place
+       (free + SP_MALLOC, contents not preserved) if a later kernel needs
+       more. `dwork == NULL` and `dwork_size == 0` before first use.
+       Functions taking a const permuted_dense * may still mutate `dwork`. */
     double *dwork;
     size_t dwork_size;
 
