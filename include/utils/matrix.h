@@ -30,123 +30,120 @@ typedef enum
     BROADCAST_SCALAR /* (1, 1) -> (m, n) */
 } broadcast_type;
 
-/* We implement three different types of matrices.
+/* Polymorphic matrix base. Concrete types embed `matrix` as their first
+   member and implement the vtable slots below. Currently implemented:
+       1. sparse_matrix  — generic CSR_matrix-backed matrix.
+       2. permuted_dense — matrix whose nonzeros lie in a single dense block
+                           located at chosen rows and columns of the global
+                           index space.
+   A third type is potentially planned. */
 
-    1. 'sparse_matrix' represents a generic CSR_matrix matrix.
-    2. 'permuted_dense' represents a matrix that only consists of a dense block
-        (potentially after permuting columns).
-    3. 'blkdiag_dense' represents a block diagonal matrix with a constant dense
-        block.
+typedef struct matrix matrix;
 
-    Each of these types implements its own functionality for common matrix operations
-    such as DA_fill_values etc. The return type of most of these operations are the
-    same as the type of the input. For example, DA_fill_values for permuted_dense
-    fills the values of a new permuted_dense object.
+/* y = kron(I_p, A) @ x */
+typedef void (*matrix_block_left_mult_vec_fn)(const matrix *A, const double *x,
+                                              double *y, int p);
 
-    2, 'permuted_dense':
-       * DA_fill_values just scales the rows. It does not affect the permutation
-         indices.
-       * ATA_alloc
-       * ATDA_fill_values
-       * to_csr_sparsity
-       * to_csr_values
-       *
+/* Allocate sparsity of C = kron(I_p, A) @ J */
+typedef CSC_matrix *(*matrix_block_left_mult_sparsity_fn)(const matrix *A,
+                                                          const CSC_matrix *J,
+                                                          int p);
 
-   1. sparse_matrix: generic CSR_matrix matrix.
-   2. permuted_dense:
+/* Fill values of C = kron(I_p, A) @ J */
+typedef void (*matrix_block_left_mult_values_fn)(const matrix *A,
+                                                 const CSC_matrix *J, CSC_matrix *C);
 
+/* Allocate a new matrix with the same sparsity as A */
+typedef matrix *(*matrix_copy_sparsity_fn)(const matrix *A);
 
-*/
+/* Fill values of C = diag(d) @ A */
+typedef void (*matrix_DA_fill_values_fn)(const double *d, const matrix *A,
+                                         matrix *C);
 
-/* Base matrix type with function pointers for polymorphic dispatch. There are two
-   types of matrices: 'sparse_matrix' and 'permuted_dense'. Each type implements the
-   same set of operations, but with different algorithms. The following operations
-   are implemented: TODO
-*/
-typedef struct matrix
+/* Allocate C = AT @ A */
+typedef matrix *(*matrix_ATA_alloc_fn)(matrix *A);
+
+/* Fill values of C = AT @ diag(d) @ A */
+typedef void (*matrix_ATDA_fill_values_fn)(const matrix *A, const double *d,
+                                           matrix *C);
+
+/* Allocate AT = transpose(A) */
+typedef matrix *(*matrix_transpose_alloc_fn)(const matrix *A);
+
+/* Fill values of AT = transpose(A) */
+typedef void (*matrix_transpose_fill_values_fn)(const matrix *A, matrix *AT);
+
+/* Returns a CSR_matrix view of A */
+typedef CSR_matrix *(*matrix_to_csr_fn)(matrix *A);
+
+/* Refresh any internal caches (e.g. a CSC_matrix mirror) so subsequent ATA /
+   ATDA calls reflect the current values. */
+typedef void (*matrix_refresh_csc_values_fn)(matrix *A);
+
+/* Allocate C = A[indices, :] */
+typedef matrix *(*matrix_index_alloc_fn)(matrix *A, const int *indices, int n_idxs);
+
+/* Fill values of C = A[indices, :] */
+typedef void (*matrix_index_fill_values_fn)(matrix *A, const int *indices,
+                                            int n_idxs, matrix *C);
+
+/* Row-tiling for the promote atom: A must be a 1-row matrix; returns
+   a new matrix of shape (size, A->n) where every row is a copy of A's
+   single row. */
+typedef matrix *(*matrix_promote_alloc_fn)(matrix *A, int size);
+typedef void (*matrix_promote_fill_values_fn)(matrix *A, matrix *out);
+
+/* Broadcast: lift the child Jacobian of a broadcast atom into the output
+   Jacobian. `type` is the broadcast variant; (d1, d2) is the output shape. */
+typedef matrix *(*matrix_broadcast_alloc_fn)(matrix *A, broadcast_type type, int d1,
+                                             int d2);
+typedef void (*matrix_broadcast_fill_values_fn)(matrix *A, broadcast_type type,
+                                                int d1, int d2, matrix *out);
+
+/* diag_vec: A is an (n, A->n) Jacobian for a length-n vector; output is
+   (n*n, A->n) where row i lands at output row i*(n+1) (column-major
+   diagonal positions). Other output rows are structurally zero. */
+typedef matrix *(*matrix_diag_vec_alloc_fn)(matrix *A);
+typedef void (*matrix_diag_vec_fill_values_fn)(matrix *A, matrix *out);
+
+typedef void (*matrix_free_fn)(matrix *self);
+
+struct matrix
 {
-    int m, n, nnz; /* shape and nnz*/
-    double *x;     /* non-owning pointer to the value buffer */
-
-    /* True iff self is a permuted_dense; lets bivariate dispatchers route to
-       type-specialized kernels without a vtable call. Set by the concrete
-       constructor (false by default via CALLOC). */
+    int m, n, nnz;
+    double *x; /* non-owning pointer to the value buffer */
     bool is_permuted_dense;
 
-    /* Operators for the left-multiply matrix in left_matmul. */
-    void (*block_left_mult_vec)(const struct matrix *self, const double *x,
-                                double *y, int p);
-    CSC_matrix *(*block_left_mult_sparsity)(const struct matrix *self,
-                                            const CSC_matrix *J, int p);
-    void (*block_left_mult_values)(const struct matrix *self, const CSC_matrix *J,
-                                   CSC_matrix *C);
+    /* Operator ops */
+    matrix_block_left_mult_vec_fn block_left_mult_vec;
+    matrix_block_left_mult_sparsity_fn block_left_mult_sparsity;
+    matrix_block_left_mult_values_fn block_left_mult_values;
 
-    /* Chain-rule operations used by transformer atoms (elementwise, etc.).
-       All chain-rule outputs are the same concrete type as self (uniform
-       polymorphism). copy_sparsity returns a matrix of same shape and type as
-       self; DA_fill_values writes diag(d) * self into out; ATA_alloc allocates
-       a matrix with sparsity of self^T * self; ATDA_fill_values fills out with
-       self^T * diag(d) * self; to_csr returns a CSR_matrix view of self
-       (constant-time for sparse_matrix, lazily built/refreshed for other types). */
-    struct matrix *(*copy_sparsity)(const struct matrix *self);
-    void (*DA_fill_values)(const double *d, const struct matrix *self,
-                           struct matrix *out);
-    struct matrix *(*ATA_alloc)(struct matrix *self);
-    void (*ATDA_fill_values)(const struct matrix *self, const double *d,
-                             struct matrix *out);
-    CSR_matrix *(*to_csr)(struct matrix *self);
+    /* Chain-rule ops */
+    matrix_copy_sparsity_fn copy_sparsity;
+    matrix_DA_fill_values_fn DA_fill_values;
+    matrix_ATA_alloc_fn ATA_alloc;
+    matrix_ATDA_fill_values_fn ATDA_fill_values;
+    matrix_transpose_alloc_fn transpose_alloc;
+    matrix_transpose_fill_values_fn transpose_fill_values;
 
-    /* Transpose: returns a matrix of shape (self->n, self->m), same concrete
-       type as self. transpose_alloc sets up sparsity; transpose_fill_values
-       fills values into out, which must have been produced by a prior
-       transpose_alloc on a matrix with the same sparsity as self. */
-    struct matrix *(*transpose_alloc)(const struct matrix *self);
-    void (*transpose_fill_values)(const struct matrix *self, struct matrix *out);
+    /* Views and cache */
+    matrix_to_csr_fn to_csr;
+    matrix_refresh_csc_values_fn refresh_csc_values;
 
-    /* Row-selection / indexing: returns a new matrix that selects rows
-       indices[0..n_idxs) of self. Output shape is (n_idxs, self->n). The
-       returned type matches self's concrete type. index_alloc sets up
-       sparsity (values uninitialized); index_fill_values fills values into
-       out, which must have been produced by a prior index_alloc with the
-       same indices/n_idxs. */
-    struct matrix *(*index_alloc)(struct matrix *self, const int *indices,
-                                  int n_idxs);
-    void (*index_fill_values)(struct matrix *self, const int *indices, int n_idxs,
-                              struct matrix *out);
+    /* Atom-specific ops */
+    matrix_index_alloc_fn index_alloc;
+    matrix_index_fill_values_fn index_fill_values;
+    matrix_promote_alloc_fn promote_alloc;
+    matrix_promote_fill_values_fn promote_fill_values;
+    matrix_broadcast_alloc_fn broadcast_alloc;
+    matrix_broadcast_fill_values_fn broadcast_fill_values;
+    matrix_diag_vec_alloc_fn diag_vec_alloc;
+    matrix_diag_vec_fill_values_fn diag_vec_fill_values;
 
-    /* Row-tiling for the promote atom: self must be a 1-row matrix; returns
-       a new matrix of shape (size, self->n) where every row is a copy of
-       self's single row. Output type matches self's concrete type.
-       promote_alloc sets sparsity; promote_fill_values fills values. */
-    struct matrix *(*promote_alloc)(struct matrix *self, int size);
-    void (*promote_fill_values)(struct matrix *self, struct matrix *out);
-
-    /* Broadcast: lift the child Jacobian of a broadcast atom into the output
-       Jacobian. `type` is the broadcast variant; (d1, d2) is the output shape.
-       Output type matches self's concrete type. broadcast_alloc sets sparsity;
-       broadcast_fill_values fills values into out. */
-    struct matrix *(*broadcast_alloc)(struct matrix *self, broadcast_type type,
-                                      int d1, int d2);
-    void (*broadcast_fill_values)(struct matrix *self, broadcast_type type, int d1,
-                                  int d2, struct matrix *out);
-
-    /* diag_vec: child is an (n, self->n) Jacobian for a length-n vector;
-       output is (n*n, self->n) where child row i lands at output row
-       i*(n+1) (column-major diagonal positions). Other output rows are
-       structurally zero. Output type matches self's concrete type. */
-    struct matrix *(*diag_vec_alloc)(struct matrix *self);
-    void (*diag_vec_fill_values)(struct matrix *self, struct matrix *out);
-
-    /* Refresh any internal caches (e.g. a CSC_matrix mirror) so subsequent ATA /
-       ATDA calls reflect the current values. Atoms whose child Jacobian is affine
-       can skip this on iterations after the first; non-affine children must
-       call it before every chain-rule call. No-op for types that don't have
-       a cache (e.g. permuted_dense). */
-    void (*refresh_csc_values)(struct matrix *self);
-
-    /* Lifecycle. */
-    void (*free_fn)(struct matrix *self);
-} matrix;
+    /* Lifecycle */
+    matrix_free_fn free_fn;
+};
 
 /* Free helper */
 static inline void free_matrix(matrix *m)
