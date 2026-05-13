@@ -130,9 +130,8 @@ static void jacobian_init_impl(expr *node)
         int *col_perm = (int *) SP_MALLOC(lnode->A->n * sizeof(int));
         for (int i = 0; i < m_loc; i++) row_perm[i] = i;
         for (int j = 0; j < lnode->A->n; j++) col_perm[j] = x->var_id + j;
-        node->jacobian = new_permuted_dense(m_loc, node->n_vars, m_loc,
-                                            lnode->A->n, row_perm, col_perm,
-                                            lnode->A->x);
+        node->jacobian = new_permuted_dense(m_loc, node->n_vars, m_loc, lnode->A->n,
+                                            row_perm, col_perm, lnode->A->x);
         free(row_perm);
         free(col_perm);
         return;
@@ -162,11 +161,13 @@ static void eval_jacobian(expr *node)
 
     /* evaluate child's jacobian and convert to CSC_matrix */
     x->eval_jacobian(x);
-    csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jchild_CSC, node->work->iwork);
+    csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jchild_CSC,
+                           node->work->iwork);
 
     /* compute this node's jacobian: */
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
-    csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian), lnode->csc_to_csr_work);
+    csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian),
+                           lnode->csc_to_csr_work);
 }
 
 static void wsum_hess_init_impl(expr *node)

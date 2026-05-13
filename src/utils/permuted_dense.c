@@ -19,6 +19,7 @@
 #include "utils/cblas_wrapper.h"
 #include "utils/iVec.h"
 #include "utils/linalg_dense_sparse_matmuls.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -807,6 +808,102 @@ void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
                 sparse_dot_dense(A->x + start, A->i + start, len, inv, B + i * n0_B);
         }
     }
+}
+
+matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
+{
+    /* C is structurally zero when B's columns and A's rows don't overlap. */
+    if (!has_overlap(B->col_perm, B->n0, A->row_perm, A->m0, 0))
+    {
+        return new_permuted_dense(B->base.m, A->base.n, 0, 0, NULL, NULL, NULL);
+    }
+
+    /* Otherwise C has a dense block of size B->m0 x A->n0, with row index
+       set B->row_perm and column index set A->col_perm. */
+    matrix *C = new_permuted_dense(B->base.m, A->base.n, B->m0, A->n0, B->row_perm,
+                                   A->col_perm, NULL);
+
+    int s_max = MIN(B->n0, A->m0);
+
+    /* Pre-size B's and A's dwork for the gathers in fill. Worst-case
+       intersection size is s_max; B_sub is (m0, s) and A_sub is (s, n0). */
+    permuted_dense_ensure_dwork(B, (size_t) B->m0 * s_max);
+    permuted_dense_ensure_dwork(A, (size_t) s_max * A->n0);
+
+    /* Pre-allocate C->iwork for idx_B + idx_A back-to-back (2 * s_max ints),
+       same idiom as BTA_pd_pd_alloc. */
+    permuted_dense *C_pd = (permuted_dense *) C;
+    C_pd->iwork_size = (size_t) 2 * s_max;
+    if (C_pd->iwork_size > 0)
+    {
+        C_pd->iwork = (int *) SP_MALLOC(C_pd->iwork_size * sizeof(int));
+    }
+    return C;
+}
+
+void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
+                          permuted_dense *C)
+{
+    /* C may be empty when B->col_perm and A->row_perm don't overlap. */
+    if (C->base.nnz == 0)
+    {
+        return;
+    }
+
+    int s_max = MIN(B->n0, A->m0);
+    int *idx_B = C->iwork;
+    int *idx_A = C->iwork + s_max;
+    int s = sorted_intersect_indices(B->col_perm, B->n0, A->row_perm, A->m0, idx_B,
+                                     idx_A);
+    assert(s > 0);
+
+    /* Gather B_sub into B->dwork, shape (B->m0, s), row-major.
+       B_sub[ii, kk] = B->X[ii, idx_B[kk]]. */
+    for (int ii = 0; ii < B->m0; ii++)
+    {
+        for (int kk = 0; kk < s; kk++)
+        {
+            B->dwork[ii * s + kk] = B->X[ii * B->n0 + idx_B[kk]];
+        }
+    }
+
+    /* Gather A_sub into A->dwork, shape (s, A->n0), row-major.
+       A_sub[kk, :] = A->X[idx_A[kk], :]. */
+    for (int kk = 0; kk < s; kk++)
+    {
+        memcpy(A->dwork + kk * A->n0, A->X + idx_A[kk] * A->n0,
+               A->n0 * sizeof(double));
+    }
+
+    /* C->X = B_sub @ A_sub, shape (B->m0, A->n0). */
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, B->m0, A->n0, s, 1.0,
+                B->dwork, s, A->dwork, A->n0, 0.0, C->X, A->n0);
+}
+
+matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A)
+{
+    if (A->is_permuted_dense)
+    {
+        return BA_pd_pd_alloc(B, (const permuted_dense *) A);
+    }
+    /* A is sparse — use the existing BA_pd_csc_* kernels. Ensure the
+       csc_cache structure exists at alloc time (Phase 1 contract). */
+    sparse_matrix *sm_A = (sparse_matrix *) A;
+    sparse_matrix_ensure_csc_cache(sm_A);
+    return BA_pd_csc_alloc(B, sm_A->csc_cache);
+}
+
+void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
+                                permuted_dense *C)
+{
+    if (A->is_permuted_dense)
+    {
+        BA_pd_pd_fill_values(B, (const permuted_dense *) A, C);
+        return;
+    }
+    /* A is sparse — caller must have refreshed sm_A->csc_cache values. */
+    sparse_matrix *sm_A = (sparse_matrix *) A;
+    BA_pd_csc_fill_values(B->X, B->n0, B->col_inv, sm_A->csc_cache, C);
 }
 
 matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)

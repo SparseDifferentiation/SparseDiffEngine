@@ -387,6 +387,9 @@ int main(void)
     mu_run_test(test_permuted_dense_BTA_partial_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
     mu_run_test(test_BTA_pd_csc_matches_csr, tests_run);
+    mu_run_test(test_BA_pd_matrices_pd_pd_full_block_B, tests_run);
+    mu_run_test(test_BA_pd_matrices_pd_pd_general_B, tests_run);
+    mu_run_test(test_BA_pd_matrices_pd_csc, tests_run);
     mu_run_test(test_BTA_pd_csr_basic, tests_run);
     mu_run_test(test_BTA_pd_csr_leaf_variable, tests_run);
     mu_run_test(test_BTA_pd_csr_no_overlap, tests_run);

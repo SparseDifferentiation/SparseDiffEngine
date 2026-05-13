@@ -126,6 +126,28 @@ matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
                            const CSC_matrix *A, permuted_dense *C);
 
+/* Allocate new permuted dense for C = B @ A where B and A are both PD. Both
+   may have arbitrary (sorted) row_perm / col_perm; no full-block assumption.
+   If B->col_perm and A->row_perm have no overlap C is structurally empty;
+   otherwise C has row_perm = B->row_perm, col_perm = A->col_perm. */
+matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A);
+
+/* Fill values of C = B @ A for two PDs (general row_perm / col_perm).
+   Intersects B->col_perm with A->row_perm, gathers the matching column
+   slice of B and row slice of A into the operands' dwork scratch, and
+   computes one cblas_dgemm. */
+void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
+                          permuted_dense *C);
+
+/* Polymorphic dispatcher: C = B @ A where B is PD and A is any matrix
+   type (permuted_dense or sparse_matrix). C is always PD. Routes on A's
+   type — mirrors the BTA_matrices_alloc style in matrix_BTA.c. For the
+   sparse-A branch the caller must refresh A's csc_cache values before
+   BA_pd_matrices_fill_values (same contract as BTDA_matrices_fill_values). */
+matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A);
+void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
+                                permuted_dense *C);
+
 /* Allocate new permuted dense for C = B^T @ A where B is PD and A is CSC */
 matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 
