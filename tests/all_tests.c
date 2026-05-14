@@ -225,6 +225,7 @@ int main(void)
     mu_run_test(test_jacobian_left_matmul_log_matrix, tests_run);
     mu_run_test(test_jacobian_left_matmul_exp_composite, tests_run);
     mu_run_test(test_jacobian_left_matmul_pd_from_composite_child, tests_run);
+    mu_run_test(test_jacobian_left_matmul_pd_param, tests_run);
     mu_run_test(test_jacobian_right_matmul_log, tests_run);
     mu_run_test(test_jacobian_right_matmul_log_vector, tests_run);
     mu_run_test(test_jacobian_matmul, tests_run);

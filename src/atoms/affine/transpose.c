@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
@@ -29,15 +30,7 @@ static void forward(expr *node, const double *u)
     /* local forward pass */
     int d1 = node->d1;
     int d2 = node->d2;
-    double *X = node->left->value;
-    double *XT = node->value;
-    for (int i = 0; i < d1; ++i)
-    {
-        for (int j = 0; j < d2; ++j)
-        {
-            XT[j * d1 + i] = X[i * d2 + j];
-        }
-    }
+    A_transpose(node->value, node->left->value, d1, d2);
 }
 
 static void jacobian_init_impl(expr *node)

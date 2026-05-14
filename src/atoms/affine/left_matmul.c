@@ -112,86 +112,64 @@ static void free_type_data(expr *node)
     lnode->param_source = NULL;
 }
 
-static void jacobian_init_impl(expr *node)
+/* TODO: use better polymorphism here if you add another matrix type*/
+
+/* jacobian_init when node->jacobian is permuted_dense */
+static void jacobian_init_pd(expr *node)
 {
+    /* initialize jacobian of child */
     expr *x = node->left;
     left_matmul_expr *lnode = (left_matmul_expr *) node;
-
-    /* initialize child's jacobian */
     jacobian_init(x);
 
-    /* Fast path: A is a constant full-block PD operator, child is a leaf
-       variable, and there are no Kronecker blocks. The Jacobian is A placed
-       at the variable's column slot — a full-dense permuted_dense. Skip the
-       CSC_matrix mirror entirely. */
-    if (lnode->produce_pd_jacobian)
-    {
-        int m_loc = lnode->A->m;
-        int *row_perm = (int *) SP_MALLOC(m_loc * sizeof(int));
-        int *col_perm = (int *) SP_MALLOC(lnode->A->n * sizeof(int));
-        for (int i = 0; i < m_loc; i++) row_perm[i] = i;
-        for (int j = 0; j < lnode->A->n; j++) col_perm[j] = x->var_id + j;
-        node->jacobian = new_permuted_dense(m_loc, node->n_vars, m_loc, lnode->A->n,
-                                            row_perm, col_perm, lnode->A->x);
-        free(row_perm);
-        free(col_perm);
-        return;
-    }
+    /* initialize this node's jacobian */
+    node->jacobian = BA_pd_matrices_alloc((permuted_dense *) lnode->A, x->jacobian);
+}
 
-    /* PD A + composite child: route through the polymorphic dispatcher.
-       The dispatcher handles both PD and sparse child Jacobians internally,
-       so no x->jacobian->is_permuted_dense check here. */
-    if (lnode->n_blocks == 1 && lnode->A->is_permuted_dense &&
-        lnode->param_source == NULL)
-    {
-        node->jacobian =
-            BA_pd_matrices_alloc((permuted_dense *) lnode->A, x->jacobian);
-        lnode->produce_pd_jacobian_from_child = true;
-        return;
-    }
+/* eval_jacobian when node->jacobian is permuted_dense */
+static void eval_jacobian_pd(expr *node)
+{
+    /* evaluate jacobian of child */
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    expr *x = node->left;
+    x->eval_jacobian(x);
 
-    /* General path via CSC_matrix mirror. */
+    /* must refresh CSC cache if x->jacobian is sparse_matrix */
+    x->jacobian->refresh_csc_values(x->jacobian);
+    BA_pd_matrices_fill_values((permuted_dense *) lnode->A, x->jacobian,
+                               (permuted_dense *) node->jacobian);
+}
+
+/* jacobian_init when node->jacobian is sparse */
+static void jacobian_init_sparse(expr *node)
+{
+    /* initialize jacobian of child */
+    expr *x = node->left;
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    jacobian_init(x);
+
+    /* initialize this node's jacobian */
     lnode->Jchild_CSC =
         csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
-
-    /* precompute sparsity of this node's jacobian in CSC_matrix and CSR_matrix */
     lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
                                                       lnode->n_blocks);
     node->jacobian =
         new_sparse_matrix(csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work));
 }
 
-static void eval_jacobian(expr *node)
+/* eval_jacobian when node->jacobian is sparse */
+static void eval_jacobian_sparse(expr *node)
 {
+    /* evaluate jacobian of child */
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     expr *x = node->left;
+    x->eval_jacobian(x);
 
-    /* Fast path: PD Jacobian backed by constant A. Values never change. */
-    if (lnode->produce_pd_jacobian) return;
-
-    /* PD A + composite child: refresh values via the dispatcher. Values
-       always need recomputing because the child's Jacobian may change
-       (this branch fires even for affine children today — see
-       multiply.c::jacobian_csc_filled for a possible future
-       affine-tracking cache that would skip the dgemm). */
-    if (lnode->produce_pd_jacobian_from_child)
-    {
-        x->eval_jacobian(x);
-        x->jacobian->refresh_csc_values(x->jacobian); /* no-op for PD */
-        BA_pd_matrices_fill_values((permuted_dense *) lnode->A, x->jacobian,
-                                   (permuted_dense *) node->jacobian);
-        return;
-    }
-
+    /* evaluate this node's jacobian */
     CSC_matrix *Jchild_CSC = lnode->Jchild_CSC;
     CSC_matrix *J_CSC = lnode->J_CSC;
-
-    /* evaluate child's jacobian and convert to CSC_matrix */
-    x->eval_jacobian(x);
     csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jchild_CSC,
                            node->work->iwork);
-
-    /* compute this node's jacobian: */
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
     csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian),
                            lnode->csc_to_csr_work);
@@ -267,23 +245,25 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     left_matmul_expr *lnode =
         (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    /* Sparse A — always the general CSC-mirror path. */
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_sparse,
+              eval_jacobian_sparse, is_affine, wsum_hess_init_impl, eval_wsum_hess,
+              free_type_data);
     node->left = u;
     expr_retain(u);
 
     /* allocate workspace. iwork is used for converting J_child csr to csc
-       (requiring size node->n_vars) and for transposing A (requiring size A->n).
+       (requiring size node->n_vars).
        csc_to_csr_work is used for converting J_CSC to CSR_matrix (requiring
        node->size) */
-    node->work->iwork = (int *) SP_MALLOC(MAX(A->n, node->n_vars) * sizeof(int));
+    node->work->iwork = (int *) SP_MALLOC(node->n_vars * sizeof(int));
     lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
     /* store A and AT. new_sparse_matrix takes ownership, so clone first. */
     lnode->A = new_sparse_matrix(new_csr(A));
-    lnode->AT =
-        sparse_matrix_trans((const sparse_matrix *) lnode->A, node->work->iwork);
+    lnode->AT = lnode->A->transpose_alloc(lnode->A);
+    lnode->A->transpose_fill_values(lnode->A, lnode->AT);
 
     /* parameter support */
     lnode->param_source = param_node;
@@ -325,8 +305,18 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     left_matmul_expr *lnode =
         (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    /* PD A: the BA_pd_matrices dispatcher applies whenever there is a single
+       Kronecker block, whether A is constant or parameterized. With a
+       parameter, A's structure is fixed at construction (full-block PD with
+       trivial permutations); refresh_dense_left updates A->X before each
+       forward, and eval_jacobian_pd reads those refreshed values via
+       BA_pd_matrices_fill_values. With n_blocks > 1 the Kronecker structure
+       forces the general CSC-mirror path. */
+    bool pd_path = (n_blocks == 1);
+    init_expr(node, d1, d2, u->n_vars, forward,
+              pd_path ? jacobian_init_pd : jacobian_init_sparse,
+              pd_path ? eval_jacobian_pd : eval_jacobian_sparse, is_affine,
+              wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
 
@@ -363,18 +353,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
 
         lnode->A = new_permuted_dense_full(m, n, data);
         lnode->AT = lnode->A->transpose_alloc(lnode->A);
-        /* transpose_alloc only sets up structure; we must also fill values
-           or AT->X is uninitialized. eval_wsum_hess uses AT->X via
-           AT->block_left_mult_vec, so missing this corrupts every Hessian. */
         lnode->A->transpose_fill_values(lnode->A, lnode->AT);
-
-        /* If the child is a leaf variable and there are no blocks, the Jacobian
-           is exactly A placed in the variable's column slot — a full-dense
-           permuted_dense. Enable the fast path. */
-        if (u->var_id != NOT_A_VARIABLE && n_blocks == 1)
-        {
-            lnode->produce_pd_jacobian = true;
-        }
     }
 
     return node;
