@@ -30,11 +30,10 @@
 /* Sort an array of integers in ascending order */
 void sort_int_array(int *array, int size);
 
-/* Return true iff sorted index arrays a_idx and b_idx (lengths a_len, b_len)
+/* Return true if sorted index arrays a_idx and b_idx (lengths a_len, b_len)
    share any value, where b_idx entries are shifted by b_offset before
    comparison (a_idx[ai] == b_idx[bi] - b_offset). Use b_offset = 0 for a
-   plain intersection check. O(a_len + b_len) sorted-merge scan with early
-   termination on first match. */
+   plain intersection check.  */
 bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
                  int b_offset);
 
