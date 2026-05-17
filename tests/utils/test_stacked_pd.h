@@ -690,4 +690,134 @@ const char *test_transpose_spd_single_block_full(void)
     return 0;
 }
 
+/* copy_sparsity_spd_alloc preserves block structure and produces a fresh
+   spd with identity src_block_idx_*, NULL work, and uninitialized X
+   buffers. */
+const char *test_copy_sparsity_spd_alloc(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 2};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[1] = {3};
+    int col_perm_1[2] = {1, 3};
+    double X1[2] = {5.0, 6.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 1, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *src_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+    stacked_pd *src = (stacked_pd *) src_m;
+
+    matrix *out_m = copy_sparsity_spd_alloc(src);
+    stacked_pd *out = (stacked_pd *) out_m;
+
+    mu_assert("m", out_m->m == 4);
+    mu_assert("n", out_m->n == 4);
+    mu_assert("nnz", out_m->nnz == src_m->nnz);
+    mu_assert("n_blocks", out->n_blocks == 2);
+    int expected_src_p[3] = {0, 1, 2};
+    int expected_src[2] = {0, 1};
+    mu_assert("src_block_idx_p",
+              cmp_int_array(out->src_block_idx_p, expected_src_p, 3));
+    mu_assert("src_block_idx", cmp_int_array(out->src_block_idx, expected_src, 2));
+    mu_assert("work NULL", out->work == NULL);
+
+    permuted_dense *O0 = out->blocks[0];
+    mu_assert("O0 m0", O0->m0 == 2);
+    mu_assert("O0 n0", O0->n0 == 2);
+    mu_assert("O0 row_perm", cmp_int_array(O0->row_perm, row_perm_0, 2));
+    mu_assert("O0 col_perm", cmp_int_array(O0->col_perm, col_perm_0, 2));
+
+    permuted_dense *O1 = out->blocks[1];
+    mu_assert("O1 m0", O1->m0 == 1);
+    mu_assert("O1 n0", O1->n0 == 2);
+    mu_assert("O1 row_perm", cmp_int_array(O1->row_perm, row_perm_1, 1));
+    mu_assert("O1 col_perm", cmp_int_array(O1->col_perm, col_perm_1, 2));
+
+    free_matrix(out_m);
+    free_matrix(src_m);
+    return 0;
+}
+
+/* DA on a 2-block spd: per-row scaling by d[global_row]. */
+const char *test_DA_spd_two_blocks(void)
+{
+    /* block 0: rows {0, 1}, cols {0, 1}, X = [[1, 2], [3, 4]]
+       block 1: rows {2, 3}, cols {2, 3}, X = [[5, 6], [7, 8]]          */
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+    stacked_pd *A = (stacked_pd *) A_m;
+
+    double d[4] = {10.0, 100.0, 1000.0, 10000.0};
+
+    matrix *C_m = copy_sparsity_spd_alloc(A);
+    DA_spd_fill_values(d, A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* C0 row 0 scaled by d[0]=10; row 1 by d[1]=100. */
+    double C0_X_expected[4] = {10.0, 20.0, 300.0, 400.0};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_expected, 4));
+
+    /* C1 row 0 (= global row 2) scaled by d[2]=1000; row 1 (= row 3) by
+       d[3]=10000. */
+    double C1_X_expected[4] = {5000.0, 6000.0, 70000.0, 80000.0};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_expected, 4));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* DA on an empty spd: no-op, no crash. */
+const char *test_DA_spd_empty(void)
+{
+    matrix *A_m = new_stacked_pd(4, 4, 0, NULL, NULL, NULL);
+    matrix *C_m = copy_sparsity_spd_alloc((stacked_pd *) A_m);
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+    DA_spd_fill_values(d, (stacked_pd *) A_m, (stacked_pd *) C_m);
+
+    mu_assert("n_blocks", ((stacked_pd *) C_m)->n_blocks == 0);
+    mu_assert("nnz", C_m->nnz == 0);
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* DA on a single full-dense block. */
+const char *test_DA_spd_single_block_full(void)
+{
+    /* 2x3 dense, X = [[1, 2, 3], [4, 5, 6]] */
+    double data[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    matrix *blk = new_permuted_dense_full(2, 3, data);
+
+    permuted_dense *blocks[1] = {(permuted_dense *) blk};
+    matrix *A_m = new_stacked_pd(2, 3, 1, blocks, NULL, NULL);
+
+    double d[2] = {10.0, 100.0};
+
+    matrix *C_m = copy_sparsity_spd_alloc((stacked_pd *) A_m);
+    DA_spd_fill_values(d, (stacked_pd *) A_m, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* row 0 scaled by 10, row 1 by 100. */
+    double C0_X_expected[6] = {10.0, 20.0, 30.0, 400.0, 500.0, 600.0};
+    mu_assert("C X", cmp_double_array(C->blocks[0]->X, C0_X_expected, 6));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
 #endif /* TEST_STACKED_PD_H */

@@ -105,6 +105,18 @@ matrix *coalesce_spd_alloc(const stacked_pd *src);
    (block count, row_perms, col_perms) as the one passed now. */
 void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out);
 
+/* Allocate a new spd with the same block structure (per-block row_perm,
+   col_perm, and shape) as `src` and uninitialized X buffers. Each output
+   block has itself as its one source in src_block_idx_*. `work` is NULL.
+   Mirrors the role of permuted_dense's `copy_sparsity` vtable slot. */
+matrix *copy_sparsity_spd_alloc(const stacked_pd *src);
+
+/* Fill values of C = diag(d) @ A. `d` has length A->base.m. The caller
+   must have produced C via copy_sparsity_spd_alloc(A) (or any allocator
+   that preserves A's block structure). Per-block delegates to
+   DA_pd_fill_values. */
+void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
+
 /* Allocate out = transpose(src). Implementation: transpose each source
    PD block individually (yielding a raw spd that may have overlapping
    row perms but pairwise-disjoint cells, by the spd invariant), then

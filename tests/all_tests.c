@@ -418,6 +418,10 @@ int main(void)
     mu_run_test(test_transpose_spd_alloc_then_fill_values, tests_run);
     mu_run_test(test_transpose_spd_empty, tests_run);
     mu_run_test(test_transpose_spd_single_block_full, tests_run);
+    mu_run_test(test_copy_sparsity_spd_alloc, tests_run);
+    mu_run_test(test_DA_spd_two_blocks, tests_run);
+    mu_run_test(test_DA_spd_empty, tests_run);
+    mu_run_test(test_DA_spd_single_block_full, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);

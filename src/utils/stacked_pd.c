@@ -530,3 +530,31 @@ void transpose_spd_fill_values(const stacked_pd *src, stacked_pd *out)
     }
     coalesce_spd_fill_values(raw, out);
 }
+
+/* ------------------------------------------------------------------ */
+/* copy_sparsity and DA                                                */
+/* ------------------------------------------------------------------ */
+
+matrix *copy_sparsity_spd_alloc(const stacked_pd *src)
+{
+    int n_blocks = src->n_blocks;
+    permuted_dense **out_blocks = (permuted_dense **) SP_MALLOC(
+        (n_blocks > 0 ? n_blocks : 1) * sizeof(permuted_dense *));
+    for (int k = 0; k < n_blocks; k++)
+    {
+        matrix *src_blk = (matrix *) src->blocks[k];
+        out_blocks[k] = (permuted_dense *) src_blk->copy_sparsity(src_blk);
+    }
+    matrix *out =
+        new_stacked_pd(src->base.m, src->base.n, n_blocks, out_blocks, NULL, NULL);
+    free(out_blocks);
+    return out;
+}
+
+void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C)
+{
+    for (int k = 0; k < A->n_blocks; k++)
+    {
+        DA_pd_fill_values(d, A->blocks[k], C->blocks[k]);
+    }
+}
