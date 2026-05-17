@@ -36,6 +36,10 @@ static void stacked_pd_free(matrix *self)
     free(spd->blocks);
     free(spd->src_block_idx_p);
     free(spd->src_block_idx);
+    if (spd->work != NULL)
+    {
+        free_matrix((matrix *) spd->work);
+    }
     free(spd);
 }
 
@@ -487,4 +491,42 @@ void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out)
             }
         }
     }
+}
+
+/* ------------------------------------------------------------------ */
+/* Transpose                                                           */
+/* ------------------------------------------------------------------ */
+
+matrix *transpose_spd_alloc(const stacked_pd *src)
+{
+    int n_blocks = src->n_blocks;
+    permuted_dense **raw_blocks = (permuted_dense **) SP_MALLOC(
+        (n_blocks > 0 ? n_blocks : 1) * sizeof(permuted_dense *));
+    for (int k = 0; k < n_blocks; k++)
+    {
+        matrix *blk = (matrix *) src->blocks[k];
+        raw_blocks[k] = (permuted_dense *) blk->transpose_alloc(blk);
+    }
+
+    /* Raw spd: dimensions swapped, identity src_block_idx_*; rows may
+       overlap so use the unchecked constructor. */
+    matrix *raw = new_stacked_pd_unchecked(src->base.n, src->base.m, n_blocks,
+                                           raw_blocks, NULL, NULL);
+    free(raw_blocks);
+
+    matrix *out = coalesce_spd_alloc((stacked_pd *) raw);
+    ((stacked_pd *) out)->work = (stacked_pd *) raw;
+    return out;
+}
+
+void transpose_spd_fill_values(const stacked_pd *src, stacked_pd *out)
+{
+    stacked_pd *raw = out->work;
+    for (int k = 0; k < src->n_blocks; k++)
+    {
+        matrix *src_blk = (matrix *) src->blocks[k];
+        matrix *raw_blk = (matrix *) raw->blocks[k];
+        src_blk->transpose_fill_values(src_blk, raw_blk);
+    }
+    coalesce_spd_fill_values(raw, out);
 }

@@ -39,6 +39,11 @@ typedef struct stacked_pd
     permuted_dense **blocks; /* owned; length n_blocks                      */
     int *src_block_idx_p;    /* owned; length n_blocks + 1                  */
     int *src_block_idx;      /* owned; length src_block_idx_p[n_blocks]     */
+    struct stacked_pd *work; /* owned; NULL except when this spd was        */
+                             /* produced by an op that needs a pre-coalesce */
+                             /* intermediate (currently transpose). When    */
+                             /* set, holds the raw spd that                 */
+                             /* coalesce_spd_fill_values reads from.        */
 } stacked_pd;
 
 /* Constructor.
@@ -99,5 +104,17 @@ matrix *coalesce_spd_alloc(const stacked_pd *src);
    `out` via coalesce_spd_alloc on a `src` with the same structure
    (block count, row_perms, col_perms) as the one passed now. */
 void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out);
+
+/* Allocate out = transpose(src). Implementation: transpose each source
+   PD block individually (yielding a raw spd that may have overlapping
+   row perms but pairwise-disjoint cells, by the spd invariant), then
+   coalesce. The raw spd is stored on `out->work` for reuse by
+   `transpose_spd_fill_values`. */
+matrix *transpose_spd_alloc(const stacked_pd *src);
+
+/* Fill values of out = transpose(src). The caller must have produced
+   `out` via transpose_spd_alloc on a `src` with the same structure
+   (block count, row_perms, col_perms) as the one passed now. */
+void transpose_spd_fill_values(const stacked_pd *src, stacked_pd *out);
 
 #endif /* STACKED_PD_H */

@@ -413,6 +413,11 @@ int main(void)
     mu_run_test(test_coalesce_shared_signature_merges_rows, tests_run);
     mu_run_test(test_coalesce_alloc_then_fill_values, tests_run);
     mu_run_test(test_coalesce_empty_input, tests_run);
+    mu_run_test(test_transpose_spd_no_overlap, tests_run);
+    mu_run_test(test_transpose_spd_overlap_coalesces, tests_run);
+    mu_run_test(test_transpose_spd_alloc_then_fill_values, tests_run);
+    mu_run_test(test_transpose_spd_empty, tests_run);
+    mu_run_test(test_transpose_spd_single_block_full, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
