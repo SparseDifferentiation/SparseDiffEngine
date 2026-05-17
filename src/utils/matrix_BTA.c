@@ -15,6 +15,8 @@
 #include "utils/CSR_matrix.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
+#include <assert.h>
 
 matrix *BTA_matrices_alloc(matrix *A, matrix *B)
 {
@@ -94,4 +96,39 @@ void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
     /* A is sparse — caller must have refreshed sm_A->csc_cache values. */
     sparse_matrix *sm_A = (sparse_matrix *) A;
     BA_pd_csc_fill_values(B->X, B->n0, B->col_inv, sm_A->csc_cache, C);
+}
+
+matrix *BA_spd_matrices_alloc(const stacked_pd *B, const matrix *A)
+{
+    if (A->is_stacked_pd)
+    {
+        return BA_spd_spd_alloc(B, (const stacked_pd *) A);
+    }
+    if (A->is_permuted_dense)
+    {
+        /* BA_spd_pd kernel deferred — no caller yet. */
+        assert(0 && "BA_spd_matrices: A=permuted_dense not supported yet");
+        return NULL;
+    }
+    /* A is sparse — ensure csc_cache structure exists at alloc time. */
+    sparse_matrix *sm_A = (sparse_matrix *) A;
+    sparse_matrix_ensure_csc_cache(sm_A);
+    return BA_spd_csc_alloc(B, sm_A->csc_cache);
+}
+
+void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A, stacked_pd *C)
+{
+    if (A->is_stacked_pd)
+    {
+        BA_spd_spd_fill_values(B, (const stacked_pd *) A, C);
+        return;
+    }
+    if (A->is_permuted_dense)
+    {
+        assert(0 && "BA_spd_matrices: A=permuted_dense not supported yet");
+        return;
+    }
+    /* A is sparse — caller must have refreshed sm_A->csc_cache values. */
+    sparse_matrix *sm_A = (sparse_matrix *) A;
+    BA_spd_csc_fill_values(B, sm_A->csc_cache, C);
 }

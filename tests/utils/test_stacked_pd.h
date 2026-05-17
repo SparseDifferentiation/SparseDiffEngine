@@ -4,7 +4,10 @@
 #include "minunit.h"
 #include "test_helpers.h"
 #include "utils/CSC_matrix.h"
+#include "utils/CSR_matrix.h"
+#include "utils/matrix_BTA.h"
 #include "utils/permuted_dense.h"
+#include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
 #include <stdlib.h>
 #include <string.h>
@@ -1596,6 +1599,287 @@ const char *test_BA_spd_spd_alloc_then_fill_values(void)
     free_matrix(C_m);
     free_matrix(A);
     free_matrix(B);
+    return 0;
+}
+
+/* BA_spd_matrices dispatcher with A = sparse_matrix. Same B + numerical
+   inputs as test_BA_spd_csc_two_blocks_both_kept, but A is built as a
+   sparse_matrix wrapping CSR and we call through the dispatcher; the
+   result must match the direct-call expected values. */
+const char *test_BA_spd_matrices_sparse_A(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 2};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[1] = {3};
+    int col_perm_1[2] = {1, 3};
+    double X1[2] = {5.0, 6.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 1, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *B_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    /* A: 4x3, same values as the direct-call test but expressed as CSR.
+       col 0: (0,1), (2,2);  col 1: (1,3), (3,4);  col 2: (2,5).
+       Row-major CSR layout:
+         row 0: col 0 = 1
+         row 1: col 1 = 3
+         row 2: col 0 = 2, col 2 = 5
+         row 3: col 1 = 4
+       p = [0, 1, 2, 4, 5], i = [0, 1, 0, 2, 1], x = [1, 3, 2, 5, 4]. */
+    CSR_matrix *csr = new_CSR_matrix(4, 3, 5);
+    int Ap[5] = {0, 1, 2, 4, 5};
+    int Ai[5] = {0, 1, 0, 2, 1};
+    double Ax[5] = {1.0, 3.0, 2.0, 5.0, 4.0};
+    memcpy(csr->p, Ap, sizeof(Ap));
+    memcpy(csr->i, Ai, sizeof(Ai));
+    memcpy(csr->x, Ax, sizeof(Ax));
+    matrix *A_m = new_sparse_matrix(csr);
+
+    matrix *C_m = BA_spd_matrices_alloc((stacked_pd *) B_m, A_m);
+    A_m->refresh_csc_values(A_m); /* per dispatcher contract */
+    BA_spd_matrices_fill_values((stacked_pd *) B_m, A_m, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* Expected values match test_BA_spd_csc_two_blocks_both_kept. */
+    mu_assert("n_blocks", C->n_blocks == 2);
+
+    permuted_dense *C0 = C->blocks[0];
+    double C0_X_exp[4] = {5.0, 10.0, 11.0, 20.0};
+    mu_assert("C0 X", cmp_double_array(C0->X, C0_X_exp, 4));
+
+    permuted_dense *C1 = C->blocks[1];
+    double C1_X_exp[1] = {39.0};
+    mu_assert("C1 X", cmp_double_array(C1->X, C1_X_exp, 1));
+
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* BA_spd_matrices dispatcher with A = stacked_pd. Same inputs as
+   test_BA_spd_spd_two_blocks_both_kept; calling through the dispatcher
+   must yield identical per-block values. */
+const char *test_BA_spd_matrices_spd_A(void)
+{
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 1};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *B0 = new_permuted_dense(4, 6, 2, 2, B0_rp, B0_cp, B0X);
+
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {3, 4};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *B1 = new_permuted_dense(4, 6, 2, 2, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B_m = new_stacked_pd(4, 6, 2, B_blocks, NULL, NULL);
+
+    int A0_rp[3] = {0, 1, 2};
+    int A0_cp[2] = {0, 1};
+    double A0X[6] = {10, 11, 12, 13, 14, 15};
+    matrix *A0 = new_permuted_dense(6, 4, 3, 2, A0_rp, A0_cp, A0X);
+
+    int A1_rp[3] = {3, 4, 5};
+    int A1_cp[2] = {2, 3};
+    double A1X[6] = {20, 21, 22, 23, 24, 25};
+    matrix *A1 = new_permuted_dense(6, 4, 3, 2, A1_rp, A1_cp, A1X);
+
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A_m = new_stacked_pd(6, 4, 2, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_matrices_alloc((stacked_pd *) B_m, A_m);
+    BA_spd_matrices_fill_values((stacked_pd *) B_m, A_m, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 2);
+
+    double C0_X_exp[4] = {34, 37, 78, 85};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_exp, 4));
+
+    double C1_X_exp[4] = {232, 243, 316, 331};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Vtable: copy_sparsity through M->copy_sparsity(M). */
+const char *test_spd_vtable_copy_sparsity(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 2};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[1] = {3};
+    int col_perm_1[2] = {1, 3};
+    double X1[2] = {5.0, 6.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 1, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *M = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    matrix *out_m = M->copy_sparsity(M);
+    stacked_pd *out = (stacked_pd *) out_m;
+
+    mu_assert("n_blocks", out->n_blocks == 2);
+    mu_assert("O0 row_perm", cmp_int_array(out->blocks[0]->row_perm, row_perm_0, 2));
+    mu_assert("O0 col_perm", cmp_int_array(out->blocks[0]->col_perm, col_perm_0, 2));
+    mu_assert("O1 row_perm", cmp_int_array(out->blocks[1]->row_perm, row_perm_1, 1));
+    mu_assert("O1 col_perm", cmp_int_array(out->blocks[1]->col_perm, col_perm_1, 2));
+
+    free_matrix(out_m);
+    free_matrix(M);
+    return 0;
+}
+
+/* Vtable: DA_fill_values through A->DA_fill_values(d, A, C). */
+const char *test_spd_vtable_DA_fill_values(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    double d[4] = {10.0, 100.0, 1000.0, 10000.0};
+
+    matrix *C_m = A_m->copy_sparsity(A_m);
+    A_m->DA_fill_values(d, A_m, C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    double C0_X_exp[4] = {10.0, 20.0, 300.0, 400.0};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_exp, 4));
+
+    double C1_X_exp[4] = {5000.0, 6000.0, 70000.0, 80000.0};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Vtable: ATA_alloc through A->ATA_alloc(A). */
+const char *test_spd_vtable_ATA_alloc(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    matrix *C_m = A_m->ATA_alloc(A_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 2);
+    mu_assert("C0 row_perm", cmp_int_array(C->blocks[0]->row_perm, col_perm_0, 2));
+    mu_assert("C0 col_perm", cmp_int_array(C->blocks[0]->col_perm, col_perm_0, 2));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Vtable: ATDA_fill_values through A->ATDA_fill_values(A, d, C). */
+const char *test_spd_vtable_ATDA_fill_values(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+
+    matrix *C_m = A_m->ATA_alloc(A_m);
+    A_m->ATDA_fill_values(A_m, d, C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* Same expected values as test_ATDA_spd_disjoint_cols. */
+    double C0_X_exp[4] = {19.0, 26.0, 26.0, 36.0};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_exp, 4));
+
+    double C1_X_exp[4] = {271.0, 314.0, 314.0, 364.0};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Vtable: transpose_alloc + transpose_fill_values. */
+const char *test_spd_vtable_transpose(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *src_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    matrix *out_m = src_m->transpose_alloc(src_m);
+    src_m->transpose_fill_values(src_m, out_m);
+    stacked_pd *out = (stacked_pd *) out_m;
+
+    /* Same expected values as test_transpose_spd_no_overlap. */
+    mu_assert("n_blocks", out->n_blocks == 2);
+    double O0_X_exp[4] = {1.0, 3.0, 2.0, 4.0};
+    mu_assert("O0 X", cmp_double_array(out->blocks[0]->X, O0_X_exp, 4));
+    double O1_X_exp[4] = {5.0, 7.0, 6.0, 8.0};
+    mu_assert("O1 X", cmp_double_array(out->blocks[1]->X, O1_X_exp, 4));
+
+    free_matrix(out_m);
+    free_matrix(src_m);
+    return 0;
+}
+
+/* Vtable: refresh_csc_values is a no-op; verify no crash. */
+const char *test_spd_vtable_refresh_csc_values_noop(void)
+{
+    int row_perm[1] = {0};
+    int col_perm[1] = {0};
+    double X[1] = {1.0};
+    matrix *blk = new_permuted_dense(1, 1, 1, 1, row_perm, col_perm, X);
+
+    permuted_dense *blocks[1] = {(permuted_dense *) blk};
+    matrix *M = new_stacked_pd(1, 1, 1, blocks, NULL, NULL);
+
+    M->refresh_csc_values(M);
+
+    free_matrix(M);
     return 0;
 }
 

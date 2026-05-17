@@ -44,6 +44,46 @@ static void stacked_pd_free(matrix *self)
     free(spd);
 }
 
+/* Vtable adapters — each downcasts matrix * to stacked_pd * and
+   delegates to the corresponding public spd kernel. */
+
+static matrix *stacked_pd_vtable_copy_sparsity(const matrix *self)
+{
+    return copy_sparsity_spd_alloc((const stacked_pd *) self);
+}
+
+static void stacked_pd_vtable_DA_fill_values(const double *d, const matrix *self,
+                                             matrix *out)
+{
+    DA_spd_fill_values(d, (const stacked_pd *) self, (stacked_pd *) out);
+}
+
+static matrix *stacked_pd_vtable_ATA_alloc(matrix *self)
+{
+    return ATA_spd_alloc((const stacked_pd *) self);
+}
+
+static void stacked_pd_vtable_ATDA_fill_values(const matrix *self, const double *d,
+                                               matrix *out)
+{
+    ATDA_spd_fill_values((const stacked_pd *) self, d, (stacked_pd *) out);
+}
+
+static matrix *stacked_pd_vtable_transpose_alloc(const matrix *self)
+{
+    return transpose_spd_alloc((const stacked_pd *) self);
+}
+
+static void stacked_pd_vtable_transpose_fill_values(const matrix *self, matrix *out)
+{
+    transpose_spd_fill_values((const stacked_pd *) self, (stacked_pd *) out);
+}
+
+static void stacked_pd_vtable_refresh_csc_values(matrix *self)
+{
+    (void) self; /* spd has no CSC cache to refresh */
+}
+
 #ifndef NDEBUG
 /* Pairwise verify that block row permutations are disjoint via a
    two-pointer merge over the sorted arrays. */
@@ -93,7 +133,15 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
         nnz += blocks[k]->base.nnz;
     }
     spd->base.nnz = nnz;
+    spd->base.is_stacked_pd = true;
     spd->base.free_fn = stacked_pd_free;
+    spd->base.copy_sparsity = stacked_pd_vtable_copy_sparsity;
+    spd->base.DA_fill_values = stacked_pd_vtable_DA_fill_values;
+    spd->base.ATA_alloc = stacked_pd_vtable_ATA_alloc;
+    spd->base.ATDA_fill_values = stacked_pd_vtable_ATDA_fill_values;
+    spd->base.transpose_alloc = stacked_pd_vtable_transpose_alloc;
+    spd->base.transpose_fill_values = stacked_pd_vtable_transpose_fill_values;
+    spd->base.refresh_csc_values = stacked_pd_vtable_refresh_csc_values;
 
     spd->n_blocks = n_blocks;
     spd->blocks = (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));

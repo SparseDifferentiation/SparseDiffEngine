@@ -14,6 +14,7 @@
 
 #include "matrix.h"
 #include "permuted_dense.h"
+#include "stacked_pd.h"
 
 /* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A. The output
    type depends on the input types: (PD, PD) → PD, (Sparse, PD) → PD,
@@ -39,5 +40,15 @@ void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C)
 matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A);
 void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
                                 permuted_dense *C);
+
+/* Polymorphic dispatcher: C = B @ A where B is a stacked_pd and A is
+   any matrix type (stacked_pd or sparse_matrix; permuted_dense is not
+   yet supported and asserts in debug). Output is always a stacked_pd.
+   For the sparse-A branch the dispatcher ensures sm_A->csc_cache
+   structure exists at alloc time; the caller must refresh values via
+   sm_A->refresh_csc_values before calling _fill_values. */
+matrix *BA_spd_matrices_alloc(const stacked_pd *B, const matrix *A);
+void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
+                                 stacked_pd *C);
 
 #endif /* MATRIX_BTA_H */

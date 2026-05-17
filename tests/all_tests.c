@@ -441,6 +441,14 @@ int main(void)
     mu_run_test(test_BA_spd_spd_empty_A, tests_run);
     mu_run_test(test_BA_spd_spd_empty_B, tests_run);
     mu_run_test(test_BA_spd_spd_alloc_then_fill_values, tests_run);
+    mu_run_test(test_BA_spd_matrices_sparse_A, tests_run);
+    mu_run_test(test_BA_spd_matrices_spd_A, tests_run);
+    mu_run_test(test_spd_vtable_copy_sparsity, tests_run);
+    mu_run_test(test_spd_vtable_DA_fill_values, tests_run);
+    mu_run_test(test_spd_vtable_ATA_alloc, tests_run);
+    mu_run_test(test_spd_vtable_ATDA_fill_values, tests_run);
+    mu_run_test(test_spd_vtable_transpose, tests_run);
+    mu_run_test(test_spd_vtable_refresh_csc_values_noop, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
