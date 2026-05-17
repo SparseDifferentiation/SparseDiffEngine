@@ -113,9 +113,7 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
 void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
                             const permuted_dense *A, permuted_dense *C);
 
-/* Allocate new permuted dense for C = B @ A where B is PD and A is CSC.
-   This function is currently never used in production, but we keep it
-   here because it is simple and might be useful in the future. */
+/* Allocate new permuted dense for C = B @ A where B is PD and A is CSC. */
 matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 
 /* Fill values of C = B @ A where B is value buffer to permuted dense and A is CSC.

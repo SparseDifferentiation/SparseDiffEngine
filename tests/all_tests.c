@@ -69,6 +69,7 @@
 #include "utils/test_matrix.h"
 #include "utils/test_matrix_BTA.h"
 #include "utils/test_permuted_dense.h"
+#include "utils/test_stacked_pd.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
 #include "wsum_hess/affine/test_diag_mat.h"
@@ -403,6 +404,10 @@ int main(void)
     mu_run_test(test_BTDA_matrices_pd_pd, tests_run);
     mu_run_test(test_BTDA_matrices_csr_pd, tests_run);
     mu_run_test(test_BTDA_matrices_pd_csr, tests_run);
+    mu_run_test(test_stacked_pd_construct_and_free, tests_run);
+    mu_run_test(test_BA_spd_csc_two_blocks_both_kept, tests_run);
+    mu_run_test(test_BA_spd_csc_one_block_dropped, tests_run);
+    mu_run_test(test_BA_spd_csc_all_blocks_dropped, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
