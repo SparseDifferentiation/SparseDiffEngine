@@ -780,3 +780,67 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     free(A_gather);
     free(temp);
 }
+
+/* ------------------------------------------------------------------ */
+/* BA_spd_spd: C = B @ A where both B and A are stacked_pds.           */
+/* Thin loop over B's blocks, each call producing a PD via             */
+/* BA_pd_spd_alloc; PDs assemble into output spd with disjoint rows.   */
+/* ------------------------------------------------------------------ */
+
+matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
+{
+    permuted_dense **tmp_blocks = NULL;
+    int *tmp_src = NULL;
+    int *tmp_src_p = NULL;
+    if (B->n_blocks > 0)
+    {
+        tmp_blocks =
+            (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
+        tmp_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
+    }
+
+    int out_n = 0;
+    for (int k = 0; k < B->n_blocks; k++)
+    {
+        matrix *Ck = BA_pd_spd_alloc(B->blocks[k], A);
+        permuted_dense *Ck_pd = (permuted_dense *) Ck;
+        if (Ck_pd->n0 == 0)
+        {
+            free_matrix(Ck);
+        }
+        else
+        {
+            tmp_blocks[out_n] = Ck_pd;
+            tmp_src[out_n] = k;
+            out_n++;
+        }
+    }
+
+    /* one source per output block: identity prefix sum. Only allocate if
+       B was non-empty; otherwise pass NULL/NULL to new_stacked_pd to
+       satisfy its "both NULL or both non-NULL" invariant. */
+    if (B->n_blocks > 0)
+    {
+        tmp_src_p = (int *) SP_MALLOC((out_n + 1) * sizeof(int));
+        for (int k = 0; k <= out_n; k++)
+        {
+            tmp_src_p[k] = k;
+        }
+    }
+
+    matrix *C =
+        new_stacked_pd(B->base.m, A->base.n, out_n, tmp_blocks, tmp_src_p, tmp_src);
+    free(tmp_blocks);
+    free(tmp_src);
+    free(tmp_src_p);
+    return C;
+}
+
+void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
+{
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        int src = C->src_block_idx[C->src_block_idx_p[k]];
+        BA_pd_spd_fill_values(B->blocks[src], A, C->blocks[k]);
+    }
+}

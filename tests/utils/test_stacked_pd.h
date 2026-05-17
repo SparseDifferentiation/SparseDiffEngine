@@ -1317,4 +1317,286 @@ const char *test_BA_pd_spd_alloc_then_fill_values(void)
     return 0;
 }
 
+/* BA_spd_spd: both B-blocks contribute, each from exactly one A-block. */
+const char *test_BA_spd_spd_two_blocks_both_kept(void)
+{
+    /* B: 4x6 spd.
+       B_0: rows {0,1}, cols {0,1}, X = [[1,2],[3,4]].
+       B_1: rows {2,3}, cols {3,4}, X = [[5,6],[7,8]].                  */
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 1};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *B0 = new_permuted_dense(4, 6, 2, 2, B0_rp, B0_cp, B0X);
+
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {3, 4};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *B1 = new_permuted_dense(4, 6, 2, 2, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B = new_stacked_pd(4, 6, 2, B_blocks, NULL, NULL);
+
+    /* A: 6x4 spd.
+       A_0: rows {0,1,2}, cols {0,1}, X = [[10,11],[12,13],[14,15]].
+       A_1: rows {3,4,5}, cols {2,3}, X = [[20,21],[22,23],[24,25]].     */
+    int A0_rp[3] = {0, 1, 2};
+    int A0_cp[2] = {0, 1};
+    double A0X[6] = {10, 11, 12, 13, 14, 15};
+    matrix *A0 = new_permuted_dense(6, 4, 3, 2, A0_rp, A0_cp, A0X);
+
+    int A1_rp[3] = {3, 4, 5};
+    int A1_cp[2] = {2, 3};
+    double A1X[6] = {20, 21, 22, 23, 24, 25};
+    matrix *A1 = new_permuted_dense(6, 4, 3, 2, A1_rp, A1_cp, A1X);
+
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A = new_stacked_pd(6, 4, 2, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_spd_alloc((stacked_pd *) B, (stacked_pd *) A);
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("C m", C_m->m == 4);
+    mu_assert("C n", C_m->n == 4);
+    mu_assert("n_blocks", C->n_blocks == 2);
+    int sp_exp[3] = {0, 1, 2};
+    int s_exp[2] = {0, 1};
+    mu_assert("src_block_idx_p", cmp_int_array(C->src_block_idx_p, sp_exp, 3));
+    mu_assert("src_block_idx", cmp_int_array(C->src_block_idx, s_exp, 2));
+
+    /* Block 0: row {0,1}, col {0,1}.
+       temp = [[1,2],[3,4]] @ [[10,11],[12,13]] = [[34,37],[78,85]].     */
+    permuted_dense *C0 = C->blocks[0];
+    int C0_cp_exp[2] = {0, 1};
+    double C0_X_exp[4] = {34, 37, 78, 85};
+    mu_assert("C0 row_perm", cmp_int_array(C0->row_perm, B0_rp, 2));
+    mu_assert("C0 col_perm", cmp_int_array(C0->col_perm, C0_cp_exp, 2));
+    mu_assert("C0 X", cmp_double_array(C0->X, C0_X_exp, 4));
+
+    /* Block 1: row {2,3}, col {2,3}.
+       temp = [[5,6],[7,8]] @ [[20,21],[22,23]] = [[232,243],[316,331]]. */
+    permuted_dense *C1 = C->blocks[1];
+    int C1_cp_exp[2] = {2, 3};
+    double C1_X_exp[4] = {232, 243, 316, 331};
+    mu_assert("C1 row_perm", cmp_int_array(C1->row_perm, B1_rp, 2));
+    mu_assert("C1 col_perm", cmp_int_array(C1->col_perm, C1_cp_exp, 2));
+    mu_assert("C1 X", cmp_double_array(C1->X, C1_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
+/* B has 2 blocks; only B_0's cols overlap an A-block. B_1 is dropped. */
+const char *test_BA_spd_spd_one_block_dropped(void)
+{
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 1};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *B0 = new_permuted_dense(4, 6, 2, 2, B0_rp, B0_cp, B0X);
+
+    /* B_1 cols {4,5} won't intersect any A-block row_perm below. */
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {4, 5};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *B1 = new_permuted_dense(4, 6, 2, 2, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B = new_stacked_pd(4, 6, 2, B_blocks, NULL, NULL);
+
+    /* A: A_0 rows {0,1} hits B_0; A_1 rows {2,3} disjoint from B_1 cols {4,5}. */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 1};
+    double A0X[4] = {10, 11, 12, 13};
+    matrix *A0 = new_permuted_dense(6, 4, 2, 2, A0_rp, A0_cp, A0X);
+
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {2, 3};
+    double A1X[4] = {20, 21, 22, 23};
+    matrix *A1 = new_permuted_dense(6, 4, 2, 2, A1_rp, A1_cp, A1X);
+
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A = new_stacked_pd(6, 4, 2, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_spd_alloc((stacked_pd *) B, (stacked_pd *) A);
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 1);
+    int sp_exp[2] = {0, 1};
+    int s_exp[1] = {0};
+    mu_assert("src_block_idx_p", cmp_int_array(C->src_block_idx_p, sp_exp, 2));
+    mu_assert("src_block_idx", cmp_int_array(C->src_block_idx, s_exp, 1));
+
+    permuted_dense *C0 = C->blocks[0];
+    double C0_X_exp[4] = {34, 37, 78, 85};
+    mu_assert("C0 X", cmp_double_array(C0->X, C0_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
+/* No B-block's col_perm overlaps any A-block row_perm: all dropped. */
+const char *test_BA_spd_spd_all_blocks_dropped(void)
+{
+    int B0_rp[1] = {0};
+    int B0_cp[1] = {0};
+    double B0X[1] = {1};
+    matrix *B0 = new_permuted_dense(2, 4, 1, 1, B0_rp, B0_cp, B0X);
+
+    int B1_rp[1] = {1};
+    int B1_cp[1] = {1};
+    double B1X[1] = {2};
+    matrix *B1 = new_permuted_dense(2, 4, 1, 1, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B = new_stacked_pd(2, 4, 2, B_blocks, NULL, NULL);
+
+    int A0_rp[1] = {2};
+    int A0_cp[1] = {0};
+    double A0X[1] = {10};
+    matrix *A0 = new_permuted_dense(4, 2, 1, 1, A0_rp, A0_cp, A0X);
+
+    int A1_rp[1] = {3};
+    int A1_cp[1] = {1};
+    double A1X[1] = {20};
+    matrix *A1 = new_permuted_dense(4, 2, 1, 1, A1_rp, A1_cp, A1X);
+
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A = new_stacked_pd(4, 2, 2, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_spd_alloc((stacked_pd *) B, (stacked_pd *) A);
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("C m", C_m->m == 2);
+    mu_assert("C n", C_m->n == 2);
+    mu_assert("n_blocks", C->n_blocks == 0);
+    mu_assert("nnz", C_m->nnz == 0);
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
+/* Empty A: every B-block drops; output empty. */
+const char *test_BA_spd_spd_empty_A(void)
+{
+    int B0_rp[1] = {0};
+    int B0_cp[1] = {0};
+    double B0X[1] = {1};
+    matrix *B0 = new_permuted_dense(2, 3, 1, 1, B0_rp, B0_cp, B0X);
+
+    int B1_rp[1] = {1};
+    int B1_cp[1] = {1};
+    double B1X[1] = {2};
+    matrix *B1 = new_permuted_dense(2, 3, 1, 1, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B = new_stacked_pd(2, 3, 2, B_blocks, NULL, NULL);
+
+    matrix *A = new_stacked_pd(3, 4, 0, NULL, NULL, NULL);
+
+    matrix *C_m = BA_spd_spd_alloc((stacked_pd *) B, (stacked_pd *) A);
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 0);
+    mu_assert("nnz", C_m->nnz == 0);
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
+/* Empty B: loop body doesn't execute; output empty. */
+const char *test_BA_spd_spd_empty_B(void)
+{
+    matrix *B = new_stacked_pd(2, 3, 0, NULL, NULL, NULL);
+
+    int A0_rp[1] = {0};
+    int A0_cp[1] = {0};
+    double A0X[1] = {10};
+    matrix *A0 = new_permuted_dense(3, 4, 1, 1, A0_rp, A0_cp, A0X);
+
+    permuted_dense *A_blocks[1] = {(permuted_dense *) A0};
+    matrix *A = new_stacked_pd(3, 4, 1, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_spd_alloc((stacked_pd *) B, (stacked_pd *) A);
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("C m", C_m->m == 2);
+    mu_assert("C n", C_m->n == 4);
+    mu_assert("n_blocks", C->n_blocks == 0);
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
+/* Two-phase: alloc once on test-1 inputs, mutate B_0->X, refill, verify. */
+const char *test_BA_spd_spd_alloc_then_fill_values(void)
+{
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 1};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *B0 = new_permuted_dense(4, 6, 2, 2, B0_rp, B0_cp, B0X);
+
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {3, 4};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *B1 = new_permuted_dense(4, 6, 2, 2, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B = new_stacked_pd(4, 6, 2, B_blocks, NULL, NULL);
+
+    int A0_rp[3] = {0, 1, 2};
+    int A0_cp[2] = {0, 1};
+    double A0X[6] = {10, 11, 12, 13, 14, 15};
+    matrix *A0 = new_permuted_dense(6, 4, 3, 2, A0_rp, A0_cp, A0X);
+
+    int A1_rp[3] = {3, 4, 5};
+    int A1_cp[2] = {2, 3};
+    double A1X[6] = {20, 21, 22, 23, 24, 25};
+    matrix *A1 = new_permuted_dense(6, 4, 3, 2, A1_rp, A1_cp, A1X);
+
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A = new_stacked_pd(6, 4, 2, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_spd_alloc((stacked_pd *) B, (stacked_pd *) A);
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+
+    /* Mutate B_0->X to [[10, 20],[30, 40]]. */
+    permuted_dense *B0_pd = (permuted_dense *) B0;
+    B0_pd->X[0] = 10;
+    B0_pd->X[1] = 20;
+    B0_pd->X[2] = 30;
+    B0_pd->X[3] = 40;
+
+    BA_spd_spd_fill_values((stacked_pd *) B, (stacked_pd *) A, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* New block 0 X:
+         [[10,20],[30,40]] @ [[10,11],[12,13]]
+         = [[340, 370],[780, 850]].                                      */
+    double C0_X_exp[4] = {340, 370, 780, 850};
+    mu_assert("C0 X refilled", cmp_double_array(C->blocks[0]->X, C0_X_exp, 4));
+
+    /* Block 1 unchanged. */
+    double C1_X_exp[4] = {232, 243, 316, 331};
+    mu_assert("C1 X unchanged", cmp_double_array(C->blocks[1]->X, C1_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
 #endif /* TEST_STACKED_PD_H */
