@@ -620,39 +620,6 @@ static int int_arrays_equal(const int *a, const int *b, int n)
     return 1;
 }
 
-/* Find intersection of two sorted, ascending int arrays. For each pair of positions
-   (ii, jj) where a[ii] == b[jj], write ii into idx_a and jj into idx_b. Returns the
-   count of matches. Buffers idx_a and idx_b must have capacity >= min(a_len, b_len);
-   no allocation is performed. */
-static inline int sorted_intersect_indices(const int *a, int a_len, const int *b,
-                                           int b_len, int *idx_a, int *idx_b)
-{
-    int s = 0;
-    int ii = 0, jj = 0;
-    while (ii < a_len && jj < b_len)
-    {
-        int ra = a[ii];
-        int rb = b[jj];
-        if (ra == rb)
-        {
-            idx_a[s] = ii;
-            idx_b[s] = jj;
-            s++;
-            ii++;
-            jj++;
-        }
-        else if (ra < rb)
-        {
-            ii++;
-        }
-        else
-        {
-            jj++;
-        }
-    }
-    return s;
-}
-
 void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
                            permuted_dense *C)
 {
@@ -1031,10 +998,10 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((unused))
 #endif
-static void
-BTDA_csc_pd_fill_values_via_transpose_dead(const CSC_matrix *B, const double *d,
-                                           const permuted_dense *A,
-                                           permuted_dense *C)
+static void BTDA_csc_pd_fill_values_via_transpose_dead(const CSC_matrix *B,
+                                                       const double *d,
+                                                       const permuted_dense *A,
+                                                       permuted_dense *C)
 {
     if (C->base.nnz == 0)
     {

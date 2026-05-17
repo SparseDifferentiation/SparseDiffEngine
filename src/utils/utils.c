@@ -49,3 +49,32 @@ bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
     }
     return false;
 }
+
+int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
+                             int *idx_a, int *idx_b)
+{
+    int s = 0;
+    int ii = 0, jj = 0;
+    while (ii < a_len && jj < b_len)
+    {
+        int ra = a[ii];
+        int rb = b[jj];
+        if (ra == rb)
+        {
+            idx_a[s] = ii;
+            idx_b[s] = jj;
+            s++;
+            ii++;
+            jj++;
+        }
+        else if (ra < rb)
+        {
+            ii++;
+        }
+        else
+        {
+            jj++;
+        }
+    }
+    return s;
+}

@@ -117,6 +117,20 @@ matrix *copy_sparsity_spd_alloc(const stacked_pd *src);
    DA_pd_fill_values. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
 
+/* Allocate sparsity for C = B @ A where B is a permuted_dense and A is
+   a stacked_pd. Output is a single permuted_dense: row_perm =
+   B->row_perm, col_perm = sorted union of A's block col_perms over
+   those A-blocks whose row_perm intersects B->col_perm. If no A-block
+   contributes, the output has n0 = 0. */
+matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A);
+
+/* Fill values of C = B @ A. Caller must have produced C via
+   BA_pd_spd_alloc on the same B, A structure. Per A-block, this does a
+   small gather + dgemm and scatters the result into C with += semantics
+   on overlapping output cols. */
+void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                           permuted_dense *C);
+
 /* Allocate sparsity for C = A^T A. A^T A decomposes as Σ_k B_k^T B_k,
    where summands with overlapping col_perms (C_k) share cells. The
    output groups cols of A by signature sig_C(c) = {k : c ∈ C_k}; each

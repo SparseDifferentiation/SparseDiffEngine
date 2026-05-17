@@ -37,4 +37,11 @@ void sort_int_array(int *array, int size);
 bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
                  int b_offset);
 
+/* Find positions where two sorted, ascending int arrays match. For each
+   match (a[ii] == b[jj]) writes ii into idx_a and jj into idx_b. Returns
+   the count. Buffers idx_a and idx_b must have capacity >= min(a_len,
+   b_len); no allocation is performed. */
+int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
+                             int *idx_a, int *idx_b);
+
 #endif // UTILS_H

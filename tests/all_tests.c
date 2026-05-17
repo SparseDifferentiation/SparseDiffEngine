@@ -429,6 +429,12 @@ int main(void)
     mu_run_test(test_ATDA_spd_overlapping_cols, tests_run);
     mu_run_test(test_ATDA_spd_alloc_then_fill_values, tests_run);
     mu_run_test(test_ATDA_spd_empty, tests_run);
+    mu_run_test(test_BA_pd_spd_two_blocks_disjoint_cols, tests_run);
+    mu_run_test(test_BA_pd_spd_only_one_block_contributes, tests_run);
+    mu_run_test(test_BA_pd_spd_no_blocks_contribute, tests_run);
+    mu_run_test(test_BA_pd_spd_empty_A, tests_run);
+    mu_run_test(test_BA_pd_spd_overlapping_col_perms, tests_run);
+    mu_run_test(test_BA_pd_spd_alloc_then_fill_values, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
