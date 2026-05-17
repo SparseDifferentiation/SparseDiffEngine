@@ -408,6 +408,11 @@ int main(void)
     mu_run_test(test_BA_spd_csc_two_blocks_both_kept, tests_run);
     mu_run_test(test_BA_spd_csc_one_block_dropped, tests_run);
     mu_run_test(test_BA_spd_csc_all_blocks_dropped, tests_run);
+    mu_run_test(test_coalesce_no_overlap, tests_run);
+    mu_run_test(test_coalesce_three_signatures, tests_run);
+    mu_run_test(test_coalesce_shared_signature_merges_rows, tests_run);
+    mu_run_test(test_coalesce_alloc_then_fill_values, tests_run);
+    mu_run_test(test_coalesce_empty_input, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
