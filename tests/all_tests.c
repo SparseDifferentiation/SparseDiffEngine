@@ -107,6 +107,7 @@
 
 #ifdef PROFILE_ONLY
 #include "profiling/profile_BTA_pd_csr_vs_csc.h"
+#include "profiling/profile_hessian_exp_AX.h"
 #include "profiling/profile_left_matmul.h"
 #include "profiling/profile_log_reg.h"
 #include "profiling/profile_trimmed_log_reg.h"
@@ -422,6 +423,12 @@ int main(void)
     mu_run_test(test_DA_spd_two_blocks, tests_run);
     mu_run_test(test_DA_spd_empty, tests_run);
     mu_run_test(test_DA_spd_single_block_full, tests_run);
+    mu_run_test(test_ATA_spd_alloc_disjoint_cols, tests_run);
+    mu_run_test(test_ATA_spd_alloc_overlapping_cols, tests_run);
+    mu_run_test(test_ATDA_spd_disjoint_cols, tests_run);
+    mu_run_test(test_ATDA_spd_overlapping_cols, tests_run);
+    mu_run_test(test_ATDA_spd_alloc_then_fill_values, tests_run);
+    mu_run_test(test_ATDA_spd_empty, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
@@ -470,6 +477,7 @@ int main(void)
     mu_run_test(profile_log_reg, tests_run);
     mu_run_test(profile_trimmed_log_reg, tests_run);
     mu_run_test(profile_BTA_pd_csr_vs_csc, tests_run);
+    mu_run_test(profile_hessian_exp_AX, tests_run);
 #endif /* PROFILE_ONLY */
 
     printf("\n=== All %d tests passed ===\n", tests_run);

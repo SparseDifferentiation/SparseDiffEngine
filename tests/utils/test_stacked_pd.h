@@ -820,4 +820,249 @@ const char *test_DA_spd_single_block_full(void)
     return 0;
 }
 
+/* ATA_spd_alloc with disjoint source col_perms: no merging; one output
+   PD per source block. */
+const char *test_ATA_spd_alloc_disjoint_cols(void)
+{
+    /* block 0: rows {0,1}, cols {0,1}, X = [[1,2],[3,4]]
+       block 1: rows {2,3}, cols {2,3}, X = [[5,6],[7,8]]              */
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    matrix *C_m = ATA_spd_alloc((stacked_pd *) A_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("m", C_m->m == 4);
+    mu_assert("n", C_m->n == 4);
+    mu_assert("n_blocks", C->n_blocks == 2);
+    int expected_src_p[3] = {0, 1, 2};
+    int expected_src[2] = {0, 1};
+    mu_assert("src_block_idx_p",
+              cmp_int_array(C->src_block_idx_p, expected_src_p, 3));
+    mu_assert("src_block_idx", cmp_int_array(C->src_block_idx, expected_src, 2));
+
+    permuted_dense *C0 = C->blocks[0];
+    mu_assert("C0 row_perm", cmp_int_array(C0->row_perm, col_perm_0, 2));
+    mu_assert("C0 col_perm", cmp_int_array(C0->col_perm, col_perm_0, 2));
+
+    permuted_dense *C1 = C->blocks[1];
+    mu_assert("C1 row_perm", cmp_int_array(C1->row_perm, col_perm_1, 2));
+    mu_assert("C1 col_perm", cmp_int_array(C1->col_perm, col_perm_1, 2));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* ATA_spd_alloc with overlapping source col_perms: three sigs ({0},
+   {0,1}, {1}) produce three output PDs ordered by min row. */
+const char *test_ATA_spd_alloc_overlapping_cols(void)
+{
+    /* block 0: rows {0,1}, cols {0,1}, X arbitrary
+       block 1: rows {2,3}, cols {1,2}, X arbitrary                    */
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 3, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {1, 2};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 3, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 3, 2, blocks, NULL, NULL);
+
+    matrix *C_m = ATA_spd_alloc((stacked_pd *) A_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("m", C_m->m == 3);
+    mu_assert("n", C_m->n == 3);
+    mu_assert("n_blocks", C->n_blocks == 3);
+
+    /* Ordering by min row: sig {0} (col 0) -> sig {0,1} (col 1) -> sig {1} (col 2).
+     */
+    int expected_src_p[4] = {0, 1, 3, 4};
+    int expected_src[4] = {0, 0, 1, 1};
+    mu_assert("src_block_idx_p",
+              cmp_int_array(C->src_block_idx_p, expected_src_p, 4));
+    mu_assert("src_block_idx", cmp_int_array(C->src_block_idx, expected_src, 4));
+
+    permuted_dense *C0 = C->blocks[0];
+    int C0_row[1] = {0};
+    int C0_col[2] = {0, 1};
+    mu_assert("C0 row_perm", cmp_int_array(C0->row_perm, C0_row, 1));
+    mu_assert("C0 col_perm", cmp_int_array(C0->col_perm, C0_col, 2));
+
+    permuted_dense *C1 = C->blocks[1];
+    int C1_row[1] = {1};
+    int C1_col[3] = {0, 1, 2};
+    mu_assert("C1 row_perm", cmp_int_array(C1->row_perm, C1_row, 1));
+    mu_assert("C1 col_perm", cmp_int_array(C1->col_perm, C1_col, 3));
+
+    permuted_dense *C2 = C->blocks[2];
+    int C2_row[1] = {2};
+    int C2_col[2] = {1, 2};
+    mu_assert("C2 row_perm", cmp_int_array(C2->row_perm, C2_row, 1));
+    mu_assert("C2 col_perm", cmp_int_array(C2->col_perm, C2_col, 2));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* ATDA on the disjoint-cols input: values per block match hand-computed
+   B_k^T diag(d[R_k]) B_k. */
+const char *test_ATDA_spd_disjoint_cols(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+
+    matrix *C_m = ATA_spd_alloc((stacked_pd *) A_m);
+    ATDA_spd_fill_values((stacked_pd *) A_m, d, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* B_0^T diag(1, 2) B_0 = [[19, 26], [26, 36]]. */
+    double C0_X_expected[4] = {19.0, 26.0, 26.0, 36.0};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_expected, 4));
+
+    /* B_1^T diag(3, 4) B_1 = [[271, 314], [314, 364]]. */
+    double C1_X_expected[4] = {271.0, 314.0, 314.0, 364.0};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_expected, 4));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* ATDA on overlapping cols: middle PD accumulates from both sources. */
+const char *test_ATDA_spd_overlapping_cols(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 3, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {1, 2};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 3, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 3, 2, blocks, NULL, NULL);
+
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+
+    matrix *C_m = ATA_spd_alloc((stacked_pd *) A_m);
+    ATDA_spd_fill_values((stacked_pd *) A_m, d, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    /* C0: row {0}, cols {0, 1}, from B_0 only.
+       (A^T d A)[0,0] = 1*1 + 2*9 = 19; [0,1] = 1*2 + 2*12 = 26. */
+    double C0_X_expected[2] = {19.0, 26.0};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_expected, 2));
+
+    /* C1: row {1}, cols {0, 1, 2}, accumulated from B_0 and B_1.
+       [1,0] = B_0 contribution = 1*2 + 2*12 = 26.
+       [1,1] = 1*4 + 2*16 (B_0) + 3*25 + 4*49 (B_1) = 36 + 271 = 307.
+       [1,2] = B_1 contribution = 3*30 + 4*56 = 90 + 224 = 314. */
+    double C1_X_expected[3] = {26.0, 307.0, 314.0};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_expected, 3));
+
+    /* C2: row {2}, cols {1, 2}, from B_1 only.
+       [2,1] = 3*5*6 + 4*7*8 = 90 + 224 = 314; [2,2] = 3*36 + 4*64 = 364. */
+    double C2_X_expected[2] = {314.0, 364.0};
+    mu_assert("C2 X", cmp_double_array(C->blocks[2]->X, C2_X_expected, 2));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Two-phase: alloc once, mutate A values, refill. */
+const char *test_ATDA_spd_alloc_then_fill_values(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 1};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[2] = {2, 3};
+    int col_perm_1[2] = {2, 3};
+    double X1[4] = {5.0, 6.0, 7.0, 8.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+    stacked_pd *A = (stacked_pd *) A_m;
+
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+
+    matrix *C_m = ATA_spd_alloc(A);
+    ATDA_spd_fill_values(A, d, (stacked_pd *) C_m);
+
+    /* Mutate A's block 0 X to [2, 0, 0, 2] (= 2 * identity at rows {0,1},
+       cols {0,1}). Then A^T d A on block 0 = diag(d[0], d[1]) * 4 =
+       [[4, 0], [0, 8]]. */
+    A->blocks[0]->X[0] = 2.0;
+    A->blocks[0]->X[1] = 0.0;
+    A->blocks[0]->X[2] = 0.0;
+    A->blocks[0]->X[3] = 2.0;
+
+    ATDA_spd_fill_values(A, d, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    double C0_X_expected[4] = {4.0, 0.0, 0.0, 8.0};
+    mu_assert("C0 X refilled", cmp_double_array(C->blocks[0]->X, C0_X_expected, 4));
+
+    /* Block 1 wasn't mutated; matches the disjoint-cols expected value. */
+    double C1_X_expected[4] = {271.0, 314.0, 314.0, 364.0};
+    mu_assert("C1 X unchanged", cmp_double_array(C->blocks[1]->X, C1_X_expected, 4));
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Empty source: output also empty; free safely. */
+const char *test_ATDA_spd_empty(void)
+{
+    matrix *A_m = new_stacked_pd(4, 4, 0, NULL, NULL, NULL);
+    matrix *C_m = ATA_spd_alloc((stacked_pd *) A_m);
+    double d[4] = {1.0, 2.0, 3.0, 4.0};
+    ATDA_spd_fill_values((stacked_pd *) A_m, d, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 0);
+    mu_assert("nnz", C_m->nnz == 0);
+    mu_assert("work not NULL", C->work != NULL);
+    mu_assert("work n_blocks", C->work->n_blocks == 0);
+
+    free_matrix(C_m);
+    free_matrix(A_m);
+    return 0;
+}
+
 #endif /* TEST_STACKED_PD_H */

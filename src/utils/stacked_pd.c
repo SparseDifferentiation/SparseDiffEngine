@@ -261,7 +261,8 @@ static void assert_disjoint_cells(const stacked_pd *src, const int *cat_sig_p,
 }
 #endif
 
-matrix *coalesce_spd_alloc(const stacked_pd *src)
+static matrix *coalesce_spd_alloc_impl(const stacked_pd *src,
+                                       bool check_disjoint_cells)
 {
     int m = src->base.m;
     int n = src->base.n;
@@ -342,7 +343,12 @@ matrix *coalesce_spd_alloc(const stacked_pd *src)
     int n_sigs = cat_sig_p->len - 1;
 
 #ifndef NDEBUG
-    assert_disjoint_cells(src, cat_sig_p->data, cat_sig_data->data, n_sigs);
+    if (check_disjoint_cells)
+    {
+        assert_disjoint_cells(src, cat_sig_p->data, cat_sig_data->data, n_sigs);
+    }
+#else
+    (void) check_disjoint_cells;
 #endif
 
     /* Pass 3: group rows by sig id. */
@@ -465,6 +471,20 @@ matrix *coalesce_spd_alloc(const stacked_pd *src)
     return out;
 }
 
+matrix *coalesce_spd_alloc(const stacked_pd *src)
+{
+    return coalesce_spd_alloc_impl(src, true);
+}
+
+/* Internal: same as coalesce_spd_alloc but skips the
+   pairwise-disjoint-cells precondition assert. Used by ATA_spd_alloc,
+   which intentionally feeds a cell-overlapping pseudo-spd through the
+   coalesce grouping algorithm. */
+static matrix *coalesce_spd_alloc_unchecked(const stacked_pd *src)
+{
+    return coalesce_spd_alloc_impl(src, false);
+}
+
 void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out)
 {
     for (int k = 0; k < out->n_blocks; k++)
@@ -556,5 +576,80 @@ void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C)
     for (int k = 0; k < A->n_blocks; k++)
     {
         DA_pd_fill_values(d, A->blocks[k], C->blocks[k]);
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* ATA / ATDA                                                          */
+/* ------------------------------------------------------------------ */
+
+matrix *ATA_spd_alloc(const stacked_pd *A)
+{
+    int n = A->base.n;
+    int n_blocks = A->n_blocks;
+
+    /* Pseudo-spd: per source block k, a square PD with
+       row_perm = col_perm = C_k and uninitialized X. We use the
+       PD-level ATA_pd_alloc here (rather than new_permuted_dense
+       directly) because it also pre-sizes A->blocks[k]->dwork — that
+       scratch buffer is what ATDA_pd_fill_values reads from during the
+       fill phase. */
+    permuted_dense **scratch_blocks = (permuted_dense **) SP_MALLOC(
+        (n_blocks > 0 ? n_blocks : 1) * sizeof(permuted_dense *));
+    for (int k = 0; k < n_blocks; k++)
+    {
+        scratch_blocks[k] = (permuted_dense *) ATA_pd_alloc(A->blocks[k]);
+    }
+    matrix *scratch =
+        new_stacked_pd_unchecked(n, n, n_blocks, scratch_blocks, NULL, NULL);
+    free(scratch_blocks);
+
+    /* Group cols by signature. Cells overlap by design (B_k^T B_k
+       summands share cells), so use the unchecked alloc. */
+    matrix *out = coalesce_spd_alloc_unchecked((stacked_pd *) scratch);
+    ((stacked_pd *) out)->work = (stacked_pd *) scratch;
+    return out;
+}
+
+void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
+{
+    stacked_pd *scratch = C->work;
+
+    /* Step 1: per-source-block ATDA into the scratch PDs. */
+    for (int k = 0; k < A->n_blocks; k++)
+    {
+        ATDA_pd_fill_values(A->blocks[k], d, scratch->blocks[k]);
+    }
+
+    /* Step 2: zero output buffers (we're += accumulating). */
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        permuted_dense *Ck = C->blocks[k];
+        memset(Ck->X, 0, (size_t) Ck->m0 * Ck->n0 * sizeof(double));
+    }
+
+    /* Step 3: accumulate from scratch into output via row_inv/col_inv. */
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        permuted_dense *out_k = C->blocks[k];
+        int s_lo = C->src_block_idx_p[k];
+        int s_hi = C->src_block_idx_p[k + 1];
+        for (int t = s_lo; t < s_hi; t++)
+        {
+            const permuted_dense *src_k = scratch->blocks[C->src_block_idx[t]];
+            for (int i = 0; i < src_k->m0; i++)
+            {
+                int out_i = out_k->row_inv[src_k->row_perm[i]];
+                if (out_i < 0) continue; /* row not in this output PD */
+                for (int j = 0; j < src_k->n0; j++)
+                {
+                    int out_j = out_k->col_inv[src_k->col_perm[j]];
+                    /* out_j >= 0: out_k->col_perm contains src_k's
+                       col_perm because src_k contributes to out_k. */
+                    out_k->X[out_i * out_k->n0 + out_j] +=
+                        src_k->X[i * src_k->n0 + j];
+                }
+            }
+        }
     }
 }

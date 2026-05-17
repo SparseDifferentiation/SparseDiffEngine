@@ -117,6 +117,23 @@ matrix *copy_sparsity_spd_alloc(const stacked_pd *src);
    DA_pd_fill_values. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
 
+/* Allocate sparsity for C = A^T A. A^T A decomposes as Σ_k B_k^T B_k,
+   where summands with overlapping col_perms (C_k) share cells. The
+   output groups cols of A by signature sig_C(c) = {k : c ∈ C_k}; each
+   unique signature becomes one output PD with row_perm = group cols
+   and col_perm = ⋃ C_k for k in the signature. No structural zeros.
+   The output's `work` slot holds per-source scratch PDs (one symmetric
+   PD per source block, row_perm = col_perm = C_k) that
+   ATDA_spd_fill_values writes into. */
+matrix *ATA_spd_alloc(const stacked_pd *A);
+
+/* Fill values of C = A^T diag(d) A. `d` has length A->base.m. The caller
+   must have produced C via ATA_spd_alloc(A). Implementation: per source
+   block k, compute B_k^T diag(d) B_k into C->work->blocks[k] via the
+   existing ATDA_pd_fill_values; then zero C's output X buffers and
+   accumulate (+=) each scratch into the appropriate output PDs. */
+void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C);
+
 /* Allocate out = transpose(src). Implementation: transpose each source
    PD block individually (yielding a raw spd that may have overlapping
    row perms but pairwise-disjoint cells, by the spd invariant), then
