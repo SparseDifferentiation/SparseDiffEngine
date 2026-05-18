@@ -16,59 +16,113 @@
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
+#include "utils/tracked_alloc.h"
+
+/* Effective-type view of a BTA/BTDA dispatcher operand. Exactly one of
+   `pd` or `csc` is non-NULL: the operand reduces to either a PD or a CSC.
+   `owned_csc` / `owned_iwork` are non-NULL only on the spd path, where we
+   materialized a temp CSC from the spd's csr_cache; the caller must
+   release them with release_operand. */
+typedef struct
+{
+    permuted_dense *pd;
+    CSC_matrix *csc;
+    CSC_matrix *owned_csc;
+    int *owned_iwork;
+} operand_view;
+
+static operand_view resolve_operand(matrix *X)
+{
+    operand_view v;
+    v.pd = NULL;
+    v.csc = NULL;
+    v.owned_csc = NULL;
+    v.owned_iwork = NULL;
+
+    if (X->is_permuted_dense)
+    {
+        v.pd = (permuted_dense *) X;
+    }
+    else if (X->is_stacked_pd)
+    {
+        /* to_csr refreshes csr_cache values from block X buffers. */
+        CSR_matrix *csr = X->to_csr(X);
+        v.owned_iwork = (int *) SP_MALLOC((size_t) csr->n * sizeof(int));
+        v.owned_csc = csr_to_csc_alloc(csr, v.owned_iwork);
+        csr_to_csc_fill_values(csr, v.owned_csc, v.owned_iwork);
+        v.csc = v.owned_csc;
+    }
+    else
+    {
+        sparse_matrix *sm = (sparse_matrix *) X;
+        sparse_matrix_ensure_csc_cache(sm);
+        v.csc = sm->csc_cache;
+    }
+    return v;
+}
+
+static void release_operand(operand_view *v)
+{
+    if (v->owned_csc != NULL)
+    {
+        free_CSC_matrix(v->owned_csc);
+    }
+    free(v->owned_iwork);
+}
 
 matrix *BTA_matrices_alloc(matrix *A, matrix *B)
 {
-    if (A->is_permuted_dense && B->is_permuted_dense)
+    operand_view va = resolve_operand(A);
+    operand_view vb = resolve_operand(B);
+    matrix *C;
+
+    if (va.pd != NULL && vb.pd != NULL)
     {
-        return BTA_pd_pd_alloc((permuted_dense *) B, (permuted_dense *) A);
+        C = BTA_pd_pd_alloc(vb.pd, va.pd);
     }
-    if (B->is_permuted_dense)
+    else if (vb.pd != NULL)
     {
-        sparse_matrix *sm_A = (sparse_matrix *) A;
-        return BTA_pd_csc_alloc((permuted_dense *) B, sm_A->csc_cache);
+        C = BTA_pd_csc_alloc(vb.pd, va.csc);
     }
-    if (A->is_permuted_dense)
+    else if (va.pd != NULL)
     {
-        sparse_matrix *sm_B = (sparse_matrix *) B;
-        return BTA_csc_pd_alloc(sm_B->csc_cache, (permuted_dense *) A);
+        C = BTA_csc_pd_alloc(vb.csc, va.pd);
+    }
+    else
+    {
+        CSR_matrix *C_csr = BTA_alloc(va.csc, vb.csc);
+        C = new_sparse_matrix(C_csr);
     }
 
-    /* both sparse */
-    sparse_matrix *sm_A = (sparse_matrix *) A;
-    sparse_matrix *sm_B = (sparse_matrix *) B;
-    CSR_matrix *C_csr = BTA_alloc(sm_A->csc_cache, sm_B->csc_cache);
-    return new_sparse_matrix(C_csr);
+    release_operand(&va);
+    release_operand(&vb);
+    return C;
 }
 
 void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C)
 {
-    if (A->is_permuted_dense && B->is_permuted_dense)
+    operand_view va = resolve_operand(A);
+    operand_view vb = resolve_operand(B);
+
+    if (va.pd != NULL && vb.pd != NULL)
     {
-        BTDA_pd_pd_fill_values((permuted_dense *) B, d, (permuted_dense *) A,
-                               (permuted_dense *) C);
-        return;
+        BTDA_pd_pd_fill_values(vb.pd, d, va.pd, (permuted_dense *) C);
     }
-    if (B->is_permuted_dense)
+    else if (vb.pd != NULL)
     {
-        sparse_matrix *sm_A = (sparse_matrix *) A;
-        BTDA_pd_csc_fill_values((permuted_dense *) B, d, sm_A->csc_cache,
-                                (permuted_dense *) C);
-        return;
+        BTDA_pd_csc_fill_values(vb.pd, d, va.csc, (permuted_dense *) C);
     }
-    if (A->is_permuted_dense)
+    else if (va.pd != NULL)
     {
-        sparse_matrix *sm_B = (sparse_matrix *) B;
-        BTDA_csc_pd_fill_values(sm_B->csc_cache, d, (permuted_dense *) A,
-                                (permuted_dense *) C);
-        return;
+        BTDA_csc_pd_fill_values(vb.csc, d, va.pd, (permuted_dense *) C);
+    }
+    else
+    {
+        BTDA_fill_values(va.csc, vb.csc, d, ((sparse_matrix *) C)->csr);
     }
 
-    /* both sparse */
-    sparse_matrix *sm_A = (sparse_matrix *) A;
-    sparse_matrix *sm_B = (sparse_matrix *) B;
-    sparse_matrix *sm_C = (sparse_matrix *) C;
-    BTDA_fill_values(sm_A->csc_cache, sm_B->csc_cache, d, sm_C->csr);
+    release_operand(&va);
+    release_operand(&vb);
 }
 
 matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A)

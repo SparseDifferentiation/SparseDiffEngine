@@ -125,11 +125,18 @@ static void eval_jacobian(expr *node)
     /* evaluate child's jacobian */
     child->eval_jacobian(child);
 
+    /* Read child's values via to_csr so the access works uniformly for
+       PD, sparse_matrix, and stacked_pd. For PD/sparse, to_csr returns a
+       CSR aliased to the same x buffer as child->jacobian->x; for spd,
+       base.x is NULL but to_csr's csr_cache->x is refreshed from blocks.
+       The idx_map (built in jacobian_init from the same to_csr view) is
+       still valid since the CSR structure is stable. */
+    CSR_matrix *Jx = child->jacobian->to_csr(child->jacobian);
+
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator(child->jacobian->x, child->jacobian->nnz,
-                ((sum_expr *) node)->idx_map, node->jacobian->x);
+    accumulator(Jx->x, Jx->nnz, ((sum_expr *) node)->idx_map, node->jacobian->x);
 }
 
 static void wsum_hess_init_impl(expr *node)

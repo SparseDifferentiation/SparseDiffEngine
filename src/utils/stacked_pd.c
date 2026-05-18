@@ -32,6 +32,8 @@ static void stacked_pd_free(matrix *self)
     stacked_pd *spd = (stacked_pd *) self;
     for (int k = 0; k < spd->n_blocks; k++)
     {
+        /* blocks have owns_X = false; their free skips free(X) and the
+           shared buffer is freed below. */
         free_matrix((matrix *) spd->blocks[k]);
     }
     free(spd->blocks);
@@ -42,6 +44,7 @@ static void stacked_pd_free(matrix *self)
         free_matrix((matrix *) spd->work);
     }
     free_CSR_matrix(spd->csr_cache); /* NULL-safe */
+    free(spd->base.x);               /* shared values buffer, NULL-safe */
     free(spd);
 }
 
@@ -471,6 +474,38 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
         {
             memcpy(spd->src_block_idx, src_block_idx, total * sizeof(int));
         }
+    }
+
+    /* Absorb each block's X into a single shared values buffer owned by
+       this spd. After this loop:
+         spd->base.x          = the contiguous buffer (block-major layout)
+         block[k]->X          = view into spd->base.x at the block's offset
+         block[k]->owns_X     = false (block's free skips free(X))
+       This honors the same flat-base.x invariant PD and sparse_matrix
+       already honor, so atoms that loop over base.x work uniformly. */
+    int total_nnz = 0;
+    for (int k = 0; k < n_blocks; k++)
+    {
+        total_nnz += spd->blocks[k]->m0 * spd->blocks[k]->n0;
+    }
+    spd->base.x = (total_nnz > 0)
+                      ? (double *) SP_MALLOC((size_t) total_nnz * sizeof(double))
+                      : NULL;
+
+    size_t offset = 0;
+    for (int k = 0; k < n_blocks; k++)
+    {
+        size_t sz = (size_t) spd->blocks[k]->m0 * spd->blocks[k]->n0;
+        if (sz == 0)
+        {
+            continue;
+        }
+        memcpy(spd->base.x + offset, spd->blocks[k]->X, sz * sizeof(double));
+        free(spd->blocks[k]->X);
+        spd->blocks[k]->X = spd->base.x + offset;
+        spd->blocks[k]->base.x = spd->blocks[k]->X;
+        spd->blocks[k]->owns_X = false;
+        offset += sz;
     }
 
     return &spd->base;

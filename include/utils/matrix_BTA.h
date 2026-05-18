@@ -16,14 +16,19 @@
 #include "permuted_dense.h"
 #include "stacked_pd.h"
 
-/* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A. The output
-   type depends on the input types: (PD, PD) → PD, (Sparse, PD) → PD,
-   (PD, Sparse) → PD, (Sparse, Sparse) → Sparse. (Here PD = permuted_dense.)
+/* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A. Each
+   operand may be PD, sparse_matrix, or stacked_pd. Operands are reduced
+   to an "effective type" (PD or CSC) before dispatch: PD passes through,
+   sparse_matrix exposes its csc_cache, stacked_pd is materialized as a
+   temporary CSC via to_csr + csr_to_csc_alloc (correctness-first
+   fallback; future fused spd kernels can replace this). Output type
+   follows the effective-type pair: PD if at least one operand is PD,
+   sparse_matrix otherwise. (Here PD = permuted_dense.)
 
-   Contract: neither function touches sparse_matrix internals. The caller must,
-   before calling either function, ensure each Sparse operand's csc_cache
-   exists (sparse_matrix_ensure_csc_cache). Before BTDA_matrices_fill_values
-   the caller must also refresh the cache values (refresh_csc_values). */
+   Contract: for sparse_matrix operands, the caller is still responsible
+   for refreshing csc_cache values before BTDA_matrices_fill_values
+   (refresh_csc_values). stacked_pd operands need no preparation; their
+   csr_cache is refreshed internally on each call. */
 
 /* Allocate sparsity for C = BT @ A. */
 matrix *BTA_matrices_alloc(matrix *A, matrix *B);

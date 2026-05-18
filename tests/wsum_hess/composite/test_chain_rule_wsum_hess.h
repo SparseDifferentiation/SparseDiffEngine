@@ -40,6 +40,50 @@ const char *test_wsum_hess_exp_sum_mult(void)
     return 0;
 }
 
+/* Regression: neg(sin(A @ X)) exercises neg's eval_jacobian flat ->x
+   loop with an spd child (sin's jacobian inherits spd from
+   left_matmul_dense via copy_sparsity) and neg's wsum_hess path. */
+const char *test_wsum_hess_neg_sin_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+    double w[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *sin_AX = new_sin(AX);
+    expr *node = new_neg(sin_AX);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+/* sum(sin(A @ X)) where A is 3x3 dense, X is 3x3 variable. Mirrors a
+   user-reported Python case that previously segfaulted because:
+     (1) sum's eval_jacobian reads child->jacobian->x directly (NULL on spd)
+     (2) sum's eval_wsum_hess memcpy's child->wsum_hess->x (NULL on spd)
+   Both paths now route through to_csr / block-wise copy. */
+const char *test_wsum_hess_sum_sin_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+    double w = 1.0;
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *sin_AX = new_sin(AX);
+    expr *node = new_sum(sin_AX, -1);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
 const char *test_wsum_hess_exp_sum_matmul(void)
 {
     /* exp(sum(X @ Y)) where X is 2x3, Y is 3x2

@@ -19,6 +19,7 @@
 #define PERMUTED_DENSE_H
 
 #include "matrix.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 /* permuted_dense represents a matrix whose only nonzeros lie in a dense
@@ -37,7 +38,12 @@ typedef struct permuted_dense
     int n0;                /* cols of dense block (= len(col_perm))      */
     int *row_perm;         /* row_perm[ii] in [0, base.m), sorted        */
     int *col_perm;         /* col_perm[jj] in [0, base.n), sorted        */
-    double *X;             /* m0 * n0, row-major               */
+    double *X;             /* m0 * n0, row-major. Owned by this PD when */
+                           /* owns_X == true; otherwise X is a view into */
+                           /* an enclosing buffer (e.g. a stacked_pd's   */
+                           /* shared values buffer) and must not be      */
+                           /* freed by this PD's free fn.                */
+    bool owns_X;           /* see X above; true by default               */
     int *col_inv;          /* length base.n: col_inv[col_perm[jj]] = jj, */
                            /* otherwise -1; used by `x CSC_matrix` allocation.  */
     int *row_inv;          /* length base.m: row_inv[row_perm[ii]] = ii, */

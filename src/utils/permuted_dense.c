@@ -40,7 +40,10 @@ static void permuted_dense_free(matrix *self)
         pd->csr_cache->x = NULL;
     }
     free_CSR_matrix(pd->csr_cache);
-    free(pd->X);
+    if (pd->owns_X)
+    {
+        free(pd->X);
+    }
     free(pd->dwork);
     free(pd->iwork);
     free(pd);
@@ -434,6 +437,7 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->col_perm = (int *) SP_MALLOC(n0 * sizeof(int));
     pd->X = (double *) SP_MALLOC(sz * sizeof(double));
     pd->base.x = pd->X;
+    pd->owns_X = true;
     /* dwork is allocated lazily by kernels via permuted_dense_ensure_dwork.
        SP_CALLOC above already zeroed dwork / dwork_size, but make it
        explicit. */

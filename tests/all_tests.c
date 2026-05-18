@@ -170,6 +170,9 @@ int main(void)
     mu_run_test(test_jacobian_matmul_Ax_By, tests_run);
     mu_run_test(test_jacobian_matmul_sin_Ax_cos_Bx, tests_run);
     mu_run_test(test_jacobian_matmul_X_X, tests_run);
+    mu_run_test(test_jacobian_neg_left_matmul_dense, tests_run);
+    mu_run_test(test_jacobian_scalar_mult_left_matmul_dense, tests_run);
+    mu_run_test(test_jacobian_reshape_left_matmul_dense, tests_run);
     mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_matrix, tests_run);
@@ -314,6 +317,8 @@ int main(void)
     mu_run_test(test_wsum_hess_exp_sum, tests_run);
     mu_run_test(test_wsum_hess_exp_sum_mult, tests_run);
     mu_run_test(test_wsum_hess_exp_sum_matmul, tests_run);
+    mu_run_test(test_wsum_hess_sum_sin_left_matmul_dense, tests_run);
+    mu_run_test(test_wsum_hess_neg_sin_left_matmul_dense, tests_run);
     mu_run_test(test_wsum_hess_sin_sum_axis0_matmul, tests_run);
     mu_run_test(test_wsum_hess_logistic_sum_axis0_matmul, tests_run);
     mu_run_test(test_wsum_hess_sin_cos, tests_run);
@@ -406,6 +411,9 @@ int main(void)
     mu_run_test(test_BTDA_matrices_pd_pd, tests_run);
     mu_run_test(test_BTDA_matrices_csr_pd, tests_run);
     mu_run_test(test_BTDA_matrices_pd_csr, tests_run);
+    mu_run_test(test_BTDA_matrices_spd_pd, tests_run);
+    mu_run_test(test_BTDA_matrices_pd_spd, tests_run);
+    mu_run_test(test_BTDA_matrices_spd_spd, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_BA_spd_csc_two_blocks_both_kept, tests_run);
     mu_run_test(test_BA_spd_csc_one_block_dropped, tests_run);

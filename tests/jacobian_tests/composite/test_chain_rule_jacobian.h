@@ -5,6 +5,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
+#include "subexpr.h"
 #include "test_helpers.h"
 #include "utils/CSR_matrix.h"
 
@@ -266,5 +267,59 @@ const char *test_jacobian_matmul_X_X(void)
               check_jacobian_num(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(Z);
+    return 0;
+}
+
+/* Regression: atom that loops flatly over child->jacobian->x must work
+   when the child Jacobian is a stacked_pd (from left_matmul_dense with
+   p > 1). Pre-refactor, these would segfault because spd's base.x was
+   NULL; the shared-buffer absorb makes them work uniformly. */
+const char *test_jacobian_neg_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *node = new_neg(AX);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+const char *test_jacobian_scalar_mult_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+    double a_val = 2.5;
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *a_param = new_parameter(1, 1, PARAM_FIXED, 9, &a_val);
+    expr *node = new_scalar_mult(a_param, AX);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+const char *test_jacobian_reshape_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *node = new_reshape(AX, 9, 1);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
     return 0;
 }

@@ -152,12 +152,14 @@ static void wsum_hess_init_impl(expr *node)
         }
 
         /* For sparse matrices we need the CSC cache to be valid for the
-           BTA_matrices_alloc / BTDA_matrices_fill_values calls below. */
-        if (!x->jacobian->is_permuted_dense)
+           BTA_matrices_alloc / BTDA_matrices_fill_values calls below.
+           stacked_pd operands are materialized on demand inside the
+           dispatcher (via to_csr); no caller-side prep needed. */
+        if (!x->jacobian->is_permuted_dense && !x->jacobian->is_stacked_pd)
         {
             sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
         }
-        if (!y->jacobian->is_permuted_dense)
+        if (!y->jacobian->is_permuted_dense && !y->jacobian->is_stacked_pd)
         {
             sparse_matrix_ensure_csc_cache((sparse_matrix *) y->jacobian);
         }
