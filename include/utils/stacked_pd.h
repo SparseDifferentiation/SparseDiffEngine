@@ -44,6 +44,10 @@ typedef struct stacked_pd
                              /* intermediate (currently transpose). When    */
                              /* set, holds the raw spd that                 */
                              /* coalesce_spd_fill_values reads from.        */
+    CSR_matrix *csr_cache;   /* owned; lazy CSR view built on first         */
+                             /* to_csr() call. Structure (p, i) is built    */
+                             /* once; values (x) are refreshed on every     */
+                             /* subsequent call from the block X buffers.   */
 } stacked_pd;
 
 /* Constructor.

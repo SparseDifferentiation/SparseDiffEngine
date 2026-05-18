@@ -32,11 +32,12 @@ matrix *BTA_matrices_alloc(matrix *A, matrix *B);
 void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C);
 
 /* Polymorphic dispatcher: C = B @ A where B is PD and A is any matrix
-   type (permuted_dense or sparse_matrix). C is always PD. Routes on A's
-   type. For the sparse-A branch the dispatcher ensures sm_A->csc_cache
-   structure exists at alloc time; before BA_pd_matrices_fill_values the
-   caller must have refreshed sm_A->csc_cache values (same fill-side
-   contract as BTDA_matrices_fill_values). */
+   type (permuted_dense, stacked_pd, or sparse_matrix). C is always PD.
+   Routes on A's type. For the sparse-A branch the dispatcher ensures
+   sm_A->csc_cache structure exists at alloc time; before
+   BA_pd_matrices_fill_values the caller must have refreshed
+   sm_A->csc_cache values (same fill-side contract as
+   BTDA_matrices_fill_values). */
 matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A);
 void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
                                 permuted_dense *C);

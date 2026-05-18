@@ -131,6 +131,9 @@ typedef struct left_matmul_expr
     int *csc_to_csr_work;
     expr *param_source;
     void (*refresh_param_values)(struct left_matmul_expr *);
+    matrix *A_spd; /* kron(I_p, A) as a stacked_pd for the spd Jacobian
+                      path; NULL when n_blocks == 1 or for the sparse-A
+                      constructor. */
 } left_matmul_expr;
 
 /* Scalar multiplication: y = a * child where a comes from param_source */

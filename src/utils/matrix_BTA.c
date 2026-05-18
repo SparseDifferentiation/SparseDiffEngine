@@ -78,6 +78,10 @@ matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A)
     {
         return BA_pd_pd_alloc(B, (const permuted_dense *) A);
     }
+    if (A->is_stacked_pd)
+    {
+        return BA_pd_spd_alloc(B, (const stacked_pd *) A);
+    }
     /* A is sparse — use the existing BA_pd_csc_* kernels. Ensure the
        csc_cache structure exists at alloc time. */
     sparse_matrix *sm_A = (sparse_matrix *) A;
@@ -91,6 +95,11 @@ void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
     if (A->is_permuted_dense)
     {
         BA_pd_pd_fill_values(B, (const permuted_dense *) A, C);
+        return;
+    }
+    if (A->is_stacked_pd)
+    {
+        BA_pd_spd_fill_values(B, (const stacked_pd *) A, C);
         return;
     }
     /* A is sparse — caller must have refreshed sm_A->csc_cache values. */

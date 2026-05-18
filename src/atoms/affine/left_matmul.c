@@ -21,6 +21,8 @@
 #include "utils/mini_numpy.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,6 +99,11 @@ static void free_type_data(expr *node)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     free_matrix(lnode->A);
     free_matrix(lnode->AT);
+    if (lnode->A_spd != NULL)
+    {
+        free_matrix(lnode->A_spd);
+        lnode->A_spd = NULL;
+    }
     free_CSC_matrix(lnode->Jchild_CSC);
     free_CSC_matrix(lnode->J_CSC);
     free(lnode->csc_to_csr_work);
@@ -173,6 +180,73 @@ static void eval_jacobian_sparse(expr *node)
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
     csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian),
                            lnode->csc_to_csr_work);
+}
+
+/* Build kron(I_p, A) as a stacked_pd. p blocks; block k has
+   row_perm = {k*m, ..., k*m+m-1}, col_perm = {k*n, ..., k*n+n-1},
+   X = copy of A->X. */
+static matrix *build_spd_kron_I_A_alloc(const permuted_dense *A, int p)
+{
+    int m = A->base.m;
+    int n = A->base.n;
+    permuted_dense **blocks =
+        (permuted_dense **) SP_MALLOC((size_t) p * sizeof(permuted_dense *));
+    int *row_perm = (int *) SP_MALLOC((size_t) m * sizeof(int));
+    int *col_perm = (int *) SP_MALLOC((size_t) n * sizeof(int));
+    for (int k = 0; k < p; k++)
+    {
+        for (int i = 0; i < m; i++) row_perm[i] = k * m + i;
+        for (int j = 0; j < n; j++) col_perm[j] = k * n + j;
+        blocks[k] = (permuted_dense *) new_permuted_dense(m * p, n * p, m, n,
+                                                          row_perm, col_perm, A->X);
+    }
+    free(row_perm);
+    free(col_perm);
+    matrix *spd = new_stacked_pd(m * p, n * p, p, blocks, NULL, NULL);
+    free(blocks);
+    return spd;
+}
+
+/* For param-source A: after forward() refreshed lnode->A->X, propagate
+   the values into every spd block. Constant A doesn't need this since
+   the spd was built from the same constant values. */
+static void refresh_spd_from_local_A(left_matmul_expr *lnode)
+{
+    permuted_dense *A_pd = (permuted_dense *) lnode->A;
+    stacked_pd *A_spd = (stacked_pd *) lnode->A_spd;
+    size_t n_bytes = (size_t) A_pd->m0 * A_pd->n0 * sizeof(double);
+    for (int k = 0; k < A_spd->n_blocks; k++)
+    {
+        memcpy(A_spd->blocks[k]->X, A_pd->X, n_bytes);
+    }
+}
+
+/* jacobian_init when node->jacobian is stacked_pd (multi-column dense A) */
+static void jacobian_init_spd(expr *node)
+{
+    expr *x = node->left;
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    jacobian_init(x);
+    node->jacobian = BA_spd_matrices_alloc((stacked_pd *) lnode->A_spd, x->jacobian);
+}
+
+/* eval_jacobian when node->jacobian is stacked_pd */
+static void eval_jacobian_spd(expr *node)
+{
+    left_matmul_expr *lnode = (left_matmul_expr *) node;
+    expr *x = node->left;
+    x->eval_jacobian(x);
+    x->jacobian->refresh_csc_values(x->jacobian);
+
+    /* For param-source A, refresh A_spd's block X buffers from the
+       (now-refreshed) lnode->A->X. */
+    if (lnode->param_source != NULL)
+    {
+        refresh_spd_from_local_A(lnode);
+    }
+
+    BA_spd_matrices_fill_values((stacked_pd *) lnode->A_spd, x->jacobian,
+                                (stacked_pd *) node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -314,8 +388,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
        forces the general CSC-mirror path. */
     bool pd_path = (n_blocks == 1);
     init_expr(node, d1, d2, u->n_vars, forward,
-              pd_path ? jacobian_init_pd : jacobian_init_sparse,
-              pd_path ? eval_jacobian_pd : eval_jacobian_sparse, is_affine,
+              pd_path ? jacobian_init_pd : jacobian_init_spd,
+              pd_path ? eval_jacobian_pd : eval_jacobian_spd, is_affine,
               wsum_hess_init_impl, eval_wsum_hess, free_type_data);
     node->left = u;
     expr_retain(u);
@@ -354,6 +428,15 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
         lnode->A = new_permuted_dense_full(m, n, data);
         lnode->AT = lnode->A->transpose_alloc(lnode->A);
         lnode->A->transpose_fill_values(lnode->A, lnode->AT);
+    }
+
+    /* Multi-column dense path: build the spd view used by the spd
+       Jacobian path. For param-source A the spd starts with garbage X
+       values; eval_jacobian_spd will refresh before use. */
+    if (!pd_path)
+    {
+        lnode->A_spd =
+            build_spd_kron_I_A_alloc((const permuted_dense *) lnode->A, n_blocks);
     }
 
     return node;

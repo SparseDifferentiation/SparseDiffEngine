@@ -59,8 +59,8 @@
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
-#include "utils/test_cblas.h"
 #include "utils/test_COO_matrix.h"
+#include "utils/test_cblas.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
 #include "utils/test_csr_matrix.h"
@@ -395,6 +395,7 @@ int main(void)
     mu_run_test(test_BA_pd_matrices_pd_pd_full_block_B, tests_run);
     mu_run_test(test_BA_pd_matrices_pd_pd_general_B, tests_run);
     mu_run_test(test_BA_pd_matrices_pd_csc, tests_run);
+    mu_run_test(test_BA_pd_matrices_spd_A, tests_run);
     mu_run_test(test_BA_pd_matrices_fast_path, tests_run);
     mu_run_test(test_BTA_pd_csr_basic, tests_run);
     mu_run_test(test_BTA_pd_csr_leaf_variable, tests_run);
@@ -449,6 +450,10 @@ int main(void)
     mu_run_test(test_spd_vtable_ATDA_fill_values, tests_run);
     mu_run_test(test_spd_vtable_transpose, tests_run);
     mu_run_test(test_spd_vtable_refresh_csc_values_noop, tests_run);
+    mu_run_test(test_spd_vtable_index, tests_run);
+    mu_run_test(test_spd_vtable_promote, tests_run);
+    mu_run_test(test_spd_vtable_diag_vec, tests_run);
+    mu_run_test(test_spd_vtable_broadcast_row, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);
     mu_run_test(test_YT_kron_I_larger, tests_run);
     mu_run_test(test_I_kron_X, tests_run);
