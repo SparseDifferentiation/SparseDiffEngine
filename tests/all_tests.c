@@ -319,6 +319,7 @@ int main(void)
     mu_run_test(test_wsum_hess_exp_sum_matmul, tests_run);
     mu_run_test(test_wsum_hess_sum_sin_left_matmul_dense, tests_run);
     mu_run_test(test_wsum_hess_neg_sin_left_matmul_dense, tests_run);
+    mu_run_test(test_wsum_hess_sum_exp_left_matmul_dense_transpose, tests_run);
     mu_run_test(test_wsum_hess_sin_sum_axis0_matmul, tests_run);
     mu_run_test(test_wsum_hess_logistic_sum_axis0_matmul, tests_run);
     mu_run_test(test_wsum_hess_sin_cos, tests_run);
@@ -481,6 +482,7 @@ int main(void)
     mu_run_test(test_problem_jacobian_multi, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
+    mu_run_test(test_problem_hessian_sum_exp_left_matmul_dense_transpose, tests_run);
 
     printf("\n--- Parameter Tests ---\n");
     mu_run_test(test_param_scalar_mult_problem, tests_run);

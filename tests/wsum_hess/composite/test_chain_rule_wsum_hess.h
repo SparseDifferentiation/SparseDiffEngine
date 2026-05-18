@@ -5,6 +5,7 @@
 #include "minunit.h"
 #include "numerical_diff.h"
 #include "test_helpers.h"
+#include <stdio.h>
 
 const char *test_wsum_hess_exp_sum(void)
 {
@@ -37,6 +38,57 @@ const char *test_wsum_hess_exp_sum_mult(void)
               check_wsum_hess(exp_sum_xy, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_sum_xy);
+    return 0;
+}
+
+/* Regression: sum(exp(A @ X.T)) — user-reported wrong-Hessian case.
+   Triggers left_matmul_dense over the transpose of a multi-column
+   variable, producing an spd Jacobian with non-trivial col_perm
+   (because the child Jacobian is the transpose permutation PD).
+   Uses the exact A and X values from the user report. */
+const char *test_wsum_hess_sum_exp_left_matmul_dense_transpose(void)
+{
+    /* X = [[0.42, 0.65], [0.44, 0.89]] in row-major -> column-major
+       vec is [X[0,0], X[1,0], X[0,1], X[1,1]] = [0.42, 0.44, 0.65, 0.89]. */
+    double u_vals[4] = {0.42, 0.44, 0.65, 0.89};
+    /* A row-major: A[0,0]=0.55, A[0,1]=0.72, A[1,0]=0.60, A[1,1]=0.54. */
+    double A[4] = {0.55, 0.72, 0.60, 0.54};
+    double w = 1.0;
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *XT = new_transpose(X);
+    expr *AX = new_left_matmul_dense(NULL, XT, 2, 2, A);
+    expr *exp_AX = new_exp(AX);
+    expr *node = new_sum(exp_AX, -1);
+
+    /* Compute and print the analytical Hessian to compare with the
+       user-reported c_hess_dense. */
+    jacobian_init(node);
+    wsum_hess_init(node);
+    node->forward(node, u_vals);
+    node->eval_jacobian(node);
+    node->eval_wsum_hess(node, &w);
+
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    double dense[16] = {0};
+    for (int r = 0; r < H->m; r++)
+    {
+        for (int kk = H->p[r]; kk < H->p[r + 1]; kk++)
+        {
+            dense[r * 4 + H->i[kk]] = H->x[kk];
+        }
+    }
+    printf("\nC analytical Hessian (row-major 4x4):\n");
+    for (int r = 0; r < 4; r++)
+    {
+        printf("  [%.6f %.6f %.6f %.6f]\n", dense[r * 4 + 0], dense[r * 4 + 1],
+               dense[r * 4 + 2], dense[r * 4 + 3]);
+    }
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
     return 0;
 }
 

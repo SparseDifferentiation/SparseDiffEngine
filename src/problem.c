@@ -545,16 +545,25 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     /* zero out hessian before adding contribution from obj and constraints */
     memset(H->x, 0, H->nnz * sizeof(double));
 
-    /* accumulate objective function */
-    accumulator(obj->wsum_hess->x, obj->wsum_hess->nnz, idx_map, H->x);
-    offset = obj->wsum_hess->nnz;
+    /* Accumulate via the CSR view of each wsum_hess. The idx_map was
+       built (in problem_lagrange_hess_fill_sparsity) by iterating each
+       wsum_hess in CSR scan order, so the values fed to `accumulator`
+       must also be in CSR scan order. For sparse_matrix / single-block
+       permuted_dense, to_csr() aliases base.x and is essentially free;
+       for stacked_pd with multiple blocks the block-major base.x differs
+       from CSR-major scan order, so reading wsum_hess->x directly would
+       scatter values to the wrong positions in H. */
+    CSR_matrix *obj_csr = obj->wsum_hess->to_csr(obj->wsum_hess);
+    accumulator(obj_csr->x, obj_csr->nnz, idx_map, H->x);
+    offset = obj_csr->nnz;
 
     /* accumulate constraint functions */
     for (int i = 0; i < prob->n_constraints; i++)
     {
         matrix *c_hess = constrs[i]->wsum_hess;
-        accumulator(c_hess->x, c_hess->nnz, idx_map + offset, H->x);
-        offset += c_hess->nnz;
+        CSR_matrix *c_csr = c_hess->to_csr(c_hess);
+        accumulator(c_csr->x, c_csr->nnz, idx_map + offset, H->x);
+        offset += c_csr->nnz;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
