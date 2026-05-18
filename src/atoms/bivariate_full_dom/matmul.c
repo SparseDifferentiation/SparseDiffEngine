@@ -263,7 +263,8 @@ static void eval_jacobian_chain_rule(expr *node)
     YT_kron_I_fill_values(m, k, n, g->value, f->work->jacobian_csc,
                           mnode->term1_CSR);
     I_kron_X_fill_values(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
-    sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR, node->jacobian->to_csr(node->jacobian));
+    sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR,
+                        node->jacobian->to_csr(node->jacobian));
 }
 
 // ------------------------------------------------------------------------------------
@@ -475,7 +476,8 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC_matrix values (cache if affine) */
     if (!f->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_values(f->jacobian->to_csr(f->jacobian), Jf, f->work->csc_work);
+        csr_to_csc_fill_values(f->jacobian->to_csr(f->jacobian), Jf,
+                               f->work->csc_work);
         if (is_f_affine)
         {
             f->work->jacobian_csc_filled = true;
@@ -485,7 +487,8 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     /* refresh child Jacobian CSC_matrix values (cache if affine) */
     if (!g->work->jacobian_csc_filled)
     {
-        csr_to_csc_fill_values(g->jacobian->to_csr(g->jacobian), Jg, g->work->csc_work);
+        csr_to_csc_fill_values(g->jacobian->to_csr(g->jacobian), Jg,
+                               g->work->csc_work);
         if (is_g_affine)
         {
             g->work->jacobian_csc_filled = true;
@@ -519,10 +522,13 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
     accumulator(mnode->C->x, mnode->C->nnz, mnode->idx_map_C, node->wsum_hess->x);
     accumulator(mnode->CT->x, mnode->CT->nnz, mnode->idx_map_CT, node->wsum_hess->x);
-    accumulator(f->wsum_hess->x, f->wsum_hess->nnz, mnode->idx_map_Hf,
-                node->wsum_hess->x);
-    accumulator(g->wsum_hess->x, g->wsum_hess->nnz, mnode->idx_map_Hg,
-                node->wsum_hess->x);
+    /* idx_map_Hf / idx_map_Hg were built from f/g wsum_hess to_csr in
+       the init pass; read through to_csr to honor CSR scan order
+       (matters for multi-block stacked_pd whose base.x is block-major). */
+    CSR_matrix *Hf_csr = f->wsum_hess->to_csr(f->wsum_hess);
+    accumulator(Hf_csr->x, Hf_csr->nnz, mnode->idx_map_Hf, node->wsum_hess->x);
+    CSR_matrix *Hg_csr = g->wsum_hess->to_csr(g->wsum_hess);
+    accumulator(Hg_csr->x, Hg_csr->nnz, mnode->idx_map_Hg, node->wsum_hess->x);
 }
 
 expr *new_matmul(expr *x, expr *y)

@@ -266,9 +266,17 @@ static void eval_wsum_hess(expr *node, const double *w)
                     node->wsum_hess->x);
         accumulator(mul_node->CT->x, mul_node->CT->nnz, mul_node->idx_map_CT,
                     node->wsum_hess->x);
-        accumulator(x->wsum_hess->x, x->wsum_hess->nnz, mul_node->idx_map_Hx,
+        /* idx_map_Hx / idx_map_Hy were built (in wsum_hess_init_impl) from
+           x->wsum_hess->to_csr / y->wsum_hess->to_csr (CSR scan order).
+           Read through to_csr so the values match that order — required
+           for multi-block stacked_pd where base.x is block-major and
+           differs from CSR scan order. For PD/sparse, to_csr aliases
+           base.x and is essentially free. */
+        CSR_matrix *Hx_csr = x->wsum_hess->to_csr(x->wsum_hess);
+        accumulator(Hx_csr->x, Hx_csr->nnz, mul_node->idx_map_Hx,
                     node->wsum_hess->x);
-        accumulator(y->wsum_hess->x, y->wsum_hess->nnz, mul_node->idx_map_Hy,
+        CSR_matrix *Hy_csr = y->wsum_hess->to_csr(y->wsum_hess);
+        accumulator(Hy_csr->x, Hy_csr->nnz, mul_node->idx_map_Hy,
                     node->wsum_hess->x);
     }
 }

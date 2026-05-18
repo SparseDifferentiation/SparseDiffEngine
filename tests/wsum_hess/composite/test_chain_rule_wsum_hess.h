@@ -41,6 +41,33 @@ const char *test_wsum_hess_exp_sum_mult(void)
     return 0;
 }
 
+/* Regression: sum(multiply(sin(A @ X.T), cos(X))) — user-reported Python
+   failure. Exercises elementwise_mult with two spd-producing children
+   (sin path produces spd from left_matmul, cos path produces spd from
+   the variable Jacobian via copy_sparsity). Goes through the BTA/BTDA
+   dispatcher's to_csr fallback for the spd operands. */
+const char *test_wsum_hess_sum_mult_sin_left_matmul_cos(void)
+{
+    double u_vals[4] = {0.42, 0.44, 0.65, 0.89};
+    double A[4] = {0.55, 0.72, 0.60, 0.54};
+    double w = 1.0;
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *XT = new_transpose(X);
+    expr *AX = new_left_matmul_dense(NULL, XT, 2, 2, A);
+    expr *sin_AX = new_sin(AX);
+    expr *X2 = new_variable(2, 2, 0, 4);
+    expr *cos_X = new_cos(X2);
+    expr *mult = new_elementwise_mult(sin_AX, cos_X);
+    expr *node = new_sum(mult, -1);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
 /* Regression: sum(exp(A @ X.T)) — user-reported wrong-Hessian case.
    Triggers left_matmul_dense over the transpose of a multi-column
    variable, producing an spd Jacobian with non-trivial col_perm
