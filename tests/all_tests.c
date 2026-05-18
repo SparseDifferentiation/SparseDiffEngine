@@ -436,6 +436,8 @@ int main(void)
     mu_run_test(test_BA_pd_spd_empty_A, tests_run);
     mu_run_test(test_BA_pd_spd_overlapping_col_perms, tests_run);
     mu_run_test(test_BA_pd_spd_alloc_then_fill_values, tests_run);
+    mu_run_test(test_BA_spd_pd_two_blocks_both_kept, tests_run);
+    mu_run_test(test_BA_spd_pd_one_block_dropped, tests_run);
     mu_run_test(test_BA_spd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BA_spd_spd_one_block_dropped, tests_run);
     mu_run_test(test_BA_spd_spd_all_blocks_dropped, tests_run);

@@ -121,6 +121,20 @@ matrix *copy_sparsity_spd_alloc(const stacked_pd *src);
    DA_pd_fill_values. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
 
+/* Allocate sparsity for C = B @ A where B is a stacked_pd and A is a
+   permuted_dense. Per source block, computes B_k @ A via BA_pd_pd_alloc;
+   B-blocks whose contribution is structurally empty (n0 == 0) are
+   dropped; src_block_idx_* records the surviving source indices (one
+   source per output block). Output is a stacked_pd: row_perms inherited
+   from B (pairwise disjoint by the spd invariant). */
+matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A);
+
+/* Fill values of C = B @ A. Caller must have produced C via
+   BA_spd_pd_alloc with the same structural inputs. Per surviving
+   output block, delegates to BA_pd_pd_fill_values. */
+void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                           stacked_pd *C);
+
 /* Allocate sparsity for C = B @ A where B is a permuted_dense and A is
    a stacked_pd. Output is a single permuted_dense: row_perm =
    B->row_perm, col_perm = sorted union of A's block col_perms over

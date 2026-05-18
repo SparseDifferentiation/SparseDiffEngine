@@ -541,6 +541,66 @@ void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd
 }
 
 /* ------------------------------------------------------------------ */
+/* BA_spd_pd: C = B @ A where B is spd, A is PD                        */
+/* ------------------------------------------------------------------ */
+
+/* Thin loop over B's blocks delegating to BA_pd_pd_*. B-blocks whose
+   contribution is structurally empty (col_perm_k ∩ row_perm_A = ∅, so
+   BA_pd_pd_alloc returns n0 == 0) are dropped; src_block_idx_* records
+   the surviving source indices. */
+matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
+{
+    permuted_dense **tmp_blocks = NULL;
+    int *tmp_src = NULL;
+    if (B->n_blocks > 0)
+    {
+        tmp_blocks =
+            (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
+        tmp_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
+    }
+
+    int out_n = 0;
+    for (int k = 0; k < B->n_blocks; k++)
+    {
+        matrix *Ck = BA_pd_pd_alloc(B->blocks[k], A);
+        permuted_dense *Ck_pd = (permuted_dense *) Ck;
+        if (Ck_pd->n0 == 0)
+        {
+            free_matrix(Ck);
+        }
+        else
+        {
+            tmp_blocks[out_n] = Ck_pd;
+            tmp_src[out_n] = k;
+            out_n++;
+        }
+    }
+
+    int *tmp_src_p = (int *) SP_MALLOC((out_n + 1) * sizeof(int));
+    for (int k = 0; k <= out_n; k++)
+    {
+        tmp_src_p[k] = k;
+    }
+
+    matrix *C =
+        new_stacked_pd(B->base.m, A->base.n, out_n, tmp_blocks, tmp_src_p, tmp_src);
+    free(tmp_blocks);
+    free(tmp_src);
+    free(tmp_src_p);
+    return C;
+}
+
+void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                           stacked_pd *C)
+{
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        int src = C->src_block_idx[C->src_block_idx_p[k]];
+        BA_pd_pd_fill_values(B->blocks[src], A, C->blocks[k]);
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /* Coalesce                                                            */
 /* ------------------------------------------------------------------ */
 
