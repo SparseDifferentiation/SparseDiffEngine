@@ -14,6 +14,7 @@
 #include "utils/Timer.h"
 #include "utils/permuted_dense.h"
 #include "utils/stacked_pd.h"
+#include "utils/stacked_pd_linalg.h"
 #include "utils/tracked_alloc.h"
 
 /* Profile and validate two ways to compute the Hessian of

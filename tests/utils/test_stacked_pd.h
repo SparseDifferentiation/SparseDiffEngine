@@ -9,6 +9,7 @@
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
+#include "utils/stacked_pd_linalg.h"
 #include <stdlib.h>
 #include <string.h>
 

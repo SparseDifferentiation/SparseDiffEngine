@@ -16,6 +16,7 @@
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
+#include "utils/stacked_pd_linalg.h"
 #include "utils/tracked_alloc.h"
 
 /* Effective-type view of a BTA/BTDA dispatcher operand. Exactly one of

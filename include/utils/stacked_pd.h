@@ -85,7 +85,7 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
    and the BA_spd_*_alloc kernels in stacked_pd_linalg.c. */
 typedef matrix *(*spd_block_op)(permuted_dense *Bk, const void *ctx);
 
-matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn,
-                              spd_block_op op, const void *ctx);
+matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op op,
+                              const void *ctx);
 
 #endif /* STACKED_PD_H */
