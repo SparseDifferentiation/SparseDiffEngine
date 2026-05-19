@@ -498,6 +498,49 @@ matrix *ATA_spd_alloc(const stacked_pd *A)
     return out;
 }
 
+/* Scatter + add each scratch PD into its destination block in C. Multiple scratch
+   PDs may target the same Ck (their cells overlap by design — that's why we
+   accumulate). Caller is responsible for zeroing C->base.x first. */
+static inline void accumulate_scratch_blocks(const stacked_pd *scratch,
+                                             stacked_pd *C)
+{
+    /* for each block Ck of C */
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        permuted_dense *Ck = C->blocks[k];
+        int s_lo = C->src_block_idx_p[k];
+        int s_hi = C->src_block_idx_p[k + 1];
+
+        /* for each block Eq = Ai^T D Ai in scratch contributing to block Ck in C */
+        for (int qq = s_lo; qq < s_hi; qq++)
+        {
+            const permuted_dense *Eq = scratch->blocks[C->src_block_idx[qq]];
+
+            /* for each row in Eq */
+            for (int i = 0; i < Eq->m0; i++)
+            {
+                int Ck_row_idx = Ck->row_inv[Eq->row_perm[i]];
+                if (Ck_row_idx < 0)
+                {
+                    /* this row in Eq does not contribute to Ck */
+                    continue;
+                }
+
+                double *Ck_row = Ck->X + Ck_row_idx * Ck->n0;
+                double *Eq_row = Eq->X + i * Eq->n0;
+
+                /* place each col in Eq_row at its correct position in Ck_row */
+                for (int j = 0; j < Eq->n0; j++)
+                {
+                    int out_j = Ck->col_inv[Eq->col_perm[j]];
+                    assert(out_j >= 0);
+                    Ck_row[out_j] += Eq_row[j];
+                }
+            }
+        }
+    }
+}
+
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 {
     /* Let A = [A1; A2; A3] where Ai has n columns (the same number as A). Then
@@ -505,62 +548,20 @@ void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
        and Aj have overlapping column entries. We therefore first compute
        Ai^T Di Ai and then take care of the accumulation. */
 
-    int i, j, k, qq;
-
     stacked_pd *scratch = C->work;
 
     /* compute Ai^T @ Di @ Ai into the scratch PDs. */
-    for (k = 0; k < A->n_blocks; k++)
+    for (int k = 0; k < A->n_blocks; k++)
     {
         ATDA_pd_fill_values(A->blocks[k], d, scratch->blocks[k]);
     }
 
-    /* Step 2: zero output buffers (we're += accumulating). */
-    // for (k = 0; k < C->n_blocks; k++)
-    //{
-    //     permuted_dense *Ck = C->blocks[k];
-    //     memset(Ck->X, 0, (size_t) Ck->m0 * Ck->n0 * sizeof(double));
-    // }
-    /* zero the values of C (one memset is sufficient since, by design, the values of
-       different blocks are stored consecutive in memory) */
+    /* zero C (one memset is sufficient since, by design, the values of
+       different blocks are stored consecutively in memory). */
     memset(C->base.x, 0, C->base.nnz * sizeof(double));
 
-    /* for each block Ck of C */
-    for (k = 0; k < C->n_blocks; k++)
-    {
-        permuted_dense *Ck = C->blocks[k];
-        int s_lo = C->src_block_idx_p[k];
-        int s_hi = C->src_block_idx_p[k + 1];
-
-        /* for each block Aq in A contributing to block Ck in C */
-        for (qq = s_lo; qq < s_hi; qq++)
-        {
-            const permuted_dense *Aq = scratch->blocks[C->src_block_idx[qq]];
-
-            /* for each row in Aq */
-            for (i = 0; i < Aq->m0; i++)
-            {
-                int Ck_row_idx = Ck->row_inv[Aq->row_perm[i]];
-                if (Ck_row_idx < 0)
-                {
-                    /* this row in Aq does not contribute to Ck */
-                    continue;
-                }
-
-                double *Ck_row = Ck->X + Ck_row_idx * Ck->n0;
-                double *Aq_row = Aq->X + i * Aq->n0;
-
-                /* place each col in Aq_row at its correct position in Ck_row */
-                for (j = 0; j < Aq->n0; j++)
-                {
-                    int out_j = Ck->col_inv[Aq->col_perm[j]];
-                    assert(out_j >= 0);
-                    // Ck->X[out_i * Ck->n0 + out_j] += Aq->X[i * Aq->n0 + j];
-                    Ck_row[out_j] += Aq_row[j];
-                }
-            }
-        }
-    }
+    /* scatter + add each Ai^T Di Ai into its destination C block. */
+    accumulate_scratch_blocks(scratch, C);
 }
 
 /* ------------------------------------------------------------------ */
