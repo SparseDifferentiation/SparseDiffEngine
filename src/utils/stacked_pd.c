@@ -153,50 +153,76 @@ static CSR_matrix *stacked_pd_to_csr(matrix *self)
     return spd->csr_cache;
 }
 
+/* Filter-map over a stacked_pd's blocks. For each block of B, calls
+   op(Bk, ctx); drops blocks whose result has nnz == 0; assembles the
+   survivors into a new stacked_pd with one source per output block. */
+typedef matrix *(*spd_block_op)(permuted_dense *Bk, const void *ctx);
+
+static matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn,
+                                     spd_block_op op, const void *ctx)
+{
+    if (B->n_blocks == 0)
+    {
+        return new_stacked_pd(Cm, Cn, 0, NULL, NULL, NULL);
+    }
+
+    permuted_dense **C_blocks =
+        (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
+    int *C_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
+
+    int out_nb = 0;
+    for (int k = 0; k < B->n_blocks; k++)
+    {
+        matrix *Ck = op(B->blocks[k], ctx);
+        if (Ck->nnz == 0)
+        {
+            free_matrix(Ck);
+        }
+        else
+        {
+            C_blocks[out_nb] = (permuted_dense *) Ck;
+            C_src[out_nb] = k;
+            out_nb++;
+        }
+    }
+
+    int *C_src_p = (int *) SP_MALLOC((out_nb + 1) * sizeof(int));
+    for (int k = 0; k <= out_nb; k++)
+    {
+        C_src_p[k] = k;
+    }
+
+    matrix *C = new_stacked_pd(Cm, Cn, out_nb, C_blocks, C_src_p, C_src);
+    free(C_blocks);
+    free(C_src);
+    free(C_src_p);
+    return C;
+}
+
 /* Per-block delegation: apply PD's index_alloc to each source block. The
    per-block result is a PD whose row_perm holds output positions
    (0..n_idxs-1) — disjoint across source blocks since source row_perms are
    disjoint. Empty per-block results (no requested row hits the block) are
    dropped; src_block_idx_* records which source blocks survived. */
+typedef struct
+{
+    const int *indices;
+    int n_idxs;
+} pd_index_ctx;
+
+static matrix *wrapper_pd_index(permuted_dense *Bk, const void *ctx)
+{
+    const pd_index_ctx *c = (const pd_index_ctx *) ctx;
+    matrix *blk = (matrix *) Bk;
+    return blk->index_alloc(blk, c->indices, c->n_idxs);
+}
+
 static matrix *stacked_pd_vtable_index_alloc(matrix *self, const int *indices,
                                              int n_idxs)
 {
     stacked_pd *src = (stacked_pd *) self;
-    int nb = src->n_blocks;
-    permuted_dense **tmp_blocks =
-        (permuted_dense **) SP_MALLOC((size_t) nb * sizeof(permuted_dense *));
-    int *tmp_src = (int *) SP_MALLOC((size_t) nb * sizeof(int));
-    int out_nb = 0;
-
-    for (int k = 0; k < nb; k++)
-    {
-        matrix *blk = (matrix *) src->blocks[k];
-        matrix *out_blk = blk->index_alloc(blk, indices, n_idxs);
-        permuted_dense *out_pd = (permuted_dense *) out_blk;
-        if (out_pd->m0 > 0)
-        {
-            tmp_blocks[out_nb] = out_pd;
-            tmp_src[out_nb] = k;
-            out_nb++;
-        }
-        else
-        {
-            free_matrix(out_blk);
-        }
-    }
-
-    int *src_p = (int *) SP_MALLOC((size_t) (out_nb + 1) * sizeof(int));
-    for (int k = 0; k <= out_nb; k++)
-    {
-        src_p[k] = k;
-    }
-
-    matrix *out =
-        new_stacked_pd(n_idxs, src->base.n, out_nb, tmp_blocks, src_p, tmp_src);
-    free(tmp_blocks);
-    free(tmp_src);
-    free(src_p);
-    return out;
+    pd_index_ctx ctx = {indices, n_idxs};
+    return spd_map_filter_blocks(src, n_idxs, src->base.n, wrapper_pd_index, &ctx);
 }
 
 static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices,
@@ -218,44 +244,16 @@ static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices
    all others have m0=0. PD's promote yields m0==size on the populated
    block and m0==0 on empty blocks; we drop the empty ones, preserving
    spd's disjoint-row invariant on the output. */
+static matrix *wrapper_pd_promote(permuted_dense *Bk, const void *ctx)
+{
+    matrix *blk = (matrix *) Bk;
+    return blk->promote_alloc(blk, *(const int *) ctx);
+}
+
 static matrix *stacked_pd_vtable_promote_alloc(matrix *self, int size)
 {
     stacked_pd *src = (stacked_pd *) self;
-    int nb = src->n_blocks;
-    permuted_dense **tmp_blocks =
-        (permuted_dense **) SP_MALLOC((size_t) nb * sizeof(permuted_dense *));
-    int *tmp_src = (int *) SP_MALLOC((size_t) nb * sizeof(int));
-    int out_nb = 0;
-
-    for (int k = 0; k < nb; k++)
-    {
-        matrix *blk = (matrix *) src->blocks[k];
-        matrix *out_blk = blk->promote_alloc(blk, size);
-        permuted_dense *out_pd = (permuted_dense *) out_blk;
-        if (out_pd->m0 > 0)
-        {
-            tmp_blocks[out_nb] = out_pd;
-            tmp_src[out_nb] = k;
-            out_nb++;
-        }
-        else
-        {
-            free_matrix(out_blk);
-        }
-    }
-
-    int *src_p = (int *) SP_MALLOC((size_t) (out_nb + 1) * sizeof(int));
-    for (int k = 0; k <= out_nb; k++)
-    {
-        src_p[k] = k;
-    }
-
-    matrix *out =
-        new_stacked_pd(size, src->base.n, out_nb, tmp_blocks, src_p, tmp_src);
-    free(tmp_blocks);
-    free(tmp_src);
-    free(src_p);
-    return out;
+    return spd_map_filter_blocks(src, size, src->base.n, wrapper_pd_promote, &size);
 }
 
 static void stacked_pd_vtable_promote_fill_values(matrix *self, matrix *out)
@@ -320,47 +318,27 @@ static void stacked_pd_vtable_diag_vec_fill_values(matrix *self, matrix *out)
    pairwise disjoint -> per-mode output ranges are also pairwise disjoint
    across input blocks. Empty per-block outputs (m0=0 in input) are
    dropped; src_block_idx_* records the survivors. */
+typedef struct
+{
+    broadcast_type type;
+    int d1;
+    int d2;
+} pd_broadcast_ctx;
+
+static matrix *wrapper_pd_broadcast(permuted_dense *Bk, const void *ctx)
+{
+    const pd_broadcast_ctx *c = (const pd_broadcast_ctx *) ctx;
+    matrix *blk = (matrix *) Bk;
+    return blk->broadcast_alloc(blk, c->type, c->d1, c->d2);
+}
+
 static matrix *stacked_pd_vtable_broadcast_alloc(matrix *self, broadcast_type type,
                                                  int d1, int d2)
 {
     stacked_pd *src = (stacked_pd *) self;
-    int nb = src->n_blocks;
-    int out_m = d1 * d2;
-
-    permuted_dense **tmp_blocks =
-        (permuted_dense **) SP_MALLOC((size_t) nb * sizeof(permuted_dense *));
-    int *tmp_src = (int *) SP_MALLOC((size_t) nb * sizeof(int));
-    int out_nb = 0;
-
-    for (int k = 0; k < nb; k++)
-    {
-        matrix *blk = (matrix *) src->blocks[k];
-        matrix *out_blk = blk->broadcast_alloc(blk, type, d1, d2);
-        permuted_dense *out_pd = (permuted_dense *) out_blk;
-        if (out_pd->m0 > 0)
-        {
-            tmp_blocks[out_nb] = out_pd;
-            tmp_src[out_nb] = k;
-            out_nb++;
-        }
-        else
-        {
-            free_matrix(out_blk);
-        }
-    }
-
-    int *src_p = (int *) SP_MALLOC((size_t) (out_nb + 1) * sizeof(int));
-    for (int k = 0; k <= out_nb; k++)
-    {
-        src_p[k] = k;
-    }
-
-    matrix *out =
-        new_stacked_pd(out_m, src->base.n, out_nb, tmp_blocks, src_p, tmp_src);
-    free(tmp_blocks);
-    free(tmp_src);
-    free(src_p);
-    return out;
+    pd_broadcast_ctx ctx = {type, d1, d2};
+    return spd_map_filter_blocks(src, d1 * d2, src->base.n, wrapper_pd_broadcast,
+                                 &ctx);
 }
 
 static void stacked_pd_vtable_broadcast_fill_values(matrix *self,
@@ -522,47 +500,14 @@ matrix *new_stacked_pd(int m, int n, int n_blocks, permuted_dense **blocks,
     return out;
 }
 
+static matrix *wrapper_ba_pd_csc(permuted_dense *Bk, const void *ctx)
+{
+    return BA_pd_csc_alloc(Bk, (const CSC_matrix *) ctx);
+}
+
 matrix *BA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
 {
-    permuted_dense **tmp_blocks = NULL;
-    int *tmp_src = NULL;
-    if (B->n_blocks > 0)
-    {
-        tmp_blocks =
-            (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
-        tmp_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
-    }
-
-    int out_n = 0;
-    for (int k = 0; k < B->n_blocks; k++)
-    {
-        matrix *Ck = BA_pd_csc_alloc(B->blocks[k], A);
-        permuted_dense *Ck_pd = (permuted_dense *) Ck;
-        if (Ck_pd->n0 == 0)
-        {
-            free_matrix(Ck);
-        }
-        else
-        {
-            tmp_blocks[out_n] = Ck_pd;
-            tmp_src[out_n] = k;
-            out_n++;
-        }
-    }
-
-    /* one source per output block: src_block_idx_p = identity prefix sum */
-    int *tmp_src_p = (int *) SP_MALLOC((out_n + 1) * sizeof(int));
-    for (int k = 0; k <= out_n; k++)
-    {
-        tmp_src_p[k] = k;
-    }
-
-    matrix *C =
-        new_stacked_pd(B->base.m, A->n, out_n, tmp_blocks, tmp_src_p, tmp_src);
-    free(tmp_blocks);
-    free(tmp_src);
-    free(tmp_src_p);
-    return C;
+    return spd_map_filter_blocks(B, B->base.m, A->n, wrapper_ba_pd_csc, A);
 }
 
 void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C)
@@ -583,46 +528,14 @@ void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd
    contribution is structurally empty (col_perm_k ∩ row_perm_A = ∅, so
    BA_pd_pd_alloc returns n0 == 0) are dropped; src_block_idx_* records
    the surviving source indices. */
+static matrix *wrapper_ba_pd_pd(permuted_dense *Bk, const void *ctx)
+{
+    return BA_pd_pd_alloc(Bk, (const permuted_dense *) ctx);
+}
+
 matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
 {
-    permuted_dense **tmp_blocks = NULL;
-    int *tmp_src = NULL;
-    if (B->n_blocks > 0)
-    {
-        tmp_blocks =
-            (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
-        tmp_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
-    }
-
-    int out_n = 0;
-    for (int k = 0; k < B->n_blocks; k++)
-    {
-        matrix *Ck = BA_pd_pd_alloc(B->blocks[k], A);
-        permuted_dense *Ck_pd = (permuted_dense *) Ck;
-        if (Ck_pd->n0 == 0)
-        {
-            free_matrix(Ck);
-        }
-        else
-        {
-            tmp_blocks[out_n] = Ck_pd;
-            tmp_src[out_n] = k;
-            out_n++;
-        }
-    }
-
-    int *tmp_src_p = (int *) SP_MALLOC((out_n + 1) * sizeof(int));
-    for (int k = 0; k <= out_n; k++)
-    {
-        tmp_src_p[k] = k;
-    }
-
-    matrix *C =
-        new_stacked_pd(B->base.m, A->base.n, out_n, tmp_blocks, tmp_src_p, tmp_src);
-    free(tmp_blocks);
-    free(tmp_src);
-    free(tmp_src_p);
-    return C;
+    return spd_map_filter_blocks(B, B->base.m, A->base.n, wrapper_ba_pd_pd, A);
 }
 
 void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
@@ -999,20 +912,19 @@ void transpose_spd_fill_values(const stacked_pd *src, stacked_pd *out)
 /* copy_sparsity and DA                                                */
 /* ------------------------------------------------------------------ */
 
-matrix *copy_sparsity_spd_alloc(const stacked_pd *src)
+matrix *copy_sparsity_spd_alloc(const stacked_pd *A)
 {
-    int n_blocks = src->n_blocks;
-    permuted_dense **out_blocks = (permuted_dense **) SP_MALLOC(
+    int n_blocks = A->n_blocks;
+    permuted_dense **C_blocks = (permuted_dense **) SP_MALLOC(
         (n_blocks > 0 ? n_blocks : 1) * sizeof(permuted_dense *));
     for (int k = 0; k < n_blocks; k++)
     {
-        matrix *src_blk = (matrix *) src->blocks[k];
-        out_blocks[k] = (permuted_dense *) src_blk->copy_sparsity(src_blk);
+        matrix *A_blk = (matrix *) A->blocks[k];
+        C_blocks[k] = (permuted_dense *) A_blk->copy_sparsity(A_blk);
     }
-    matrix *out =
-        new_stacked_pd(src->base.m, src->base.n, n_blocks, out_blocks, NULL, NULL);
-    free(out_blocks);
-    return out;
+    matrix *C = new_stacked_pd(A->base.m, A->base.n, n_blocks, C_blocks, NULL, NULL);
+    free(C_blocks);
+    return C;
 }
 
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C)
@@ -1057,41 +969,63 @@ matrix *ATA_spd_alloc(const stacked_pd *A)
 
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 {
+    /* Let A = [A1; A2; A3] where Ai has n columns (the same number as A). Then
+       ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j overlap if Ai
+       and Aj have overlapping column entries. We therefore first compute
+       Ai^T Di Ai and then take care of the accumulation. */
+
+    int i, j, k, qq;
+
     stacked_pd *scratch = C->work;
 
-    /* Step 1: per-source-block ATDA into the scratch PDs. */
-    for (int k = 0; k < A->n_blocks; k++)
+    /* compute Ai^T @ Di @ Ai into the scratch PDs. */
+    for (k = 0; k < A->n_blocks; k++)
     {
         ATDA_pd_fill_values(A->blocks[k], d, scratch->blocks[k]);
     }
 
     /* Step 2: zero output buffers (we're += accumulating). */
-    for (int k = 0; k < C->n_blocks; k++)
+    // for (k = 0; k < C->n_blocks; k++)
+    //{
+    //     permuted_dense *Ck = C->blocks[k];
+    //     memset(Ck->X, 0, (size_t) Ck->m0 * Ck->n0 * sizeof(double));
+    // }
+    /* zero the values of C (one memset is sufficient since, by design, the values of
+       different blocks are stored consecutive in memory) */
+    memset(C->base.x, 0, C->base.nnz * sizeof(double));
+
+    /* for each block Ck of C */
+    for (k = 0; k < C->n_blocks; k++)
     {
         permuted_dense *Ck = C->blocks[k];
-        memset(Ck->X, 0, (size_t) Ck->m0 * Ck->n0 * sizeof(double));
-    }
-
-    /* Step 3: accumulate from scratch into output via row_inv/col_inv. */
-    for (int k = 0; k < C->n_blocks; k++)
-    {
-        permuted_dense *out_k = C->blocks[k];
         int s_lo = C->src_block_idx_p[k];
         int s_hi = C->src_block_idx_p[k + 1];
-        for (int t = s_lo; t < s_hi; t++)
+
+        /* for each block Aq in A contributing to block Ck in C */
+        for (qq = s_lo; qq < s_hi; qq++)
         {
-            const permuted_dense *src_k = scratch->blocks[C->src_block_idx[t]];
-            for (int i = 0; i < src_k->m0; i++)
+            const permuted_dense *Aq = scratch->blocks[C->src_block_idx[qq]];
+
+            /* for each row in Aq */
+            for (i = 0; i < Aq->m0; i++)
             {
-                int out_i = out_k->row_inv[src_k->row_perm[i]];
-                if (out_i < 0) continue; /* row not in this output PD */
-                for (int j = 0; j < src_k->n0; j++)
+                int Ck_row_idx = Ck->row_inv[Aq->row_perm[i]];
+                if (Ck_row_idx < 0)
                 {
-                    int out_j = out_k->col_inv[src_k->col_perm[j]];
-                    /* out_j >= 0: out_k->col_perm contains src_k's
-                       col_perm because src_k contributes to out_k. */
-                    out_k->X[out_i * out_k->n0 + out_j] +=
-                        src_k->X[i * src_k->n0 + j];
+                    /* this row in Aq does not contribute to Ck */
+                    continue;
+                }
+
+                double *Ck_row = Ck->X + Ck_row_idx * Ck->n0;
+                double *Aq_row = Aq->X + i * Aq->n0;
+
+                /* place each col in Aq_row at its correct position in Ck_row */
+                for (j = 0; j < Aq->n0; j++)
+                {
+                    int out_j = Ck->col_inv[Aq->col_perm[j]];
+                    assert(out_j >= 0);
+                    // Ck->X[out_i * Ck->n0 + out_j] += Aq->X[i * Aq->n0 + j];
+                    Ck_row[out_j] += Aq_row[j];
                 }
             }
         }
@@ -1224,66 +1158,27 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     free(temp);
 }
 
-/* ------------------------------------------------------------------ */
-/* BA_spd_spd: C = B @ A where both B and A are stacked_pds.           */
-/* Thin loop over B's blocks, each call producing a PD via             */
-/* BA_pd_spd_alloc; PDs assemble into output spd with disjoint rows.   */
-/* ------------------------------------------------------------------ */
+void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
+{
+    /* Suppose B = [B1; B2; B3]. Then C = BA = [B1 @ A; B2 @ A; B3 @ A], so we can
+       multiply each block of B with A. */
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        /* Bq is the block in B that contributes to Ck */
+        int q = C->src_block_idx[C->src_block_idx_p[k]];
+        permuted_dense *Bq = B->blocks[q];
+
+        /* Ck = Bq @ A */
+        BA_pd_spd_fill_values(Bq, A, C->blocks[k]);
+    }
+}
+
+static matrix *wrapper_BA_pd_spd(permuted_dense *Bk, const void *ctx)
+{
+    return BA_pd_spd_alloc(Bk, (const stacked_pd *) ctx);
+}
 
 matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
 {
-    permuted_dense **tmp_blocks = NULL;
-    int *tmp_src = NULL;
-    int *tmp_src_p = NULL;
-    if (B->n_blocks > 0)
-    {
-        tmp_blocks =
-            (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
-        tmp_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
-    }
-
-    int out_n = 0;
-    for (int k = 0; k < B->n_blocks; k++)
-    {
-        matrix *Ck = BA_pd_spd_alloc(B->blocks[k], A);
-        permuted_dense *Ck_pd = (permuted_dense *) Ck;
-        if (Ck_pd->n0 == 0)
-        {
-            free_matrix(Ck);
-        }
-        else
-        {
-            tmp_blocks[out_n] = Ck_pd;
-            tmp_src[out_n] = k;
-            out_n++;
-        }
-    }
-
-    /* one source per output block: identity prefix sum. Only allocate if
-       B was non-empty; otherwise pass NULL/NULL to new_stacked_pd to
-       satisfy its "both NULL or both non-NULL" invariant. */
-    if (B->n_blocks > 0)
-    {
-        tmp_src_p = (int *) SP_MALLOC((out_n + 1) * sizeof(int));
-        for (int k = 0; k <= out_n; k++)
-        {
-            tmp_src_p[k] = k;
-        }
-    }
-
-    matrix *C =
-        new_stacked_pd(B->base.m, A->base.n, out_n, tmp_blocks, tmp_src_p, tmp_src);
-    free(tmp_blocks);
-    free(tmp_src);
-    free(tmp_src_p);
-    return C;
-}
-
-void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
-{
-    for (int k = 0; k < C->n_blocks; k++)
-    {
-        int src = C->src_block_idx[C->src_block_idx_p[k]];
-        BA_pd_spd_fill_values(B->blocks[src], A, C->blocks[k]);
-    }
+    return spd_map_filter_blocks(B, B->base.m, A->base.n, wrapper_BA_pd_spd, A);
 }
