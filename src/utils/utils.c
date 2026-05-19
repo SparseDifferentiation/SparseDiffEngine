@@ -16,6 +16,9 @@
  * limitations under the License.
  */
 #include "utils/utils.h"
+
+#include "utils/iVec.h"
+#include "utils/tracked_alloc.h"
 #include <stdlib.h>
 
 /* Helper function to compare integers for qsort */
@@ -77,4 +80,39 @@ int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
         }
     }
     return s;
+}
+
+void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
+                             iVec *out)
+{
+    iVec_clear_no_resize(out);
+    int *cursor = (int *) SP_CALLOC(n_arrs, sizeof(int));
+    while (1)
+    {
+        int min_val = 0;
+        int min_arr = -1;
+        for (int a = 0; a < n_arrs; a++)
+        {
+            if (cursor[a] >= lens[a])
+            {
+                continue;
+            }
+            int v = arrs[a][cursor[a]];
+            if (min_arr == -1 || v < min_val)
+            {
+                min_val = v;
+                min_arr = a;
+            }
+        }
+        if (min_arr == -1)
+        {
+            break;
+        }
+        if (out->len == 0 || out->data[out->len - 1] != min_val)
+        {
+            iVec_append(out, min_val);
+        }
+        cursor[min_arr]++;
+    }
+    free(cursor);
 }

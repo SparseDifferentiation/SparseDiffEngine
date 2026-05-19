@@ -88,4 +88,30 @@ typedef matrix *(*spd_block_op)(permuted_dense *Bk, const void *ctx);
 matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op op,
                               const void *ctx);
 
+/* Coalesce: take an spd whose blocks may have overlapping row perms but
+   pairwise-disjoint cells, and produce an equivalent spd that satisfies
+   the disjoint-row invariant. The output is the tightest dense
+   representation — no structural zeros inside any output block —
+   built by grouping rows by signature (the set of source blocks
+   containing each row). Each unique signature becomes one output block
+   whose row_perm is its rows and whose col_perm is the sorted union of
+   the source col_perms in the signature. Output blocks are ordered by
+   their minimum row index.
+
+   Precondition (debug-asserted): for any two source blocks sharing a
+   row, their col_perms must be disjoint. The transpose use case
+   (step 3) satisfies this automatically. */
+matrix *coalesce_spd_alloc(const stacked_pd *src);
+
+/* Same as coalesce_spd_alloc but skips the pairwise-disjoint-cells
+   precondition assert. Use only when the input is intentionally
+   cell-overlapping (e.g. ATA_spd_alloc, where B_k^T B_k summands share
+   cells by design). */
+matrix *coalesce_spd_alloc_unchecked(const stacked_pd *src);
+
+/* Fill values of out = coalesce(src). The caller must have produced
+   `out` via coalesce_spd_alloc on a `src` with the same structure
+   (block count, row_perms, col_perms) as the one passed now. */
+void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out);
+
 #endif /* STACKED_PD_H */

@@ -18,6 +18,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "iVec.h"
 #include <stdbool.h>
 
 #ifndef MAX
@@ -43,5 +44,13 @@ bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
    b_len); no allocation is performed. */
 int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
                              int *idx_a, int *idx_b);
+
+/* K-way merge of `n_arrs` sorted, ascending int arrays into `out`,
+   producing the sorted, deduplicated union. `arrs[a]` has length
+   `lens[a]`. `out` is cleared (length reset, capacity reused) and
+   populated; on return `out->data[0..out->len)` holds the union.
+   O(total_len * n_arrs); fine when n_arrs is small. */
+void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
+                             iVec *out);
 
 #endif // UTILS_H
