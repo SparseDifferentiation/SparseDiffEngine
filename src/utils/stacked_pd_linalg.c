@@ -144,7 +144,6 @@ void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C)
 // disjoint row perms. We keep the raw spd around on `out->work` for reuse by
 // `transpose_spd_fill_values` since its per-block transposes are also needed there.
 // ----------------------------------------------------------------------------------
-
 matrix *transpose_spd_alloc(const stacked_pd *A)
 {
     int n_blocks = A->n_blocks;
@@ -177,12 +176,20 @@ void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C)
 }
 
 // ------------------------------------------------------------------------------------
-// ATDA for stacked_pd A. Let A = [A1; A2; A3] where Ai has n columns (the same
+// C = ATDA for stacked_pd A. Let A = [A1; A2; A3] where Ai has n columns (the same
 // number as A). Then ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j
 // overlap if Ai and Aj have overlapping column entries. We therefore first compute
-// Ai^T Di Ai and then take care of the accumulation.
+// Ai^T Di Ai and then take care of the coalescing.
 // ------------------------------------------------------------------------------------
 
+/*
+A ^ T A decomposes as Σ_k B_k ^ T B_k, where summands with overlapping col_perms(C_k)
+share cells.The output groups cols of A by signature sig_C(c) = {k: c ∈ C_k}; each
+   unique signature becomes one output PD with row_perm = group cols
+   and col_perm = ⋃ C_k for k in the signature. No structural zeros.
+   The output's `work` slot holds per-source scratch PDs (one symmetric
+   PD per source block, row_perm = col_perm = C_k) that
+   ATDA_spd_fill_values writes into. */
 matrix *ATA_spd_alloc(const stacked_pd *A)
 {
     int n = A->base.n;
@@ -204,20 +211,14 @@ matrix *ATA_spd_alloc(const stacked_pd *A)
         new_stacked_pd_unchecked(n, n, n_blocks, scratch_blocks, NULL, NULL);
     free(scratch_blocks);
 
-    /* Group cols by signature. Cells overlap by design (B_k^T B_k
-       summands share cells), so use the unchecked alloc. */
-    matrix *out = coalesce_spd_alloc_unchecked((stacked_pd *) scratch);
-    ((stacked_pd *) out)->work = (stacked_pd *) scratch;
-    return out;
+    /* prepare coalescing of overlapping scratch blocks */
+    matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) scratch);
+    ((stacked_pd *) C)->work = (stacked_pd *) scratch;
+    return C;
 }
 
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 {
-    /* Let A = [A1; A2; A3] where Ai has n columns (the same number as A). Then
-       ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j overlap if Ai
-       and Aj have overlapping column entries. We therefore first compute
-       Ai^T Di Ai and then take care of the accumulation. */
-
     stacked_pd *scratch = C->work;
 
     /* compute Ai^T @ Di @ Ai into the scratch PDs. */
@@ -234,128 +235,160 @@ void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
     coalesce_spd_fill_values_accumulate(scratch, C);
 }
 
-/* ------------------------------------------------------------------ */
-/* BA_pd_spd: C = B @ A where B is a permuted_dense and A is a         */
-/* stacked_pd. Output is a single permuted_dense.                      */
-/* ------------------------------------------------------------------ */
-
+// ---------------------------------------------------------------------------------
+// BA_pd_spd: C = B @ A where B is a permuted_dense and A is a stacked_pd. C is also
+// permuted_dense. C has the same row_perm as B, and its col_perm is the sorted union
+// of the col_perms of the contributing A-blocks. An A-block contributes if its
+// row_perm overlaps B's col_perm. We compute this as
+// C = \sum_k B[:, C_k] @ A_k, where C_k is the col_perm of A's k'th block.
+// ----------------------------------------------------------------------------------
 matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 {
     int n_blocks = A->n_blocks;
 
-    /* Collect contributing A-blocks (those whose row_perm intersects
-       B->col_perm). Two passes so we know the count for SP_MALLOC. */
-    int n_contrib = 0;
+    // ------------------------------------------------------------------------------
+    // Find column permutations of C. An A-block contributes if its row_perm overlaps
+    // B's col_perm.
+    // ------------------------------------------------------------------------------
+    const int **col_perms =
+        (const int **) SP_MALLOC((size_t) n_blocks * sizeof(int *));
+    int *lens = (int *) SP_MALLOC((size_t) n_blocks * sizeof(int));
+
+    int n_contributing_A_blocks = 0;
     for (int k = 0; k < n_blocks; k++)
     {
-        if (has_overlap(B->col_perm, B->n0, A->blocks[k]->row_perm, A->blocks[k]->m0,
-                        0))
+        permuted_dense *Ak = A->blocks[k];
+        if (has_overlap(B->col_perm, B->n0, Ak->row_perm, Ak->m0, 0))
         {
-            n_contrib++;
+            col_perms[n_contributing_A_blocks] = Ak->col_perm;
+            lens[n_contributing_A_blocks] = Ak->n0;
+            n_contributing_A_blocks++;
         }
     }
 
     iVec *col_union = iVec_new(8);
-    if (n_contrib > 0)
-    {
-        const int **arrs =
-            (const int **) SP_MALLOC((size_t) n_contrib * sizeof(int *));
-        int *lens = (int *) SP_MALLOC((size_t) n_contrib * sizeof(int));
-        int idx = 0;
-        for (int k = 0; k < n_blocks; k++)
-        {
-            permuted_dense *Ak = A->blocks[k];
-            if (has_overlap(B->col_perm, B->n0, Ak->row_perm, Ak->m0, 0))
-            {
-                arrs[idx] = Ak->col_perm;
-                lens[idx] = Ak->n0;
-                idx++;
-            }
-        }
-        sorted_union_int_arrays(arrs, lens, n_contrib, col_union);
-        free(arrs);
-        free(lens);
-    }
+    sorted_union_int_arrays(col_perms, lens, n_contributing_A_blocks, col_union);
 
+    // -------------------------------------------------------------------------------
+    // Allocate C with the same row_perm as B and col_perm = col_union.
+    // -------------------------------------------------------------------------------
     matrix *C = new_permuted_dense(B->base.m, A->base.n, B->m0, col_union->len,
                                    B->row_perm, col_union->data, NULL);
+
     iVec_free(col_union);
+    free(col_perms);
+    free(lens);
+
+    // -------------------------------------------------------------------------------
+    // Set up workspace. We need:
+    // 1. (idx_B, idx_A) - arrays to find columns of B that overlap with rows of A_k.
+    // 2. Bg and Ag to hold the gathered columns of B and gathered rows of Ak.
+    // 3. Cg = Bg @ Ag which is then scattered into C.
+    // -------------------------------------------------------------------------------
+
+    /* Pre-size C's scratch so BA_pd_spd_fill_values never allocates. Both
+       buffers start NULL (new_permuted_dense uses SP_CALLOC) and are freed
+       by permuted_dense_free when C is freed. Layout:
+         iwork: [s_max][max_n0_A][idx_B (s_max)][idx_A (s_max)]
+                [out_cols (max_n0_A)]
+         dwork: [B_gather (m0_B*s_max)][A_gather (s_max*max_n0_A)]
+                [temp (m0_B*max_n0_A)]
+       The two header ints make s_max and max_n0_A available to fill
+       without a recompute. out_cols holds the precomputed scatter
+       positions for the current A-block (refilled per block in fill). */
+    permuted_dense *C_pd = (permuted_dense *) C;
+    int s_max = 0;
+    int max_n0_A = 0;
+    for (int k = 0; k < n_blocks; k++)
+    {
+        permuted_dense *Ak = A->blocks[k];
+        int s = B->n0 < Ak->m0 ? B->n0 : Ak->m0;
+        if (s > s_max) s_max = s;
+        if (Ak->n0 > max_n0_A) max_n0_A = Ak->n0;
+    }
+
+    C_pd->iwork_size = (size_t) 2 + (size_t) 2 * s_max + (size_t) max_n0_A;
+    C_pd->iwork = (int *) SP_MALLOC(C_pd->iwork_size * sizeof(int));
+    C_pd->iwork[0] = s_max;
+    C_pd->iwork[1] = max_n0_A;
+
+    size_t dwork_total = (size_t) B->m0 * s_max + (size_t) s_max * max_n0_A +
+                         (size_t) B->m0 * max_n0_A;
+    permuted_dense_ensure_dwork(C_pd, dwork_total);
+
     return C;
 }
 
 void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                            permuted_dense *C)
 {
-    if (C->m0 == 0 || C->n0 == 0)
+    /* return if C is empty */
+    if (C->base.nnz == 0)
     {
         return;
     }
+
+    /* reset values of C */
     memset(C->X, 0, (size_t) C->m0 * C->n0 * sizeof(double));
 
-    /* Compute scratch maxes in a single pass over A->blocks. */
-    int max_inter = 0;
-    int max_n0 = 0;
-    for (int k = 0; k < A->n_blocks; k++)
-    {
-        int s = B->n0 < A->blocks[k]->m0 ? B->n0 : A->blocks[k]->m0;
-        if (s > max_inter) max_inter = s;
-        if (A->blocks[k]->n0 > max_n0) max_n0 = A->blocks[k]->n0;
-    }
-    if (max_inter == 0 || max_n0 == 0)
-    {
-        return;
-    }
+    /* partition workspace according to how it was set up */
+    int s_max = C->iwork[0];
+    int max_n0_A = C->iwork[1];
+    int *idx_B = C->iwork + 2;
+    int *idx_A = idx_B + s_max;
+    int *out_cols = idx_A + s_max;
+    double *Bg = C->dwork;
+    double *Ag = Bg + (size_t) B->m0 * s_max;
+    double *Cg = Ag + (size_t) s_max * max_n0_A;
 
-    int *idx_B = (int *) SP_MALLOC((size_t) max_inter * sizeof(int));
-    int *idx_A = (int *) SP_MALLOC((size_t) max_inter * sizeof(int));
-    double *B_gather =
-        (double *) SP_MALLOC((size_t) B->m0 * (size_t) max_inter * sizeof(double));
-    double *A_gather =
-        (double *) SP_MALLOC((size_t) max_inter * (size_t) max_n0 * sizeof(double));
-    double *temp =
-        (double *) SP_MALLOC((size_t) B->m0 * (size_t) max_n0 * sizeof(double));
-
+    /* for each block Ak of A */
     for (int k = 0; k < A->n_blocks; k++)
     {
         permuted_dense *Ak = A->blocks[k];
+
+        /* find columns of B that overlap with rows of A_k */
         int s = sorted_intersect_indices(B->col_perm, B->n0, Ak->row_perm, Ak->m0,
                                          idx_B, idx_A);
-        if (s == 0) continue;
+        if (s == 0)
+        {
+            continue;
+        }
 
-        /* Gather B's cols: B_gather[i, p] = B->X[i, idx_B[p]]. */
+        /* Bg = B[:, idx_B] where idx_B contains the overlapping column indices */
         for (int i = 0; i < B->m0; i++)
         {
             for (int p = 0; p < s; p++)
             {
-                B_gather[i * s + p] = B->X[i * B->n0 + idx_B[p]];
+                Bg[i * s + p] = B->X[i * B->n0 + idx_B[p]];
             }
         }
 
-        /* Gather A_k's rows: A_gather[p, :] = A_k->X[idx_A[p], :]. */
+        /* Ag = A[idx_A, :] where idx_A contains the overlapping row indices */
         for (int p = 0; p < s; p++)
         {
-            memcpy(A_gather + p * Ak->n0, Ak->X + idx_A[p] * Ak->n0,
-                   (size_t) Ak->n0 * sizeof(double));
+            memcpy(Ag + p * Ak->n0, Ak->X + idx_A[p] * Ak->n0,
+                   Ak->n0 * sizeof(double));
         }
 
-        /* temp (m0_B × n0_k) = B_gather @ A_gather. */
+        /* Cg = Bg @ Ag. */
         cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, B->m0, Ak->n0, s, 1.0,
-                    B_gather, s, A_gather, Ak->n0, 0.0, temp, Ak->n0);
+                    Bg, s, Ag, Ak->n0, 0.0, Cg, Ak->n0);
 
-        /* Scatter+add into C via col_inv. */
+        /* precompute scatter positions once per block */
         for (int j = 0; j < Ak->n0; j++)
         {
-            int out_col = C->col_inv[Ak->col_perm[j]];
-            for (int i = 0; i < B->m0; i++)
+            out_cols[j] = C->col_inv[Ak->col_perm[j]];
+        }
+
+        /* C += Cg  (scatter + add into C) */
+        for (int i = 0; i < B->m0; i++)
+        {
+            double *C_row = C->X + i * C->n0;
+            const double *Cg_row = Cg + i * Ak->n0;
+            for (int j = 0; j < Ak->n0; j++)
             {
-                C->X[i * C->n0 + out_col] += temp[i * Ak->n0 + j];
+                C_row[out_cols[j]] += Cg_row[j];
             }
         }
     }
-
-    free(idx_B);
-    free(idx_A);
-    free(B_gather);
-    free(A_gather);
-    free(temp);
 }

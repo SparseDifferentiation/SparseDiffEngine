@@ -42,10 +42,11 @@ matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A);
 void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
                            stacked_pd *C);
 
-/* Allocate sparsity for C = B @ A where B is a permuted_dense and A is spd */
+/* Allocate sparsity for C = B @ A where B is a permuted_dense and A is spd.
+   The output C is permuted_dense. */
 matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A);
 
-/* Fill values of C = B @ A where B is a permuted_dense and A is spd */
+/* Fill values of C = B @ A where C and B are permuted_dense and A is spd */
 void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                            permuted_dense *C);
 
@@ -55,14 +56,7 @@ matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A);
 /* Fill values of C = B @ A where both B and A are spds */
 void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C);
 
-/* Allocate sparsity for C = A^T A. A^T A decomposes as Σ_k B_k^T B_k,
-   where summands with overlapping col_perms (C_k) share cells. The
-   output groups cols of A by signature sig_C(c) = {k : c ∈ C_k}; each
-   unique signature becomes one output PD with row_perm = group cols
-   and col_perm = ⋃ C_k for k in the signature. No structural zeros.
-   The output's `work` slot holds per-source scratch PDs (one symmetric
-   PD per source block, row_perm = col_perm = C_k) that
-   ATDA_spd_fill_values writes into. */
+/* Allocate sparsity for C = A^T A. */
 matrix *ATA_spd_alloc(const stacked_pd *A);
 
 /* Fill values of C = A^T diag(d) A. */

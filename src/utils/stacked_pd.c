@@ -32,19 +32,21 @@ static void stacked_pd_free(matrix *self)
     stacked_pd *spd = (stacked_pd *) self;
     for (int k = 0; k < spd->n_blocks; k++)
     {
-        /* blocks have owns_X = false; their free skips free(X) and the
-           shared buffer is freed below. */
+        /* spd owns the blocks */
         free_matrix((matrix *) spd->blocks[k]);
     }
+
     free(spd->blocks);
     free(spd->src_block_idx_p);
     free(spd->src_block_idx);
+
     if (spd->work != NULL)
     {
         free_matrix((matrix *) spd->work);
     }
-    free_CSR_matrix(spd->csr_cache); /* NULL-safe */
-    free(spd->base.x);               /* shared values buffer, NULL-safe */
+
+    free_CSR_matrix(spd->csr_cache);
+    free(spd->base.x);
     free(spd);
 }
 
