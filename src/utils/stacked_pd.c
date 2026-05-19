@@ -89,14 +89,12 @@ static void stacked_pd_vtable_refresh_csc_values(matrix *self)
     (void) self; /* spd has no CSC cache to refresh */
 }
 
-/* Build the CSR structure (m, n, nnz, p, i) for an spd. Values (x) are
-   left uninitialized; caller is expected to fill them. */
 static CSR_matrix *stacked_pd_to_csr_alloc(const stacked_pd *spd)
 {
     int m = spd->base.m;
     CSR_matrix *C = new_CSR_matrix(m, spd->base.n, spd->base.nnz);
 
-    /* Fill row ptrs by first setting the length of each row and then cumsum */
+    /* fill row ptrs by first setting the length of each row and then cumsum */
     int *Cp = C->p;
     for (int k = 0; k < spd->n_blocks; k++)
     {
@@ -108,9 +106,7 @@ static CSR_matrix *stacked_pd_to_csr_alloc(const stacked_pd *spd)
     }
     cumsum(Cp, m);
 
-    /* col indices: sorted within each row because each block's col_perm
-       is sorted by construction, and each row appears in at most one
-       block (disjoint row_perms). */
+    /* fill column indices */
     for (int k = 0; k < spd->n_blocks; k++)
     {
         permuted_dense *blk = spd->blocks[k];
@@ -123,9 +119,6 @@ static CSR_matrix *stacked_pd_to_csr_alloc(const stacked_pd *spd)
     return C;
 }
 
-/* Lazy CSR view. First call builds the CSR structure (p, i) and fills
-   values; subsequent calls only refresh values from the current block X
-   buffers. Free is handled by stacked_pd_free. */
 static CSR_matrix *stacked_pd_to_csr(matrix *self)
 {
     stacked_pd *spd = (stacked_pd *) self;
@@ -135,7 +128,7 @@ static CSR_matrix *stacked_pd_to_csr(matrix *self)
         spd->csr_cache = stacked_pd_to_csr_alloc(spd);
     }
 
-    /* Refresh values every call (block X buffers may have changed). */
+    /* refresh values every call (block X buffers may have changed). */
     int *p_arr = spd->csr_cache->p;
     for (int k = 0; k < spd->n_blocks; k++)
     {
@@ -191,11 +184,9 @@ matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op 
     return C;
 }
 
-/* Per-block delegation: apply PD's index_alloc to each source block. The
-   per-block result is a PD whose row_perm holds output positions
-   (0..n_idxs-1) — disjoint across source blocks since source row_perms are
-   disjoint. Empty per-block results (no requested row hits the block) are
-   dropped; src_block_idx_* records which source blocks survived. */
+// -----------------------------------------------------------------------------
+//        index of stacked_pd: C = A[indices, :] where A is stacked_pd
+// -----------------------------------------------------------------------------
 typedef struct
 {
     const int *indices;
@@ -228,6 +219,9 @@ static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices
     }
 }
 
+// -----------------------------------------------------------------------------
+//        promote: C = promote(A) where A is stacked_pd
+// -----------------------------------------------------------------------------
 static matrix *wrapper_pd_promote(permuted_dense *Bk, const void *ctx)
 {
     return promote_pd_alloc(Bk, *(const int *) ctx);
@@ -250,6 +244,9 @@ static void stacked_pd_vtable_promote_fill_values(matrix *self, matrix *out)
     }
 }
 
+// -----------------------------------------------------------------------------
+//        diag_vec: C = diag(vec(A)) where A is stacked_pd
+// -----------------------------------------------------------------------------
 static matrix *stacked_pd_vtable_diag_vec_alloc(matrix *self)
 {
     stacked_pd *A = (stacked_pd *) self;
@@ -276,11 +273,9 @@ static void stacked_pd_vtable_diag_vec_fill_values(matrix *self, matrix *out)
     }
 }
 
-/* Per-block delegation: apply PD's broadcast_alloc to each source block.
-   Output is structurally a valid spd because input row_perms are
-   pairwise disjoint -> per-mode output ranges are also pairwise disjoint
-   across input blocks. Empty per-block outputs (m0=0 in input) are
-   dropped; src_block_idx_* records the survivors. */
+// -----------------------------------------------------------------------------
+//        broadcast: C = broadcast(A) where A is stacked_pd
+// -----------------------------------------------------------------------------
 typedef struct
 {
     broadcast_type type;
@@ -316,6 +311,9 @@ static void stacked_pd_vtable_broadcast_fill_values(matrix *self,
     }
 }
 
+// --------------------------------------------------------------------------------
+//                          Constructor below
+// --------------------------------------------------------------------------------
 #ifndef NDEBUG
 /* Pairwise verify that block row permutations are disjoint via a
    two-pointer merge over the sorted arrays. */
