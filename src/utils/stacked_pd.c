@@ -697,23 +697,8 @@ static void assert_disjoint_row_perms(int n_blocks, permuted_dense *const *block
 }
 #endif
 
-matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,
-                                 const int *src_block_idx_p,
-                                 const int *src_block_idx)
+static void wire_vtable(stacked_pd *spd)
 {
-    assert((src_block_idx_p == NULL) == (src_block_idx == NULL) &&
-           "stacked_pd: src_block_idx_p and src_block_idx must both be NULL or "
-           "both non-NULL");
-
-    stacked_pd *spd = (stacked_pd *) SP_CALLOC(1, sizeof(stacked_pd));
-    spd->base.m = m;
-    spd->base.n = n;
-    int nnz = 0;
-    for (int k = 0; k < n_blocks; k++)
-    {
-        nnz += blocks[k]->base.nnz;
-    }
-    spd->base.nnz = nnz;
     spd->base.is_stacked_pd = true;
     spd->base.free_fn = stacked_pd_free;
     spd->base.copy_sparsity = stacked_pd_vtable_copy_sparsity;
@@ -732,6 +717,26 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
     spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
     spd->base.broadcast_fill_values = stacked_pd_vtable_broadcast_fill_values;
+}
+
+matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,
+                                 const int *src_block_idx_p,
+                                 const int *src_block_idx)
+{
+    assert((src_block_idx_p == NULL) == (src_block_idx == NULL) &&
+           "stacked_pd: src_block_idx_p and src_block_idx must both be NULL or "
+           "both non-NULL");
+
+    stacked_pd *spd = (stacked_pd *) SP_CALLOC(1, sizeof(stacked_pd));
+    spd->base.m = m;
+    spd->base.n = n;
+    int nnz = 0;
+    for (int k = 0; k < n_blocks; k++)
+    {
+        nnz += blocks[k]->base.nnz;
+    }
+    spd->base.nnz = nnz;
+    wire_vtable(spd);
 
     spd->n_blocks = n_blocks;
     spd->blocks = (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
@@ -770,13 +775,8 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
          block[k]->owns_X     = false (block's free skips free(X))
        This honors the same flat-base.x invariant PD and sparse_matrix
        already honor, so atoms that loop over base.x work uniformly. */
-    int total_nnz = 0;
-    for (int k = 0; k < n_blocks; k++)
-    {
-        total_nnz += spd->blocks[k]->m0 * spd->blocks[k]->n0;
-    }
-    spd->base.x = (total_nnz > 0)
-                      ? (double *) SP_MALLOC((size_t) total_nnz * sizeof(double))
+    spd->base.x = (spd->base.nnz > 0)
+                      ? (double *) SP_MALLOC((size_t) spd->base.nnz * sizeof(double))
                       : NULL;
 
     size_t offset = 0;

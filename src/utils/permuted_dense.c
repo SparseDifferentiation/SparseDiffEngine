@@ -363,6 +363,32 @@ static void permuted_dense_vtable_block_left_mult_values(const matrix *A,
     I_kron_A_fill_values(A, J, C, pd->dwork);
 }
 
+static void wire_vtable(permuted_dense *pd)
+{
+    pd->base.is_permuted_dense = true;
+    pd->base.free_fn = permuted_dense_free;
+    pd->base.block_left_mult_vec = permuted_dense_vtable_block_left_mult_vec;
+    pd->base.block_left_mult_sparsity =
+        permuted_dense_vtable_block_left_mult_sparsity;
+    pd->base.block_left_mult_values = permuted_dense_vtable_block_left_mult_values;
+    pd->base.copy_sparsity = permuted_dense_vtable_copy_sparsity;
+    pd->base.DA_fill_values = permuted_dense_vtable_DA_fill_values;
+    pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;
+    pd->base.ATDA_fill_values = permuted_dense_vtable_ATDA_fill_values;
+    pd->base.to_csr = permuted_dense_to_csr;
+    pd->base.transpose_alloc = permuted_dense_vtable_transpose_alloc;
+    pd->base.transpose_fill_values = permuted_dense_vtable_transpose_fill_values;
+    pd->base.index_alloc = permuted_dense_vtable_index_alloc;
+    pd->base.index_fill_values = permuted_dense_vtable_index_fill_values;
+    pd->base.promote_alloc = permuted_dense_vtable_promote_alloc;
+    pd->base.promote_fill_values = permuted_dense_vtable_promote_fill_values;
+    pd->base.broadcast_alloc = permuted_dense_vtable_broadcast_alloc;
+    pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
+    pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
+    pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
+    pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
+}
+
 matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
                            const int *col_perm, const double *X_data)
 {
@@ -388,28 +414,7 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->base.m = m;
     pd->base.n = n;
     pd->base.nnz = m0 * n0;
-    pd->base.block_left_mult_vec = permuted_dense_vtable_block_left_mult_vec;
-    pd->base.block_left_mult_sparsity =
-        permuted_dense_vtable_block_left_mult_sparsity;
-    pd->base.block_left_mult_values = permuted_dense_vtable_block_left_mult_values;
-    pd->base.copy_sparsity = permuted_dense_vtable_copy_sparsity;
-    pd->base.DA_fill_values = permuted_dense_vtable_DA_fill_values;
-    pd->base.ATA_alloc = permuted_dense_vtable_ATA_alloc;
-    pd->base.ATDA_fill_values = permuted_dense_vtable_ATDA_fill_values;
-    pd->base.to_csr = permuted_dense_to_csr;
-    pd->base.transpose_alloc = permuted_dense_vtable_transpose_alloc;
-    pd->base.transpose_fill_values = permuted_dense_vtable_transpose_fill_values;
-    pd->base.is_permuted_dense = true;
-    pd->base.index_alloc = permuted_dense_vtable_index_alloc;
-    pd->base.index_fill_values = permuted_dense_vtable_index_fill_values;
-    pd->base.promote_alloc = permuted_dense_vtable_promote_alloc;
-    pd->base.promote_fill_values = permuted_dense_vtable_promote_fill_values;
-    pd->base.broadcast_alloc = permuted_dense_vtable_broadcast_alloc;
-    pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
-    pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
-    pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
-    pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
-    pd->base.free_fn = permuted_dense_free;
+    wire_vtable(pd);
 
     pd->m0 = m0;
     pd->n0 = n0;

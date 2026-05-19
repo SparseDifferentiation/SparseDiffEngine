@@ -281,21 +281,13 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 
     // -------------------------------------------------------------------------------
     // Set up workspace. We need:
-    // 1. (idx_B, idx_A) - arrays to find columns of B that overlap with rows of A_k.
-    // 2. Bg and Ag to hold the gathered columns of B and gathered rows of Ak.
-    // 3. Cg = Bg @ Ag which is then scattered into C.
+    // 1. (s_max, max_n0_A) - worst-case intersection size and worst-case A-block
+    //    column count across all k. Used to size all other scratch buffers.
+    // 2. (idx_B, idx_A) - arrays to find columns of B that overlap with rows of A_k.
+    // 3. Bg and Ag to hold the gathered columns of B and gathered rows of Ak.
+    // 4. Cg = Bg @ Ag which is then scattered into C.
+    // 5. out_cols - work array for cache-friendly scattering
     // -------------------------------------------------------------------------------
-
-    /* Pre-size C's scratch so BA_pd_spd_fill_values never allocates. Both
-       buffers start NULL (new_permuted_dense uses SP_CALLOC) and are freed
-       by permuted_dense_free when C is freed. Layout:
-         iwork: [s_max][max_n0_A][idx_B (s_max)][idx_A (s_max)]
-                [out_cols (max_n0_A)]
-         dwork: [B_gather (m0_B*s_max)][A_gather (s_max*max_n0_A)]
-                [temp (m0_B*max_n0_A)]
-       The two header ints make s_max and max_n0_A available to fill
-       without a recompute. out_cols holds the precomputed scatter
-       positions for the current A-block (refilled per block in fill). */
     permuted_dense *C_pd = (permuted_dense *) C;
     int s_max = 0;
     int max_n0_A = 0;
