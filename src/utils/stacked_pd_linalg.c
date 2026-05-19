@@ -20,6 +20,7 @@
 #include "utils/cblas_wrapper.h"
 #include "utils/iVec.h"
 #include "utils/permuted_dense.h"
+#include "utils/permuted_dense_linalg.h"
 #include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
@@ -112,7 +113,6 @@ void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd
 // ----------------------------------------------------------------------------------
 // copy_sparsity and DA: C = D @ A where A is stacked_pd. The logic is blockwise.
 // ----------------------------------------------------------------------------------
-
 matrix *copy_sparsity_spd_alloc(const stacked_pd *A)
 {
     int n_blocks = A->n_blocks;

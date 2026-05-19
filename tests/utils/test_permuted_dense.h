@@ -7,6 +7,7 @@
 #include "utils/CSC_matrix.h"
 #include "utils/matrix_BTA.h"
 #include "utils/permuted_dense.h"
+#include "utils/permuted_dense_linalg.h"
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
 #include "utils/utils.h"

@@ -13,6 +13,7 @@
 #include "utils/CSR_matrix.h"
 #include "utils/Timer.h"
 #include "utils/permuted_dense.h"
+#include "utils/permuted_dense_linalg.h"
 #include "utils/utils.h"
 
 /* Microbenchmark: compare BTA_csr_pd vs BTA_csc_pd on trimmed_log_reg-shaped
