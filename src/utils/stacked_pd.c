@@ -210,8 +210,7 @@ typedef struct
 static matrix *wrapper_pd_index(permuted_dense *Bk, const void *ctx)
 {
     const pd_index_ctx *c = (const pd_index_ctx *) ctx;
-    matrix *blk = (matrix *) Bk;
-    return blk->index_alloc(blk, c->indices, c->n_idxs);
+    return index_pd_alloc(Bk, c->indices, c->n_idxs);
 }
 
 static matrix *stacked_pd_vtable_index_alloc(matrix *self, const int *indices,
@@ -230,9 +229,7 @@ static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
         int sk = out_spd->src_block_idx[k];
-        matrix *src_blk = (matrix *) src->blocks[sk];
-        matrix *out_blk = (matrix *) out_spd->blocks[k];
-        src_blk->index_fill_values(src_blk, indices, n_idxs, out_blk);
+        index_pd_fill_values(src->blocks[sk], indices, n_idxs, out_spd->blocks[k]);
     }
 }
 
@@ -243,8 +240,7 @@ static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices
    spd's disjoint-row invariant on the output. */
 static matrix *wrapper_pd_promote(permuted_dense *Bk, const void *ctx)
 {
-    matrix *blk = (matrix *) Bk;
-    return blk->promote_alloc(blk, *(const int *) ctx);
+    return promote_pd_alloc(Bk, *(const int *) ctx);
 }
 
 static matrix *stacked_pd_vtable_promote_alloc(matrix *self, int size)
@@ -260,9 +256,7 @@ static void stacked_pd_vtable_promote_fill_values(matrix *self, matrix *out)
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
         int sk = out_spd->src_block_idx[k];
-        matrix *src_blk = (matrix *) src->blocks[sk];
-        matrix *out_blk = (matrix *) out_spd->blocks[k];
-        src_blk->promote_fill_values(src_blk, out_blk);
+        promote_pd_fill_values(src->blocks[sk], out_spd->blocks[k]);
     }
 }
 
@@ -287,9 +281,7 @@ static matrix *stacked_pd_vtable_diag_vec_alloc(matrix *self)
             (permuted_dense **) SP_MALLOC((size_t) nb * sizeof(permuted_dense *));
         for (int k = 0; k < nb; k++)
         {
-            matrix *blk = (matrix *) src->blocks[k];
-            matrix *out_blk = blk->diag_vec_alloc(blk);
-            tmp_blocks[k] = (permuted_dense *) out_blk;
+            tmp_blocks[k] = (permuted_dense *) diag_vec_pd_alloc(src->blocks[k]);
         }
     }
 
@@ -304,9 +296,7 @@ static void stacked_pd_vtable_diag_vec_fill_values(matrix *self, matrix *out)
     stacked_pd *out_spd = (stacked_pd *) out;
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
-        matrix *src_blk = (matrix *) src->blocks[k];
-        matrix *out_blk = (matrix *) out_spd->blocks[k];
-        src_blk->diag_vec_fill_values(src_blk, out_blk);
+        diag_vec_pd_fill_values(src->blocks[k], out_spd->blocks[k]);
     }
 }
 
@@ -325,8 +315,7 @@ typedef struct
 static matrix *wrapper_pd_broadcast(permuted_dense *Bk, const void *ctx)
 {
     const pd_broadcast_ctx *c = (const pd_broadcast_ctx *) ctx;
-    matrix *blk = (matrix *) Bk;
-    return blk->broadcast_alloc(blk, c->type, c->d1, c->d2);
+    return broadcast_pd_alloc(Bk, c->type, c->d1, c->d2);
 }
 
 static matrix *stacked_pd_vtable_broadcast_alloc(matrix *self, broadcast_type type,
@@ -347,9 +336,7 @@ static void stacked_pd_vtable_broadcast_fill_values(matrix *self,
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
         int sk = out_spd->src_block_idx[k];
-        matrix *src_blk = (matrix *) src->blocks[sk];
-        matrix *out_blk = (matrix *) out_spd->blocks[k];
-        src_blk->broadcast_fill_values(src_blk, type, d1, d2, out_blk);
+        broadcast_pd_fill_values(src->blocks[sk], type, d1, d2, out_spd->blocks[k]);
     }
 }
 
@@ -723,10 +710,11 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
                                  const int *src_block_idx_p,
                                  const int *src_block_idx)
 {
-    assert((src_block_idx_p == NULL) == (src_block_idx == NULL) &&
-           "stacked_pd: src_block_idx_p and src_block_idx must both be NULL or "
-           "both non-NULL");
+    assert((src_block_idx_p == NULL) == (src_block_idx == NULL));
 
+    // --------------------------------------------------------------------------------
+    //                          Set up basic fields
+    // --------------------------------------------------------------------------------
     stacked_pd *spd = (stacked_pd *) SP_CALLOC(1, sizeof(stacked_pd));
     spd->base.m = m;
     spd->base.n = n;
@@ -747,6 +735,9 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
         memcpy(spd->blocks, blocks, n_blocks * sizeof(permuted_dense *));
     }
 
+    // --------------------------------------------------------------------------------
+    //                         Set up source block index mapping
+    // --------------------------------------------------------------------------------
     if (src_block_idx_p == NULL)
     {
         /* identity: each output block has itself as its one source */
@@ -768,25 +759,19 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
         }
     }
 
-    /* Absorb each block's X into a single shared values buffer owned by
-       this spd. After this loop:
-         spd->base.x          = the contiguous buffer (block-major layout)
-         block[k]->X          = view into spd->base.x at the block's offset
-         block[k]->owns_X     = false (block's free skips free(X))
-       This honors the same flat-base.x invariant PD and sparse_matrix
-       already honor, so atoms that loop over base.x work uniformly. */
-    spd->base.x = (spd->base.nnz > 0)
-                      ? (double *) SP_MALLOC((size_t) spd->base.nnz * sizeof(double))
-                      : NULL;
-
-    size_t offset = 0;
+    // ---------------------------------------------------------------------------
+    // Absorb each block's X into a single shared values buffer owned by this spd.
+    // ----------------------------------------------------------------------------
+    spd->base.x = (double *) SP_MALLOC((size_t) spd->base.nnz * sizeof(double));
+    int offset = 0;
     for (int k = 0; k < n_blocks; k++)
     {
-        size_t sz = (size_t) spd->blocks[k]->m0 * spd->blocks[k]->n0;
+        int sz = spd->blocks[k]->base.nnz;
         if (sz == 0)
         {
             continue;
         }
+
         memcpy(spd->base.x + offset, spd->blocks[k]->X, sz * sizeof(double));
         free(spd->blocks[k]->X);
         spd->blocks[k]->X = spd->base.x + offset;

@@ -106,4 +106,38 @@ matrix *new_permuted_dense_full(int m, int n, const double *data);
    block_left_mult adapter in permuted_dense.c. */
 void permuted_dense_ensure_dwork(const permuted_dense *pd_const, size_t size);
 
+/* Allocate C = broadcast(A, type, d1, d2). Output is a PD whose row_perm
+   layout depends on `type` (SCALAR / ROW / COL). Same as A's broadcast
+   vtable adapter; exposed so stacked_pd can call it directly per-block. */
+matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
+                           int d2);
+
+/* Fill values of C = broadcast(A, type, d1, d2). */
+void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
+                              int d2, permuted_dense *C);
+
+/* Allocate C = A[indices, :]. Output is a PD whose row_perm holds the
+   output positions i (in [0, n_idxs)) at which `indices[i]` lands in A's
+   row_perm. */
+matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs);
+
+/* Fill values of C = A[indices, :]. */
+void index_pd_fill_values(const permuted_dense *A, const int *indices, int n_idxs,
+                          permuted_dense *C);
+
+/* Allocate C = promote(A, size): broadcast A's single (or zero) row up to
+   `size` rows. Precondition: A->m0 <= 1. */
+matrix *promote_pd_alloc(const permuted_dense *A, int size);
+
+/* Fill values of C = promote(A, size). */
+void promote_pd_fill_values(const permuted_dense *A, permuted_dense *C);
+
+/* Allocate C = diag_vec(A): A's row_perm entries r are remapped to
+   r * (n + 1) where n = A->base.m, producing the column vector of the
+   diagonal of A interpreted as an n x n matrix. */
+matrix *diag_vec_pd_alloc(const permuted_dense *A);
+
+/* Fill values of C = diag_vec(A). */
+void diag_vec_pd_fill_values(const permuted_dense *A, permuted_dense *C);
+
 #endif /* PERMUTED_DENSE_H */
