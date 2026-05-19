@@ -26,6 +26,68 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* A CSR-style ragged 2D int array, indexed by an integer key:
+     csr->data[csr->p[k]..csr->p[k+1])  — the int list for key k
+   Invariants: csr->p has length n+1, csr->p[0] == 0, csr->data has
+   length csr->p[n]. Read-only after construction. */
+typedef struct
+{
+    int *p;
+    int *data;
+    int n;
+} int_csr;
+
+static int_csr *int_csr_create(int *p, int *data, int n)
+{
+    int_csr *csr = (int_csr *) SP_MALLOC(sizeof(int_csr));
+    csr->p = p;
+    csr->data = data;
+    csr->n = n;
+    return csr;
+}
+
+static void int_csr_free(int_csr *csr)
+{
+    free(csr->p);
+    free(csr->data);
+    free(csr);
+}
+
+/* Slice of csr->data for key k. Sets *out_len. */
+static inline const int *int_csr_get(const int_csr *csr, int k, int *out_len)
+{
+    int lo = csr->p[k];
+    int hi = csr->p[k + 1];
+    *out_len = hi - lo;
+    return csr->data + lo;
+}
+
+/* Look up 'sig' in the catalog represented as the CSR pair (cat_p, cat_data). Return
+   the existing signature index if found; otherwise append it and return the new
+   index. */
+static int lookup_or_append_signature(iVec *cat_p, iVec *cat_data, const int *sig,
+                                      int sig_len)
+{
+    int n_sigs = cat_p->len - 1;
+
+    /* compare the signature 'sig' with all the existing signatures */
+    for (int s = 0; s < n_sigs; s++)
+    {
+        int lo = cat_p->data[s];
+        int hi = cat_p->data[s + 1];
+        if (hi - lo == sig_len &&
+            memcmp(cat_data->data + lo, sig, sig_len * sizeof(int)) == 0)
+        {
+            return s;
+        }
+    }
+
+    /* signature not found, append it */
+    iVec_append_array(cat_data, sig, sig_len);
+    iVec_append(cat_p, cat_data->len);
+    return n_sigs;
+}
+
 #ifndef NDEBUG
 /* Assert pairwise-disjoint cells: any two source blocks sharing a row
    must have disjoint col_perms. We only need to check pairs within the
@@ -51,206 +113,199 @@ static void assert_disjoint_cells(const stacked_pd *src, const int *cat_sig_p,
 }
 #endif
 
-static matrix *coalesce_spd_alloc_impl(const stacked_pd *src,
-                                       bool check_disjoint_cells)
+static int_csr *build_row_to_blocks_csr(const stacked_pd *A, int *scratch)
 {
-    int m = src->base.m;
-    int n = src->base.n;
-    int n_blocks = src->n_blocks;
+    int m = A->base.m;
+    int n_blocks = A->n_blocks;
 
-    /* Pass 1: row -> blocks CSR. */
-    int *row_blocks_p = (int *) SP_CALLOC(m + 1, sizeof(int));
+    int *p = (int *) SP_CALLOC(m + 1, sizeof(int));
     for (int k = 0; k < n_blocks; k++)
     {
-        permuted_dense *blk = src->blocks[k];
-        for (int i = 0; i < blk->m0; i++)
+        permuted_dense *Ak = A->blocks[k];
+        for (int i = 0; i < Ak->m0; i++)
         {
-            row_blocks_p[blk->row_perm[i] + 1]++;
+            p[Ak->row_perm[i] + 1]++;
         }
     }
-    cumsum(row_blocks_p, m);
-    int row_blocks_total = row_blocks_p[m];
-    int *row_blocks_data = (int *) SP_MALLOC(row_blocks_total * sizeof(int));
-    /* If row_blocks_total == 0 we still need a valid pointer for free; SP_MALLOC
-       handles that. */
-    int *cursor = (int *) SP_CALLOC(m, sizeof(int));
+    cumsum(p, m);
+
+    int *data = (int *) SP_MALLOC(p[m] * sizeof(int));
+    int *blocks_added_per_row = scratch;
     for (int k = 0; k < n_blocks; k++)
     {
-        permuted_dense *blk = src->blocks[k];
-        for (int i = 0; i < blk->m0; i++)
+        permuted_dense *Ak = A->blocks[k];
+        for (int i = 0; i < Ak->m0; i++)
         {
-            int r = blk->row_perm[i];
-            row_blocks_data[row_blocks_p[r] + cursor[r]++] = k;
+            int row = Ak->row_perm[i];
+            data[p[row] + blocks_added_per_row[row]++] = k;
         }
     }
-    free(cursor);
 
-    /* Pass 2: catalog unique signatures. */
-    iVec *cat_sig_p = iVec_new(8);
-    iVec_append(cat_sig_p, 0);
-    iVec *cat_sig_data = iVec_new(16);
+    return int_csr_create(p, data, m);
+}
+
+static void catalog_signatures(const int_csr *row_to_blocks, iVec *catalog_sig_p,
+                               iVec *catalog_sig_data, int **row_to_sig_out)
+{
+    int m = row_to_blocks->n;
     int *row_to_sig = (int *) SP_MALLOC(m * sizeof(int));
-
-    for (int r = 0; r < m; r++)
+    for (int i = 0; i < m; i++)
     {
-        int sig_start = row_blocks_p[r];
-        int sig_len = row_blocks_p[r + 1] - sig_start;
-        if (sig_len == 0)
+        int signature_len;
+        const int *sig = int_csr_get(row_to_blocks, i, &signature_len);
+
+        /* no block contains row i */
+        if (signature_len == 0)
         {
-            row_to_sig[r] = -1;
+            row_to_sig[i] = -1;
             continue;
         }
-        const int *sig = row_blocks_data + sig_start;
-        int n_sigs = cat_sig_p->len - 1;
-        int found = -1;
-        for (int s = 0; s < n_sigs; s++)
+        row_to_sig[i] = lookup_or_append_signature(catalog_sig_p, catalog_sig_data,
+                                                   sig, signature_len);
+    }
+    *row_to_sig_out = row_to_sig;
+}
+
+static int_csr *group_rows_by_signature(int m, int n_sigs, const int *row_to_sig,
+                                        int *scratch)
+{
+    int *p = (int *) SP_CALLOC(n_sigs + 1, sizeof(int));
+    for (int i = 0; i < m; i++)
+    {
+        if (row_to_sig[i] >= 0)
         {
-            int s_lo = cat_sig_p->data[s];
-            int s_hi = cat_sig_p->data[s + 1];
-            if (s_hi - s_lo != sig_len)
-            {
-                continue;
-            }
-            if (memcmp(cat_sig_data->data + s_lo, sig, sig_len * sizeof(int)) == 0)
-            {
-                found = s;
-                break;
-            }
+            p[row_to_sig[i] + 1]++;
         }
-        if (found == -1)
+    }
+    cumsum(p, n_sigs);
+
+    int *data = (int *) SP_MALLOC(p[n_sigs] * sizeof(int));
+    int *rows_added_per_sig = scratch;
+    for (int i = 0; i < m; i++)
+    {
+        int s = row_to_sig[i];
+        if (s >= 0)
         {
-            iVec_append_array(cat_sig_data, sig, sig_len);
-            iVec_append(cat_sig_p, cat_sig_data->len);
-            found = n_sigs;
+            data[p[s] + rows_added_per_sig[s]++] = i;
         }
-        row_to_sig[r] = found;
     }
 
-    int n_sigs = cat_sig_p->len - 1;
+    return int_csr_create(p, data, n_sigs);
+}
+
+/* Allocate one output PD per signature. The PD for signature s has
+   row_perm = sig_to_rows[s] and col_perm = sorted union of
+   A->blocks[k]->col_perm for k ranging over the signature's source-block
+   IDs. Returns a newly-allocated array of n_sigs PD pointers; caller
+   owns the array (PDs themselves are taken over by the eventual
+   stacked_pd). */
+static permuted_dense **build_output_blocks(const stacked_pd *A,
+                                            const iVec *catalog_sig_p,
+                                            const iVec *catalog_sig_data,
+                                            const int_csr *sig_to_rows)
+{
+    int m = A->base.m;
+    int n = A->base.n;
+    int n_sigs = catalog_sig_p->len - 1;
+
+    permuted_dense **out_blocks = (permuted_dense **) SP_MALLOC(
+        (n_sigs > 0 ? n_sigs : 1) * sizeof(permuted_dense *));
+    iVec *col_union = iVec_new(8);
+    /* col_arrs / col_lens: scratch passed to sorted_union_int_arrays.
+       Max sig size is bounded by A->n_blocks, so size once outside the loop. */
+    const int **col_arrs = (const int **) SP_MALLOC(A->n_blocks * sizeof(int *));
+    int *col_lens = (int *) SP_MALLOC(A->n_blocks * sizeof(int));
+
+    for (int s = 0; s < n_sigs; s++)
+    {
+        int sig_lo = catalog_sig_p->data[s];
+        int sig_sz = catalog_sig_p->data[s + 1] - sig_lo;
+        const int *sig_ids = catalog_sig_data->data + sig_lo;
+
+        for (int t = 0; t < sig_sz; t++)
+        {
+            permuted_dense *blk = A->blocks[sig_ids[t]];
+            col_arrs[t] = blk->col_perm;
+            col_lens[t] = blk->n0;
+        }
+        sorted_union_int_arrays(col_arrs, col_lens, sig_sz, col_union);
+
+        int m0;
+        const int *row_perm = int_csr_get(sig_to_rows, s, &m0);
+        out_blocks[s] = (permuted_dense *) new_permuted_dense(
+            m, n, m0, col_union->len, row_perm, col_union->data, NULL);
+    }
+
+    iVec_free(col_union);
+    free(col_arrs);
+    free(col_lens);
+    return out_blocks;
+}
+
+static matrix *coalesce_spd_alloc_impl(const stacked_pd *A,
+                                       bool check_disjoint_cells)
+{
+    int m = A->base.m;
+    int n = A->base.n;
+    int *iwork = (int *) SP_CALLOC(m, sizeof(int));
+
+    // ---------------------------------------------------------------------------
+    // For each global row in A, catalog which blocks contain it.
+    // ---------------------------------------------------------------------------
+    int_csr *row_to_blocks = build_row_to_blocks_csr(A, iwork);
+
+    // ------------------------------------------------------------------------------
+    // Catalog unique signatures (sets of source blocks sharing each row), and assign
+    // each row to a signature id. Each unique signature will become one output
+    // block. The array 'row_to_sig' maps each row to its signature id; rows with the
+    // same signature have the same set of source blocks and thus land in the same
+    // output block.
+    // ------------------------------------------------------------------------------
+    iVec *catalog_sig_p = iVec_new(8);
+    iVec_append(catalog_sig_p, 0);
+    iVec *catalog_sig_data = iVec_new(16);
+    int *row_to_sig;
+    catalog_signatures(row_to_blocks, catalog_sig_p, catalog_sig_data, &row_to_sig);
+    int n_sigs = catalog_sig_p->len - 1;
 
 #ifndef NDEBUG
     if (check_disjoint_cells)
     {
-        assert_disjoint_cells(src, cat_sig_p->data, cat_sig_data->data, n_sigs);
+        assert_disjoint_cells(A, catalog_sig_p->data, catalog_sig_data->data,
+                              n_sigs);
     }
 #else
     (void) check_disjoint_cells;
 #endif
 
-    /* Pass 3: group rows by sig id. */
-    int *sig_rows_p = (int *) SP_CALLOC(n_sigs + 1, sizeof(int));
-    for (int r = 0; r < m; r++)
-    {
-        if (row_to_sig[r] >= 0)
-        {
-            sig_rows_p[row_to_sig[r] + 1]++;
-        }
-    }
-    cumsum(sig_rows_p, n_sigs);
-    int sig_rows_total = sig_rows_p[n_sigs];
-    int *sig_rows_data = (int *) SP_MALLOC(sig_rows_total * sizeof(int));
-    int *cursor2 = (int *) SP_CALLOC(n_sigs > 0 ? n_sigs : 1, sizeof(int));
-    for (int r = 0; r < m; r++)
-    {
-        int s = row_to_sig[r];
-        if (s >= 0)
-        {
-            sig_rows_data[sig_rows_p[s] + cursor2[s]++] = r;
-        }
-    }
-    free(cursor2);
+    // -----------------------------------------------------------------------------
+    //  Group rows by signature. For each unique signature s, which rows have it?
+    // -----------------------------------------------------------------------------
+    memset(iwork, 0, n_sigs * sizeof(int));
+    int_csr *sig_to_rows = group_rows_by_signature(m, n_sigs, row_to_sig, iwork);
 
-    /* Pass 4: allocate one output PD per signature (unordered for now). */
-    permuted_dense **sig_blocks = (permuted_dense **) SP_MALLOC(
-        (n_sigs > 0 ? n_sigs : 1) * sizeof(permuted_dense *));
-    /* scratch for the k-way col_perm merge */
-    iVec *col_union = iVec_new(8);
-    /* scratch arrays passed to sorted_union_int_arrays */
-    for (int s = 0; s < n_sigs; s++)
-    {
-        int sig_lo = cat_sig_p->data[s];
-        int sig_hi = cat_sig_p->data[s + 1];
-        int sig_sz = sig_hi - sig_lo;
+    // -----------------------------------------------------------------------------
+    //  Build one output PD per signature, then hand off to new_stacked_pd. Catalog
+    //  order is already sorted by min row (pass 2 introduces signatures in row
+    //  scan order), so the output uses catalog order directly — no reorder needed.
+    //  new_stacked_pd memcpy's src_block_idx_p/_data, so we pass the catalog's
+    //  arrays straight through.
+    // -----------------------------------------------------------------------------
+    permuted_dense **out_blocks =
+        build_output_blocks(A, catalog_sig_p, catalog_sig_data, sig_to_rows);
 
-        const int **col_arrs = (const int **) SP_MALLOC(sig_sz * sizeof(int *));
-        int *col_lens = (int *) SP_MALLOC(sig_sz * sizeof(int));
-        for (int t = 0; t < sig_sz; t++)
-        {
-            permuted_dense *blk = src->blocks[cat_sig_data->data[sig_lo + t]];
-            col_arrs[t] = blk->col_perm;
-            col_lens[t] = blk->n0;
-        }
-        sorted_union_int_arrays(col_arrs, col_lens, sig_sz, col_union);
-        free(col_arrs);
-        free(col_lens);
-
-        int *row_perm = sig_rows_data + sig_rows_p[s];
-        int m0 = sig_rows_p[s + 1] - sig_rows_p[s];
-        int n0 = col_union->len;
-        sig_blocks[s] = (permuted_dense *) new_permuted_dense(m, n, m0, n0, row_perm,
-                                                              col_union->data, NULL);
-    }
-    iVec_free(col_union);
-
-    /* Pass 5: order signatures by min row index (insertion sort). */
-    int *order = (int *) SP_MALLOC((n_sigs > 0 ? n_sigs : 1) * sizeof(int));
-    for (int s = 0; s < n_sigs; s++)
-    {
-        order[s] = s;
-    }
-    for (int i = 1; i < n_sigs; i++)
-    {
-        int key = order[i];
-        int key_min_row = sig_rows_data[sig_rows_p[key]];
-        int j = i - 1;
-        while (j >= 0 && sig_rows_data[sig_rows_p[order[j]]] > key_min_row)
-        {
-            order[j + 1] = order[j];
-            j--;
-        }
-        order[j + 1] = key;
-    }
-
-    /* Pass 6: build final block array and CSR-style src_block_idx in
-       output order; hand off to new_stacked_pd. */
-    permuted_dense **out_blocks = (permuted_dense **) SP_MALLOC(
-        (n_sigs > 0 ? n_sigs : 1) * sizeof(permuted_dense *));
-    int *out_src_p = (int *) SP_MALLOC((n_sigs + 1) * sizeof(int));
-    out_src_p[0] = 0;
-    /* sum of sig sizes in output order = cat_sig_data->len (same as sum
-       in catalog order, just permuted). */
-    int *out_src_data = (int *) SP_MALLOC(
-        (cat_sig_data->len > 0 ? cat_sig_data->len : 1) * sizeof(int));
-    int cursor3 = 0;
-    for (int k = 0; k < n_sigs; k++)
-    {
-        int s = order[k];
-        out_blocks[k] = sig_blocks[s];
-        int sig_lo = cat_sig_p->data[s];
-        int sig_hi = cat_sig_p->data[s + 1];
-        int sig_sz = sig_hi - sig_lo;
-        memcpy(out_src_data + cursor3, cat_sig_data->data + sig_lo,
-               sig_sz * sizeof(int));
-        cursor3 += sig_sz;
-        out_src_p[k + 1] = cursor3;
-    }
-
-    matrix *out = new_stacked_pd(m, n, n_sigs, out_blocks, out_src_p, out_src_data);
+    matrix *C = new_stacked_pd(m, n, n_sigs, out_blocks, catalog_sig_p->data,
+                               catalog_sig_data->data);
 
     free(out_blocks);
-    free(out_src_p);
-    free(out_src_data);
-    free(sig_blocks);
-    free(order);
-    free(sig_rows_p);
-    free(sig_rows_data);
+    int_csr_free(sig_to_rows);
     free(row_to_sig);
-    iVec_free(cat_sig_p);
-    iVec_free(cat_sig_data);
-    free(row_blocks_p);
-    free(row_blocks_data);
+    iVec_free(catalog_sig_p);
+    iVec_free(catalog_sig_data);
+    int_csr_free(row_to_blocks);
+    free(iwork);
 
-    return out;
+    return C;
 }
 
 matrix *coalesce_spd_alloc(const stacked_pd *src)
