@@ -190,9 +190,9 @@ static matrix *build_spd_kron_I_A_alloc(const permuted_dense *A, int p)
     int m = A->base.m;
     int n = A->base.n;
     permuted_dense **blocks =
-        (permuted_dense **) SP_MALLOC((size_t) p * sizeof(permuted_dense *));
-    int *row_perm = (int *) SP_MALLOC((size_t) m * sizeof(int));
-    int *col_perm = (int *) SP_MALLOC((size_t) n * sizeof(int));
+        (permuted_dense **) SP_MALLOC(p * sizeof(permuted_dense *));
+    int *row_perm = (int *) SP_MALLOC(m * sizeof(int));
+    int *col_perm = (int *) SP_MALLOC(n * sizeof(int));
     for (int k = 0; k < p; k++)
     {
         for (int i = 0; i < m; i++) row_perm[i] = k * m + i;

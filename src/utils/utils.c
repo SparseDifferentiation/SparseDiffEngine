@@ -116,3 +116,11 @@ void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs
     }
     free(cursor);
 }
+
+void cumsum(int *p, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        p[i + 1] += p[i];
+    }
+}

@@ -250,9 +250,8 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     // Find column permutations of C. An A-block contributes if its row_perm overlaps
     // B's col_perm.
     // ------------------------------------------------------------------------------
-    const int **col_perms =
-        (const int **) SP_MALLOC((size_t) n_blocks * sizeof(int *));
-    int *lens = (int *) SP_MALLOC((size_t) n_blocks * sizeof(int));
+    const int **col_perms = (const int **) SP_MALLOC(n_blocks * sizeof(int *));
+    int *lens = (int *) SP_MALLOC(n_blocks * sizeof(int));
 
     int n_contributing_A_blocks = 0;
     for (int k = 0; k < n_blocks; k++)

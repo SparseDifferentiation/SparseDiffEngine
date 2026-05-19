@@ -49,7 +49,7 @@ static operand_view resolve_operand(matrix *X)
     {
         /* to_csr refreshes csr_cache values from block X buffers. */
         CSR_matrix *csr = X->to_csr(X);
-        v.owned_iwork = (int *) SP_MALLOC((size_t) csr->n * sizeof(int));
+        v.owned_iwork = (int *) SP_MALLOC(csr->n * sizeof(int));
         v.owned_csc = csr_to_csc_alloc(csr, v.owned_iwork);
         csr_to_csc_fill_values(csr, v.owned_csc, v.owned_iwork);
         v.csc = v.owned_csc;

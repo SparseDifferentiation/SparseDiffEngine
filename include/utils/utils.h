@@ -53,4 +53,9 @@ int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
 void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
                              iVec *out);
 
+/* In-place prefix sum over p[0..n]: replace p[i+1] with sum of p[0..i+1]
+   for i in [0, n). Standard "convert counts to CSR row offsets" step
+   when p[0] = 0 and p[i+1] holds the count for bucket i. */
+void cumsum(int *p, int n);
+
 #endif // UTILS_H

@@ -21,6 +21,7 @@
 #include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/permuted_dense_linalg.h"
 #include "utils/tracked_alloc.h"
+#include "utils/utils.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -382,7 +383,7 @@ permuted_dense_vtable_block_left_mult_sparsity(const matrix *A, const CSC_matrix
     /* Pre-size dwork for the subsequent block_left_mult_values fill, which
        densifies a sparse column of J (size A->n) before applying A. Honors
        the no-alloc-in-fill rule. */
-    permuted_dense_ensure_dwork(pd, (size_t) A->n);
+    permuted_dense_ensure_dwork(pd, A->n);
     return I_kron_A_alloc(A, J, p);
 }
 
@@ -539,10 +540,7 @@ static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A)
         C->p[A->row_perm[ii] + 1] = n0;
     }
 
-    for (int i = 0; i < m; i++)
-    {
-        C->p[i + 1] += C->p[i];
-    }
+    cumsum(C->p, m);
 
     return C;
 }
