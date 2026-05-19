@@ -81,4 +81,14 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A);
 void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
                              const permuted_dense *A, permuted_dense *C);
 
+/* Allocate a new PD C with the same sparsity (m, n, m0, n0, row_perm,
+   col_perm) as A; values uninitialized. */
+matrix *copy_sparsity_pd_alloc(const permuted_dense *A);
+
+/* Allocate C = A^T (transpose). */
+matrix *transpose_pd_alloc(const permuted_dense *A);
+
+/* Fill values of C = A^T. */
+void transpose_pd_fill_values(const permuted_dense *A, permuted_dense *C);
+
 #endif /* PERMUTED_DENSE_LINALG_H */

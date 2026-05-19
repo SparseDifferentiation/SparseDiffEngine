@@ -114,4 +114,10 @@ matrix *coalesce_spd_alloc_unchecked(const stacked_pd *src);
    (block count, row_perms, col_perms) as the one passed now. */
 void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out);
 
+/* Same scatter as coalesce_spd_fill_values but with += instead of =.
+   Use when src blocks share cells targeting the same out block (e.g.
+   the B_k^T B_k summands aggregated by ATDA_spd_fill_values). Caller is
+   responsible for zeroing out->base.x first. */
+void coalesce_spd_fill_values_accumulate(const stacked_pd *src, stacked_pd *out);
+
 #endif /* STACKED_PD_H */

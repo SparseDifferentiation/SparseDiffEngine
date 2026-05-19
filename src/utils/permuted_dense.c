@@ -59,9 +59,7 @@ static void permuted_dense_refresh_csc_values(matrix *self)
 /* Vtable adapters — each delegates to the existing permuted_dense_* kernel. */
 static matrix *permuted_dense_vtable_copy_sparsity(const matrix *self)
 {
-    const permuted_dense *pd = (const permuted_dense *) self;
-    return new_permuted_dense(pd->base.m, pd->base.n, pd->m0, pd->n0, pd->row_perm,
-                              pd->col_perm, NULL);
+    return copy_sparsity_pd_alloc((const permuted_dense *) self);
 }
 
 static void permuted_dense_vtable_DA_fill_values(const double *d, const matrix *self,
@@ -99,28 +97,13 @@ static CSR_matrix *permuted_dense_to_csr(matrix *self)
 
 static matrix *permuted_dense_vtable_transpose_alloc(const matrix *self)
 {
-    const permuted_dense *pd = (const permuted_dense *) self;
-    /* Swap (m, n), (m0, n0), and (row_perm, col_perm). The constructor
-       asserts strict increase of both perms, which holds by construction. */
-    return new_permuted_dense(pd->base.n, pd->base.m, pd->n0, pd->m0, pd->col_perm,
-                              pd->row_perm, NULL);
+    return transpose_pd_alloc((const permuted_dense *) self);
 }
 
 static void permuted_dense_vtable_transpose_fill_values(const matrix *self,
                                                         matrix *out)
 {
-    const permuted_dense *pd_in = (const permuted_dense *) self;
-    permuted_dense *pd_out = (permuted_dense *) out;
-    int m0 = pd_in->m0;
-    int n0 = pd_in->n0;
-    /* pd_out has shape (n0, m0); transpose pd_in->X into pd_out->X. */
-    for (int ii = 0; ii < m0; ii++)
-    {
-        for (int jj = 0; jj < n0; jj++)
-        {
-            pd_out->X[jj * m0 + ii] = pd_in->X[ii * n0 + jj];
-        }
-    }
+    transpose_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
 }
 
 static matrix *permuted_dense_vtable_index_alloc(matrix *self, const int *indices,

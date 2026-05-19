@@ -600,32 +600,67 @@ matrix *coalesce_spd_alloc_unchecked(const stacked_pd *src)
     return coalesce_spd_alloc_impl(src, false);
 }
 
-void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out)
+/* Scatter src's blocks into out's blocks, following out's src_block_idx_*
+   map. If accumulate is true, += into out (caller must zero out->base.x
+   first); otherwise = (precondition: source cells are pairwise disjoint
+   across blocks targeting the same out block). `accumulate` is a
+   compile-time constant at every call site, so the inner-loop branch is
+   folded away when this is inlined into the public wrappers. */
+static inline void coalesce_spd_scatter(const stacked_pd *src, stacked_pd *out,
+                                        bool accumulate)
 {
+    /* for each block out_k of out */
     for (int k = 0; k < out->n_blocks; k++)
     {
         permuted_dense *out_k = out->blocks[k];
         int s_lo = out->src_block_idx_p[k];
         int s_hi = out->src_block_idx_p[k + 1];
+
+        /* for each block src_k in src contributing to out_k */
         for (int t = s_lo; t < s_hi; t++)
         {
             const permuted_dense *src_k = src->blocks[out->src_block_idx[t]];
+
+            /* for each row in src_k */
             for (int i = 0; i < src_k->m0; i++)
             {
                 int out_i = out_k->row_inv[src_k->row_perm[i]];
                 if (out_i < 0)
                 {
-                    continue; /* row not in this output PD */
+                    /* this row in src_k does not contribute to out_k */
+                    continue;
                 }
+
+                double *out_row = out_k->X + out_i * out_k->n0;
+                const double *src_row = src_k->X + i * src_k->n0;
+
+                /* place each col in src_row at its correct position in out_row */
                 for (int j = 0; j < src_k->n0; j++)
                 {
                     int out_j = out_k->col_inv[src_k->col_perm[j]];
-                    out_k->X[out_i * out_k->n0 + out_j] =
-                        src_k->X[i * src_k->n0 + j];
+                    assert(out_j >= 0);
+                    if (accumulate)
+                    {
+                        out_row[out_j] += src_row[j];
+                    }
+                    else
+                    {
+                        out_row[out_j] = src_row[j];
+                    }
                 }
             }
         }
     }
+}
+
+void coalesce_spd_fill_values(const stacked_pd *src, stacked_pd *out)
+{
+    coalesce_spd_scatter(src, out, false);
+}
+
+void coalesce_spd_fill_values_accumulate(const stacked_pd *src, stacked_pd *out)
+{
+    coalesce_spd_scatter(src, out, true);
 }
 
 #ifndef NDEBUG

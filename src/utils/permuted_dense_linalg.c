@@ -26,6 +26,34 @@
 #include <stdlib.h>
 #include <string.h>
 
+matrix *copy_sparsity_pd_alloc(const permuted_dense *A)
+{
+    return new_permuted_dense(A->base.m, A->base.n, A->m0, A->n0, A->row_perm,
+                              A->col_perm, NULL);
+}
+
+matrix *transpose_pd_alloc(const permuted_dense *A)
+{
+    /* Swap (m, n), (m0, n0), and (row_perm, col_perm). The constructor
+       asserts strict increase of both perms, which holds by construction. */
+    return new_permuted_dense(A->base.n, A->base.m, A->n0, A->m0, A->col_perm,
+                              A->row_perm, NULL);
+}
+
+void transpose_pd_fill_values(const permuted_dense *A, permuted_dense *out)
+{
+    int m0 = A->m0;
+    int n0 = A->n0;
+    /* out has shape (n0, m0); transpose A->X into out->X. */
+    for (int ii = 0; ii < m0; ii++)
+    {
+        for (int jj = 0; jj < n0; jj++)
+        {
+            out->X[jj * m0 + ii] = A->X[ii * n0 + jj];
+        }
+    }
+}
+
 void DA_pd_fill_values(const double *d, const permuted_dense *A, permuted_dense *C)
 {
     int m0 = A->m0;

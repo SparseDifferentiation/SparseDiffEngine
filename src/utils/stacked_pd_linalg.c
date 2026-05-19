@@ -120,8 +120,7 @@ matrix *copy_sparsity_spd_alloc(const stacked_pd *A)
         (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
     for (int k = 0; k < n_blocks; k++)
     {
-        const matrix *Ak = (matrix *) A->blocks[k];
-        C_blocks[k] = (permuted_dense *) Ak->copy_sparsity(Ak);
+        C_blocks[k] = (permuted_dense *) copy_sparsity_pd_alloc(A->blocks[k]);
     }
 
     matrix *C = new_stacked_pd(A->base.m, A->base.n, n_blocks, C_blocks, NULL, NULL);
@@ -137,9 +136,14 @@ void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C)
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* Transpose                                                           */
-/* ------------------------------------------------------------------ */
+// ----------------------------------------------------------------------------------
+// Transpose C = A^T where A is stacked_pd. Blockwise logic followed by coalescing:
+// we first transpose each block independently, yielding a raw spd with the same
+// block count and swapped row/col perms as the final output but potentially
+// overlapping row perms. We then coalesce that raw spd to get the final output with
+// disjoint row perms. We keep the raw spd around on `out->work` for reuse by
+// `transpose_spd_fill_values` since its per-block transposes are also needed there.
+// ----------------------------------------------------------------------------------
 
 matrix *transpose_spd_alloc(const stacked_pd *A)
 {
@@ -148,8 +152,7 @@ matrix *transpose_spd_alloc(const stacked_pd *A)
         (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
     for (int k = 0; k < n_blocks; k++)
     {
-        matrix *blk = (matrix *) A->blocks[k];
-        AT_blocks[k] = (permuted_dense *) blk->transpose_alloc(blk);
+        AT_blocks[k] = (permuted_dense *) transpose_pd_alloc(A->blocks[k]);
     }
 
     /* Raw spd: dimensions swapped, identity src_block_idx_*; rows may
@@ -168,16 +171,17 @@ void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C)
     stacked_pd *raw = C->work;
     for (int k = 0; k < A->n_blocks; k++)
     {
-        matrix *A_blk = (matrix *) A->blocks[k];
-        matrix *raw_blk = (matrix *) raw->blocks[k];
-        A_blk->transpose_fill_values(A_blk, raw_blk);
+        transpose_pd_fill_values(A->blocks[k], raw->blocks[k]);
     }
     coalesce_spd_fill_values(raw, C);
 }
 
-/* ------------------------------------------------------------------ */
-/* ATA / ATDA                                                          */
-/* ------------------------------------------------------------------ */
+// ------------------------------------------------------------------------------------
+// ATDA for stacked_pd A. Let A = [A1; A2; A3] where Ai has n columns (the same
+// number as A). Then ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j
+// overlap if Ai and Aj have overlapping column entries. We therefore first compute
+// Ai^T Di Ai and then take care of the accumulation.
+// ------------------------------------------------------------------------------------
 
 matrix *ATA_spd_alloc(const stacked_pd *A)
 {
@@ -207,49 +211,6 @@ matrix *ATA_spd_alloc(const stacked_pd *A)
     return out;
 }
 
-/* Scatter + add each scratch PD into its destination block in C. Multiple scratch
-   PDs may target the same Ck (their cells overlap by design — that's why we
-   accumulate). Caller is responsible for zeroing C->base.x first. */
-static inline void accumulate_scratch_blocks(const stacked_pd *scratch,
-                                             stacked_pd *C)
-{
-    /* for each block Ck of C */
-    for (int k = 0; k < C->n_blocks; k++)
-    {
-        permuted_dense *Ck = C->blocks[k];
-        int s_lo = C->src_block_idx_p[k];
-        int s_hi = C->src_block_idx_p[k + 1];
-
-        /* for each block Eq = Ai^T D Ai in scratch contributing to block Ck in C */
-        for (int qq = s_lo; qq < s_hi; qq++)
-        {
-            const permuted_dense *Eq = scratch->blocks[C->src_block_idx[qq]];
-
-            /* for each row in Eq */
-            for (int i = 0; i < Eq->m0; i++)
-            {
-                int Ck_row_idx = Ck->row_inv[Eq->row_perm[i]];
-                if (Ck_row_idx < 0)
-                {
-                    /* this row in Eq does not contribute to Ck */
-                    continue;
-                }
-
-                double *Ck_row = Ck->X + Ck_row_idx * Ck->n0;
-                double *Eq_row = Eq->X + i * Eq->n0;
-
-                /* place each col in Eq_row at its correct position in Ck_row */
-                for (int j = 0; j < Eq->n0; j++)
-                {
-                    int out_j = Ck->col_inv[Eq->col_perm[j]];
-                    assert(out_j >= 0);
-                    Ck_row[out_j] += Eq_row[j];
-                }
-            }
-        }
-    }
-}
-
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 {
     /* Let A = [A1; A2; A3] where Ai has n columns (the same number as A). Then
@@ -270,7 +231,7 @@ void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
     memset(C->base.x, 0, C->base.nnz * sizeof(double));
 
     /* scatter + add each Ai^T Di Ai into its destination C block. */
-    accumulate_scratch_blocks(scratch, C);
+    coalesce_spd_fill_values_accumulate(scratch, C);
 }
 
 /* ------------------------------------------------------------------ */
