@@ -109,10 +109,7 @@ static void free_type_data(expr *node)
     lnode->param_source = NULL;
 }
 
-/* jacobian_init when A is permuted_dense. n_blocks == 1 produces a PD
-   output via BA_pd_matrices; n_blocks > 1 produces a stacked_pd output
-   via BA_pd_kron_matrices (kron(I_p, A) @ Jchild without materializing
-   the Kronecker product). */
+/* jacobian_init for dense left matmul */
 static void jacobian_init_dense(expr *node)
 {
     /* initialize jacobian of child */
@@ -133,7 +130,7 @@ static void jacobian_init_dense(expr *node)
     }
 }
 
-/* eval_jacobian when A is permuted_dense. */
+/* eval_jacobian for dense left matmul. */
 static void eval_jacobian_dense(expr *node)
 {
     /* evaluate jacobian of child */
@@ -157,7 +154,7 @@ static void eval_jacobian_dense(expr *node)
     }
 }
 
-/* jacobian_init when node->jacobian is sparse */
+/* jacobian_init for sparse left matmul */
 static void jacobian_init_sparse(expr *node)
 {
     /* initialize jacobian of child */
@@ -174,7 +171,7 @@ static void jacobian_init_sparse(expr *node)
         new_sparse_matrix(csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work));
 }
 
-/* eval_jacobian when node->jacobian is sparse */
+/* eval_jacobian for sparse left matmul */
 static void eval_jacobian_sparse(expr *node)
 {
     /* evaluate jacobian of child */

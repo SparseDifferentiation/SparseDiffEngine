@@ -21,6 +21,7 @@
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -80,6 +81,26 @@ static void forward(expr *node, const double *u)
     }
 }
 
+/* Build a native-indexed idx_map for a stacked_pd child by composing the
+   existing CSR-indexed idx_map with the native->csr permutation */
+static void compose_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
+                                    const int *csr_idx_map, int *native_idx_map)
+{
+    int native = 0;
+    for (int k = 0; k < spd->n_blocks; k++)
+    {
+        permuted_dense *blk = spd->blocks[k];
+        for (int ii = 0; ii < blk->m0; ii++)
+        {
+            int row_start = csr->p[blk->row_perm[ii]];
+            for (int jj = 0; jj < blk->n0; jj++)
+            {
+                native_idx_map[native++] = csr_idx_map[row_start + jj];
+            }
+        }
+    }
+}
+
 static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
@@ -115,6 +136,18 @@ static void jacobian_init_impl(expr *node)
                                          snode->idx_map);
     }
 
+    /* For stacked_pd children, child->jacobian->base.x is block-major while
+       csr->x is row-major sorted. Re-index idx_map so it can be applied
+       directly to base.x in eval_jacobian. */
+    if (x->jacobian->is_stacked_pd)
+    {
+        const stacked_pd *spd = (const stacked_pd *) x->jacobian;
+        int *native_idx_map = SP_MALLOC(spd->base.nnz * sizeof(int));
+        compose_idx_map_for_spd(spd, Jx, snode->idx_map, native_idx_map);
+        free(snode->idx_map);
+        snode->idx_map = native_idx_map;
+    }
+
     node->jacobian = new_sparse_matrix(jac);
 }
 
@@ -125,18 +158,11 @@ static void eval_jacobian(expr *node)
     /* evaluate child's jacobian */
     child->eval_jacobian(child);
 
-    /* Read child's values via to_csr so the access works uniformly for
-       PD, sparse_matrix, and stacked_pd. For PD/sparse, to_csr returns a
-       CSR aliased to the same x buffer as child->jacobian->x; for spd,
-       base.x is NULL but to_csr's csr_cache->x is refreshed from blocks.
-       The idx_map (built in jacobian_init from the same to_csr view) is
-       still valid since the CSR structure is stable. */
-    CSR_matrix *Jx = child->jacobian->to_csr(child->jacobian);
-
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator(Jx->x, Jx->nnz, ((sum_expr *) node)->idx_map, node->jacobian->x);
+    accumulator(child->jacobian->x, child->jacobian->nnz,
+                ((sum_expr *) node)->idx_map, node->jacobian->x);
 }
 
 static void wsum_hess_init_impl(expr *node)
