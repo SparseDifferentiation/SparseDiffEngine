@@ -52,9 +52,6 @@
     vector-valued or matrix-valued.
 */
 
-#include "utils/tracked_alloc.h"
-#include "utils/utils.h"
-
 static void refresh_param_values(left_matmul_expr *lnode)
 {
     if (lnode->param_source == NULL || !lnode->base.needs_parameter_refresh)
@@ -112,10 +109,11 @@ static void free_type_data(expr *node)
     lnode->param_source = NULL;
 }
 
-/* TODO: use better polymorphism here if you add another matrix type*/
-
-/* jacobian_init when node->jacobian is permuted_dense */
-static void jacobian_init_pd(expr *node)
+/* jacobian_init when A is permuted_dense. n_blocks == 1 produces a PD
+   output via BA_pd_matrices; n_blocks > 1 produces a stacked_pd output
+   via BA_pd_kron_matrices (kron(I_p, A) @ Jchild without materializing
+   the Kronecker product). */
+static void jacobian_init_dense(expr *node)
 {
     /* initialize jacobian of child */
     expr *x = node->left;
@@ -123,11 +121,20 @@ static void jacobian_init_pd(expr *node)
     jacobian_init(x);
 
     /* initialize this node's jacobian */
-    node->jacobian = BA_pd_matrices_alloc((permuted_dense *) lnode->A, x->jacobian);
+    permuted_dense *A_pd = (permuted_dense *) lnode->A;
+    if (lnode->n_blocks == 1)
+    {
+        node->jacobian = BA_pd_matrices_alloc(A_pd, x->jacobian);
+    }
+    else
+    {
+        node->jacobian =
+            BA_pd_kron_matrices_alloc(A_pd, lnode->n_blocks, x->jacobian);
+    }
 }
 
-/* eval_jacobian when node->jacobian is permuted_dense */
-static void eval_jacobian_pd(expr *node)
+/* eval_jacobian when A is permuted_dense. */
+static void eval_jacobian_dense(expr *node)
 {
     /* evaluate jacobian of child */
     left_matmul_expr *lnode = (left_matmul_expr *) node;
@@ -136,8 +143,18 @@ static void eval_jacobian_pd(expr *node)
 
     /* must refresh CSC cache if x->jacobian is sparse_matrix */
     x->jacobian->refresh_csc_values(x->jacobian);
-    BA_pd_matrices_fill_values((permuted_dense *) lnode->A, x->jacobian,
-                               (permuted_dense *) node->jacobian);
+
+    permuted_dense *A_pd = (permuted_dense *) lnode->A;
+    if (lnode->n_blocks == 1)
+    {
+        BA_pd_matrices_fill_values(A_pd, x->jacobian,
+                                   (permuted_dense *) node->jacobian);
+    }
+    else
+    {
+        BA_pd_kron_matrices_fill_values(A_pd, lnode->n_blocks, x->jacobian,
+                                        (stacked_pd *) node->jacobian);
+    }
 }
 
 /* jacobian_init when node->jacobian is sparse */
@@ -173,28 +190,6 @@ static void eval_jacobian_sparse(expr *node)
     lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
     csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian),
                            lnode->csc_to_csr_work);
-}
-
-/* jacobian_init when node->jacobian is stacked_pd (multi-column dense A) */
-static void jacobian_init_spd(expr *node)
-{
-    expr *x = node->left;
-    left_matmul_expr *lnode = (left_matmul_expr *) node;
-    jacobian_init(x);
-    node->jacobian = BA_pd_kron_matrices_alloc((permuted_dense *) lnode->A,
-                                               lnode->n_blocks, x->jacobian);
-}
-
-/* eval_jacobian when node->jacobian is stacked_pd */
-static void eval_jacobian_spd(expr *node)
-{
-    left_matmul_expr *lnode = (left_matmul_expr *) node;
-    expr *x = node->left;
-    x->eval_jacobian(x);
-    x->jacobian->refresh_csc_values(x->jacobian);
-
-    BA_pd_kron_matrices_fill_values((permuted_dense *) lnode->A, lnode->n_blocks,
-                                    x->jacobian, (stacked_pd *) node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -238,30 +233,36 @@ static void refresh_dense_left(left_matmul_expr *lnode)
     A_transpose(lnode->A->x, lnode->AT->x, n, m);
 }
 
-expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
+/* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users to
+   do A @ u where u is (n, ) which in C is actually (1, n). In that case the
+   result of A @ u is (m, ), which is (1, m) according to broadcasting
+   rules. We therefore check if this is the case. */
+static void compute_dims(const expr *u, int A_rows, int A_cols, int *d1, int *d2,
+                         int *n_blocks)
 {
-    /* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users
-       to do A @ u where u is (n, ) which in C is actually (1, n). In that case
-       the result of A @ u is (m, ), which is (1, m) according to broadcasting
-       rules. We therefore check if this is the case. */
-    int d1, d2, n_blocks;
-    if (u->d1 == A->n)
+    if (u->d1 == A_cols)
     {
-        d1 = A->m;
-        d2 = u->d2;
-        n_blocks = u->d2;
+        *d1 = A_rows;
+        *d2 = u->d2;
+        *n_blocks = u->d2;
     }
-    else if (u->d2 == A->n && u->d1 == 1)
+    else if (u->d2 == A_cols && u->d1 == 1)
     {
-        d1 = 1;
-        d2 = A->m;
-        n_blocks = 1;
+        *d1 = 1;
+        *d2 = A_rows;
+        *n_blocks = 1;
     }
     else
     {
-        fprintf(stderr, "Error in new_left_matmul: dimension mismatch \n");
+        fprintf(stderr, "Error in new_left_matmul: dimension mismatch\n");
         exit(1);
     }
+}
+
+expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
+{
+    int d1, d2, n_blocks;
+    compute_dims(u, A->m, A->n, &d1, &d2, &n_blocks);
 
     /* Allocate the type-specific struct */
     left_matmul_expr *lnode =
@@ -302,48 +303,18 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
 expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
                             const double *data)
 {
-    /* TODO: do a helper function for this dimension check (so we can use it in both
-     * dense and sparse constructors). We could include even more code in that
-     * functon, all the day down to the parameter support I think*/
     int d1, d2, n_blocks;
-    if (u->d1 == n)
-    {
-        d1 = m;
-        d2 = u->d2;
-        n_blocks = u->d2;
-    }
-    else if (u->d2 == n && u->d1 == 1)
-    {
-        d1 = 1;
-        d2 = m;
-        n_blocks = 1;
-    }
-    else
-    {
-        fprintf(stderr, "Error in new_left_matmul_dense: dimension mismatch\n");
-        exit(1);
-    }
+    compute_dims(u, m, n, &d1, &d2, &n_blocks);
 
     left_matmul_expr *lnode =
         (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    /* PD A: the BA_pd_matrices dispatcher applies whenever there is a single
-       Kronecker block, whether A is constant or parameterized. With a
-       parameter, A's structure is fixed at construction (full-block PD with
-       trivial permutations); refresh_dense_left updates A->X before each
-       forward, and eval_jacobian_pd reads those refreshed values via
-       BA_pd_matrices_fill_values. With n_blocks > 1 the Kronecker structure
-       forces the general CSC-mirror path. */
-    bool pd_path = (n_blocks == 1);
-    init_expr(node, d1, d2, u->n_vars, forward,
-              pd_path ? jacobian_init_pd : jacobian_init_spd,
-              pd_path ? eval_jacobian_pd : eval_jacobian_spd, is_affine,
-              wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_dense,
+              eval_jacobian_dense, is_affine, wsum_hess_init_impl, eval_wsum_hess,
+              free_type_data);
     node->left = u;
     expr_retain(u);
 
-    node->work->iwork = (int *) SP_MALLOC(MAX(n, node->n_vars) * sizeof(int));
-    lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
     /* parameter support */
