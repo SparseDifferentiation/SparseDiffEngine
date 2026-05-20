@@ -57,4 +57,14 @@ matrix *BA_spd_matrices_alloc(const stacked_pd *B, const matrix *A);
 void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
                                  stacked_pd *C);
 
+/* Polymorphic dispatcher: C = kron(I_p, A) @ J as a stacked_pd, where A
+   is a permuted_dense and J is any matrix type (permuted_dense,
+   stacked_pd, or sparse_matrix). Output shape: (A->m * p) x J->n. For
+   the sparse-J branch the dispatcher ensures sm_J->csc_cache structure
+   exists at alloc time; the caller must refresh values via
+   sm_J->refresh_csc_values before calling _fill_values. */
+matrix *BA_pd_kron_matrices_alloc(const permuted_dense *A, int p, const matrix *J);
+void BA_pd_kron_matrices_fill_values(const permuted_dense *A, int p,
+                                     const matrix *J, stacked_pd *C);
+
 #endif /* MATRIX_BTA_H */
