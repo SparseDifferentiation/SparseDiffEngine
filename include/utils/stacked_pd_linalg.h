@@ -62,10 +62,9 @@ matrix *ATA_spd_alloc(const stacked_pd *A);
 /* Fill values of C = A^T diag(d) A. */
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C);
 
-/* Allocate out = transpose(src). Implementation: transpose each source
-   PD block individually (yielding a raw spd that may have overlapping
-   row perms but pairwise-disjoint cells, by the spd invariant), then
-   coalesce. The raw spd is stored on `out->work` for reuse by
+/* Allocate a new stacked pd C = transpose(A). C is guaranteed to be a valid
+   stacked_pd (ie. it has disjoint row permutations across blocks).
+ The raw spd is stored on `C->pre_coalesce` for reuse by
    `transpose_spd_fill_values`. */
 matrix *transpose_spd_alloc(const stacked_pd *A);
 

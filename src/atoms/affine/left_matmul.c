@@ -99,20 +99,15 @@ static void free_type_data(expr *node)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     free_matrix(lnode->A);
     free_matrix(lnode->AT);
-    if (lnode->A_spd != NULL)
-    {
-        free_matrix(lnode->A_spd);
-        lnode->A_spd = NULL;
-    }
+    free_matrix(lnode->A_spd);
     free_CSC_matrix(lnode->Jchild_CSC);
     free_CSC_matrix(lnode->J_CSC);
     free(lnode->csc_to_csr_work);
-    if (lnode->param_source != NULL)
-    {
-        free_expr(lnode->param_source);
-    }
+    free_expr(lnode->param_source);
+
     lnode->A = NULL;
     lnode->AT = NULL;
+    lnode->A_spd = NULL;
     lnode->Jchild_CSC = NULL;
     lnode->J_CSC = NULL;
     lnode->csc_to_csr_work = NULL;
@@ -435,6 +430,10 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
        values; eval_jacobian_spd will refresh before use. */
     if (!pd_path)
     {
+        /* Comment: interesting that we don't create A_spd transpose here or
+         * something like that. I don't like this asymmetry. Perhaps we shouldn't
+         * have lnode->AT? Also, can A_spd be A?*/
+
         lnode->A_spd =
             build_spd_kron_I_A_alloc((const permuted_dense *) lnode->A, n_blocks);
     }

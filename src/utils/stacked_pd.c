@@ -39,9 +39,9 @@ static void stacked_pd_free(matrix *self)
     free(spd->src_block_idx_p);
     free(spd->src_block_idx);
 
-    if (spd->work != NULL)
+    if (spd->pre_coalesce != NULL)
     {
-        free_matrix((matrix *) spd->work);
+        free_matrix((matrix *) spd->pre_coalesce);
     }
 
     free_CSR_matrix(spd->csr_cache);
@@ -428,18 +428,18 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     int offset = 0;
     for (int k = 0; k < n_blocks; k++)
     {
-        int sz = spd->blocks[k]->base.nnz;
-        if (sz == 0)
+        int nnz_block = spd->blocks[k]->base.nnz;
+        if (nnz_block == 0)
         {
             continue;
         }
 
-        memcpy(spd->base.x + offset, spd->blocks[k]->X, sz * sizeof(double));
+        memcpy(spd->base.x + offset, spd->blocks[k]->X, nnz_block * sizeof(double));
         free(spd->blocks[k]->X);
         spd->blocks[k]->X = spd->base.x + offset;
         spd->blocks[k]->base.x = spd->blocks[k]->X;
         spd->blocks[k]->owns_X = false;
-        offset += sz;
+        offset += nnz_block;
     }
 
     return &spd->base;

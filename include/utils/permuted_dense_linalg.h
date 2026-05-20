@@ -54,16 +54,10 @@ matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
                            const CSC_matrix *A, permuted_dense *C);
 
-/* Allocate new permuted dense for C = B @ A where B and A are both PD. Both
-   may have arbitrary (sorted) row_perm / col_perm; no full-block assumption.
-   If B->col_perm and A->row_perm have no overlap C is structurally empty;
-   otherwise C has row_perm = B->row_perm, col_perm = A->col_perm. */
+/* Allocate new permuted dense for C = B @ A where B and A are both PD */
 matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A);
 
-/* Fill values of C = B @ A for two PDs (general row_perm / col_perm).
-   Intersects B->col_perm with A->row_perm, gathers the matching column
-   slice of B and row slice of A into the operands' dwork scratch, and
-   computes one cblas_dgemm. */
+/* Fill values of C = B @ A where A, B, and C are all permuted dense */
 void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
                           permuted_dense *C);
 
@@ -81,8 +75,7 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A);
 void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
                              const permuted_dense *A, permuted_dense *C);
 
-/* Allocate a new PD C with the same sparsity (m, n, m0, n0, row_perm,
-   col_perm) as A; values uninitialized. */
+/* Allocate a new PD C with the same sparsity as A */
 matrix *copy_sparsity_pd_alloc(const permuted_dense *A);
 
 /* Allocate C = A^T (transpose). */

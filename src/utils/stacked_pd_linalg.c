@@ -141,8 +141,9 @@ void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C)
 // we first transpose each block independently, yielding a raw spd with the same
 // block count and swapped row/col perms as the final output but potentially
 // overlapping row perms. We then coalesce that raw spd to get the final output with
-// disjoint row perms. We keep the raw spd around on `out->work` for reuse by
-// `transpose_spd_fill_values` since its per-block transposes are also needed there.
+// disjoint row perms. We keep the raw spd around on `out->pre_coalesce` for reuse
+// by `transpose_spd_fill_values` since its per-block transposes are also needed
+// there.
 // ----------------------------------------------------------------------------------
 matrix *transpose_spd_alloc(const stacked_pd *A)
 {
@@ -161,13 +162,13 @@ matrix *transpose_spd_alloc(const stacked_pd *A)
     free(AT_blocks);
 
     matrix *C = coalesce_spd_alloc((stacked_pd *) raw);
-    ((stacked_pd *) C)->work = (stacked_pd *) raw;
+    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
     return C;
 }
 
 void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C)
 {
-    stacked_pd *raw = C->work;
+    stacked_pd *raw = C->pre_coalesce;
     for (int k = 0; k < A->n_blocks; k++)
     {
         transpose_pd_fill_values(A->blocks[k], raw->blocks[k]);
@@ -187,7 +188,7 @@ A ^ T A decomposes as Σ_k B_k ^ T B_k, where summands with overlapping col_perm
 share cells.The output groups cols of A by signature sig_C(c) = {k: c ∈ C_k}; each
    unique signature becomes one output PD with row_perm = group cols
    and col_perm = ⋃ C_k for k in the signature. No structural zeros.
-   The output's `work` slot holds per-source scratch PDs (one symmetric
+   The output's `pre_coalesce` slot holds per-source scratch PDs (one symmetric
    PD per source block, row_perm = col_perm = C_k) that
    ATDA_spd_fill_values writes into. */
 matrix *ATA_spd_alloc(const stacked_pd *A)
@@ -213,13 +214,13 @@ matrix *ATA_spd_alloc(const stacked_pd *A)
 
     /* prepare coalescing of overlapping scratch blocks */
     matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) scratch);
-    ((stacked_pd *) C)->work = (stacked_pd *) scratch;
+    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) scratch;
     return C;
 }
 
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 {
-    stacked_pd *scratch = C->work;
+    stacked_pd *scratch = C->pre_coalesce;
 
     /* compute Ai^T @ Di @ Ai into the scratch PDs. */
     for (int k = 0; k < A->n_blocks; k++)

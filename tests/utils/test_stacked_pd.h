@@ -640,7 +640,7 @@ const char *test_transpose_spd_alloc_then_fill_values(void)
     return 0;
 }
 
-/* Empty source: output also empty; work is an empty spd; free safe. */
+/* Empty source: output also empty; pre_coalesce is an empty spd; free safe. */
 const char *test_transpose_spd_empty(void)
 {
     matrix *src_m = new_stacked_pd(4, 5, 0, NULL, NULL, NULL);
@@ -652,8 +652,8 @@ const char *test_transpose_spd_empty(void)
     mu_assert("n", out_m->n == 4);
     mu_assert("n_blocks", out->n_blocks == 0);
     mu_assert("nnz", out_m->nnz == 0);
-    mu_assert("work not NULL", out->work != NULL);
-    mu_assert("work n_blocks", out->work->n_blocks == 0);
+    mu_assert("pre_coalesce not NULL", out->pre_coalesce != NULL);
+    mu_assert("pre_coalesce n_blocks", out->pre_coalesce->n_blocks == 0);
 
     free_matrix(out_m);
     free_matrix(src_m);
@@ -695,7 +695,7 @@ const char *test_transpose_spd_single_block_full(void)
 }
 
 /* copy_sparsity_spd_alloc preserves block structure and produces a fresh
-   spd with identity src_block_idx_*, NULL work, and uninitialized X
+   spd with identity src_block_idx_*, NULL pre_coalesce, and uninitialized X
    buffers. */
 const char *test_copy_sparsity_spd_alloc(void)
 {
@@ -725,7 +725,7 @@ const char *test_copy_sparsity_spd_alloc(void)
     mu_assert("src_block_idx_p",
               cmp_int_array(out->src_block_idx_p, expected_src_p, 3));
     mu_assert("src_block_idx", cmp_int_array(out->src_block_idx, expected_src, 2));
-    mu_assert("work NULL", out->work == NULL);
+    mu_assert("pre_coalesce NULL", out->pre_coalesce == NULL);
 
     permuted_dense *O0 = out->blocks[0];
     mu_assert("O0 m0", O0->m0 == 2);
@@ -1061,8 +1061,8 @@ const char *test_ATDA_spd_empty(void)
 
     mu_assert("n_blocks", C->n_blocks == 0);
     mu_assert("nnz", C_m->nnz == 0);
-    mu_assert("work not NULL", C->work != NULL);
-    mu_assert("work n_blocks", C->work->n_blocks == 0);
+    mu_assert("pre_coalesce not NULL", C->pre_coalesce != NULL);
+    mu_assert("pre_coalesce n_blocks", C->pre_coalesce->n_blocks == 0);
 
     free_matrix(C_m);
     free_matrix(A_m);
