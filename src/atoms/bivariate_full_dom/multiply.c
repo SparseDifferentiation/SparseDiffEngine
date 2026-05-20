@@ -22,6 +22,7 @@
 #include "utils/matrix_BTA.h"
 #include "utils/matrix_sum.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
@@ -188,6 +189,29 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->idx_map_CT = maps[1];
         mul_node->idx_map_Hx = maps[2];
         mul_node->idx_map_Hy = maps[3];
+
+        /* If x/y wsum_hess is stacked_pd, re-index its idx_map so eval_wsum_hess
+           can read child->wsum_hess->x directly (block-major) instead of going
+           through to_csr each call. No-op for PD/sparse (csr->x aliases base.x
+           and the layouts match). */
+        if (x->wsum_hess->is_stacked_pd)
+        {
+            const stacked_pd *spd = (const stacked_pd *) x->wsum_hess;
+            int *native = SP_MALLOC(spd->base.nnz * sizeof(int));
+            compose_csr_idx_map_for_spd(spd, x->wsum_hess->to_csr(x->wsum_hess),
+                                        mul_node->idx_map_Hx, native);
+            free(mul_node->idx_map_Hx);
+            mul_node->idx_map_Hx = native;
+        }
+        if (y->wsum_hess->is_stacked_pd)
+        {
+            const stacked_pd *spd = (const stacked_pd *) y->wsum_hess;
+            int *native = SP_MALLOC(spd->base.nnz * sizeof(int));
+            compose_csr_idx_map_for_spd(spd, y->wsum_hess->to_csr(y->wsum_hess),
+                                        mul_node->idx_map_Hy, native);
+            free(mul_node->idx_map_Hy);
+            mul_node->idx_map_Hy = native;
+        }
     }
 }
 
@@ -266,17 +290,12 @@ static void eval_wsum_hess(expr *node, const double *w)
                     node->wsum_hess->x);
         accumulator(mul_node->CT->x, mul_node->CT->nnz, mul_node->idx_map_CT,
                     node->wsum_hess->x);
-        /* idx_map_Hx / idx_map_Hy were built (in wsum_hess_init_impl) from
-           x->wsum_hess->to_csr / y->wsum_hess->to_csr (CSR scan order).
-           Read through to_csr so the values match that order — required
-           for multi-block stacked_pd where base.x is block-major and
-           differs from CSR scan order. For PD/sparse, to_csr aliases
-           base.x and is essentially free. */
-        CSR_matrix *Hx_csr = x->wsum_hess->to_csr(x->wsum_hess);
-        accumulator(Hx_csr->x, Hx_csr->nnz, mul_node->idx_map_Hx,
+        /* idx_map_Hx / idx_map_Hy were composed in wsum_hess_init_impl so
+           they index against child->wsum_hess->x directly, regardless of
+           whether the child's wsum_hess is PD, sparse, or stacked_pd. */
+        accumulator(x->wsum_hess->x, x->wsum_hess->nnz, mul_node->idx_map_Hx,
                     node->wsum_hess->x);
-        CSR_matrix *Hy_csr = y->wsum_hess->to_csr(y->wsum_hess);
-        accumulator(Hy_csr->x, Hy_csr->nnz, mul_node->idx_map_Hy,
+        accumulator(y->wsum_hess->x, y->wsum_hess->nnz, mul_node->idx_map_Hy,
                     node->wsum_hess->x);
     }
 }

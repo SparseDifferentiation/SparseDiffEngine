@@ -81,26 +81,6 @@ static void forward(expr *node, const double *u)
     }
 }
 
-/* Build a native-indexed idx_map for a stacked_pd child by composing the
-   existing CSR-indexed idx_map with the native->csr permutation */
-static void compose_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
-                                    const int *csr_idx_map, int *native_idx_map)
-{
-    int native = 0;
-    for (int k = 0; k < spd->n_blocks; k++)
-    {
-        permuted_dense *blk = spd->blocks[k];
-        for (int ii = 0; ii < blk->m0; ii++)
-        {
-            int row_start = csr->p[blk->row_perm[ii]];
-            for (int jj = 0; jj < blk->n0; jj++)
-            {
-                native_idx_map[native++] = csr_idx_map[row_start + jj];
-            }
-        }
-    }
-}
-
 static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
@@ -143,7 +123,7 @@ static void jacobian_init_impl(expr *node)
     {
         const stacked_pd *spd = (const stacked_pd *) x->jacobian;
         int *native_idx_map = SP_MALLOC(spd->base.nnz * sizeof(int));
-        compose_idx_map_for_spd(spd, Jx, snode->idx_map, native_idx_map);
+        compose_csr_idx_map_for_spd(spd, Jx, snode->idx_map, native_idx_map);
         free(snode->idx_map);
         snode->idx_map = native_idx_map;
     }
