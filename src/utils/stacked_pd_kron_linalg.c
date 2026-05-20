@@ -22,6 +22,7 @@
 #include "utils/stacked_pd.h"
 #include "utils/stacked_pd_linalg.h"
 #include "utils/tracked_alloc.h"
+#include "utils/utils.h"
 #include <stdlib.h>
 
 // ----------------------------------------------------------------------------------
@@ -214,7 +215,14 @@ matrix *BA_pd_kron_pd_alloc(const permuted_dense *A, int p, const permuted_dense
 static void wrapper_BA_pd_kron_pd_fill(const permuted_dense *scratch,
                                        const void *ctx, permuted_dense *Ck)
 {
-    BA_pd_pd_fill_values(scratch, (const permuted_dense *) ctx, Ck);
+    const permuted_dense *J = (const permuted_dense *) ctx;
+    /* BA_pd_pd_fill_values reads scratch->dwork on the slow path. At alloc
+       time BA_pd_pd_alloc sized it, but on a scratch we've since freed —
+       ensure the fresh scratch has dwork before the first fill. Idempotent
+       after the first block. */
+    int s_max = MIN(scratch->n0, J->m0);
+    permuted_dense_ensure_dwork(scratch, (size_t) s_max * scratch->m0);
+    BA_pd_pd_fill_values(scratch, J, Ck);
 }
 
 void BA_pd_kron_pd_fill_values(const permuted_dense *A, int p,
