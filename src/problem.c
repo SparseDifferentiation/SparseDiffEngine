@@ -18,6 +18,7 @@
 #include "problem.h"
 #include "subexpr.h"
 #include "utils/CSR_sum.h"
+#include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -131,6 +132,7 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
     int idx_offset = 0;
 
     /* map objective hessian entries */
+    int obj_start = idx_offset;
     for (int row = 0; row < H->m; row++)
     {
         for (int idx = H->p[row]; idx < H->p[row + 1]; idx++)
@@ -143,11 +145,17 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
             prob->hess_idx_map[idx_offset++] = col_to_pos[H_obj->i[j]];
         }
     }
+    if (prob->objective->wsum_hess->is_stacked_pd)
+    {
+        compose_csr_idx_map_for_spd((const stacked_pd *) prob->objective->wsum_hess,
+                                    H_obj, prob->hess_idx_map + obj_start);
+    }
 
     /* map constraint hessian entries */
     for (int c_idx = 0; c_idx < prob->n_constraints; c_idx++)
     {
         H_c = constrs[c_idx]->wsum_hess->to_csr(constrs[c_idx]->wsum_hess);
+        int c_start = idx_offset;
         for (int row = 0; row < H->m; row++)
         {
             for (int idx = H->p[row]; idx < H->p[row + 1]; idx++)
@@ -159,6 +167,12 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
             {
                 prob->hess_idx_map[idx_offset++] = col_to_pos[H_c->i[j]];
             }
+        }
+        if (constrs[c_idx]->wsum_hess->is_stacked_pd)
+        {
+            compose_csr_idx_map_for_spd(
+                (const stacked_pd *) constrs[c_idx]->wsum_hess, H_c,
+                prob->hess_idx_map + c_start);
         }
     }
 }
@@ -545,25 +559,16 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     /* zero out hessian before adding contribution from obj and constraints */
     memset(H->x, 0, H->nnz * sizeof(double));
 
-    /* Accumulate via the CSR view of each wsum_hess. The idx_map was
-       built (in problem_lagrange_hess_fill_sparsity) by iterating each
-       wsum_hess in CSR scan order, so the values fed to `accumulator`
-       must also be in CSR scan order. For sparse_matrix / single-block
-       permuted_dense, to_csr() aliases base.x and is essentially free;
-       for stacked_pd with multiple blocks the block-major base.x differs
-       from CSR-major scan order, so reading wsum_hess->x directly would
-       scatter values to the wrong positions in H. */
-    CSR_matrix *obj_csr = obj->wsum_hess->to_csr(obj->wsum_hess);
-    accumulator(obj_csr->x, obj_csr->nnz, idx_map, H->x);
-    offset = obj_csr->nnz;
+    /* accumulate objective function */
+    accumulator(obj->wsum_hess->x, obj->wsum_hess->nnz, idx_map, H->x);
+    offset = obj->wsum_hess->nnz;
 
     /* accumulate constraint functions */
     for (int i = 0; i < prob->n_constraints; i++)
     {
         matrix *c_hess = constrs[i]->wsum_hess;
-        CSR_matrix *c_csr = c_hess->to_csr(c_hess);
-        accumulator(c_csr->x, c_csr->nnz, idx_map + offset, H->x);
-        offset += c_csr->nnz;
+        accumulator(c_hess->x, c_hess->nnz, idx_map + offset, H->x);
+        offset += c_hess->nnz;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);

@@ -33,15 +33,13 @@ void sort_int_array(int *array, int size);
 
 /* Return true if sorted index arrays a_idx and b_idx (lengths a_len, b_len)
    share any value, where b_idx entries are shifted by b_offset before
-   comparison (a_idx[ai] == b_idx[bi] - b_offset). Use b_offset = 0 for a
-   plain intersection check.  */
+   comparison (a_idx[ai] == b_idx[bi] - b_offset). */
 bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
                  int b_offset);
 
-/* Find positions where two sorted, ascending int arrays match. For each
-   match (a[ii] == b[jj]) writes ii into idx_a and jj into idx_b. Returns
-   the count. Buffers idx_a and idx_b must have capacity >= min(a_len,
-   b_len); no allocation is performed. */
+/* Find positions where two sorted, ascending int arrays match. For each match
+   (a[ii] == b[jj]) writes ii into idx_a and jj into idx_b. Returns the count.
+   */
 int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
                              int *idx_a, int *idx_b);
 
@@ -53,9 +51,7 @@ int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
 void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
                              iVec *out);
 
-/* In-place prefix sum over p[0..n]: replace p[i+1] with sum of p[0..i+1]
-   for i in [0, n). Standard "convert counts to CSR row offsets" step
-   when p[0] = 0 and p[i+1] holds the count for bucket i. */
+/* in-place cumulative sum */
 void cumsum(int *p, int n);
 
 #endif // UTILS_H

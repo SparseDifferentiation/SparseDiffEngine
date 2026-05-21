@@ -153,9 +153,7 @@ static void wsum_hess_init_impl(expr *node)
         }
 
         /* For sparse matrices we need the CSC cache to be valid for the
-           BTA_matrices_alloc / BTDA_matrices_fill_values calls below.
-           stacked_pd operands are materialized on demand inside the
-           dispatcher (via to_csr); no caller-side prep needed. */
+           BTA_matrices_alloc / BTDA_matrices_fill_values calls below. */
         if (!x->jacobian->is_permuted_dense && !x->jacobian->is_stacked_pd)
         {
             sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
@@ -190,10 +188,8 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->idx_map_Hx = maps[2];
         mul_node->idx_map_Hy = maps[3];
 
-        /* If x/y wsum_hess is stacked_pd, re-index its idx_map so eval_wsum_hess
-           can read child->wsum_hess->x directly (block-major) instead of going
-           through to_csr each call. No-op for PD/sparse (csr->x aliases base.x
-           and the layouts match). */
+        /* If x/y wsum_hess is stacked_pd, re-index its idx_map so accumulation
+           with child->wsum_hess->x works correctly. */
         if (x->wsum_hess->is_stacked_pd)
         {
             compose_csr_idx_map_for_spd((const stacked_pd *) x->wsum_hess,
