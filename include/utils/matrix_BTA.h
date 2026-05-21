@@ -43,7 +43,7 @@ void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C)
    BA_pd_matrices_fill_values the caller must have refreshed
    sm_A->csc_cache values (same fill-side contract as
    BTDA_matrices_fill_values). */
-matrix *BA_pd_matrices_alloc(const permuted_dense *B, const matrix *A);
+matrix *BA_pd_matrices_alloc(const permuted_dense *B, matrix *A);
 void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
                                 permuted_dense *C);
 
@@ -53,7 +53,7 @@ void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
    ensures sm_A->csc_cache structure exists at alloc time; the caller
    must refresh values via sm_A->refresh_csc_values before calling
    _fill_values. */
-matrix *BA_spd_matrices_alloc(const stacked_pd *B, const matrix *A);
+matrix *BA_spd_matrices_alloc(const stacked_pd *B, matrix *A);
 void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
                                  stacked_pd *C);
 
@@ -63,7 +63,7 @@ void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
    the sparse-J branch the dispatcher ensures sm_J->csc_cache structure
    exists at alloc time; the caller must refresh values via
    sm_J->refresh_csc_values before calling _fill_values. */
-matrix *BA_pd_kron_matrices_alloc(const permuted_dense *A, int p, const matrix *J);
+matrix *BA_pd_kron_matrices_alloc(const permuted_dense *A, int p, matrix *J);
 void BA_pd_kron_matrices_fill_values(const permuted_dense *A, int p, const matrix *J,
                                      stacked_pd *C);
 

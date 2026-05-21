@@ -20,6 +20,7 @@
 #include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
 #include "utils/CSR_sum.h"
+#include "utils/cblas_wrapper.h"
 #include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/mini_numpy.h"
@@ -96,8 +97,11 @@ static void forward(expr *node, const double *u)
     x->forward(x, u);
     y->forward(y, u);
 
-    /* local forward pass */
-    mat_mat_mult(x->value, y->value, node->value, x->d1, x->d2, y->d2);
+    /* local forward pass: Z = X @ Y in column-major (x->d1 x x->d2) @
+       (y->d1 x y->d2) -> (x->d1 x y->d2). */
+    int m = x->d1, k = x->d2, n = y->d2;
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, x->value,
+                m, y->value, k, 0.0, node->value, m);
 }
 
 static void free_matmul_data(expr *node)

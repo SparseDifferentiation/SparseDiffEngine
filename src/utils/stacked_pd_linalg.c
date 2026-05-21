@@ -199,7 +199,7 @@ matrix *ATA_spd_alloc(const stacked_pd *A)
     /* Pseudo-spd: per source block k, a square PD with
        row_perm = col_perm = C_k and uninitialized X. We use the
        PD-level ATA_pd_alloc here (rather than new_permuted_dense
-       directly) because it also pre-sizes A->blocks[k]->dwork — that
+       directly) because it also pre-sizes A->blocks[k]->kernel_dwork — that
        scratch buffer is what ATDA_pd_fill_values reads from during the
        fill phase. */
     permuted_dense **scratch_blocks =
@@ -299,14 +299,14 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
         if (Ak->n0 > max_n0_A) max_n0_A = Ak->n0;
     }
 
-    C_pd->iwork_size = (size_t) 2 + (size_t) 2 * s_max + (size_t) max_n0_A;
-    C_pd->iwork = (int *) SP_MALLOC(C_pd->iwork_size * sizeof(int));
-    C_pd->iwork[0] = s_max;
-    C_pd->iwork[1] = max_n0_A;
+    C_pd->kernel_iwork_size = (size_t) 2 + (size_t) 2 * s_max + (size_t) max_n0_A;
+    C_pd->kernel_iwork = (int *) SP_MALLOC(C_pd->kernel_iwork_size * sizeof(int));
+    C_pd->kernel_iwork[0] = s_max;
+    C_pd->kernel_iwork[1] = max_n0_A;
 
     size_t dwork_total = (size_t) B->m0 * s_max + (size_t) s_max * max_n0_A +
                          (size_t) B->m0 * max_n0_A;
-    permuted_dense_ensure_dwork(C_pd, dwork_total);
+    permuted_dense_ensure_kernel_dwork(C_pd, dwork_total);
 
     return C;
 }
@@ -324,12 +324,12 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     memset(C->X, 0, (size_t) C->m0 * C->n0 * sizeof(double));
 
     /* partition workspace according to how it was set up */
-    int s_max = C->iwork[0];
-    int max_n0_A = C->iwork[1];
-    int *idx_B = C->iwork + 2;
+    int s_max = C->kernel_iwork[0];
+    int max_n0_A = C->kernel_iwork[1];
+    int *idx_B = C->kernel_iwork + 2;
     int *idx_A = idx_B + s_max;
     int *out_cols = idx_A + s_max;
-    double *Bg = C->dwork;
+    double *Bg = C->kernel_dwork;
     double *Ag = Bg + (size_t) B->m0 * s_max;
     double *Cg = Ag + (size_t) s_max * max_n0_A;
 

@@ -74,7 +74,7 @@ matrix *ATA_pd_alloc(const permuted_dense *A)
        so Cij != 0 for (i, j) in A->col_perm x A->col_perm) */
 
     /* Pre-size A's dwork for the ATDA fill (Y-buffer = diag(d_perm) X). */
-    permuted_dense_ensure_dwork(A, (size_t) A->m0 * A->n0);
+    permuted_dense_ensure_kernel_dwork(A, (size_t) A->m0 * A->n0);
 
     return new_permuted_dense(n, n, A->n0, A->n0, A->col_perm, A->col_perm, NULL);
 }
@@ -85,15 +85,15 @@ void ATDA_pd_fill_values(const permuted_dense *A, const double *d, permuted_dens
     int n0 = A->n0;
 
     /* dwork = diag(d_perm) @ X, where d_perm[ii] = d[row_perm[ii]]. */
-    cblas_dcopy(m0 * n0, A->X, 1, A->dwork, 1);
+    cblas_dcopy(m0 * n0, A->X, 1, A->kernel_dwork, 1);
     for (int ii = 0; ii < m0; ii++)
     {
-        cblas_dscal(n0, d[A->row_perm[ii]], A->dwork + ii * n0, 1);
+        cblas_dscal(n0, d[A->row_perm[ii]], A->kernel_dwork + ii * n0, 1);
     }
 
     /* C  = XT @ dwork = XT @ diag(d_perm) @ X */
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, n0, n0, m0, 1.0, A->X, n0,
-                A->dwork, n0, 0.0, C->X, n0);
+                A->kernel_dwork, n0, 0.0, C->X, n0);
 }
 
 matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
@@ -113,15 +113,15 @@ matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
        buffers). Each operand needs s_max rows of its own n0 doubles, where
        s_max = MIN(A->m0, B->m0) bounds the intersection of row_perms. */
     int s_max = MIN(A->m0, B->m0);
-    permuted_dense_ensure_dwork(A, (size_t) s_max * A->n0);
-    permuted_dense_ensure_dwork(B, (size_t) s_max * B->n0);
+    permuted_dense_ensure_kernel_dwork(A, (size_t) s_max * A->n0);
+    permuted_dense_ensure_kernel_dwork(B, (size_t) s_max * B->n0);
 
-    /* Pre-allocate C->iwork for idx_A + idx_B in BTA / BTDA_pd_pd slow paths
+    /* Pre-allocate C->kernel_iwork for idx_A + idx_B in BTA / BTDA_pd_pd slow paths
        (each needs at most s_max ints; we store both arrays back-to-back
        in iwork, hence 2 * s_max). */
     permuted_dense *C_pd = (permuted_dense *) C;
-    C_pd->iwork_size = (size_t) 2 * s_max;
-    C_pd->iwork = (int *) SP_MALLOC(C_pd->iwork_size * sizeof(int));
+    C_pd->kernel_iwork_size = (size_t) 2 * s_max;
+    C_pd->kernel_iwork = (int *) SP_MALLOC(C_pd->kernel_iwork_size * sizeof(int));
 
     return C;
 }
@@ -154,32 +154,32 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     }
 
     // -----------------------------------------------------------------------
-    // find intersection of row permutations. C->iwork was pre-sized by
+    // find intersection of row permutations. C->kernel_iwork was pre-sized by
     // BTA_pd_pd_alloc to 2 * MIN(A->m0, B->m0) ints (idx_A | idx_B back-
     // to-back), so no allocation here.
     // -----------------------------------------------------------------------
     int s_max = MIN(A->m0, B->m0);
-    int *idx_A = C->iwork;
-    int *idx_B = C->iwork + s_max;
+    int *idx_A = C->kernel_iwork;
+    int *idx_B = C->kernel_iwork + s_max;
     int s = sorted_intersect_indices(A->row_perm, A->m0, B->row_perm, B->m0, idx_A,
                                      idx_B);
     assert(s > 0);
 
     // ------------------------------------------------------------------------
-    // Gather the matching rows into A->dwork and B->dwork. dwork is pre-sized
+    // Gather the matching rows into A->kernel_dwork and B->kernel_dwork. dwork is pre-sized
     // by BTA_pd_pd_alloc (one ensure_dwork call per operand at alloc time).
     // ------------------------------------------------------------------------
     for (int k = 0; k < s; k++)
     {
-        memcpy(A->dwork + k * A->n0, A->X + idx_A[k] * A->n0,
+        memcpy(A->kernel_dwork + k * A->n0, A->X + idx_A[k] * A->n0,
                A->n0 * sizeof(double));
-        memcpy(B->dwork + k * B->n0, B->X + idx_B[k] * B->n0,
+        memcpy(B->kernel_dwork + k * B->n0, B->X + idx_B[k] * B->n0,
                B->n0 * sizeof(double));
     }
 
     /* matmul on the gathered rows */
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, B->n0, A->n0, s, 1.0,
-                B->dwork, B->n0, A->dwork, A->n0, 0.0, C->X, A->n0);
+                B->kernel_dwork, B->n0, A->kernel_dwork, A->n0, 0.0, C->X, A->n0);
 }
 
 void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
@@ -196,7 +196,7 @@ void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
        — violates the no-alloc-in-fill policy. Fix is to fold diag(d)
        directly into BTA_pd_pd_fill_values's gather/dgemm (either via a
        shared internal helper that takes an optional d, or by rewriting
-       this kernel inline using pre-sized A->dwork). */
+       this kernel inline using pre-sized A->kernel_dwork). */
     /* C = BT @ (DA) */
     permuted_dense *DA = (permuted_dense *) A->base.copy_sparsity(&A->base);
     DA_pd_fill_values(d, A, DA);
@@ -308,14 +308,14 @@ matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
 
     /* Pre-size B's and A's dwork for the gathers in fill. Worst-case
        intersection size is s_max; B_sub is (m0, s) and A_sub is (s, n0). */
-    permuted_dense_ensure_dwork(A, (size_t) s_max * A->n0);
-    permuted_dense_ensure_dwork(B, (size_t) s_max * B->m0);
+    permuted_dense_ensure_kernel_dwork(A, (size_t) s_max * A->n0);
+    permuted_dense_ensure_kernel_dwork(B, (size_t) s_max * B->m0);
 
-    /* Pre-allocate C->iwork for idx_B + idx_A back-to-back (2 * s_max ints),
+    /* Pre-allocate C->kernel_iwork for idx_B + idx_A back-to-back (2 * s_max ints),
        same idiom as BTA_pd_pd_alloc. */
     permuted_dense *C_pd = (permuted_dense *) C;
-    C_pd->iwork_size = (size_t) 2 * s_max;
-    C_pd->iwork = (int *) SP_MALLOC(C_pd->iwork_size * sizeof(int));
+    C_pd->kernel_iwork_size = (size_t) 2 * s_max;
+    C_pd->kernel_iwork = (int *) SP_MALLOC(C_pd->kernel_iwork_size * sizeof(int));
 
     return C;
 }
@@ -339,19 +339,19 @@ void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     }
 
     // -----------------------------------------------------------------------
-    // find intersection of B's col_perm and A's row_perm. C->iwork was
+    // find intersection of B's col_perm and A's row_perm. C->kernel_iwork was
     // pre-sized by BA_pd_pd_alloc to 2 * MIN(B->n0, A->m0) ints (idx_B |
     // idx_A back-to-back), so no allocation here.
     // -----------------------------------------------------------------------
     int s_max = MIN(B->n0, A->m0);
-    int *idx_B = C->iwork;
-    int *idx_A = C->iwork + s_max;
+    int *idx_B = C->kernel_iwork;
+    int *idx_A = C->kernel_iwork + s_max;
     int s = sorted_intersect_indices(B->col_perm, B->n0, A->row_perm, A->m0, idx_B,
                                      idx_A);
     assert(s > 0);
 
     // ------------------------------------------------------------------------
-    // Gather the matching slices into B->dwork (column gather) and A->dwork
+    // Gather the matching slices into B->kernel_dwork (column gather) and A->kernel_dwork
     // (row gather). dwork is pre-sized by BA_pd_pd_alloc (one ensure_dwork
     // call per operand at alloc time).
     // ------------------------------------------------------------------------
@@ -360,19 +360,19 @@ void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     {
         for (int kk = 0; kk < s; kk++)
         {
-            B->dwork[ii * s + kk] = B->X[ii * B->n0 + idx_B[kk]];
+            B->kernel_dwork[ii * s + kk] = B->X[ii * B->n0 + idx_B[kk]];
         }
     }
     /* A_sub shape (s, A->n0) row-major: A_sub[kk, :] = A->X[idx_A[kk], :]. */
     for (int kk = 0; kk < s; kk++)
     {
-        memcpy(A->dwork + kk * A->n0, A->X + idx_A[kk] * A->n0,
+        memcpy(A->kernel_dwork + kk * A->n0, A->X + idx_A[kk] * A->n0,
                A->n0 * sizeof(double));
     }
 
     /* matmul on the gathered slices */
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, B->m0, A->n0, s, 1.0,
-                B->dwork, s, A->dwork, A->n0, 0.0, C->X, A->n0);
+                B->kernel_dwork, s, A->kernel_dwork, A->n0, 0.0, C->X, A->n0);
 }
 
 matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
@@ -397,7 +397,7 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     iVec_free(col_active);
 
     /* Pre-size B's dwork for the BTDA fill (holds (diag(d) B)^T). */
-    permuted_dense_ensure_dwork(B, (size_t) B->m0 * B->n0);
+    permuted_dense_ensure_kernel_dwork(B, (size_t) B->m0 * B->n0);
 
     return C;
 }
@@ -415,17 +415,17 @@ void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
     int m0 = B->m0;
     int n0 = B->n0;
 
-    /* conpute B->dwork = (diag(d) B)^T */
+    /* conpute B->kernel_dwork = (diag(d) B)^T */
     for (int kk = 0; kk < m0; kk++)
     {
         double dk = d[B->row_perm[kk]];
         for (int ii = 0; ii < n0; ii++)
         {
-            B->dwork[ii * m0 + kk] = dk * B->X[kk * n0 + ii];
+            B->kernel_dwork[ii * m0 + kk] = dk * B->X[kk * n0 + ii];
         }
     }
 
-    BA_pd_csc_fill_values(B->dwork, m0, B->row_inv, A, C);
+    BA_pd_csc_fill_values(B->kernel_dwork, m0, B->row_inv, A, C);
 }
 
 matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
@@ -451,7 +451,7 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
     iVec_free(row_active);
 
     /* Pre-size A's dwork for the BTDA fill (holds (diag(d_perm) X_A)^T). */
-    permuted_dense_ensure_dwork(A, (size_t) A->m0 * A->n0);
+    permuted_dense_ensure_kernel_dwork(A, (size_t) A->m0 * A->n0);
 
     return C;
 }
@@ -479,7 +479,7 @@ static void BTA_csc_pd_fill_values(const CSC_matrix *B, const double *A_T, int m
 }
 
 /* C = B^T diag(d) A. Folds diag(d) into A's dense block (writing
-   (diag(d_perm) X_A)^T into A->dwork) and delegates to BTA_csc_pd_fill_values.
+   (diag(d_perm) X_A)^T into A->kernel_dwork) and delegates to BTA_csc_pd_fill_values.
    Mirrors how BTDA_pd_csc_fill_values wraps BA_pd_csc_fill_values. */
 void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
                              const permuted_dense *A, permuted_dense *C)
@@ -492,7 +492,7 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
     int m0_A = A->m0;
     int n0_A = A->n0;
 
-    /* A->dwork = (diag(d_perm) X_A)^T, row-major shape (n0_A, m0_A).
+    /* A->kernel_dwork = (diag(d_perm) X_A)^T, row-major shape (n0_A, m0_A).
        Pre-sized by BTA_csc_pd_alloc; no allocation in fill.
        Column j of (diag(d) X_A) lives contiguously in dwork as row j —
        which is exactly the layout BTA_csc_pd_fill_values wants. */
@@ -501,11 +501,11 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
         double dk = d[A->row_perm[kk]];
         for (int jj = 0; jj < n0_A; jj++)
         {
-            A->dwork[jj * m0_A + kk] = dk * A->X[kk * n0_A + jj];
+            A->kernel_dwork[jj * m0_A + kk] = dk * A->X[kk * n0_A + jj];
         }
     }
 
-    BTA_csc_pd_fill_values(B, A->dwork, m0_A, A->row_inv, C);
+    BTA_csc_pd_fill_values(B, A->kernel_dwork, m0_A, A->row_inv, C);
 }
 
 /* Original transpose-via-Cprime implementation of BTDA_csc_pd_fill_values.

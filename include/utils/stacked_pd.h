@@ -22,7 +22,7 @@
 #include "matrix.h"
 #include "permuted_dense.h"
 
-/* stacked_pd represents a matrix that is the (vertical) union of `n_blocks`
+/* stacked_pd represents a matrix that is the (vertical) union of 'n_blocks'
    permuted_dense blocks. Two different blocks have disjoint row permutations,
    but the column permutations may overlap across blocks.
 
@@ -35,20 +35,20 @@ typedef struct stacked_pd
 {
     matrix base;
     int n_blocks;
-    permuted_dense **blocks; /* owned; length n_blocks                      */
-    int *src_block_idx_p;    /* owned; length n_blocks + 1                  */
-    int *src_block_idx;      /* owned; length src_block_idx_p[n_blocks]     */
+    permuted_dense **blocks;
+    int *src_block_idx_p;
+    int *src_block_idx;
+
+    /* Some operations on stacked_pds (like transpose) may in an intermediate
+       step result in a stacked_pd with blocks that do not have disjoint row
+       permutations. Such operations must incorporate a coalesce step that
+       merges rows that appear in several blocks into a single block. This pointer
+       holds the raw spd before the coalesce step. */
     struct stacked_pd *pre_coalesce;
-    /* owned (pre_coalesce); NULL except when this spd was */
-    /* produced by an op that needs a pre-coalesce  */
-    /* intermediate (currently transpose). When     */
-    /* set, holds the raw spd that                  */
-    /* coalesce_spd_fill_values reads from. Lives   */
-    /* for the spd's full lifetime, not per-call.   */
-    CSR_matrix *csr_cache; /* owned; lazy CSR view built on first         */
-                           /* to_csr() call. Structure (p, i) is built    */
-                           /* once; values (x) are refreshed on every     */
-                           /* subsequent call from the block X buffers.   */
+
+    /* lazily built CSR view */
+    CSR_matrix *csr_cache;
+
 } stacked_pd;
 
 /* Constructor for stacked_pd. Takes ownership of every block in 'blocks'. The

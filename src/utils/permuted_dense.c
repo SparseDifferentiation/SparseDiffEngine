@@ -45,8 +45,8 @@ static void permuted_dense_free(matrix *self)
     {
         free(pd->X);
     }
-    free(pd->dwork);
-    free(pd->iwork);
+    free(pd->kernel_dwork);
+    free(pd->kernel_iwork);
     free(pd);
 }
 
@@ -383,7 +383,7 @@ permuted_dense_vtable_block_left_mult_sparsity(const matrix *A, const CSC_matrix
     /* Pre-size dwork for the subsequent block_left_mult_values fill, which
        densifies a sparse column of J (size A->n) before applying A. Honors
        the no-alloc-in-fill rule. */
-    permuted_dense_ensure_dwork(pd, A->n);
+    permuted_dense_ensure_kernel_dwork(pd, A->n);
     return I_kron_A_alloc(A, J, p);
 }
 
@@ -393,7 +393,7 @@ static void permuted_dense_vtable_block_left_mult_values(const matrix *A,
 {
     const permuted_dense *pd = (const permuted_dense *) A;
     assert(pd->m0 == A->m && pd->n0 == A->n);
-    I_kron_A_fill_values(A, J, C, pd->dwork);
+    I_kron_A_fill_values(A, J, C, pd->kernel_dwork);
 }
 
 static void wire_vtable(permuted_dense *pd)
@@ -458,11 +458,11 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->X = (double *) SP_MALLOC(sz * sizeof(double));
     pd->base.x = pd->X;
     pd->owns_X = true;
-    /* dwork is allocated lazily by kernels via permuted_dense_ensure_dwork.
+    /* dwork is allocated lazily by kernels via permuted_dense_ensure_kernel_dwork.
        SP_CALLOC above already zeroed dwork / dwork_size, but make it
        explicit. */
-    pd->dwork = NULL;
-    pd->dwork_size = 0;
+    pd->kernel_dwork = NULL;
+    pd->kernel_dwork_size = 0;
     pd->col_inv = (int *) SP_MALLOC(n * sizeof(int));
     pd->row_inv = (int *) SP_MALLOC(m * sizeof(int));
 
@@ -545,11 +545,13 @@ static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A)
     return C;
 }
 
-void permuted_dense_ensure_dwork(const permuted_dense *pd_const, size_t size)
+void permuted_dense_ensure_kernel_dwork(const permuted_dense *pd_const, size_t size)
 {
+    /* TODO: refactor this - maybe pass in kernel and size instead? Then this is
+     * a general function, not necessarily tied to permuted_dense*/
     permuted_dense *pd = (permuted_dense *) pd_const;
-    if (pd->dwork_size >= size) return;
-    free(pd->dwork);
-    pd->dwork = (double *) SP_MALLOC(size * sizeof(double));
-    pd->dwork_size = size;
+    if (pd->kernel_dwork_size >= size) return;
+    free(pd->kernel_dwork);
+    pd->kernel_dwork = (double *) SP_MALLOC(size * sizeof(double));
+    pd->kernel_dwork_size = size;
 }

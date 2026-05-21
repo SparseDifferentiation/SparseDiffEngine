@@ -192,11 +192,7 @@ void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
        disjoint row perms and stacked_pd_to_csr_alloc memcpys each block's
        col_perm straight into csr->i, the n0 CSR entries for any row are
        exactly that block's columns in order — CSR position is just
-       csr->p[row] + jj.
-
-       In-place is unsafe (writing native pos j can corrupt CSR pos j'
-       that a later iteration still needs to read), so we compose into a
-       scratch buffer and memcpy back. */
+       csr->p[row] + jj. */
     int *scratch = (int *) SP_MALLOC(spd->base.nnz * sizeof(int));
     int native = 0;
     for (int k = 0; k < spd->n_blocks; k++)

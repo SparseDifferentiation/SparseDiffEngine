@@ -38,16 +38,13 @@ bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
                  int b_offset);
 
 /* Find positions where two sorted, ascending int arrays match. For each match
-   (a[ii] == b[jj]) writes ii into idx_a and jj into idx_b. Returns the count.
-   */
+   (a[ii] == b[jj]) writes ii into idx_a and jj into idx_b. Returns the count. */
 int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
                              int *idx_a, int *idx_b);
 
-/* K-way merge of `n_arrs` sorted, ascending int arrays into `out`,
-   producing the sorted, deduplicated union. `arrs[a]` has length
-   `lens[a]`. `out` is cleared (length reset, capacity reused) and
-   populated; on return `out->data[0..out->len)` holds the union.
-   O(total_len * n_arrs); fine when n_arrs is small. */
+/* Merges 'n_arrs' sorted, ascending integer arrays into 'out', 'producing the
+   sorted deduplicated union. 'arrs[a]' has length 'lens[a]'. 'out' is cleared
+   (length reset, capacity reused) and populated. */
 void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
                              iVec *out);
 

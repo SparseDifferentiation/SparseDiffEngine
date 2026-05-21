@@ -24,27 +24,26 @@
 #include "stacked_pd.h"
 
 /* All three families compute C = kron(I_p, A) @ J as a stacked_pd, without
-   materializing kron(I_p, A) — A is passed directly as a permuted_dense.
-   Output shape: (A->m * p) x J->n. */
+   materializing kron(I_p, A). We instead directly pass A as a permuted_dense. */
 
-/* Allocate sparsity for C = kron(I_p, A) @ J where J is CSC. */
+/* Allocate sparsity for stacked_pd C = kron(I_p, A) @ J where J is CSC. */
 matrix *BA_pd_kron_csc_alloc(const permuted_dense *A, int p, const CSC_matrix *J);
 
-/* Fill values of C = kron(I_p, A) @ J where J is CSC. */
+/* Fill values of stacked_pd C = kron(I_p, A) @ J where J is CSC. */
 void BA_pd_kron_csc_fill_values(const permuted_dense *A, int p, const CSC_matrix *J,
                                 stacked_pd *C);
 
-/* Allocate sparsity for C = kron(I_p, A) @ J where J is permuted_dense. */
+/* Allocate sparsity for stacked_pd C = kron(I_p, A) @ J where J is PD. */
 matrix *BA_pd_kron_pd_alloc(const permuted_dense *A, int p, const permuted_dense *J);
 
-/* Fill values of C = kron(I_p, A) @ J where J is permuted_dense. */
+/* Fill values of stacked_pd C = kron(I_p, A) @ J where J is permuted_dense. */
 void BA_pd_kron_pd_fill_values(const permuted_dense *A, int p,
                                const permuted_dense *J, stacked_pd *C);
 
-/* Allocate sparsity for C = kron(I_p, A) @ J where J is stacked_pd. */
+/* Allocate sparsity for stacked_pd C = kron(I_p, A) @ J where J is stacked_pd. */
 matrix *BA_pd_kron_spd_alloc(const permuted_dense *A, int p, const stacked_pd *J);
 
-/* Fill values of C = kron(I_p, A) @ J where J is stacked_pd. */
+/* Fill values of stacked_pd C = kron(I_p, A) @ J where J is stacked_pd. */
 void BA_pd_kron_spd_fill_values(const permuted_dense *A, int p, const stacked_pd *J,
                                 stacked_pd *C);
 
