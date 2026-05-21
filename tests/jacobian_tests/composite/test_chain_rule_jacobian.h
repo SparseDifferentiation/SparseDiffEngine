@@ -334,20 +334,17 @@ const char *test_jacobian_left_matmul_dense_of_broadcast_sin_left_matmul_dense(v
     int n_outer_rows = 3;
     int p = 5;
     double u_vals[3] = {0.1, 0.2, 0.3}; /* n_vars = 3 */
-    double A[12] = {1.0, 0.5, -0.3,
-                    0.2, 1.0, 0.7,
-                    -0.1, 0.4, 1.0,
-                    0.3, -0.2, 0.6};                       /* (n_inner, 3) */
-    double C[12] = {1.0, 0.5, -0.3, 0.2,
-                    1.0, 0.7, -0.1, 0.4,
-                    1.0, 0.3, -0.2, 0.6};                  /* (n_outer_rows, n_inner) */
+    double A[12] = {1.0,  0.5, -0.3, 0.2, 1.0,  0.7,
+                    -0.1, 0.4, 1.0,  0.3, -0.2, 0.6}; /* (n_inner, 3) */
+    double C[12] = {1.0,  0.5, -0.3, 0.2, 1.0,  0.7,
+                    -0.1, 0.4, 1.0,  0.3, -0.2, 0.6}; /* (n_outer_rows, n_inner) */
 
-    expr *x = new_variable(3, 1, 0, 3);                    /* (3, 1) */
+    expr *x = new_variable(3, 1, 0, 3);                       /* (3, 1) */
     expr *Ax = new_left_matmul_dense(NULL, x, n_inner, 3, A); /* (n_inner, 1) */
-    expr *sin_Ax = new_sin(Ax);                            /* (n_inner, 1), PD jac */
-    expr *bcast = new_broadcast(sin_Ax, n_inner, p);       /* (n_inner, p), PD jac */
-    expr *node =
-        new_left_matmul_dense(NULL, bcast, n_outer_rows, n_inner, C); /* (n_outer_rows, p) */
+    expr *sin_Ax = new_sin(Ax);                      /* (n_inner, 1), PD jac */
+    expr *bcast = new_broadcast(sin_Ax, n_inner, p); /* (n_inner, p), PD jac */
+    expr *node = new_left_matmul_dense(NULL, bcast, n_outer_rows, n_inner,
+                                       C); /* (n_outer_rows, p) */
 
     mu_assert("check_jacobian failed",
               check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
@@ -363,33 +360,28 @@ const char *test_jacobian_sum_outer_product_sin_cos_left_matmul_dense(void)
 {
     int m = 6;
     int n = 5;
-    double u_vals[10] = {0.1, 0.2, 0.3, 0.4, 0.5,
-                         0.6, 0.7, 0.8, 0.9, 1.0};
+    double u_vals[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
     /* Deterministic A, B (m * n entries each, row-major). */
-    double A[30] = {0.5488, 0.7152, 0.6028, 0.5449, 0.4237,
-                    0.6459, 0.4376, 0.8918, 0.9637, 0.3834,
-                    0.7917, 0.5289, 0.5680, 0.9256, 0.0710,
-                    0.0871, 0.0202, 0.8326, 0.7782, 0.8700,
-                    0.9786, 0.7992, 0.4615, 0.7805, 0.1183,
-                    0.6399, 0.1434, 0.9447, 0.5218, 0.4147};
-    double B[30] = {0.2645, 0.7742, 0.4561, 0.5684, 0.0188,
-                    0.6176, 0.6121, 0.6169, 0.9437, 0.6818,
-                    0.3595, 0.4370, 0.6976, 0.0602, 0.6668,
-                    0.6706, 0.2104, 0.1289, 0.3154, 0.3637,
-                    0.5702, 0.4386, 0.9884, 0.1020, 0.2089,
-                    0.1613, 0.6531, 0.2533, 0.4663, 0.2444};
+    double A[30] = {0.5488, 0.7152, 0.6028, 0.5449, 0.4237, 0.6459, 0.4376, 0.8918,
+                    0.9637, 0.3834, 0.7917, 0.5289, 0.5680, 0.9256, 0.0710, 0.0871,
+                    0.0202, 0.8326, 0.7782, 0.8700, 0.9786, 0.7992, 0.4615, 0.7805,
+                    0.1183, 0.6399, 0.1434, 0.9447, 0.5218, 0.4147};
+    double B[30] = {0.2645, 0.7742, 0.4561, 0.5684, 0.0188, 0.6176, 0.6121, 0.6169,
+                    0.9437, 0.6818, 0.3595, 0.4370, 0.6976, 0.0602, 0.6668, 0.6706,
+                    0.2104, 0.1289, 0.3154, 0.3637, 0.5702, 0.4386, 0.9884, 0.1020,
+                    0.2089, 0.1613, 0.6531, 0.2533, 0.4663, 0.2444};
 
     expr *X = new_variable(n, 1, 0, 2 * n);
     expr *Y = new_variable(n, 1, n, 2 * n);
-    expr *AX = new_left_matmul_dense(NULL, X, m, n, A);    /* (m, 1) */
-    expr *BY = new_left_matmul_dense(NULL, Y, m, n, B);    /* (m, 1) */
-    expr *sin_AX = new_sin(AX);                            /* (m, 1) */
-    expr *cos_BY = new_cos(BY);                            /* (m, 1) */
-    expr *cos_BY_row = new_reshape(cos_BY, 1, m);          /* (1, m) */
-    expr *left = new_broadcast(sin_AX, m, m);              /* (m, m) */
-    expr *right = new_broadcast(cos_BY_row, m, m);         /* (m, m) */
-    expr *prod = new_elementwise_mult(left, right);        /* (m, m) */
-    expr *node = new_sum(prod, -1);                        /* scalar */
+    expr *AX = new_left_matmul_dense(NULL, X, m, n, A); /* (m, 1) */
+    expr *BY = new_left_matmul_dense(NULL, Y, m, n, B); /* (m, 1) */
+    expr *sin_AX = new_sin(AX);                         /* (m, 1) */
+    expr *cos_BY = new_cos(BY);                         /* (m, 1) */
+    expr *cos_BY_row = new_reshape(cos_BY, 1, m);       /* (1, m) */
+    expr *left = new_broadcast(sin_AX, m, m);           /* (m, m) */
+    expr *right = new_broadcast(cos_BY_row, m, m);      /* (m, m) */
+    expr *prod = new_elementwise_mult(left, right);     /* (m, m) */
+    expr *node = new_sum(prod, -1);                     /* scalar */
 
     mu_assert("check_jacobian failed",
               check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));

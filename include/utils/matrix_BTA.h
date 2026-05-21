@@ -64,7 +64,7 @@ void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
    exists at alloc time; the caller must refresh values via
    sm_J->refresh_csc_values before calling _fill_values. */
 matrix *BA_pd_kron_matrices_alloc(const permuted_dense *A, int p, const matrix *J);
-void BA_pd_kron_matrices_fill_values(const permuted_dense *A, int p,
-                                     const matrix *J, stacked_pd *C);
+void BA_pd_kron_matrices_fill_values(const permuted_dense *A, int p, const matrix *J,
+                                     stacked_pd *C);
 
 #endif /* MATRIX_BTA_H */
