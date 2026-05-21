@@ -121,11 +121,8 @@ static void jacobian_init_impl(expr *node)
        directly to base.x in eval_jacobian. */
     if (x->jacobian->is_stacked_pd)
     {
-        const stacked_pd *spd = (const stacked_pd *) x->jacobian;
-        int *native_idx_map = SP_MALLOC(spd->base.nnz * sizeof(int));
-        compose_csr_idx_map_for_spd(spd, Jx, snode->idx_map, native_idx_map);
-        free(snode->idx_map);
-        snode->idx_map = native_idx_map;
+        compose_csr_idx_map_for_spd((const stacked_pd *) x->jacobian, Jx,
+                                    snode->idx_map);
     }
 
     node->jacobian = new_sparse_matrix(jac);

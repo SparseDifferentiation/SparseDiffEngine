@@ -185,14 +185,19 @@ matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op 
 }
 
 void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
-                                 const int *csr_idx_map, int *native_idx_map)
+                                 int *idx_map)
 {
     /* spd's base.x is block-major (block 0's m0*n0 values, then block 1's,
        ...); csr->x is row-major sorted. Because spd blocks have pairwise-
        disjoint row perms and stacked_pd_to_csr_alloc memcpys each block's
        col_perm straight into csr->i, the n0 CSR entries for any row are
        exactly that block's columns in order — CSR position is just
-       csr->p[row] + jj. */
+       csr->p[row] + jj.
+
+       In-place is unsafe (writing native pos j can corrupt CSR pos j'
+       that a later iteration still needs to read), so we compose into a
+       scratch buffer and memcpy back. */
+    int *scratch = (int *) SP_MALLOC(spd->base.nnz * sizeof(int));
     int native = 0;
     for (int k = 0; k < spd->n_blocks; k++)
     {
@@ -202,10 +207,12 @@ void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
             int row_start = csr->p[blk->row_perm[ii]];
             for (int jj = 0; jj < blk->n0; jj++)
             {
-                native_idx_map[native++] = csr_idx_map[row_start + jj];
+                scratch[native++] = idx_map[row_start + jj];
             }
         }
     }
+    memcpy(idx_map, scratch, spd->base.nnz * sizeof(int));
+    free(scratch);
 }
 
 // -----------------------------------------------------------------------------

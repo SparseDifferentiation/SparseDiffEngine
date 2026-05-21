@@ -196,21 +196,15 @@ static void wsum_hess_init_impl(expr *node)
            and the layouts match). */
         if (x->wsum_hess->is_stacked_pd)
         {
-            const stacked_pd *spd = (const stacked_pd *) x->wsum_hess;
-            int *native = SP_MALLOC(spd->base.nnz * sizeof(int));
-            compose_csr_idx_map_for_spd(spd, x->wsum_hess->to_csr(x->wsum_hess),
-                                        mul_node->idx_map_Hx, native);
-            free(mul_node->idx_map_Hx);
-            mul_node->idx_map_Hx = native;
+            compose_csr_idx_map_for_spd((const stacked_pd *) x->wsum_hess,
+                                        x->wsum_hess->to_csr(x->wsum_hess),
+                                        mul_node->idx_map_Hx);
         }
         if (y->wsum_hess->is_stacked_pd)
         {
-            const stacked_pd *spd = (const stacked_pd *) y->wsum_hess;
-            int *native = SP_MALLOC(spd->base.nnz * sizeof(int));
-            compose_csr_idx_map_for_spd(spd, y->wsum_hess->to_csr(y->wsum_hess),
-                                        mul_node->idx_map_Hy, native);
-            free(mul_node->idx_map_Hy);
-            mul_node->idx_map_Hy = native;
+            compose_csr_idx_map_for_spd((const stacked_pd *) y->wsum_hess,
+                                        y->wsum_hess->to_csr(y->wsum_hess),
+                                        mul_node->idx_map_Hy);
         }
     }
 }
@@ -290,9 +284,6 @@ static void eval_wsum_hess(expr *node, const double *w)
                     node->wsum_hess->x);
         accumulator(mul_node->CT->x, mul_node->CT->nnz, mul_node->idx_map_CT,
                     node->wsum_hess->x);
-        /* idx_map_Hx / idx_map_Hy were composed in wsum_hess_init_impl so
-           they index against child->wsum_hess->x directly, regardless of
-           whether the child's wsum_hess is PD, sparse, or stacked_pd. */
         accumulator(x->wsum_hess->x, x->wsum_hess->nnz, mul_node->idx_map_Hx,
                     node->wsum_hess->x);
         accumulator(y->wsum_hess->x, y->wsum_hess->nnz, mul_node->idx_map_Hy,

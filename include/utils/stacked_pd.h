@@ -93,18 +93,17 @@ void coalesce_spd_fill_values(const stacked_pd *A, stacked_pd *C);
    responsible for zeroing C->base.x first. */
 void coalesce_spd_fill_values_accumulate(const stacked_pd *A, stacked_pd *C);
 
-/* Compose a CSR-indexed idx_map with the native->csr permutation of a
-   stacked_pd, producing a map indexed against spd->base.x (block-major)
-   directly. Useful for atoms that build idx_maps from a `to_csr` view at
-   init time and want to read spd values directly at eval time, avoiding
-   the per-call csr_cache->x refresh.
+/* Re-index `idx_map` in place from CSR ordering to spd-native ordering
+   (block-major). Useful for atoms that build idx_maps from a `to_csr`
+   view at init time and want to read spd values directly at eval time,
+   avoiding the per-call csr_cache->x refresh.
 
    - `spd` and `csr` must correspond (csr is the result of spd->to_csr).
-   - `csr_idx_map` has length `csr->nnz` (= `spd->base.nnz`); each entry
-     gives some output position for the corresponding CSR nonzero.
-   - `native_idx_map` has length `spd->base.nnz`; output. Entry j gives
-     the output position for `spd->base.x[j]`. */
+   - `idx_map` has length `csr->nnz` (= `spd->base.nnz`); on entry each
+     entry is indexed by CSR position, on exit each entry is indexed by
+     `spd->base.x` position. The buffer is reused; the caller's pointer
+     stays valid. */
 void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
-                                 const int *csr_idx_map, int *native_idx_map);
+                                 int *idx_map);
 
 #endif /* STACKED_PD_H */

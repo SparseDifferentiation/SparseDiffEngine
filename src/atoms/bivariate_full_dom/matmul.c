@@ -453,27 +453,19 @@ static void wsum_hess_init_chain_rule(expr *node)
     mnode->idx_map_Hf = maps[2];
     mnode->idx_map_Hg = maps[3];
 
-    /* If f/g wsum_hess is stacked_pd, re-index its idx_map so eval_wsum_hess
-       can read child->wsum_hess->x directly (block-major) instead of going
-       through to_csr each call. No-op for PD/sparse (csr->x aliases base.x
-       and the layouts match). */
+    /* If f/g wsum_hess is stacked_pd, re-index its idx_map so accumulation
+       with eval_wsum_hess works correctly */
     if (f->wsum_hess->is_stacked_pd)
     {
-        const stacked_pd *spd = (const stacked_pd *) f->wsum_hess;
-        int *native = SP_MALLOC(spd->base.nnz * sizeof(int));
-        compose_csr_idx_map_for_spd(spd, f->wsum_hess->to_csr(f->wsum_hess),
-                                    mnode->idx_map_Hf, native);
-        free(mnode->idx_map_Hf);
-        mnode->idx_map_Hf = native;
+        compose_csr_idx_map_for_spd((const stacked_pd *) f->wsum_hess,
+                                    f->wsum_hess->to_csr(f->wsum_hess),
+                                    mnode->idx_map_Hf);
     }
     if (g->wsum_hess->is_stacked_pd)
     {
-        const stacked_pd *spd = (const stacked_pd *) g->wsum_hess;
-        int *native = SP_MALLOC(spd->base.nnz * sizeof(int));
-        compose_csr_idx_map_for_spd(spd, g->wsum_hess->to_csr(g->wsum_hess),
-                                    mnode->idx_map_Hg, native);
-        free(mnode->idx_map_Hg);
-        mnode->idx_map_Hg = native;
+        compose_csr_idx_map_for_spd((const stacked_pd *) g->wsum_hess,
+                                    g->wsum_hess->to_csr(g->wsum_hess),
+                                    mnode->idx_map_Hg);
     }
 
     /* allocate weight backprop workspace */
@@ -546,9 +538,6 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
     accumulator(mnode->C->x, mnode->C->nnz, mnode->idx_map_C, node->wsum_hess->x);
     accumulator(mnode->CT->x, mnode->CT->nnz, mnode->idx_map_CT, node->wsum_hess->x);
-    /* idx_map_Hf / idx_map_Hg were composed in wsum_hess_init_chain_rule so
-       they index against child->wsum_hess->x directly, regardless of
-       whether the child's wsum_hess is PD, sparse, or stacked_pd. */
     accumulator(f->wsum_hess->x, f->wsum_hess->nnz, mnode->idx_map_Hf,
                 node->wsum_hess->x);
     accumulator(g->wsum_hess->x, g->wsum_hess->nnz, mnode->idx_map_Hg,
