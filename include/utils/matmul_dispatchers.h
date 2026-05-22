@@ -17,7 +17,7 @@
 #include "sparse_matrix.h"
 #include "stacked_pd.h"
 
-/* Polymorphic dispatchers for C = B^T @ A and C = B^T @ diag(d) @ A, where A
+/* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A, where A
    and B are any matrix type (permuted_dense, stacked_pd, or sparse_matrix).
 
    Output type varies with the operand pair:

@@ -189,11 +189,8 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->idx_map_Hy = maps[3];
 
         /* If C / CT / x->wsum_hess / y->wsum_hess come out as stacked_pd,
-           re-index the corresponding idx_map from CSR position to
-           spd->base.x position so the accumulator below can read each
-           matrix's ->x directly. The BTA_matrices_alloc dispatcher returns
-           stacked_pd when B is spd (or, for the sparse-B branch, when A
-           is spd), so C / CT can also be spd now. */
+           re-index the corresponding idx_map from CSR position so the
+           accumulator below can read each matrix's ->x directly. */
         if (C->is_stacked_pd)
         {
             compose_csr_idx_map_for_spd((const stacked_pd *) C, C->to_csr(C),
