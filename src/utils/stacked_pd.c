@@ -44,6 +44,11 @@ static void stacked_pd_free(matrix *self)
         free_matrix((matrix *) spd->pre_coalesce);
     }
 
+    if (spd->kernel_pd_scratch != NULL)
+    {
+        free_matrix(&spd->kernel_pd_scratch->base);
+    }
+
     free_CSR_matrix(spd->csr_cache);
     free(spd->base.x);
     free(spd);

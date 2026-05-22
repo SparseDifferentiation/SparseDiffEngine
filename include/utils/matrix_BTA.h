@@ -106,13 +106,20 @@ void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
                                  stacked_pd *C);
 
 /* Polymorphic dispatcher: C = kron(I_p, A) @ J as a stacked_pd, where A
-   is a permuted_dense and J is any matrix type (permuted_dense,
+   is a local dense matrix and J is any matrix type (permuted_dense,
    stacked_pd, or sparse_matrix). Output shape: (A->m * p) x J->n. For
    the sparse-J branch the dispatcher ensures sm_J->csc_cache structure
    exists at alloc time; the caller must refresh values via
-   sm_J->refresh_csc_values before calling _fill_values. */
-matrix *BA_pd_kron_matrices_alloc(const permuted_dense *A, int p, matrix *J);
-void BA_pd_kron_matrices_fill_values(const permuted_dense *A, int p, const matrix *J,
-                                     stacked_pd *C);
+   sm_J->refresh_csc_values before calling _fill_values.
+
+   Contract: A must be a "full" permuted_dense — m0 == base.m, n0 ==
+   base.n, and row_perm / col_perm are the identity — typically
+   constructed via new_permuted_dense_full. The kron helpers index into
+   A by local (i, j) and place the resulting nonzeros at kron-expanded
+   positions (k*A.m + i, k*A.n + j); a non-full A would produce silently
+   wrong sparsity. _alloc asserts this in Debug builds. */
+matrix *BA_dense_kron_matrices_alloc(const permuted_dense *A, int p, matrix *J);
+void BA_dense_kron_matrices_fill_values(const permuted_dense *A, int p,
+                                        const matrix *J, stacked_pd *C);
 
 #endif /* MATRIX_BTA_H */

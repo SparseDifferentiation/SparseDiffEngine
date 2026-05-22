@@ -324,7 +324,7 @@ const char *test_jacobian_reshape_left_matmul_dense(void)
     return 0;
 }
 
-/* Regression for BA_pd_kron_pd: left_matmul_dense whose child has a PD
+/* Regression for BA_dense_kron_pd: left_matmul_dense whose child has a PD
    Jacobian and shape (n, p) with p > 1, triggering the kron pd path.
    Construct child as broadcast of sin(left_matmul_dense(A, x)) from
    (n_inner, 1) to (n_inner, p). */

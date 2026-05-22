@@ -19,6 +19,7 @@
 #include "utils/stacked_pd.h"
 #include "utils/stacked_pd_kron_linalg.h"
 #include "utils/stacked_pd_linalg.h"
+#include <assert.h>
 
 /* Thin 3-branch dispatch on B's type. Each branch delegates to a fixed-B
    dispatcher (declared below), which handles A's branching internally
@@ -240,36 +241,50 @@ void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A, stacked_p
     BA_spd_csc_fill_values(B, sm_A->csc_cache, C);
 }
 
-matrix *BA_pd_kron_matrices_alloc(const permuted_dense *A, int p, matrix *J)
+/* Debug-only check that A is the "full" permuted_dense shape the kron
+   helpers require: m0 == base.m, n0 == base.n, identity inner perms.
+   Called once at alloc; not repeated at fill (caller would have to
+   reuse the same A). */
+static void assert_dense_kron_A_is_full(const permuted_dense *A)
 {
+    assert(A->m0 == A->base.m);
+    assert(A->n0 == A->base.n);
+    for (int i = 0; i < A->m0; i++) assert(A->row_perm[i] == i);
+    for (int j = 0; j < A->n0; j++) assert(A->col_perm[j] == j);
+}
+
+matrix *BA_dense_kron_matrices_alloc(const permuted_dense *A, int p, matrix *J)
+{
+    assert_dense_kron_A_is_full(A);
+
     if (J->is_permuted_dense)
     {
-        return BA_pd_kron_pd_alloc(A, p, (const permuted_dense *) J);
+        return BA_dense_kron_pd_alloc(A, p, (const permuted_dense *) J);
     }
     if (J->is_stacked_pd)
     {
-        return BA_pd_kron_spd_alloc(A, p, (const stacked_pd *) J);
+        return BA_dense_kron_spd_alloc(A, p, (const stacked_pd *) J);
     }
     /* J is sparse */
     sparse_matrix *sm_J = (sparse_matrix *) J;
     sparse_matrix_ensure_csc_cache(sm_J);
-    return BA_pd_kron_csc_alloc(A, p, sm_J->csc_cache);
+    return BA_dense_kron_csc_alloc(A, p, sm_J->csc_cache);
 }
 
-void BA_pd_kron_matrices_fill_values(const permuted_dense *A, int p, const matrix *J,
-                                     stacked_pd *C)
+void BA_dense_kron_matrices_fill_values(const permuted_dense *A, int p,
+                                        const matrix *J, stacked_pd *C)
 {
     if (J->is_permuted_dense)
     {
-        BA_pd_kron_pd_fill_values(A, p, (const permuted_dense *) J, C);
+        BA_dense_kron_pd_fill_values(A, p, (const permuted_dense *) J, C);
         return;
     }
     if (J->is_stacked_pd)
     {
-        BA_pd_kron_spd_fill_values(A, p, (const stacked_pd *) J, C);
+        BA_dense_kron_spd_fill_values(A, p, (const stacked_pd *) J, C);
         return;
     }
     /* J is sparse */
     const sparse_matrix *sm_J = (const sparse_matrix *) J;
-    BA_pd_kron_csc_fill_values(A, p, sm_J->csc_cache, C);
+    BA_dense_kron_csc_fill_values(A, p, sm_J->csc_cache, C);
 }

@@ -1358,4 +1358,75 @@ const char *test_BTA_sparse_matrices_spd_A(void)
     return 0;
 }
 
+/* Regression test for the kron-scratch / transpose-cache crash. Exercises
+   BA_dense_kron_spd_fill_values with p > 1: the underlying kron_for_each_
+   output_block reuses a single scratch PD across iterations, mutating
+   its row_perm / col_perm in place. A prior implementation of
+   BA_pd_spd_fill_values cached B's transpose on B->transpose_cache,
+   which (a) was never populated for the fill-path scratch, and (b)
+   would have held stale perms even if populated. Now BA_pd_spd does
+   per-call transpose alloc/free so this scenario is correct. The
+   reference path runs the same dispatch with J flattened to
+   sparse_matrix (which routes via BA_dense_kron_csc, no transpose-cache
+   involvement); we compare via to_csr. */
+const char *test_BA_pd_kron_spd_no_cache_staleness(void)
+{
+    /* A: 2x2 PD (kron-block size). */
+    int A_rp[2] = {0, 1};
+    int A_cp[2] = {0, 1};
+    double AX[4] = {1, 2, 3, 4};
+    matrix *A = new_permuted_dense(2, 2, 2, 2, A_rp, A_cp, AX);
+
+    /* J: 6x3 spd with three blocks, one block per kron-stride so each
+       iteration's scratch perms differ. p = 3 -> kron(I_3, A) is 6x6,
+       J is 6x3, output is 6x3. */
+    int J0_rp[2] = {0, 1};
+    int J0_cp[2] = {0, 1};
+    double J0X[4] = {1, 2, 3, 4};
+    matrix *Jblk0 = new_permuted_dense(6, 3, 2, 2, J0_rp, J0_cp, J0X);
+    int J1_rp[2] = {2, 3};
+    int J1_cp[2] = {1, 2};
+    double J1X[4] = {5, 6, 7, 8};
+    matrix *Jblk1 = new_permuted_dense(6, 3, 2, 2, J1_rp, J1_cp, J1X);
+    int J2_rp[2] = {4, 5};
+    int J2_cp[2] = {0, 2};
+    double J2X[4] = {9, 10, 11, 12};
+    matrix *Jblk2 = new_permuted_dense(6, 3, 2, 2, J2_rp, J2_cp, J2X);
+    permuted_dense *J_blocks[3] = {(permuted_dense *) Jblk0,
+                                   (permuted_dense *) Jblk1,
+                                   (permuted_dense *) Jblk2};
+    matrix *J_spd = new_stacked_pd(6, 3, 3, J_blocks, NULL, NULL);
+
+    int p = 3;
+
+    /* Route 1: spd path through BA_pd_kron_spd. */
+    matrix *C_spd = BA_dense_kron_matrices_alloc((permuted_dense *) A, p, J_spd);
+    BA_dense_kron_matrices_fill_values((permuted_dense *) A, p, J_spd,
+                                       (stacked_pd *) C_spd);
+
+    /* Route 2: sparse path via spd_to_sparse_matrix_copy + BA_dense_kron_csc. */
+    matrix *J_sparse = spd_to_sparse_matrix_copy(J_spd);
+    matrix *C_ref = BA_dense_kron_matrices_alloc((permuted_dense *) A, p, J_sparse);
+    J_sparse->refresh_csc_values(J_sparse);
+    BA_dense_kron_matrices_fill_values((permuted_dense *) A, p, J_sparse,
+                                       (stacked_pd *) C_ref);
+
+    /* Compare via to_csr — output structures may differ. */
+    CSR_matrix *csr_spd = C_spd->to_csr(C_spd);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_spd->m == csr_ref->m);
+    mu_assert("n", csr_spd->n == csr_ref->n);
+    mu_assert("nnz", csr_spd->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_spd->p, csr_ref->p, csr_spd->m + 1));
+    mu_assert("i", cmp_int_array(csr_spd->i, csr_ref->i, csr_spd->nnz));
+    mu_assert("x", cmp_double_array(csr_spd->x, csr_ref->x, csr_spd->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(J_sparse);
+    free_matrix(C_spd);
+    free_matrix(J_spd);
+    free_matrix(A);
+    return 0;
+}
+
 #endif /* TEST_MATRIX_BTA_H */

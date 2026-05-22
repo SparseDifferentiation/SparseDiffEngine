@@ -49,6 +49,13 @@ typedef struct stacked_pd
     /* lazily built CSR view */
     CSR_matrix *csr_cache;
 
+    /* Private permuted_dense scratch owned by the kernel that produced
+       this spd. Allocated by the producing _alloc, used (without
+       further allocation) by the matching _fill_values, freed by
+       stacked_pd_free. Currently used by BA_dense_kron_spd to cache
+       the kron-expanded transpose-of-A buffer across fills. NULL when
+       not used. */
+    permuted_dense *kernel_pd_scratch;
 } stacked_pd;
 
 /* Constructor for stacked_pd. Takes ownership of every block in 'blocks'. The

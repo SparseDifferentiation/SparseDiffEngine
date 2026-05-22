@@ -515,8 +515,14 @@ void BTDA_csc_spd_fill_values(const CSC_matrix *B, const double *d,
 // BA_pd_spd: C = B @ A where B is permuted_dense and A is stacked_pd. Thin
 // wrapper over the canonical BTA_pd_spd_* kernel: use B's lazily-cached
 // transpose and call BTA. The cache is populated on first call (in alloc)
-// and reused across subsequent fills, so this wrapper does not allocate
-// a fresh transpose per call.
+// and reused across subsequent fills.
+//
+// Contract: B's perms must be immutable between alloc and fill (the cache
+// records B's perms at alloc time and is not re-validated at fill). For
+// callers where B's perms change between calls — notably the kron-spd path
+// that reuses a mutating scratch — bypass this wrapper and call
+// BTA_pd_spd_* directly. BA_dense_kron_spd does exactly that
+// (stacked_pd_kron_linalg.c) and is the only such caller today.
 // ---------------------------------------------------------------------------------
 matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 {

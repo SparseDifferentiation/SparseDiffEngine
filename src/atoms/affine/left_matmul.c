@@ -126,7 +126,7 @@ static void jacobian_init_dense(expr *node)
     else
     {
         node->jacobian =
-            BA_pd_kron_matrices_alloc(A_pd, lnode->n_blocks, x->jacobian);
+            BA_dense_kron_matrices_alloc(A_pd, lnode->n_blocks, x->jacobian);
     }
 }
 
@@ -149,8 +149,8 @@ static void eval_jacobian_dense(expr *node)
     }
     else
     {
-        BA_pd_kron_matrices_fill_values(A_pd, lnode->n_blocks, x->jacobian,
-                                        (stacked_pd *) node->jacobian);
+        BA_dense_kron_matrices_fill_values(A_pd, lnode->n_blocks, x->jacobian,
+                                           (stacked_pd *) node->jacobian);
     }
 }
 
