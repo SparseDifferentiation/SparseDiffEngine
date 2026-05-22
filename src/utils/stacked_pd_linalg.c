@@ -440,6 +440,35 @@ void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
 }
 
 // ---------------------------------------------------------------------------------
+// BTA_spd_spd / BTDA_spd_spd: C = B^T @ (diag(d) @) A where both B and A are
+// stacked_pd. Output C is stacked_pd. Same skeleton as BTA_spd_pd/csc — per
+// B-block partial is B_k^T @ A_spd via BTA_pd_spd / BTDA_pd_spd, which
+// internally handles the iteration over A's blocks. The "double nesting"
+// over (B_k, A_j) pairs is hidden inside BTA_pd_spd_alloc.
+// ---------------------------------------------------------------------------------
+static matrix *wrapper_BTA_pd_spd(const permuted_dense *Bk, const void *ctx)
+{
+    return BTA_pd_spd_alloc(Bk, (const stacked_pd *) ctx);
+}
+
+static void wrapper_BTDA_pd_spd(const permuted_dense *Bk, const double *d,
+                                const void *ctx, permuted_dense *Ck)
+{
+    BTDA_pd_spd_fill_values(Bk, d, (const stacked_pd *) ctx, Ck);
+}
+
+matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
+{
+    return spd_blockwise_alloc_coalesce(B, A->base.n, wrapper_BTA_pd_spd, A);
+}
+
+void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
+                              const stacked_pd *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, d, A, C, wrapper_BTDA_pd_spd);
+}
+
+// ---------------------------------------------------------------------------------
 // BA_pd_spd: C = B @ A where B is permuted_dense and A is stacked_pd. Thin
 // wrapper over the canonical BTA_pd_spd_* kernel: use B's lazily-cached
 // transpose and call BTA. The cache is populated on first call (in alloc)

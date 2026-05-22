@@ -635,4 +635,74 @@ const char *test_BTDA_spd_csc_overlapping_cp(void)
     return 0;
 }
 
+/* Primitive BTDA_spd_spd kernel (per-block BTDA_pd_spd + accumulating coalesce).
+   C = B^T @ diag(d) @ A with both B and A 2-block stacked_pds. B's c_k's
+   share col 2 (outer coalesce-accumulate path), and A's col_perms also
+   share at least one column (inner BTA_pd_spd accumulate path). Reference
+   is the production dispatcher with both operands flattened to sparse_matrix.
+   Output types differ (stacked_pd vs sparse_matrix); compare via to_csr. */
+const char *test_BTDA_spd_spd_overlapping(void)
+{
+    /* B: 4x3 spd, two blocks with overlapping c_k(B) (share col 2). */
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 2};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *B_blk0 = new_permuted_dense(4, 3, 2, 2, B0_rp, B0_cp, B0X);
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {1, 2};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *B_blk1 = new_permuted_dense(4, 3, 2, 2, B1_rp, B1_cp, B1X);
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B_blk0,
+                                   (permuted_dense *) B_blk1};
+    matrix *B_spd = new_stacked_pd(4, 3, 2, B_blocks, NULL, NULL);
+
+    /* A: 4x3 spd, two blocks. A_0's rows overlap B_0's, A_1's rows overlap
+       B_1's. A_0 and A_1 share col 1 → inner BTA_pd_spd accumulate fires. */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 1};
+    double A0X[4] = {10, 11, 12, 13};
+    matrix *A_blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {20, 21, 22, 23};
+    matrix *A_blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A_blk0,
+                                   (permuted_dense *) A_blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    double d[4] = {2.0, -1.5, 0.5, 1.25};
+
+    /* Route 1: new kernel. */
+    matrix *C_ours = BTA_spd_spd_alloc((stacked_pd *) B_spd, (stacked_pd *) A_spd);
+    BTDA_spd_spd_fill_values((stacked_pd *) B_spd, d, (stacked_pd *) A_spd,
+                             (stacked_pd *) C_ours);
+
+    /* Route 2: dispatcher with both flattened to sparse_matrix.
+       BTA_matrices_alloc(A, B) computes B^T @ A, so A goes first. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *B_sparse = spd_to_sparse_matrix_copy(B_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sparse);
+    A_sparse->refresh_csc_values(A_sparse);
+    B_sparse->refresh_csc_values(B_sparse);
+    BTDA_matrices_fill_values(A_sparse, d, B_sparse, C_ref);
+
+    /* C_ours is stacked_pd, C_ref is sparse_matrix — compare via to_csr. */
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(B_sparse);
+    free_matrix(A_sparse);
+    free_matrix(C_ours);
+    free_matrix(A_spd);
+    free_matrix(B_spd);
+    return 0;
+}
+
 #endif /* TEST_MATRIX_BTA_H */
