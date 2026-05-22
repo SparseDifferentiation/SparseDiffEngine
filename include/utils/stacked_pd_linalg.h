@@ -21,9 +21,16 @@
 #include "permuted_dense.h"
 #include "stacked_pd.h"
 
-/* Allocate a new spd C with the same sparsity as A.
-   TODO: should this be publically available? */
+/* Allocate a new spd C with the same sparsity as A. */
 matrix *copy_sparsity_spd_alloc(const stacked_pd *A);
+
+/* Allocate a new stacked pd C = transpose(A). C is guaranteed to be a valid
+   stacked_pd (ie. it has disjoint row permutations across blocks). The raw spd
+   is stored on `C->pre_coalesce` for reuse by `transpose_spd_fill_values`. */
+matrix *transpose_spd_alloc(const stacked_pd *A);
+
+/* Fill values of C = transpose(A). */
+void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C);
 
 /* Fill values of C = diag(d) @ A, where 'd' is 'global' with length A->m. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
@@ -78,18 +85,33 @@ matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A);
 void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
                               const stacked_pd *A, stacked_pd *C);
 
-/* Allocate sparsity for a new stacked_pd C = A^T A. */
+/* Allocate C = B @ A where B is spd, A is CSC. Not used in production. */
+matrix *BA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A);
+
+/* Fill values of C = B @ A where B is spd and A is CSC. Not used in production. */
+void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C);
+
+/* Allocate sparsity for C = B @ A where B is spd and A is permuted_dense. Not
+ * used in production. */
+matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A);
+
+/* Fill values of C = B @ A where B is spd and A is permuted_dense. Not used in
+ * production. */
+void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                           stacked_pd *C);
+
+/* Allocate sparsity for C = B @ A where both B and A are stacked_pd. Not used in
+ * production. */
+matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A);
+
+/* Fill values of C = B @ A where both B and A are stacked_pd. Not used in
+ * production. */
+void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C);
+
+/* Allocate sparsity for a new stacked_pd C = A^T A. Not used in production. */
 matrix *ATA_spd_alloc(const stacked_pd *A);
 
-/* Fill values of C = A^T diag(d) A. */
+/* Fill values of C = A^T diag(d) A. Not used in production. */
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C);
-
-/* Allocate a new stacked pd C = transpose(A). C is guaranteed to be a valid
-   stacked_pd (ie. it has disjoint row permutations across blocks). The raw spd
-   is stored on `C->pre_coalesce` for reuse by `transpose_spd_fill_values`. */
-matrix *transpose_spd_alloc(const stacked_pd *A);
-
-/* Fill values of C = transpose(A). */
-void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C);
 
 #endif /* STACKED_PD_LINALG_H */

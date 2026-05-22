@@ -876,4 +876,256 @@ const char *test_BTA_spd_matrices_spd_A(void)
     return 0;
 }
 
+/* BA_spd_matrices dispatcher with A = sparse_matrix. Same B + numerical
+   inputs as test_BA_spd_csc_two_blocks_both_kept, but A is built as a
+   sparse_matrix wrapping CSR and we call through the dispatcher; the
+   result must match the direct-call expected values. */
+const char *test_BA_spd_matrices_sparse_A(void)
+{
+    int row_perm_0[2] = {0, 1};
+    int col_perm_0[2] = {0, 2};
+    double X0[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
+
+    int row_perm_1[1] = {3};
+    int col_perm_1[2] = {1, 3};
+    double X1[2] = {5.0, 6.0};
+    matrix *blk1 = new_permuted_dense(4, 4, 1, 2, row_perm_1, col_perm_1, X1);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *B_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
+
+    CSR_matrix *csr = new_CSR_matrix(4, 3, 5);
+    int Ap[5] = {0, 1, 2, 4, 5};
+    int Ai[5] = {0, 1, 0, 2, 1};
+    double Ax[5] = {1.0, 3.0, 2.0, 5.0, 4.0};
+    memcpy(csr->p, Ap, sizeof(Ap));
+    memcpy(csr->i, Ai, sizeof(Ai));
+    memcpy(csr->x, Ax, sizeof(Ax));
+    matrix *A_m = new_sparse_matrix(csr);
+
+    matrix *C_m = BA_spd_matrices_alloc((stacked_pd *) B_m, A_m);
+    A_m->refresh_csc_values(A_m); /* per dispatcher contract */
+    BA_spd_matrices_fill_values((stacked_pd *) B_m, A_m, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 2);
+
+    permuted_dense *C0 = C->blocks[0];
+    double C0_X_exp[4] = {5.0, 10.0, 11.0, 20.0};
+    mu_assert("C0 X", cmp_double_array(C0->X, C0_X_exp, 4));
+
+    permuted_dense *C1 = C->blocks[1];
+    double C1_X_exp[1] = {39.0};
+    mu_assert("C1 X", cmp_double_array(C1->X, C1_X_exp, 1));
+
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* BA_spd_matrices dispatcher with A = stacked_pd. */
+const char *test_BA_spd_matrices_spd_A(void)
+{
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 1};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *B0 = new_permuted_dense(4, 6, 2, 2, B0_rp, B0_cp, B0X);
+
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {3, 4};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *B1 = new_permuted_dense(4, 6, 2, 2, B1_rp, B1_cp, B1X);
+
+    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
+    matrix *B_m = new_stacked_pd(4, 6, 2, B_blocks, NULL, NULL);
+
+    int A0_rp[3] = {0, 1, 2};
+    int A0_cp[2] = {0, 1};
+    double A0X[6] = {10, 11, 12, 13, 14, 15};
+    matrix *A0 = new_permuted_dense(6, 4, 3, 2, A0_rp, A0_cp, A0X);
+
+    int A1_rp[3] = {3, 4, 5};
+    int A1_cp[2] = {2, 3};
+    double A1X[6] = {20, 21, 22, 23, 24, 25};
+    matrix *A1 = new_permuted_dense(6, 4, 3, 2, A1_rp, A1_cp, A1X);
+
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A_m = new_stacked_pd(6, 4, 2, A_blocks, NULL, NULL);
+
+    matrix *C_m = BA_spd_matrices_alloc((stacked_pd *) B_m, A_m);
+    BA_spd_matrices_fill_values((stacked_pd *) B_m, A_m, (stacked_pd *) C_m);
+    stacked_pd *C = (stacked_pd *) C_m;
+
+    mu_assert("n_blocks", C->n_blocks == 2);
+
+    double C0_X_exp[4] = {34, 37, 78, 85};
+    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_exp, 4));
+
+    double C1_X_exp[4] = {232, 243, 316, 331};
+    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_exp, 4));
+
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* BTA_pd_matrices dispatcher: A is permuted_dense. Verifies the PD-branch
+   routes to BTA_pd_pd / BTDA_pd_pd. Both routes produce a PD; compare X
+   buffers directly. */
+const char *test_BTA_pd_matrices_pd_A(void)
+{
+    /* B: 2x4 PD with row_perm = {0,1}, col_perm = {1,3}. */
+    int B_rp[2] = {0, 1};
+    int B_cp[2] = {1, 3};
+    double BX[4] = {1, 2, 3, 4};
+    matrix *B = new_permuted_dense(2, 4, 2, 2, B_rp, B_cp, BX);
+
+    /* A: 2x4 PD with row_perm = {0,1}, col_perm = {0,2}. */
+    int A_rp[2] = {0, 1};
+    int A_cp[2] = {0, 2};
+    double AX[4] = {5, 6, 7, 8};
+    matrix *A = new_permuted_dense(2, 4, 2, 2, A_rp, A_cp, AX);
+
+    double d[2] = {2.0, -1.5};
+
+    /* Route 1: new dispatcher. */
+    matrix *C_ours = BTA_pd_matrices_alloc((permuted_dense *) B, A);
+    BTDA_pd_matrices_fill_values((permuted_dense *) B, d, A,
+                                 (permuted_dense *) C_ours);
+
+    /* Route 2: production dispatcher (BTA_matrices_alloc takes A first). */
+    matrix *C_ref = BTA_matrices_alloc(A, B);
+    BTDA_matrices_fill_values(A, d, B, C_ref);
+
+    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
+    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
+    mu_assert("m", C_ours->m == C_ref->m);
+    mu_assert("n", C_ours->n == C_ref->n);
+    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
+    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
+    mu_assert("row_perm",
+              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
+    mu_assert("col_perm",
+              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
+    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
+                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+
+    free_matrix(C_ref);
+    free_matrix(C_ours);
+    free_matrix(A);
+    free_matrix(B);
+    return 0;
+}
+
+/* BTA_pd_matrices dispatcher: A is sparse_matrix. Verifies the sparse-branch
+   ensures csc_cache and routes to BTA_pd_csc / BTDA_pd_csc. */
+const char *test_BTA_pd_matrices_csc_A(void)
+{
+    /* B: 4x5 PD. */
+    int B_rp[3] = {0, 1, 2};
+    int B_cp[3] = {1, 3, 4};
+    double BX[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    matrix *B = new_permuted_dense(4, 5, 3, 3, B_rp, B_cp, BX);
+
+    /* A: 4x3 sparse_matrix wrapping a CSR. */
+    CSR_matrix *A_csr = new_CSR_matrix(4, 3, 7);
+    int Ap[5] = {0, 2, 3, 6, 7};
+    int Ai[7] = {0, 2, 1, 0, 1, 2, 2};
+    double Ax[7] = {1, 2, 3, 4, 5, 6, 7};
+    memcpy(A_csr->p, Ap, sizeof(Ap));
+    memcpy(A_csr->i, Ai, sizeof(Ai));
+    memcpy(A_csr->x, Ax, sizeof(Ax));
+    matrix *A_sm = new_sparse_matrix(A_csr);
+
+    double d[4] = {2.0, -1.5, 0.5, 1.25};
+
+    /* Route 1: new dispatcher. Alloc ensures csc_cache structure; per
+       contract, caller refreshes values before fill. */
+    matrix *C_ours = BTA_pd_matrices_alloc((permuted_dense *) B, A_sm);
+    A_sm->refresh_csc_values(A_sm);
+    BTDA_pd_matrices_fill_values((permuted_dense *) B, d, A_sm,
+                                 (permuted_dense *) C_ours);
+
+    /* Route 2: production dispatcher. */
+    matrix *C_ref = BTA_matrices_alloc(A_sm, B);
+    BTDA_matrices_fill_values(A_sm, d, B, C_ref);
+
+    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
+    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
+    mu_assert("m", C_ours->m == C_ref->m);
+    mu_assert("n", C_ours->n == C_ref->n);
+    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
+    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
+    mu_assert("row_perm",
+              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
+    mu_assert("col_perm",
+              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
+    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
+                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+
+    free_matrix(C_ref);
+    free_matrix(C_ours);
+    free_matrix(A_sm);
+    free_matrix(B);
+    return 0;
+}
+
+/* BTA_pd_matrices dispatcher: A is stacked_pd. Verifies the spd-branch
+   routes to BTA_pd_spd / BTDA_pd_spd. */
+const char *test_BTA_pd_matrices_spd_A(void)
+{
+    /* B: 4x5 PD. */
+    int B_rp[3] = {0, 1, 2};
+    int B_cp[3] = {1, 3, 4};
+    double BX[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    matrix *B = new_permuted_dense(4, 5, 3, 3, B_rp, B_cp, BX);
+
+    /* A: 4x3 spd, two blocks with shared col 2 (exercises BTA_pd_spd
+       scatter-accumulate). */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 2};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *A_blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *A_blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A_blk0,
+                                   (permuted_dense *) A_blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    double d[4] = {2.0, -1.5, 0.5, 1.25};
+
+    /* Route 1: new dispatcher. */
+    matrix *C_ours = BTA_pd_matrices_alloc((permuted_dense *) B, A_spd);
+    BTDA_pd_matrices_fill_values((permuted_dense *) B, d, A_spd,
+                                 (permuted_dense *) C_ours);
+
+    /* Route 2: production dispatcher. */
+    matrix *C_ref = BTA_matrices_alloc(A_spd, B);
+    BTDA_matrices_fill_values(A_spd, d, B, C_ref);
+
+    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
+    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
+    mu_assert("m", C_ours->m == C_ref->m);
+    mu_assert("n", C_ours->n == C_ref->n);
+    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
+    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
+    mu_assert("row_perm",
+              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
+    mu_assert("col_perm",
+              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
+    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
+                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+
+    free_matrix(C_ref);
+    free_matrix(C_ours);
+    free_matrix(A_spd);
+    free_matrix(B);
+    return 0;
+}
+
 #endif /* TEST_MATRIX_BTA_H */

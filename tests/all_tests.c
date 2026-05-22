@@ -56,7 +56,6 @@
 #include "jacobian_tests/other/test_quad_form.h"
 #include "numerical_diff/test_numerical_diff.h"
 #include "old-code/test_old_permuted_dense.h"
-#include "old-code/test_old_stacked_pd.h"
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
@@ -444,6 +443,9 @@ int main(void)
     mu_run_test(test_BTA_spd_matrices_pd_A, tests_run);
     mu_run_test(test_BTA_spd_matrices_csc_A, tests_run);
     mu_run_test(test_BTA_spd_matrices_spd_A, tests_run);
+    mu_run_test(test_BTA_pd_matrices_pd_A, tests_run);
+    mu_run_test(test_BTA_pd_matrices_csc_A, tests_run);
+    mu_run_test(test_BTA_pd_matrices_spd_A, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
     mu_run_test(test_coalesce_three_signatures, tests_run);

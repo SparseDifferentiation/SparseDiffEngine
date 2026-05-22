@@ -47,6 +47,16 @@ matrix *BA_pd_matrices_alloc(const permuted_dense *B, matrix *A);
 void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
                                 permuted_dense *C);
 
+/* Polymorphic dispatcher for C = B^T @ (diag(d) @) A where B is PD and A
+   is any matrix type (PD, stacked_pd, or sparse_matrix). C is always PD.
+   For the sparse-A branch the dispatcher ensures sm_A->csc_cache structure
+   exists at alloc time; the caller must refresh sm_A->csc_cache values via
+   sm_A->refresh_csc_values before calling _fill_values (same fill-side
+   contract as BA_pd_matrices_fill_values). */
+matrix *BTA_pd_matrices_alloc(const permuted_dense *B, matrix *A);
+void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
+                                  const matrix *A, permuted_dense *C);
+
 /* Polymorphic dispatcher for C = B^T @ (diag(d) @) A where B is stacked_pd
    and A is any matrix type (PD, stacked_pd, or sparse_matrix). C is always
    stacked_pd (one block per signature group of overlapping c_k's of B).
@@ -57,6 +67,19 @@ void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
 matrix *BTA_spd_matrices_alloc(const stacked_pd *B, matrix *A);
 void BTDA_spd_matrices_fill_values(const stacked_pd *B, const double *d,
                                    const matrix *A, stacked_pd *C);
+
+/* Polymorphic dispatcher for C = B @ A where B is stacked_pd and A is any
+   matrix type (PD, stacked_pd, or sparse_matrix). C is always stacked_pd.
+   Not used in production today (stacked_pds appear only as derived
+   Jacobians, not as constant left operands of B @ A), but kept as the
+   natural counterpart to BTA_spd_matrices_alloc and as a sibling of the
+   BA_spd_* primitives in stacked_pd_linalg.h.
+   For the sparse-A branch the dispatcher ensures sm_A->csc_cache
+   structure exists at alloc time; the caller must refresh values via
+   sm_A->refresh_csc_values before calling _fill_values. */
+matrix *BA_spd_matrices_alloc(const stacked_pd *B, matrix *A);
+void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
+                                 stacked_pd *C);
 
 /* Polymorphic dispatcher: C = kron(I_p, A) @ J as a stacked_pd, where A
    is a permuted_dense and J is any matrix type (permuted_dense,

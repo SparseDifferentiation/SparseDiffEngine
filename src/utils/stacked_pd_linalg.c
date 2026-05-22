@@ -488,3 +488,78 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     transpose_pd_fill_values(B, BT);
     BTA_pd_spd_fill_values(BT, A, C);
 }
+
+// ====================================================================================
+// "B is stacked_pd on the LEFT" BA kernels: C = B @ A for A in {CSC, PD, spd}.
+// Output is always stacked_pd, with each output block = B_k @ A. Because B's
+// blocks have disjoint row_perms (spd invariant) and the output rows come
+// directly from B's rows, the output's blocks are also disjoint by construction
+// — no coalesce needed. We use spd_map_filter_blocks (stacked_pd.h) which builds
+// a valid stacked_pd directly, filtering out empty contributions.
+//
+// Not used in any production atom today (stacked_pds appear as derived Jacobians,
+// never as constant left operands of B @ A). Kept as siblings of the BTA_spd_*
+// family for API symmetry and because BA_spd_matrices is the natural counterpart
+// to BTA_spd_matrices. Cost of carrying them is small.
+// ====================================================================================
+static matrix *wrapper_BA_pd_csc(permuted_dense *Bk, const void *ctx)
+{
+    return BA_pd_csc_alloc(Bk, (const CSC_matrix *) ctx);
+}
+
+matrix *BA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
+{
+    return spd_map_filter_blocks(B, B->base.m, A->n, wrapper_BA_pd_csc, A);
+}
+
+void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C)
+{
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        /* Bq is the block in B that contributes to Ck */
+        int q = C->src_block_idx[C->src_block_idx_p[k]];
+        const permuted_dense *Bq = B->blocks[q];
+        BA_pd_csc_fill_values(Bq->X, Bq->n0, Bq->col_inv, A, C->blocks[k]);
+    }
+}
+
+static matrix *wrapper_BA_pd_pd(permuted_dense *Bk, const void *ctx)
+{
+    return BA_pd_pd_alloc(Bk, (const permuted_dense *) ctx);
+}
+
+matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
+{
+    return spd_map_filter_blocks(B, B->base.m, A->base.n, wrapper_BA_pd_pd, A);
+}
+
+void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                           stacked_pd *C)
+{
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        int q = C->src_block_idx[C->src_block_idx_p[k]];
+        const permuted_dense *Bq = B->blocks[q];
+        BA_pd_pd_fill_values(Bq, A, C->blocks[k]);
+    }
+}
+
+static matrix *wrapper_BA_pd_spd(permuted_dense *Bk, const void *ctx)
+{
+    return BA_pd_spd_alloc(Bk, (const stacked_pd *) ctx);
+}
+
+matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
+{
+    return spd_map_filter_blocks(B, B->base.m, A->base.n, wrapper_BA_pd_spd, A);
+}
+
+void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
+{
+    for (int k = 0; k < C->n_blocks; k++)
+    {
+        int q = C->src_block_idx[C->src_block_idx_p[k]];
+        const permuted_dense *Bq = B->blocks[q];
+        BA_pd_spd_fill_values(Bq, A, C->blocks[k]);
+    }
+}
