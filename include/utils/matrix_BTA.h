@@ -16,6 +16,8 @@
 #include "permuted_dense.h"
 #include "stacked_pd.h"
 
+/* TODO: clean up documentation of this file.*/
+
 /* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A. Each
    operand may be PD, sparse_matrix, or stacked_pd. Operands are reduced
    to an "effective type" (PD or CSC) before dispatch: PD passes through,
@@ -36,26 +38,14 @@ matrix *BTA_matrices_alloc(matrix *A, matrix *B);
 /* Fill values of C = BT @ diag(d) @ A. */
 void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C);
 
-/* Polymorphic dispatcher: C = B @ A where B is PD and A is any matrix
-   type (permuted_dense, stacked_pd, or sparse_matrix). C is always PD.
-   Routes on A's type. For the sparse-A branch the dispatcher ensures
-   sm_A->csc_cache structure exists at alloc time; before
-   BA_pd_matrices_fill_values the caller must have refreshed
-   sm_A->csc_cache values (same fill-side contract as
-   BTDA_matrices_fill_values). */
+/* Polymorphic dispatcher for C = B @ A where B is PD and A is any matrix type.
+   C is always PD. For the sparse-A branch the dispatcher ensures
+   sm_A->csc_cache structure exists at alloc time but before
+   BA_pd_matrices_fill_values the caller must have refreshed sm_A->csc_cache
+   values (same fill-side contract as BTDA_matrices_fill_values). */
 matrix *BA_pd_matrices_alloc(const permuted_dense *B, matrix *A);
 void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
                                 permuted_dense *C);
-
-/* Polymorphic dispatcher: C = B @ A where B is a stacked_pd and A is
-   any matrix type (stacked_pd, permuted_dense, or sparse_matrix).
-   Output is always a stacked_pd. For the sparse-A branch the dispatcher
-   ensures sm_A->csc_cache structure exists at alloc time; the caller
-   must refresh values via sm_A->refresh_csc_values before calling
-   _fill_values. */
-matrix *BA_spd_matrices_alloc(const stacked_pd *B, matrix *A);
-void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A,
-                                 stacked_pd *C);
 
 /* Polymorphic dispatcher: C = kron(I_p, A) @ J as a stacked_pd, where A
    is a permuted_dense and J is any matrix type (permuted_dense,

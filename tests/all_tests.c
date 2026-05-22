@@ -56,6 +56,7 @@
 #include "jacobian_tests/other/test_quad_form.h"
 #include "numerical_diff/test_numerical_diff.h"
 #include "old-code/test_old_permuted_dense.h"
+#include "old-code/test_old_stacked_pd.h"
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
@@ -175,7 +176,8 @@ int main(void)
     mu_run_test(test_jacobian_reshape_left_matmul_dense, tests_run);
     mu_run_test(test_jacobian_left_matmul_dense_of_broadcast_sin_left_matmul_dense,
                 tests_run);
-    mu_run_test(test_jacobian_sum_outer_product_sin_cos_left_matmul_dense, tests_run);
+    mu_run_test(test_jacobian_sum_outer_product_sin_cos_left_matmul_dense,
+                tests_run);
     mu_run_test(test_jacobian_composite_exp_add, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_vector, tests_run);
     mu_run_test(test_jacobian_scalar_mult_log_matrix, tests_run);
@@ -334,7 +336,8 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_form_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_sin_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_exp, tests_run);
-    mu_run_test(test_wsum_hess_sum_outer_product_sin_cos_left_matmul_dense, tests_run);
+    mu_run_test(test_wsum_hess_sum_outer_product_sin_cos_left_matmul_dense,
+                tests_run);
     mu_run_test(test_wsum_hess_matmul_exp_exp, tests_run);
     mu_run_test(test_wsum_hess_matmul_sin_cos, tests_run);
     mu_run_test(test_wsum_hess_matmul_Ax_By, tests_run);
@@ -414,16 +417,27 @@ int main(void)
     mu_run_test(test_BTA_csr_pd_basic, tests_run);
     mu_run_test(test_BTA_csr_pd_leaf_variable, tests_run);
     mu_run_test(test_BTA_csr_pd_no_overlap, tests_run);
+    mu_run_test(test_BA_spd_csc_two_blocks_both_kept, tests_run);
+    mu_run_test(test_BA_spd_csc_one_block_dropped, tests_run);
+    mu_run_test(test_BA_spd_csc_all_blocks_dropped, tests_run);
+    mu_run_test(test_BA_spd_pd_two_blocks_both_kept, tests_run);
+    mu_run_test(test_BA_spd_pd_one_block_dropped, tests_run);
+    mu_run_test(test_BA_spd_spd_two_blocks_both_kept, tests_run);
+    mu_run_test(test_BA_spd_spd_one_block_dropped, tests_run);
+    mu_run_test(test_BA_spd_spd_all_blocks_dropped, tests_run);
+    mu_run_test(test_BA_spd_spd_empty_A, tests_run);
+    mu_run_test(test_BA_spd_spd_empty_B, tests_run);
+    mu_run_test(test_BA_spd_spd_alloc_then_fill_values, tests_run);
+    mu_run_test(test_BA_spd_matrices_sparse_A, tests_run);
+    mu_run_test(test_BA_spd_matrices_spd_A, tests_run);
     mu_run_test(test_BTDA_matrices_pd_pd, tests_run);
     mu_run_test(test_BTDA_matrices_csr_pd, tests_run);
     mu_run_test(test_BTDA_matrices_pd_csr, tests_run);
     mu_run_test(test_BTDA_matrices_spd_pd, tests_run);
     mu_run_test(test_BTDA_matrices_pd_spd, tests_run);
     mu_run_test(test_BTDA_matrices_spd_spd, tests_run);
+    mu_run_test(test_BTA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
-    mu_run_test(test_BA_spd_csc_two_blocks_both_kept, tests_run);
-    mu_run_test(test_BA_spd_csc_one_block_dropped, tests_run);
-    mu_run_test(test_BA_spd_csc_all_blocks_dropped, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
     mu_run_test(test_coalesce_three_signatures, tests_run);
     mu_run_test(test_coalesce_shared_signature_merges_rows, tests_run);
@@ -450,16 +464,6 @@ int main(void)
     mu_run_test(test_BA_pd_spd_empty_A, tests_run);
     mu_run_test(test_BA_pd_spd_overlapping_col_perms, tests_run);
     mu_run_test(test_BA_pd_spd_alloc_then_fill_values, tests_run);
-    mu_run_test(test_BA_spd_pd_two_blocks_both_kept, tests_run);
-    mu_run_test(test_BA_spd_pd_one_block_dropped, tests_run);
-    mu_run_test(test_BA_spd_spd_two_blocks_both_kept, tests_run);
-    mu_run_test(test_BA_spd_spd_one_block_dropped, tests_run);
-    mu_run_test(test_BA_spd_spd_all_blocks_dropped, tests_run);
-    mu_run_test(test_BA_spd_spd_empty_A, tests_run);
-    mu_run_test(test_BA_spd_spd_empty_B, tests_run);
-    mu_run_test(test_BA_spd_spd_alloc_then_fill_values, tests_run);
-    mu_run_test(test_BA_spd_matrices_sparse_A, tests_run);
-    mu_run_test(test_BA_spd_matrices_spd_A, tests_run);
     mu_run_test(test_spd_vtable_copy_sparsity, tests_run);
     mu_run_test(test_spd_vtable_DA_fill_values, tests_run);
     mu_run_test(test_spd_vtable_ATA_alloc, tests_run);

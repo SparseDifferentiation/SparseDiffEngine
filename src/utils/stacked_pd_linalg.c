@@ -28,88 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// --------------------------------------------------------------------------------
-// BA_spd_csc: C = B @ A where B is spd, A is CSC. Suppose B = [B1; B2; B3]. Then
-// C = [B1 @ A; B2 @ A; B3 @ A], so we can compute C by computing each Bi @ A.
-// --------------------------------------------------------------------------------
-static matrix *wrapper_BA_pd_csc(permuted_dense *Bk, const void *ctx)
-{
-    return BA_pd_csc_alloc(Bk, (const CSC_matrix *) ctx);
-}
-
-matrix *BA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
-{
-    return spd_map_filter_blocks(B, B->base.m, A->n, wrapper_BA_pd_csc, A);
-}
-
-void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C)
-{
-    for (int k = 0; k < C->n_blocks; k++)
-    {
-        /* Bq is the block in B that contributes to Ck */
-        int q = C->src_block_idx[C->src_block_idx_p[k]];
-        const permuted_dense *Bq = B->blocks[q];
-
-        /* Ck = Bq @ A */
-        BA_pd_csc_fill_values(Bq->X, Bq->n0, Bq->col_inv, A, C->blocks[k]);
-    }
-}
-
-// ---------------------------------------------------------------------------------
-// BA_spd_pd: C = B @ A where B is spd, A is PD. Same blockwise logic as BA_spd_csc.
-// ---------------------------------------------------------------------------------
-static matrix *wrapper_BA_pd_pd(permuted_dense *Bk, const void *ctx)
-{
-    return BA_pd_pd_alloc(Bk, (const permuted_dense *) ctx);
-}
-
-matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
-{
-    return spd_map_filter_blocks(B, B->base.m, A->base.n, wrapper_BA_pd_pd, A);
-}
-
-void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
-                           stacked_pd *C)
-{
-    for (int k = 0; k < C->n_blocks; k++)
-    {
-        /* Bq is the block in B that contributes to Ck */
-        int q = C->src_block_idx[C->src_block_idx_p[k]];
-        const permuted_dense *Bq = B->blocks[q];
-
-        /* Ck = Bq @ A */
-        BA_pd_pd_fill_values(Bq, A, C->blocks[k]);
-    }
-}
-
-// -----------------------------------------------------------------------
-// BA_spd_spd: C = B @ A where both are stacked_pd. Same blockwise logic.
-// -----------------------------------------------------------------------
-static matrix *wrapper_BA_pd_spd(permuted_dense *Bk, const void *ctx)
-{
-    return BA_pd_spd_alloc(Bk, (const stacked_pd *) ctx);
-}
-
-matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
-{
-    return spd_map_filter_blocks(B, B->base.m, A->base.n, wrapper_BA_pd_spd, A);
-}
-
-void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
-{
-    /* Suppose B = [B1; B2; B3]. Then C = BA = [B1 @ A; B2 @ A; B3 @ A], so we can
-       multiply each block of B with A. */
-    for (int k = 0; k < C->n_blocks; k++)
-    {
-        /* Bq is the block in B that contributes to Ck */
-        int q = C->src_block_idx[C->src_block_idx_p[k]];
-        const permuted_dense *Bq = B->blocks[q];
-
-        /* Ck = Bq @ A */
-        BA_pd_spd_fill_values(Bq, A, C->blocks[k]);
-    }
-}
-
 // ----------------------------------------------------------------------------------
 // copy_sparsity and DA: C = D @ A where A is stacked_pd. The logic is blockwise.
 // ----------------------------------------------------------------------------------
@@ -383,4 +301,29 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------------
+// BTA_pd_spd: C = B^T @ A where B is permuted_dense and A is stacked_pd. We
+// transpose B into a fresh permuted_dense BT and delegate to BA_pd_spd_*.
+// BT is allocated and freed per call; if this shows up in profiles, cache BT
+// on C via a new aux_pd slot (mirror of stacked_pd's pre_coalesce pattern).
+// ---------------------------------------------------------------------------------
+matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
+{
+    /* BA_pd_spd_alloc reads only BT's metadata (m0, n0, row_perm, col_perm),
+       not BT->X, so leaving BT->X uninitialized here is safe. */
+    permuted_dense *BT = (permuted_dense *) transpose_pd_alloc(B);
+    matrix *C = BA_pd_spd_alloc(BT, A);
+    free_matrix((matrix *) BT);
+    return C;
+}
+
+void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                            permuted_dense *C)
+{
+    permuted_dense *BT = (permuted_dense *) transpose_pd_alloc(B);
+    transpose_pd_fill_values(B, BT);
+    BA_pd_spd_fill_values(BT, A, C);
+    free_matrix((matrix *) BT);
 }

@@ -18,15 +18,8 @@
 #ifndef STACKED_PD_LINALG_H
 #define STACKED_PD_LINALG_H
 
-#include "CSC_matrix.h"
 #include "permuted_dense.h"
 #include "stacked_pd.h"
-
-/* Allocate C = B @ A where B is spd, A is CSC. */
-matrix *BA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A);
-
-/* Fill values of C = B @ A where B is spd and A is CSC. */
-void BA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C);
 
 /* Allocate a new spd C with the same sparsity as A.
    TODO: should this be publically available? */
@@ -34,13 +27,6 @@ matrix *copy_sparsity_spd_alloc(const stacked_pd *A);
 
 /* Fill values of C = diag(d) @ A, where 'd' is 'global' with length A->m. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
-
-/* Allocate sparsity for C = B @ A where B spd and A is a permuted_dense. */
-matrix *BA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A);
-
-/* Fill values of C = B @ A where B is pd and A is a permuted_dense. */
-void BA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
-                           stacked_pd *C);
 
 /* Allocate sparsity for C = B @ A where B is a permuted_dense and A is spd.
    The output C is permuted_dense. */
@@ -50,11 +36,16 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A);
 void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                            permuted_dense *C);
 
-/* Allocate sparsity for C = B @ A where both B and A are spds */
-matrix *BA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A);
+/* Allocate sparsity for C = B^T @ A where B is a permuted_dense and A is spd.
+   The output C is permuted_dense. Implemented by transposing B and delegating
+   to BA_pd_spd_alloc; the transpose is freed before returning. */
+matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A);
 
-/* Fill values of C = B @ A where both B and A are spds */
-void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C);
+/* Fill values of C = B^T @ A where B is permuted_dense, A is spd, C is
+   permuted_dense. Allocates a fresh transposed view of B per call, fills it
+   from B->X, then delegates to BA_pd_spd_fill_values. */
+void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                            permuted_dense *C);
 
 /* Allocate sparsity for C = A^T A. */
 matrix *ATA_spd_alloc(const stacked_pd *A);

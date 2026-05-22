@@ -11,6 +11,7 @@
 #include "utils/permuted_dense_linalg.h"
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
+#include "utils/stacked_pd_linalg.h"
 #include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
@@ -362,6 +363,69 @@ const char *test_BTDA_matrices_spd_spd(void)
     free_matrix(A_sparse);
     free_matrix(C_spd);
     free_matrix(B_spd);
+    free_matrix(A_spd);
+    return 0;
+}
+
+/* Primitive BTA_pd_spd kernel (transpose + BA_pd_spd implementation):
+   C = B^T @ A with B a permuted_dense and A a 2-block stacked_pd whose
+   col_perms overlap (share col 2), exercising the scatter-accumulate
+   path inside BA_pd_spd. Reference is the production dispatcher path
+   with A flattened to a sparse_matrix and d = ones (BTDA with all-ones
+   d is equivalent to BTA). */
+const char *test_BTA_pd_spd_two_blocks_both_kept(void)
+{
+    /* A: 4x3 spd, two blocks.
+       blk0: rows {0,1}, cols {0,2}, X = [[1,2],[3,4]]
+       blk1: rows {2,3}, cols {1,2}, X = [[5,6],[7,8]]                     */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 2};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    /* B: 4x5 PD with row_perm = {0,1,2}, col_perm = {1,3,4}. */
+    int B_rp[3] = {0, 1, 2};
+    int B_cp[3] = {1, 3, 4};
+    double BX[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    matrix *B = new_permuted_dense(4, 5, 3, 3, B_rp, B_cp, BX);
+
+    /* Route 1: our new BTA_pd_spd_* primitives. */
+    matrix *C_ours = BTA_pd_spd_alloc((permuted_dense *) B, (stacked_pd *) A_spd);
+    BTA_pd_spd_fill_values((permuted_dense *) B, (stacked_pd *) A_spd,
+                           (permuted_dense *) C_ours);
+
+    /* Route 2: dispatcher with A flattened to sparse_matrix, d = ones. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B);
+    A_sparse->refresh_csc_values(A_sparse);
+    double d_ones[4] = {1.0, 1.0, 1.0, 1.0};
+    BTDA_matrices_fill_values(A_sparse, d_ones, B, C_ref);
+
+    /* Both routes produce a PD with row_perm = B->col_perm and col_perm
+       = union of contributing A_k->col_perms. Compare shape, perms, X. */
+    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
+    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
+    mu_assert("m", C_ours->m == C_ref->m);
+    mu_assert("n", C_ours->n == C_ref->n);
+    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
+    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
+    mu_assert("row_perm",
+              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
+    mu_assert("col_perm",
+              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
+    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
+                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(C_ours);
+    free_matrix(B);
     free_matrix(A_spd);
     return 0;
 }
