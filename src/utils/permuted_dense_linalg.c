@@ -207,6 +207,12 @@ void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
     /* C = BT @ (DA) */
     permuted_dense *DA = (permuted_dense *) A->base.copy_sparsity(&A->base);
     DA_pd_fill_values(d, A, DA);
+    /* DA is freshly created via copy_sparsity (no kernel_dwork sized).
+       BTA_pd_pd_fill_values' slow path (non-identical row_perms) gathers
+       rows into DA->kernel_dwork — size it to match what
+       BTA_pd_pd_alloc would have done. */
+    int s_max = MIN(DA->m0, B->m0);
+    permuted_dense_ensure_kernel_dwork(DA, (size_t) s_max * DA->n0);
     BTA_pd_pd_fill_values(B, DA, C);
     free_matrix(&DA->base);
 }

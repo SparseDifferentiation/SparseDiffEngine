@@ -430,4 +430,134 @@ const char *test_BTA_pd_spd_two_blocks_both_kept(void)
     return 0;
 }
 
+/* Primitive BTDA_pd_spd kernel (temp-DA composition):
+   C = B^T @ diag(d) @ A. Same B and A layout as
+   test_BTA_pd_spd_two_blocks_both_kept, but with a non-trivial d so
+   BTDA differs from BTA. Reference is the production dispatcher path
+   with A flattened to a sparse_matrix. */
+const char *test_BTDA_pd_spd_two_blocks_both_kept(void)
+{
+    /* A: 4x3 spd, two blocks.
+       blk0: rows {0,1}, cols {0,2}, X = [[1,2],[3,4]]
+       blk1: rows {2,3}, cols {1,2}, X = [[5,6],[7,8]]                     */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 2};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    /* B: 4x5 PD with row_perm = {0,1,2}, col_perm = {1,3,4}. */
+    int B_rp[3] = {0, 1, 2};
+    int B_cp[3] = {1, 3, 4};
+    double BX[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    matrix *B = new_permuted_dense(4, 5, 3, 3, B_rp, B_cp, BX);
+
+    /* Non-trivial d so BTDA != BTA. */
+    double d[4] = {2.0, -1.5, 0.5, 1.25};
+
+    /* Route 1: our new BTDA_pd_spd_fill_values. C structure comes from
+       BTA_pd_spd_alloc (BTDA shares sparsity with BTA). */
+    matrix *C_ours = BTA_pd_spd_alloc((permuted_dense *) B, (stacked_pd *) A_spd);
+    BTDA_pd_spd_fill_values((permuted_dense *) B, d, (stacked_pd *) A_spd,
+                            (permuted_dense *) C_ours);
+
+    /* Route 2: dispatcher with A flattened to sparse_matrix. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B);
+    A_sparse->refresh_csc_values(A_sparse);
+    BTDA_matrices_fill_values(A_sparse, d, B, C_ref);
+
+    /* Both routes produce a PD with row_perm = B->col_perm and col_perm
+       = union of contributing A_k->col_perms. Compare shape, perms, X. */
+    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
+    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
+    mu_assert("m", C_ours->m == C_ref->m);
+    mu_assert("n", C_ours->n == C_ref->n);
+    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
+    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
+    mu_assert("row_perm",
+              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
+    mu_assert("col_perm",
+              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
+    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
+                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(C_ours);
+    free_matrix(B);
+    free_matrix(A_spd);
+    return 0;
+}
+
+/* Primitive BTDA_spd_pd kernel (ATA-style direct: per-block BTDA_pd_pd
+   + accumulating coalesce). C = B^T @ diag(d) @ A with B a 2-block
+   stacked_pd whose col_perms share column 2 — exercises the
+   accumulating coalesce path (multiple source blocks contribute to the
+   same output row). Reference is the production dispatcher with B
+   flattened to a sparse_matrix; outputs differ in storage (stacked_pd
+   vs permuted_dense), so compare via to_csr. */
+const char *test_BTDA_spd_pd_overlapping_cp(void)
+{
+    /* B: 4x3 spd, two blocks with overlapping col_perms (share col 2).
+       blk0: rows {0,1}, cols {0,2}, X = [[1,2],[3,4]]
+       blk1: rows {2,3}, cols {1,2}, X = [[5,6],[7,8]]                     */
+    int B0_rp[2] = {0, 1};
+    int B0_cp[2] = {0, 2};
+    double B0X[4] = {1, 2, 3, 4};
+    matrix *blk0 = new_permuted_dense(4, 3, 2, 2, B0_rp, B0_cp, B0X);
+    int B1_rp[2] = {2, 3};
+    int B1_cp[2] = {1, 2};
+    double B1X[4] = {5, 6, 7, 8};
+    matrix *blk1 = new_permuted_dense(4, 3, 2, 2, B1_rp, B1_cp, B1X);
+    permuted_dense *B_blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
+    matrix *B_spd = new_stacked_pd(4, 3, 2, B_blocks, NULL, NULL);
+
+    /* A: 4x3 PD, full row_perm, full col_perm. */
+    int A_rp[4] = {0, 1, 2, 3};
+    int A_cp[3] = {0, 1, 2};
+    double AX[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+    matrix *A = new_permuted_dense(4, 3, 4, 3, A_rp, A_cp, AX);
+
+    /* Non-trivial d so BTDA != BTA. */
+    double d[4] = {2.0, -1.5, 0.5, 1.25};
+
+    /* Route 1: our new BTDA_spd_pd_fill_values. */
+    matrix *C_ours = BTA_spd_pd_alloc((stacked_pd *) B_spd, (permuted_dense *) A);
+    BTDA_spd_pd_fill_values((stacked_pd *) B_spd, d, (permuted_dense *) A,
+                            (stacked_pd *) C_ours);
+
+    /* Route 2: dispatcher with B flattened to sparse_matrix. Note
+       BTA_matrices_alloc(A, B) computes B^T @ A, so A goes first. */
+    matrix *B_sparse = spd_to_sparse_matrix_copy(B_spd);
+    matrix *C_ref = BTA_matrices_alloc(A, B_sparse);
+    B_sparse->refresh_csc_values(B_sparse);
+    BTDA_matrices_fill_values(A, d, B_sparse, C_ref);
+
+    /* C_ours is stacked_pd, C_ref is permuted_dense — compare via to_csr.
+       Both represent the same global matrix; rows are emitted in sorted
+       order, and the spd's per-signature blocks share col_perm = A->col_perm,
+       so the CSR layouts match exactly. */
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(B_sparse);
+    free_matrix(C_ours);
+    free_matrix(A);
+    free_matrix(B_spd);
+    return 0;
+}
+
 #endif /* TEST_MATRIX_BTA_H */

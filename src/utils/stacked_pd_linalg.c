@@ -307,6 +307,92 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
 }
 
 // ---------------------------------------------------------------------------------
+// BTDA_pd_spd: C = B^T @ diag(d) @ A. No separate alloc — output sparsity
+// is identical to BTA_pd_spd (D doesn't add/remove nonzeros), so callers
+// pre-allocate C via BTA_pd_spd_alloc, same convention as BTA_pd_pd /
+// BTDA_pd_pd.
+// ---------------------------------------------------------------------------------
+void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
+                             const stacked_pd *A, permuted_dense *C)
+{
+    /* skip if C is empty (no contributing A-blocks) */
+    if (C->base.nnz == 0)
+    {
+        return;
+    }
+
+    /* TODO: must remove this allocation. Very important. The DA
+       intermediate spd is allocated and freed on every Hessian
+       iteration — violates the no-alloc-in-fill policy. Fix is to
+       fold diag(d) directly into BTA_pd_spd_fill_values (either via a
+       shared internal helper that takes an optional d, or by stashing
+       a persistent DA scratch on C via a new aux slot — mirror of the
+       transpose_cache pattern). */
+    /* C = BT @ (DA) */
+    stacked_pd *DA = (stacked_pd *) copy_sparsity_spd_alloc(A);
+    DA_spd_fill_values(d, A, DA);
+    BTA_pd_spd_fill_values(B, DA, C);
+    free_matrix(&DA->base);
+}
+
+// ---------------------------------------------------------------------------------
+// BTA_spd_pd / BTDA_spd_pd: C = B^T @ (diag(d) @) A where B is stacked_pd, A is
+// permuted_dense. Output C is stacked_pd. We implement this using blockwise
+// logic followed by coalescing. The blockwise logic is not obvious
+// mathematically, but it is correct when we think of each of B's blocks as a
+// global matrix and B as a sum of these blocks.
+//
+// B = B1 + B2 + B3 where each Bi is a global permuted dense. Then
+// C = B^T D A = C1 + C2 + C3 where Ci = Bi^T D A.
+// ---------------------------------------------------------------------------------
+matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
+{
+    int n_blocks = B->n_blocks;
+
+    /* Ck = B_k^T @ A */
+    permuted_dense **Cks =
+        (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
+    for (int k = 0; k < n_blocks; k++)
+    {
+        Cks[k] = (permuted_dense *) BTA_pd_pd_alloc(B->blocks[k], A);
+    }
+
+    matrix *raw =
+        new_stacked_pd_unchecked(B->base.n, A->base.n, n_blocks, Cks, NULL, NULL);
+    free(Cks);
+
+    /* coalesce */
+    matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) raw);
+    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
+    return C;
+}
+
+void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
+                             const permuted_dense *A, stacked_pd *C)
+{
+    if (C->base.nnz == 0)
+    {
+        return;
+    }
+
+    /* TODO: each BTDA_pd_pd_fill_values call internally allocates a DA
+       intermediate (see permuted_dense_linalg.c BTDA_pd_pd_fill_values).
+       That means this function allocates n_blocks DA temps per fill,
+       all on the hot Hessian path. Must be fixed — same future remedy
+       as the per-block BTDA: fold diag(d) directly into BTA_pd_pd's
+       gather step. */
+    stacked_pd *raw = C->pre_coalesce;
+    for (int k = 0; k < B->n_blocks; k++)
+    {
+        BTDA_pd_pd_fill_values(B->blocks[k], d, A, raw->blocks[k]);
+    }
+
+    /* zero C before accumulating (matches ATDA_spd_fill_values). */
+    memset(C->base.x, 0, C->base.nnz * sizeof(double));
+    coalesce_spd_fill_values_accumulate(raw, C);
+}
+
+// ---------------------------------------------------------------------------------
 // BA_pd_spd: C = B @ A where B is permuted_dense and A is stacked_pd. Thin
 // wrapper over the canonical BTA_pd_spd_* kernel: use B's lazily-cached
 // transpose and call BTA. The cache is populated on first call (in alloc)
