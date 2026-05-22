@@ -439,6 +439,7 @@ int main(void)
     mu_run_test(test_BTA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BTDA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BTDA_spd_pd_overlapping_cp, tests_run);
+    mu_run_test(test_BTDA_spd_csc_overlapping_cp, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
     mu_run_test(test_coalesce_three_signatures, tests_run);

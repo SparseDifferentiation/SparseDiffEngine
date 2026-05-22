@@ -94,6 +94,60 @@ void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C)
     coalesce_spd_fill_values(raw, C);
 }
 
+// ====================================================================================
+// Shared "spd blockwise + coalesce-accumulate" skeleton.
+//
+// Used by kernels of the shape C = f(B, X) where B is a stacked_pd and each
+// per-block partial f(B_k, X) is a PD. The partials' row_perms (and cells)
+// may overlap across k, so we collect them via new_stacked_pd_unchecked,
+// coalesce with the _unchecked variant, and use the accumulating scatter
+// at fill time. The raw spd is stashed on out->pre_coalesce so fill can
+// refresh per-block values without reallocating structure.
+//
+// Three kernel pairs build on this skeleton: BTA_spd_pd / BTDA_spd_pd,
+// BTA_spd_csc / BTDA_spd_csc, and ATA_spd / ATDA_spd. Each variant supplies
+// per-block alloc and fill kernels via callback + context.
+// ====================================================================================
+typedef matrix *(*spd_per_block_alloc_fn)(const permuted_dense *Bk, const void *ctx);
+
+typedef void (*spd_per_block_fill_fn)(const permuted_dense *Bk, const double *d,
+                                      const void *ctx, permuted_dense *Ck);
+
+static matrix *spd_blockwise_alloc_coalesce(const stacked_pd *B, int Cn,
+                                            spd_per_block_alloc_fn op,
+                                            const void *ctx)
+{
+    int n_blocks = B->n_blocks;
+    permuted_dense **partials =
+        (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
+    for (int k = 0; k < n_blocks; k++)
+    {
+        partials[k] = (permuted_dense *) op(B->blocks[k], ctx);
+    }
+    matrix *raw =
+        new_stacked_pd_unchecked(B->base.n, Cn, n_blocks, partials, NULL, NULL);
+    free(partials);
+    matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) raw);
+    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
+    return C;
+}
+
+static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *B,
+                                                   const double *d, const void *ctx,
+                                                   stacked_pd *C,
+                                                   spd_per_block_fill_fn op)
+{
+    if (C->base.nnz == 0) return;
+
+    stacked_pd *raw = C->pre_coalesce;
+    for (int k = 0; k < B->n_blocks; k++)
+    {
+        op(B->blocks[k], d, ctx, raw->blocks[k]);
+    }
+    memset(C->base.x, 0, C->base.nnz * sizeof(double));
+    coalesce_spd_fill_values_accumulate(raw, C);
+}
+
 // ------------------------------------------------------------------------------------
 // C = ATDA for stacked_pd A. Let A = [A1; A2; A3] where Ai has n columns (the same
 // number as A). Then ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j
@@ -108,50 +162,33 @@ share cells.The output groups cols of A by signature sig_C(c) = {k: c ∈ C_k}; 
    and col_perm = ⋃ C_k for k in the signature. No structural zeros.
    The output's `pre_coalesce` slot holds per-source scratch PDs (one symmetric
    PD per source block, row_perm = col_perm = C_k) that
-   ATDA_spd_fill_values writes into. */
+   ATDA_spd_fill_values writes into.
+
+   Note on per-block kernel choice: we use ATA_pd_alloc (rather than
+   new_permuted_dense directly) because it also pre-sizes
+   A->blocks[k]->kernel_dwork — that scratch buffer is what
+   ATDA_pd_fill_values reads from during the fill phase. */
+static matrix *wrapper_ATA_pd(const permuted_dense *Ak, const void *ctx)
+{
+    (void) ctx;
+    return ATA_pd_alloc(Ak);
+}
+
+static void wrapper_ATDA_pd(const permuted_dense *Ak, const double *d,
+                            const void *ctx, permuted_dense *Ck)
+{
+    (void) ctx;
+    ATDA_pd_fill_values(Ak, d, Ck);
+}
+
 matrix *ATA_spd_alloc(const stacked_pd *A)
 {
-    int n = A->base.n;
-    int n_blocks = A->n_blocks;
-
-    /* Pseudo-spd: per source block k, a square PD with
-       row_perm = col_perm = C_k and uninitialized X. We use the
-       PD-level ATA_pd_alloc here (rather than new_permuted_dense
-       directly) because it also pre-sizes A->blocks[k]->kernel_dwork — that
-       scratch buffer is what ATDA_pd_fill_values reads from during the
-       fill phase. */
-    permuted_dense **scratch_blocks =
-        (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
-    for (int k = 0; k < n_blocks; k++)
-    {
-        scratch_blocks[k] = (permuted_dense *) ATA_pd_alloc(A->blocks[k]);
-    }
-    matrix *scratch =
-        new_stacked_pd_unchecked(n, n, n_blocks, scratch_blocks, NULL, NULL);
-    free(scratch_blocks);
-
-    /* prepare coalescing of overlapping scratch blocks */
-    matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) scratch);
-    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) scratch;
-    return C;
+    return spd_blockwise_alloc_coalesce(A, A->base.n, wrapper_ATA_pd, NULL);
 }
 
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 {
-    stacked_pd *scratch = C->pre_coalesce;
-
-    /* compute Ai^T @ Di @ Ai into the scratch PDs. */
-    for (int k = 0; k < A->n_blocks; k++)
-    {
-        ATDA_pd_fill_values(A->blocks[k], d, scratch->blocks[k]);
-    }
-
-    /* zero C (one memset is sufficient since, by design, the values of
-       different blocks are stored consecutively in memory). */
-    memset(C->base.x, 0, C->base.nnz * sizeof(double));
-
-    /* scatter + add each Ai^T Di Ai into its destination C block. */
-    coalesce_spd_fill_values_accumulate(scratch, C);
+    spd_blockwise_fill_coalesce_accumulate(A, d, NULL, C, wrapper_ATDA_pd);
 }
 
 // ---------------------------------------------------------------------------------
@@ -344,52 +381,62 @@ void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
 //
 // B = B1 + B2 + B3 where each Bi is a global permuted dense. Then
 // C = B^T D A = C1 + C2 + C3 where Ci = Bi^T D A.
+//
+// TODO: each BTDA_pd_pd_fill_values call internally allocates a DA intermediate
+// (see permuted_dense_linalg.c BTDA_pd_pd_fill_values). That means the BTDA
+// variant here allocates n_blocks DA temps per fill, all on the hot Hessian
+// path. Must be fixed — same future remedy as the per-block BTDA: fold
+// diag(d) directly into BTA_pd_pd's gather step.
 // ---------------------------------------------------------------------------------
+static matrix *wrapper_BTA_pd_pd(const permuted_dense *Bk, const void *ctx)
+{
+    return BTA_pd_pd_alloc(Bk, (const permuted_dense *) ctx);
+}
+
+static void wrapper_BTDA_pd_pd(const permuted_dense *Bk, const double *d,
+                               const void *ctx, permuted_dense *Ck)
+{
+    BTDA_pd_pd_fill_values(Bk, d, (const permuted_dense *) ctx, Ck);
+}
+
 matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
 {
-    int n_blocks = B->n_blocks;
-
-    /* Ck = B_k^T @ A */
-    permuted_dense **Cks =
-        (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
-    for (int k = 0; k < n_blocks; k++)
-    {
-        Cks[k] = (permuted_dense *) BTA_pd_pd_alloc(B->blocks[k], A);
-    }
-
-    matrix *raw =
-        new_stacked_pd_unchecked(B->base.n, A->base.n, n_blocks, Cks, NULL, NULL);
-    free(Cks);
-
-    /* coalesce */
-    matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) raw);
-    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
-    return C;
+    return spd_blockwise_alloc_coalesce(B, A->base.n, wrapper_BTA_pd_pd, A);
 }
 
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
                              const permuted_dense *A, stacked_pd *C)
 {
-    if (C->base.nnz == 0)
-    {
-        return;
-    }
+    spd_blockwise_fill_coalesce_accumulate(B, d, A, C, wrapper_BTDA_pd_pd);
+}
 
-    /* TODO: each BTDA_pd_pd_fill_values call internally allocates a DA
-       intermediate (see permuted_dense_linalg.c BTDA_pd_pd_fill_values).
-       That means this function allocates n_blocks DA temps per fill,
-       all on the hot Hessian path. Must be fixed — same future remedy
-       as the per-block BTDA: fold diag(d) directly into BTA_pd_pd's
-       gather step. */
-    stacked_pd *raw = C->pre_coalesce;
-    for (int k = 0; k < B->n_blocks; k++)
-    {
-        BTDA_pd_pd_fill_values(B->blocks[k], d, A, raw->blocks[k]);
-    }
+// ---------------------------------------------------------------------------------
+// BTA_spd_csc / BTDA_spd_csc: C = B^T @ (diag(d) @) A where B is stacked_pd,
+// A is CSC. Output C is stacked_pd. Same two-stage skeleton as BTA_spd_pd /
+// BTDA_spd_pd, just with BTA_pd_csc / BTDA_pd_csc as the per-block kernel.
+// Unlike the pd-on-the-right path, BTDA_pd_csc reuses the per-block
+// B_k->kernel_dwork sized by BTA_pd_csc_alloc — no temp DA allocation.
+// ---------------------------------------------------------------------------------
+static matrix *wrapper_BTA_pd_csc(const permuted_dense *Bk, const void *ctx)
+{
+    return BTA_pd_csc_alloc(Bk, (const CSC_matrix *) ctx);
+}
 
-    /* zero C before accumulating (matches ATDA_spd_fill_values). */
-    memset(C->base.x, 0, C->base.nnz * sizeof(double));
-    coalesce_spd_fill_values_accumulate(raw, C);
+static void wrapper_BTDA_pd_csc(const permuted_dense *Bk, const double *d,
+                                const void *ctx, permuted_dense *Ck)
+{
+    BTDA_pd_csc_fill_values(Bk, d, (const CSC_matrix *) ctx, Ck);
+}
+
+matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
+{
+    return spd_blockwise_alloc_coalesce(B, A->n, wrapper_BTA_pd_csc, A);
+}
+
+void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
+                              const CSC_matrix *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, d, A, C, wrapper_BTDA_pd_csc);
 }
 
 // ---------------------------------------------------------------------------------

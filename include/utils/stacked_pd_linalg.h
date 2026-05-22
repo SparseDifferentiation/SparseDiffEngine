@@ -59,6 +59,15 @@ matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A);
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
                              const permuted_dense *A, stacked_pd *C);
 
+/* Allocate sparsity for C = B^T @ A where B is stacked_pd and A is CSC.
+   The output C is stacked_pd. */
+matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A);
+
+/* Fill values of C = B^T @ diag(d) @ A where B is stacked_pd, A is CSC,
+   d is a global vector of length B->m, and C is stacked_pd. */
+void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
+                              const CSC_matrix *A, stacked_pd *C);
+
 /* Allocate sparsity for a new stacked_pd C = A^T A. */
 matrix *ATA_spd_alloc(const stacked_pd *A);
 
