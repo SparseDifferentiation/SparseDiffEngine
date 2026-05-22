@@ -5,7 +5,7 @@
 #include "old-code/old_permuted_dense.h"
 #include "test_helpers.h"
 #include "utils/CSC_matrix.h"
-#include "utils/matrix_BTA.h"
+#include "utils/matmul_dispatchers.h"
 #include "utils/permuted_dense.h"
 #include "utils/permuted_dense_linalg.h"
 #include "utils/sparse_matrix.h"

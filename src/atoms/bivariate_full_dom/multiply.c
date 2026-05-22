@@ -19,7 +19,7 @@
 #include "subexpr.h"
 #include "utils/CSR_matrix.h"
 #include "utils/CSR_sum.h"
-#include "utils/matrix_BTA.h"
+#include "utils/matmul_dispatchers.h"
 #include "utils/matrix_sum.h"
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"

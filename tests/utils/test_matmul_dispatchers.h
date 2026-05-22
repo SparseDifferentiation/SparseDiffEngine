@@ -1,12 +1,12 @@
-#ifndef TEST_MATRIX_BTA_H
-#define TEST_MATRIX_BTA_H
+#ifndef TEST_MATMUL_DISPATCHERS_H
+#define TEST_MATMUL_DISPATCHERS_H
 
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
 #include "test_helpers.h"
 #include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
-#include "utils/matrix_BTA.h"
+#include "utils/matmul_dispatchers.h"
 #include "utils/permuted_dense.h"
 #include "utils/permuted_dense_linalg.h"
 #include "utils/sparse_matrix.h"
@@ -730,11 +730,13 @@ const char *test_BTA_spd_matrices_pd_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_spd_matrices_alloc((stacked_pd *) B_spd, A);
-    BTDA_spd_matrices_fill_values((stacked_pd *) B_spd, d, A, (stacked_pd *) C_ours);
+    /* Route 1: public dispatcher with B in its native spd type — routes
+       internally through the spd-B branch. */
+    matrix *C_ours = BTA_matrices_alloc(A, B_spd);
+    BTDA_matrices_fill_values(A, d, B_spd, C_ours);
 
-    /* Route 2: production dispatcher with B flattened to sparse. */
+    /* Route 2: same public dispatcher with B flattened to sparse — routes
+       through a different internal branch (csc-PD path). */
     matrix *B_sparse = spd_to_sparse_matrix_copy(B_spd);
     matrix *C_ref = BTA_matrices_alloc(A, B_sparse);
     B_sparse->refresh_csc_values(B_sparse);
@@ -757,8 +759,9 @@ const char *test_BTA_spd_matrices_pd_A(void)
     return 0;
 }
 
-/* BTA_spd_matrices dispatcher: A is sparse_matrix. Verifies the
-   sparse-branch ensures csc_cache and routes to BTA_spd_csc / BTDA_spd_csc. */
+/* Public dispatcher equivalence: B is spd and A is sparse_matrix. The
+   spd-B internal branch is exercised in Route 1; Route 2 flattens B to
+   sparse and exercises the csc-csc branch. */
 const char *test_BTA_spd_matrices_csc_A(void)
 {
     int B0_rp[2] = {0, 1};
@@ -786,16 +789,17 @@ const char *test_BTA_spd_matrices_csc_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. Alloc ensures csc_cache structure; per
-       contract, caller refreshes values before fill. */
-    matrix *C_ours = BTA_spd_matrices_alloc((stacked_pd *) B_spd, A_sm);
+    /* Route 1: public dispatcher with B native spd — routes through
+       the spd-B branch (BTA_spd_csc internally). */
+    matrix *C_ours = BTA_matrices_alloc(A_sm, B_spd);
     A_sm->refresh_csc_values(A_sm);
-    BTDA_spd_matrices_fill_values((stacked_pd *) B_spd, d, A_sm,
-                                  (stacked_pd *) C_ours);
+    BTDA_matrices_fill_values(A_sm, d, B_spd, C_ours);
 
-    /* Route 2: production dispatcher with B flattened to sparse. */
+    /* Route 2: same public dispatcher with B flattened to sparse —
+       routes through the csc-csc branch. */
     matrix *B_sparse = spd_to_sparse_matrix_copy(B_spd);
     matrix *C_ref = BTA_matrices_alloc(A_sm, B_sparse);
+    A_sm->refresh_csc_values(A_sm);
     B_sparse->refresh_csc_values(B_sparse);
     BTDA_matrices_fill_values(A_sm, d, B_sparse, C_ref);
 
@@ -846,12 +850,13 @@ const char *test_BTA_spd_matrices_spd_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_spd_matrices_alloc((stacked_pd *) B_spd, A_spd);
-    BTDA_spd_matrices_fill_values((stacked_pd *) B_spd, d, A_spd,
-                                  (stacked_pd *) C_ours);
+    /* Route 1: public dispatcher with both operands as native spd —
+       routes through the spd-spd branch (BTA_spd_spd internally). */
+    matrix *C_ours = BTA_matrices_alloc(A_spd, B_spd);
+    BTDA_matrices_fill_values(A_spd, d, B_spd, C_ours);
 
-    /* Route 2: production dispatcher with both flattened to sparse. */
+    /* Route 2: same public dispatcher with both flattened to sparse —
+       routes through the csc-csc branch. */
     matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
     matrix *B_sparse = spd_to_sparse_matrix_copy(B_spd);
     matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sparse);
@@ -877,101 +882,10 @@ const char *test_BTA_spd_matrices_spd_A(void)
     return 0;
 }
 
-/* BA_spd_matrices dispatcher with A = sparse_matrix. Same B + numerical
-   inputs as test_BA_spd_csc_two_blocks_both_kept, but A is built as a
-   sparse_matrix wrapping CSR and we call through the dispatcher; the
-   result must match the direct-call expected values. */
-const char *test_BA_spd_matrices_sparse_A(void)
-{
-    int row_perm_0[2] = {0, 1};
-    int col_perm_0[2] = {0, 2};
-    double X0[4] = {1.0, 2.0, 3.0, 4.0};
-    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
-
-    int row_perm_1[1] = {3};
-    int col_perm_1[2] = {1, 3};
-    double X1[2] = {5.0, 6.0};
-    matrix *blk1 = new_permuted_dense(4, 4, 1, 2, row_perm_1, col_perm_1, X1);
-
-    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
-    matrix *B_m = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
-
-    CSR_matrix *csr = new_CSR_matrix(4, 3, 5);
-    int Ap[5] = {0, 1, 2, 4, 5};
-    int Ai[5] = {0, 1, 0, 2, 1};
-    double Ax[5] = {1.0, 3.0, 2.0, 5.0, 4.0};
-    memcpy(csr->p, Ap, sizeof(Ap));
-    memcpy(csr->i, Ai, sizeof(Ai));
-    memcpy(csr->x, Ax, sizeof(Ax));
-    matrix *A_m = new_sparse_matrix(csr);
-
-    matrix *C_m = BA_spd_matrices_alloc((stacked_pd *) B_m, A_m);
-    A_m->refresh_csc_values(A_m); /* per dispatcher contract */
-    BA_spd_matrices_fill_values((stacked_pd *) B_m, A_m, (stacked_pd *) C_m);
-    stacked_pd *C = (stacked_pd *) C_m;
-
-    mu_assert("n_blocks", C->n_blocks == 2);
-
-    permuted_dense *C0 = C->blocks[0];
-    double C0_X_exp[4] = {5.0, 10.0, 11.0, 20.0};
-    mu_assert("C0 X", cmp_double_array(C0->X, C0_X_exp, 4));
-
-    permuted_dense *C1 = C->blocks[1];
-    double C1_X_exp[1] = {39.0};
-    mu_assert("C1 X", cmp_double_array(C1->X, C1_X_exp, 1));
-
-    free_matrix(C_m);
-    free_matrix(B_m);
-    free_matrix(A_m);
-    return 0;
-}
-
-/* BA_spd_matrices dispatcher with A = stacked_pd. */
-const char *test_BA_spd_matrices_spd_A(void)
-{
-    int B0_rp[2] = {0, 1};
-    int B0_cp[2] = {0, 1};
-    double B0X[4] = {1, 2, 3, 4};
-    matrix *B0 = new_permuted_dense(4, 6, 2, 2, B0_rp, B0_cp, B0X);
-
-    int B1_rp[2] = {2, 3};
-    int B1_cp[2] = {3, 4};
-    double B1X[4] = {5, 6, 7, 8};
-    matrix *B1 = new_permuted_dense(4, 6, 2, 2, B1_rp, B1_cp, B1X);
-
-    permuted_dense *B_blocks[2] = {(permuted_dense *) B0, (permuted_dense *) B1};
-    matrix *B_m = new_stacked_pd(4, 6, 2, B_blocks, NULL, NULL);
-
-    int A0_rp[3] = {0, 1, 2};
-    int A0_cp[2] = {0, 1};
-    double A0X[6] = {10, 11, 12, 13, 14, 15};
-    matrix *A0 = new_permuted_dense(6, 4, 3, 2, A0_rp, A0_cp, A0X);
-
-    int A1_rp[3] = {3, 4, 5};
-    int A1_cp[2] = {2, 3};
-    double A1X[6] = {20, 21, 22, 23, 24, 25};
-    matrix *A1 = new_permuted_dense(6, 4, 3, 2, A1_rp, A1_cp, A1X);
-
-    permuted_dense *A_blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
-    matrix *A_m = new_stacked_pd(6, 4, 2, A_blocks, NULL, NULL);
-
-    matrix *C_m = BA_spd_matrices_alloc((stacked_pd *) B_m, A_m);
-    BA_spd_matrices_fill_values((stacked_pd *) B_m, A_m, (stacked_pd *) C_m);
-    stacked_pd *C = (stacked_pd *) C_m;
-
-    mu_assert("n_blocks", C->n_blocks == 2);
-
-    double C0_X_exp[4] = {34, 37, 78, 85};
-    mu_assert("C0 X", cmp_double_array(C->blocks[0]->X, C0_X_exp, 4));
-
-    double C1_X_exp[4] = {232, 243, 316, 331};
-    mu_assert("C1 X", cmp_double_array(C->blocks[1]->X, C1_X_exp, 4));
-
-    free_matrix(C_m);
-    free_matrix(B_m);
-    free_matrix(A_m);
-    return 0;
-}
+/* BA_spd_matrices dispatcher tests previously lived here. The dispatcher
+   is now static inside matmul_dispatchers.c (no production caller, no public
+   API). The underlying primitives BA_spd_csc_*, BA_spd_pd_*, BA_spd_spd_*
+   are tested directly in tests/utils/test_stacked_pd.h. */
 
 /* BTA_pd_matrices dispatcher: A is permuted_dense. Verifies the PD-branch
    routes to BTA_pd_pd / BTDA_pd_pd. Both routes produce a PD; compare X
@@ -992,15 +906,19 @@ const char *test_BTA_pd_matrices_pd_A(void)
 
     double d[2] = {2.0, -1.5};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_pd_matrices_alloc((permuted_dense *) B, A);
-    BTDA_pd_matrices_fill_values((permuted_dense *) B, d, A,
-                                 (permuted_dense *) C_ours);
+    /* Route 1: public dispatcher with both operands native PD —
+       routes through BTA_pd_matrices -> BTA_pd_pd internally. */
+    matrix *C_ours = BTA_matrices_alloc(A, B);
+    BTDA_matrices_fill_values(A, d, B, C_ours);
 
-    /* Route 2: production dispatcher (BTA_matrices_alloc takes A first). */
-    matrix *C_ref = BTA_matrices_alloc(A, B);
-    BTDA_matrices_fill_values(A, d, B, C_ref);
+    /* Route 2: same dispatcher with A flattened to sparse — routes
+       through BTA_pd_matrices -> BTA_pd_csc, a different kernel. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B);
+    A_sparse->refresh_csc_values(A_sparse);
+    BTDA_matrices_fill_values(A_sparse, d, B, C_ref);
 
+    /* Both routes produce PD (B is PD). Compare X/perms directly. */
     permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
     permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
     mu_assert("m", C_ours->m == C_ref->m);
@@ -1015,6 +933,7 @@ const char *test_BTA_pd_matrices_pd_A(void)
                                     (size_t) C_ours_pd->m0 * C_ours_pd->n0));
 
     free_matrix(C_ref);
+    free_matrix(A_sparse);
     free_matrix(C_ours);
     free_matrix(A);
     free_matrix(B);
@@ -1043,31 +962,33 @@ const char *test_BTA_pd_matrices_csc_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. Alloc ensures csc_cache structure; per
-       contract, caller refreshes values before fill. */
-    matrix *C_ours = BTA_pd_matrices_alloc((permuted_dense *) B, A_sm);
+    /* Route 1: public dispatcher with B native PD, A native sparse —
+       routes through BTA_pd_matrices -> BTA_pd_csc internally. */
+    matrix *C_ours = BTA_matrices_alloc(A_sm, B);
     A_sm->refresh_csc_values(A_sm);
-    BTDA_pd_matrices_fill_values((permuted_dense *) B, d, A_sm,
-                                 (permuted_dense *) C_ours);
+    BTDA_matrices_fill_values(A_sm, d, B, C_ours);
 
-    /* Route 2: production dispatcher. */
-    matrix *C_ref = BTA_matrices_alloc(A_sm, B);
-    BTDA_matrices_fill_values(A_sm, d, B, C_ref);
+    /* Route 2: same dispatcher with B flattened to sparse — routes
+       through BTA_sparse_matrices -> BTA_alloc (csc-csc), a different
+       internal kernel. Output type differs (sparse_matrix vs PD), so
+       compare via to_csr. */
+    matrix *B_sparse = spd_to_sparse_matrix_copy(B);
+    matrix *C_ref = BTA_matrices_alloc(A_sm, B_sparse);
+    A_sm->refresh_csc_values(A_sm);
+    B_sparse->refresh_csc_values(B_sparse);
+    BTDA_matrices_fill_values(A_sm, d, B_sparse, C_ref);
 
-    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
-    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
-    mu_assert("m", C_ours->m == C_ref->m);
-    mu_assert("n", C_ours->n == C_ref->n);
-    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
-    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
-    mu_assert("row_perm",
-              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
-    mu_assert("col_perm",
-              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
-    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
-                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
 
     free_matrix(C_ref);
+    free_matrix(B_sparse);
     free_matrix(C_ours);
     free_matrix(A_sm);
     free_matrix(B);
@@ -1100,15 +1021,20 @@ const char *test_BTA_pd_matrices_spd_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_pd_matrices_alloc((permuted_dense *) B, A_spd);
-    BTDA_pd_matrices_fill_values((permuted_dense *) B, d, A_spd,
-                                 (permuted_dense *) C_ours);
+    /* Route 1: public dispatcher with A native spd, B native PD —
+       routes through BTA_pd_matrices -> BTA_pd_spd internally. */
+    matrix *C_ours = BTA_matrices_alloc(A_spd, B);
+    BTDA_matrices_fill_values(A_spd, d, B, C_ours);
 
-    /* Route 2: production dispatcher. */
-    matrix *C_ref = BTA_matrices_alloc(A_spd, B);
-    BTDA_matrices_fill_values(A_spd, d, B, C_ref);
+    /* Route 2: same public dispatcher with A flattened to sparse —
+       routes through BTA_pd_matrices -> BTA_pd_csc, a different
+       internal kernel. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B);
+    A_sparse->refresh_csc_values(A_sparse);
+    BTDA_matrices_fill_values(A_sparse, d, B, C_ref);
 
+    /* Both routes produce PD (B is PD). Compare X/perms directly. */
     permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
     permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
     mu_assert("m", C_ours->m == C_ref->m);
@@ -1123,6 +1049,7 @@ const char *test_BTA_pd_matrices_spd_A(void)
                                     (size_t) C_ours_pd->m0 * C_ours_pd->n0));
 
     free_matrix(C_ref);
+    free_matrix(A_sparse);
     free_matrix(C_ours);
     free_matrix(A_spd);
     free_matrix(B);
@@ -1216,38 +1143,42 @@ const char *test_BTA_sparse_matrices_pd_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_sparse_matrices_alloc((sparse_matrix *) B_sm, A);
+    /* Route 1: public dispatcher with B native sparse, A native PD —
+       routes through BTA_sparse_matrices -> BTA_csc_pd internally. */
+    matrix *C_ours = BTA_matrices_alloc(A, B_sm);
     B_sm->refresh_csc_values(B_sm);
-    BTDA_sparse_matrices_fill_values((sparse_matrix *) B_sm, d, A, C_ours);
+    BTDA_matrices_fill_values(A, d, B_sm, C_ours);
 
-    /* Route 2: production dispatcher. */
-    matrix *C_ref = BTA_matrices_alloc(A, B_sm);
+    /* Route 2: same dispatcher with A flattened to sparse — routes
+       through BTA_sparse_matrices -> BTA_alloc (csc-csc), a different
+       kernel. Output type differs (sparse_matrix vs PD), so compare
+       via to_csr. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sm);
+    A_sparse->refresh_csc_values(A_sparse);
     B_sm->refresh_csc_values(B_sm);
-    BTDA_matrices_fill_values(A, d, B_sm, C_ref);
+    BTDA_matrices_fill_values(A_sparse, d, B_sm, C_ref);
 
-    permuted_dense *C_ours_pd = (permuted_dense *) C_ours;
-    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
-    mu_assert("m", C_ours->m == C_ref->m);
-    mu_assert("n", C_ours->n == C_ref->n);
-    mu_assert("m0", C_ours_pd->m0 == C_ref_pd->m0);
-    mu_assert("n0", C_ours_pd->n0 == C_ref_pd->n0);
-    mu_assert("row_perm",
-              cmp_int_array(C_ours_pd->row_perm, C_ref_pd->row_perm, C_ours_pd->m0));
-    mu_assert("col_perm",
-              cmp_int_array(C_ours_pd->col_perm, C_ref_pd->col_perm, C_ours_pd->n0));
-    mu_assert("X", cmp_double_array(C_ours_pd->X, C_ref_pd->X,
-                                    (size_t) C_ours_pd->m0 * C_ours_pd->n0));
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
 
     free_matrix(C_ref);
+    free_matrix(A_sparse);
     free_matrix(C_ours);
     free_matrix(A);
     free_matrix(B_sm);
     return 0;
 }
 
-/* BTA_sparse_matrices dispatcher: A is sparse_matrix. Both routes produce
-   sparse_matrix; compare via underlying CSR. */
+/* Public dispatcher: B and A both sparse_matrix. Both routes go
+   through the same csc-csc kernel, so the reference is a hand-computed
+   dense matrix product. */
 const char *test_BTA_sparse_matrices_csc_A(void)
 {
     /* B: 4x3 sparse_matrix. */
@@ -1272,28 +1203,56 @@ const char *test_BTA_sparse_matrices_csc_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_sparse_matrices_alloc((sparse_matrix *) B_sm, A_sm);
-    B_sm->refresh_csc_values(B_sm);
-    A_sm->refresh_csc_values(A_sm);
-    BTDA_sparse_matrices_fill_values((sparse_matrix *) B_sm, d, A_sm, C_ours);
-
-    /* Route 2: production dispatcher. */
-    matrix *C_ref = BTA_matrices_alloc(A_sm, B_sm);
+    /* Route 1 (only route): public dispatcher with both operands native
+       sparse — routes through BTA_sparse_matrices -> BTA_alloc (csc-csc). */
+    matrix *C_ours = BTA_matrices_alloc(A_sm, B_sm);
     A_sm->refresh_csc_values(A_sm);
     B_sm->refresh_csc_values(B_sm);
-    BTDA_matrices_fill_values(A_sm, d, B_sm, C_ref);
+    BTDA_matrices_fill_values(A_sm, d, B_sm, C_ours);
 
-    CSR_matrix *csr_ours = ((sparse_matrix *) C_ours)->csr;
-    CSR_matrix *csr_ref = ((sparse_matrix *) C_ref)->csr;
-    mu_assert("m", csr_ours->m == csr_ref->m);
-    mu_assert("n", csr_ours->n == csr_ref->n);
-    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
-    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
-    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
-    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+    /* Reference: hand-compute C = B^T @ diag(d) @ A as a dense 3x3 buffer.
+       Both operands are 4x3 sparse — too small to be worth a second
+       dispatcher route (nothing to flatten). */
+    double B_dense[4 * 3] = {
+        1, 0, 2, /* row 0 */
+        0, 3, 0, /* row 1 */
+        4, 5, 6, /* row 2 */
+        0, 0, 7  /* row 3 */
+    };
+    double A_dense[4 * 3] = {
+        0,  10, 0,  /* row 0 */
+        20, 0,  30, /* row 1 */
+        0,  40, 50, /* row 2 */
+        60, 0,  0   /* row 3 */
+    };
+    double C_dense_ref[3 * 3] = {0};
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            double s = 0.0;
+            for (int l = 0; l < 4; l++)
+            {
+                s += B_dense[l * 3 + i] * d[l] * A_dense[l * 3 + j];
+            }
+            C_dense_ref[i * 3 + j] = s;
+        }
+    }
 
-    free_matrix(C_ref);
+    /* Scatter dispatcher's CSR output into a dense buffer for comparison. */
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    mu_assert("m", csr_ours->m == 3);
+    mu_assert("n", csr_ours->n == 3);
+    double C_dense_ours[3 * 3] = {0};
+    for (int i = 0; i < csr_ours->m; i++)
+    {
+        for (int jj = csr_ours->p[i]; jj < csr_ours->p[i + 1]; jj++)
+        {
+            C_dense_ours[i * 3 + csr_ours->i[jj]] = csr_ours->x[jj];
+        }
+    }
+    mu_assert("C dense", cmp_double_array(C_dense_ours, C_dense_ref, 9));
+
     free_matrix(C_ours);
     free_matrix(A_sm);
     free_matrix(B_sm);
@@ -1331,17 +1290,21 @@ const char *test_BTA_sparse_matrices_spd_A(void)
 
     double d[4] = {2.0, -1.5, 0.5, 1.25};
 
-    /* Route 1: new dispatcher. */
-    matrix *C_ours = BTA_sparse_matrices_alloc((sparse_matrix *) B_sm, A_spd);
+    /* Route 1: public dispatcher with B native sparse, A native spd —
+       routes through BTA_sparse_matrices -> BTA_csc_spd internally. */
+    matrix *C_ours = BTA_matrices_alloc(A_spd, B_sm);
     B_sm->refresh_csc_values(B_sm);
-    BTDA_sparse_matrices_fill_values((sparse_matrix *) B_sm, d, A_spd, C_ours);
+    BTDA_matrices_fill_values(A_spd, d, B_sm, C_ours);
 
-    /* Route 2: production dispatcher. */
-    matrix *C_ref = BTA_matrices_alloc(A_spd, B_sm);
+    /* Route 2: same dispatcher with A flattened to sparse — routes
+       through BTA_sparse_matrices -> BTA_alloc (csc-csc). */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sm);
+    A_sparse->refresh_csc_values(A_sparse);
     B_sm->refresh_csc_values(B_sm);
-    BTDA_matrices_fill_values(A_spd, d, B_sm, C_ref);
+    BTDA_matrices_fill_values(A_sparse, d, B_sm, C_ref);
 
-    /* C_ours is stacked_pd, C_ref is sparse_matrix — compare via to_csr. */
+    /* Routes produce different output types — compare via to_csr. */
     CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
     CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
     mu_assert("m", csr_ours->m == csr_ref->m);
@@ -1352,6 +1315,7 @@ const char *test_BTA_sparse_matrices_spd_A(void)
     mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
 
     free_matrix(C_ref);
+    free_matrix(A_sparse);
     free_matrix(C_ours);
     free_matrix(A_spd);
     free_matrix(B_sm);
@@ -1429,4 +1393,4 @@ const char *test_BA_pd_kron_spd_no_cache_staleness(void)
     return 0;
 }
 
-#endif /* TEST_MATRIX_BTA_H */
+#endif /* TEST_MATMUL_DISPATCHERS_H */

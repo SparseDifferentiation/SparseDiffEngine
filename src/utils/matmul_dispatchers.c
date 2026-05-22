@@ -9,7 +9,7 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
-#include "utils/matrix_BTA.h"
+#include "utils/matmul_dispatchers.h"
 
 #include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
@@ -21,8 +21,22 @@
 #include "utils/stacked_pd_linalg.h"
 #include <assert.h>
 
+/* Forward declarations of the fixed-B dispatchers used internally by
+   BTA_matrices_alloc / BTDA_matrices_fill_values. These were public API
+   in earlier revisions; demoted to static now that nothing outside this
+   file calls them in production. The definitions follow below. */
+static matrix *BTA_pd_matrices_alloc(const permuted_dense *B, matrix *A);
+static void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
+                                         const matrix *A, permuted_dense *C);
+static matrix *BTA_spd_matrices_alloc(const stacked_pd *B, matrix *A);
+static void BTDA_spd_matrices_fill_values(const stacked_pd *B, const double *d,
+                                          const matrix *A, stacked_pd *C);
+static matrix *BTA_sparse_matrices_alloc(const sparse_matrix *B, matrix *A);
+static void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const double *d,
+                                             const matrix *A, matrix *C);
+
 /* Thin 3-branch dispatch on B's type. Each branch delegates to a fixed-B
-   dispatcher (declared below), which handles A's branching internally
+   dispatcher (declared above), which handles A's branching internally
    and routes to the appropriate spd-aware kernel. */
 matrix *BTA_matrices_alloc(matrix *A, matrix *B)
 {
@@ -92,7 +106,7 @@ void BA_pd_matrices_fill_values(const permuted_dense *B, const matrix *A,
     BA_pd_csc_fill_values(B->X, B->n0, B->col_inv, sm_A->csc_cache, C);
 }
 
-matrix *BTA_pd_matrices_alloc(const permuted_dense *B, matrix *A)
+static matrix *BTA_pd_matrices_alloc(const permuted_dense *B, matrix *A)
 {
     if (A->is_permuted_dense)
     {
@@ -109,8 +123,8 @@ matrix *BTA_pd_matrices_alloc(const permuted_dense *B, matrix *A)
     return BTA_pd_csc_alloc(B, sm_A->csc_cache);
 }
 
-void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
-                                  const matrix *A, permuted_dense *C)
+static void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
+                                         const matrix *A, permuted_dense *C)
 {
     if (A->is_permuted_dense)
     {
@@ -128,7 +142,7 @@ void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
     BTDA_pd_csc_fill_values(B, d, sm_A->csc_cache, C);
 }
 
-matrix *BTA_spd_matrices_alloc(const stacked_pd *B, matrix *A)
+static matrix *BTA_spd_matrices_alloc(const stacked_pd *B, matrix *A)
 {
     if (A->is_permuted_dense)
     {
@@ -145,8 +159,8 @@ matrix *BTA_spd_matrices_alloc(const stacked_pd *B, matrix *A)
     return BTA_spd_csc_alloc(B, sm_A->csc_cache);
 }
 
-void BTDA_spd_matrices_fill_values(const stacked_pd *B, const double *d,
-                                   const matrix *A, stacked_pd *C)
+static void BTDA_spd_matrices_fill_values(const stacked_pd *B, const double *d,
+                                          const matrix *A, stacked_pd *C)
 {
     if (A->is_permuted_dense)
     {
@@ -164,7 +178,7 @@ void BTDA_spd_matrices_fill_values(const stacked_pd *B, const double *d,
     BTDA_spd_csc_fill_values(B, d, sm_A->csc_cache, C);
 }
 
-matrix *BTA_sparse_matrices_alloc(const sparse_matrix *B, matrix *A)
+static matrix *BTA_sparse_matrices_alloc(const sparse_matrix *B, matrix *A)
 {
     /* Ensure B's csc_cache structure exists. */
     sparse_matrix_ensure_csc_cache((sparse_matrix *) B);
@@ -186,8 +200,8 @@ matrix *BTA_sparse_matrices_alloc(const sparse_matrix *B, matrix *A)
     return new_sparse_matrix(C_csr);
 }
 
-void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const double *d,
-                                      const matrix *A, matrix *C)
+static void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const double *d,
+                                             const matrix *A, matrix *C)
 {
     if (A->is_permuted_dense)
     {
@@ -205,40 +219,6 @@ void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const double *d,
     /* A is sparse */
     const sparse_matrix *sm_A = (const sparse_matrix *) A;
     BTDA_fill_values(sm_A->csc_cache, B->csc_cache, d, ((sparse_matrix *) C)->csr);
-}
-
-matrix *BA_spd_matrices_alloc(const stacked_pd *B, matrix *A)
-{
-    if (A->is_stacked_pd)
-    {
-        return BA_spd_spd_alloc(B, (const stacked_pd *) A);
-    }
-    if (A->is_permuted_dense)
-    {
-        return BA_spd_pd_alloc(B, (const permuted_dense *) A);
-    }
-
-    /* A is sparse */
-    sparse_matrix *sm_A = (sparse_matrix *) A;
-    sparse_matrix_ensure_csc_cache(sm_A);
-    return BA_spd_csc_alloc(B, sm_A->csc_cache);
-}
-
-void BA_spd_matrices_fill_values(const stacked_pd *B, const matrix *A, stacked_pd *C)
-{
-    if (A->is_stacked_pd)
-    {
-        BA_spd_spd_fill_values(B, (const stacked_pd *) A, C);
-        return;
-    }
-    if (A->is_permuted_dense)
-    {
-        BA_spd_pd_fill_values(B, (const permuted_dense *) A, C);
-        return;
-    }
-    /* A is sparse */
-    const sparse_matrix *sm_A = (const sparse_matrix *) A;
-    BA_spd_csc_fill_values(B, sm_A->csc_cache, C);
 }
 
 /* Debug-only check that A is the "full" permuted_dense shape the kron
