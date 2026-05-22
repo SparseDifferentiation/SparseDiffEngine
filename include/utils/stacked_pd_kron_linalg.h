@@ -28,11 +28,7 @@
 
    Contract on A: A must be a "full" permuted_dense — m0 == base.m,
    n0 == base.n, and row_perm / col_perm are the identity — i.e., a
-   local dense matrix wrapped in the permuted_dense struct, typically
-   constructed via new_permuted_dense_full. The kron helpers index into
-   A by local (i, j); a non-full A would produce silently wrong sparsity.
-   The public dispatcher BA_dense_kron_matrices_alloc asserts this in
-   Debug builds. */
+   local dense matrix wrapped in the permuted_dense struct. */
 
 /* Allocate sparsity for stacked_pd C = kron(I_p, A) @ J where J is CSC. */
 matrix *BA_dense_kron_csc_alloc(const permuted_dense *A, int p, const CSC_matrix *J);

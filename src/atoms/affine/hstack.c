@@ -94,11 +94,7 @@ static void eval_jacobian(expr *node)
     {
         expr *child = hnode->args[i];
         child->eval_jacobian(child);
-        /* Read via to_csr so the source values are in CSR scan order —
-           matters for multi-block stacked_pd children whose base.x is
-           block-major and differs from the CSR layout that jacobian_init
-           used to set up node->jacobian. For PD/sparse, to_csr aliases
-           base.x and is essentially free. */
+        /* to_csr needed for stacked_pd */
         CSR_matrix *child_csr = child->jacobian->to_csr(child->jacobian);
         memcpy(node->jacobian->x + node->jacobian->nnz, child_csr->x,
                child_csr->nnz * sizeof(double));

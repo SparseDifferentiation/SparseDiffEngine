@@ -97,11 +97,10 @@ static void forward(expr *node, const double *u)
     x->forward(x, u);
     y->forward(y, u);
 
-    /* local forward pass: Z = X @ Y in column-major (x->d1 x x->d2) @
-       (y->d1 x y->d2) -> (x->d1 x y->d2). */
+    /* local forward pass */
     int m = x->d1, k = x->d2, n = y->d2;
-    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, x->value,
-                m, y->value, k, 0.0, node->value, m);
+    cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, 1.0, x->value, m,
+                y->value, k, 0.0, node->value, m);
 }
 
 static void free_matmul_data(expr *node)
@@ -268,8 +267,14 @@ static void eval_jacobian_chain_rule(expr *node)
     YT_kron_I_fill_values(m, k, n, g->value, f->work->jacobian_csc,
                           mnode->term1_CSR);
     I_kron_X_fill_values(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
+    /* node->jacobian is built by the chain-rule jacobian_init as a
+       sparse_matrix wrapping a fresh CSR (see line above the
+       new_sparse_matrix call in jacobian_init_chain_rule), so we can
+       reach the CSR via a direct cast without going through the
+       vtable's to_csr (which would otherwise refresh values from an
+       internal cache). */
     sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR,
-                        node->jacobian->to_csr(node->jacobian));
+                        ((sparse_matrix *) node->jacobian)->csr);
 }
 
 // ------------------------------------------------------------------------------------

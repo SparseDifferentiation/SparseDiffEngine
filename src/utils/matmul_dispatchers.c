@@ -22,9 +22,7 @@
 #include <assert.h>
 
 /* Forward declarations of the fixed-B dispatchers used internally by
-   BTA_matrices_alloc / BTDA_matrices_fill_values. These were public API
-   in earlier revisions; demoted to static now that nothing outside this
-   file calls them in production. The definitions follow below. */
+   BTA_matrices_alloc / BTDA_matrices_fill_values. */
 static matrix *BTA_pd_matrices_alloc(const permuted_dense *B, matrix *A);
 static void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
                                          const matrix *A, permuted_dense *C);
@@ -35,9 +33,6 @@ static matrix *BTA_sparse_matrices_alloc(const sparse_matrix *B, matrix *A);
 static void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const double *d,
                                              const matrix *A, matrix *C);
 
-/* Thin 3-branch dispatch on B's type. Each branch delegates to a fixed-B
-   dispatcher (declared above), which handles A's branching internally
-   and routes to the appropriate spd-aware kernel. */
 matrix *BTA_matrices_alloc(matrix *A, matrix *B)
 {
     if (B->is_permuted_dense)
@@ -225,6 +220,7 @@ static void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const doubl
    helpers require: m0 == base.m, n0 == base.n, identity inner perms.
    Called once at alloc; not repeated at fill (caller would have to
    reuse the same A). */
+#ifndef NDEBUG
 static void assert_dense_kron_A_is_full(const permuted_dense *A)
 {
     assert(A->m0 == A->base.m);
@@ -232,10 +228,13 @@ static void assert_dense_kron_A_is_full(const permuted_dense *A)
     for (int i = 0; i < A->m0; i++) assert(A->row_perm[i] == i);
     for (int j = 0; j < A->n0; j++) assert(A->col_perm[j] == j);
 }
+#endif
 
 matrix *BA_dense_kron_matrices_alloc(const permuted_dense *A, int p, matrix *J)
 {
+#ifndef NDEBUG
     assert_dense_kron_A_is_full(A);
+#endif
 
     if (J->is_permuted_dense)
     {
