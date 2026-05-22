@@ -1128,4 +1128,69 @@ const char *test_BTA_pd_matrices_spd_A(void)
     return 0;
 }
 
+/* Primitive BTDA_csc_spd kernel: C = B^T @ diag(d) @ A with B a CSC and A a
+   2-block stacked_pd whose col_perms share at least one column (so the
+   accumulating coalesce path fires). Reference is the production
+   dispatcher with A flattened to a sparse_matrix; outputs differ in
+   storage (stacked_pd vs sparse_matrix), so compare via to_csr. */
+const char *test_BTDA_csc_spd_overlapping(void)
+{
+    /* A: 4x3 spd, two blocks with overlapping col_perms (share col 2). */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 2};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *A_blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *A_blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A_blk0,
+                                   (permuted_dense *) A_blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    /* B: 4x3 sparse_matrix wrapping a CSR. */
+    CSR_matrix *B_csr = new_CSR_matrix(4, 3, 7);
+    int Bp[5] = {0, 2, 3, 6, 7};
+    int Bi[7] = {0, 2, 1, 0, 1, 2, 2};
+    double Bx[7] = {1, 2, 3, 4, 5, 6, 7};
+    memcpy(B_csr->p, Bp, sizeof(Bp));
+    memcpy(B_csr->i, Bi, sizeof(Bi));
+    memcpy(B_csr->x, Bx, sizeof(Bx));
+    matrix *B_sm = new_sparse_matrix(B_csr);
+
+    double d[4] = {2.0, -1.5, 0.5, 1.25};
+
+    /* Route 1: new kernel. Ensure B's csc_cache and refresh values. */
+    sparse_matrix_ensure_csc_cache((sparse_matrix *) B_sm);
+    B_sm->refresh_csc_values(B_sm);
+    matrix *C_ours =
+        BTA_csc_spd_alloc(((sparse_matrix *) B_sm)->csc_cache, (stacked_pd *) A_spd);
+    BTDA_csc_spd_fill_values(((sparse_matrix *) B_sm)->csc_cache, d,
+                             (stacked_pd *) A_spd, (stacked_pd *) C_ours);
+
+    /* Route 2: production dispatcher with A flattened to sparse_matrix.
+       BTA_matrices_alloc(A, B) computes B^T @ A, so A goes first. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sm);
+    A_sparse->refresh_csc_values(A_sparse);
+    BTDA_matrices_fill_values(A_sparse, d, B_sm, C_ref);
+
+    /* C_ours is stacked_pd, C_ref is sparse_matrix — compare via to_csr. */
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(C_ours);
+    free_matrix(B_sm);
+    free_matrix(A_spd);
+    return 0;
+}
+
 #endif /* TEST_MATRIX_BTA_H */

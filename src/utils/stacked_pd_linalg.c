@@ -97,42 +97,48 @@ void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C)
 // ====================================================================================
 // Shared "spd blockwise + coalesce-accumulate" skeleton.
 //
-// Used by kernels of the shape C = f(B, X) where B is a stacked_pd and each
-// per-block partial f(B_k, X) is a PD. The partials' row_perms (and cells)
-// may overlap across k, so we collect them via new_stacked_pd_unchecked,
-// coalesce with the _unchecked variant, and use the accumulating scatter
-// at fill time. The raw spd is stashed on out->pre_coalesce so fill can
-// refresh per-block values without reallocating structure.
+// Used by kernels of the shape C = f(spd_iter, X) where spd_iter is a
+// stacked_pd we iterate, and each per-block partial f(spd_iter->blocks[k], X)
+// is a PD. The partials' row_perms (and cells) may overlap across k, so we
+// collect them via new_stacked_pd_unchecked, coalesce with the _unchecked
+// variant, and use the accumulating scatter at fill time. The raw spd is
+// stashed on out->pre_coalesce so fill can refresh per-block values without
+// reallocating structure.
 //
-// Three kernel pairs build on this skeleton: BTA_spd_pd / BTDA_spd_pd,
-// BTA_spd_csc / BTDA_spd_csc, and ATA_spd / ATDA_spd. Each variant supplies
-// per-block alloc and fill kernels via callback + context.
+// (Cm, Cn) is the output global shape. For "spd is the BTA's left operand"
+// callers (BTA_spd_pd / BTA_spd_csc / BTA_spd_spd) and the ATA self-case,
+// Cm = spd_iter->base.n. For BTA_csc_spd we iterate A but output rows come
+// from B_csc, so the caller passes Cm = B_csc->n explicitly.
+//
+// Kernel pairs build on this skeleton: BTA_spd_pd / BTDA_spd_pd,
+// BTA_spd_csc / BTDA_spd_csc, BTA_spd_spd / BTDA_spd_spd,
+// BTA_csc_spd / BTDA_csc_spd, and ATA_spd / ATDA_spd.
 // ====================================================================================
-typedef matrix *(*spd_per_block_alloc_fn)(const permuted_dense *Bk, const void *ctx);
+typedef matrix *(*spd_per_block_alloc_fn)(const permuted_dense *blk,
+                                          const void *ctx);
 
-typedef void (*spd_per_block_fill_fn)(const permuted_dense *Bk, const double *d,
+typedef void (*spd_per_block_fill_fn)(const permuted_dense *blk, const double *d,
                                       const void *ctx, permuted_dense *Ck);
 
-static matrix *spd_blockwise_alloc_coalesce(const stacked_pd *B, int Cn,
-                                            spd_per_block_alloc_fn op,
+static matrix *spd_blockwise_alloc_coalesce(const stacked_pd *spd_iter, int Cm,
+                                            int Cn, spd_per_block_alloc_fn op,
                                             const void *ctx)
 {
-    int n_blocks = B->n_blocks;
+    int n_blocks = spd_iter->n_blocks;
     permuted_dense **partials =
         (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
     for (int k = 0; k < n_blocks; k++)
     {
-        partials[k] = (permuted_dense *) op(B->blocks[k], ctx);
+        partials[k] = (permuted_dense *) op(spd_iter->blocks[k], ctx);
     }
-    matrix *raw =
-        new_stacked_pd_unchecked(B->base.n, Cn, n_blocks, partials, NULL, NULL);
+    matrix *raw = new_stacked_pd_unchecked(Cm, Cn, n_blocks, partials, NULL, NULL);
     free(partials);
     matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) raw);
     ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
     return C;
 }
 
-static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *B,
+static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *spd_iter,
                                                    const double *d, const void *ctx,
                                                    stacked_pd *C,
                                                    spd_per_block_fill_fn op)
@@ -140,9 +146,9 @@ static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *B,
     if (C->base.nnz == 0) return;
 
     stacked_pd *raw = C->pre_coalesce;
-    for (int k = 0; k < B->n_blocks; k++)
+    for (int k = 0; k < spd_iter->n_blocks; k++)
     {
-        op(B->blocks[k], d, ctx, raw->blocks[k]);
+        op(spd_iter->blocks[k], d, ctx, raw->blocks[k]);
     }
     memset(C->base.x, 0, C->base.nnz * sizeof(double));
     coalesce_spd_fill_values_accumulate(raw, C);
@@ -183,7 +189,8 @@ static void wrapper_ATDA_pd(const permuted_dense *Ak, const double *d,
 
 matrix *ATA_spd_alloc(const stacked_pd *A)
 {
-    return spd_blockwise_alloc_coalesce(A, A->base.n, wrapper_ATA_pd, NULL);
+    return spd_blockwise_alloc_coalesce(A, A->base.n, A->base.n, wrapper_ATA_pd,
+                                        NULL);
 }
 
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
@@ -401,7 +408,8 @@ static void wrapper_BTDA_pd_pd(const permuted_dense *Bk, const double *d,
 
 matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
 {
-    return spd_blockwise_alloc_coalesce(B, A->base.n, wrapper_BTA_pd_pd, A);
+    return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_pd,
+                                        A);
 }
 
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
@@ -430,7 +438,7 @@ static void wrapper_BTDA_pd_csc(const permuted_dense *Bk, const double *d,
 
 matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
 {
-    return spd_blockwise_alloc_coalesce(B, A->n, wrapper_BTA_pd_csc, A);
+    return spd_blockwise_alloc_coalesce(B, B->base.n, A->n, wrapper_BTA_pd_csc, A);
 }
 
 void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
@@ -459,13 +467,48 @@ static void wrapper_BTDA_pd_spd(const permuted_dense *Bk, const double *d,
 
 matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
 {
-    return spd_blockwise_alloc_coalesce(B, A->base.n, wrapper_BTA_pd_spd, A);
+    return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_spd,
+                                        A);
 }
 
 void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
                               const stacked_pd *A, stacked_pd *C)
 {
     spd_blockwise_fill_coalesce_accumulate(B, d, A, C, wrapper_BTDA_pd_spd);
+}
+
+// ---------------------------------------------------------------------------------
+// BTA_csc_spd / BTDA_csc_spd: C = B^T @ (diag(d) @) A where B is CSC and A is
+// stacked_pd. Output C is stacked_pd.
+//
+// Math: A = Σ_k S_{r_k} A_k S_{c_k}^T, so
+//   B^T A = Σ_k B^T A_k
+// where each per-block partial B^T @ A_k is computed by BTA_csc_pd. Unlike
+// the spd-on-the-left family, we iterate A's blocks (not B's), and output
+// rows come from B's cols — hence the explicit Cm = B->n passed to the
+// shared helper. Cells overlap across k (both row_perms and col_perms can
+// collide), so we use the unchecked raw + accumulating coalesce.
+// ---------------------------------------------------------------------------------
+static matrix *wrapper_BTA_csc_pd(const permuted_dense *Ak, const void *ctx)
+{
+    return BTA_csc_pd_alloc((const CSC_matrix *) ctx, Ak);
+}
+
+static void wrapper_BTDA_csc_pd(const permuted_dense *Ak, const double *d,
+                                const void *ctx, permuted_dense *Ck)
+{
+    BTDA_csc_pd_fill_values((const CSC_matrix *) ctx, d, Ak, Ck);
+}
+
+matrix *BTA_csc_spd_alloc(const CSC_matrix *B, const stacked_pd *A)
+{
+    return spd_blockwise_alloc_coalesce(A, B->n, A->base.n, wrapper_BTA_csc_pd, B);
+}
+
+void BTDA_csc_spd_fill_values(const CSC_matrix *B, const double *d,
+                              const stacked_pd *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(A, d, B, C, wrapper_BTDA_csc_pd);
 }
 
 // ---------------------------------------------------------------------------------
