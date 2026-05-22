@@ -17,26 +17,32 @@
 #include "sparse_matrix.h"
 #include "stacked_pd.h"
 
-/* TODO: clean up documentation of this file.*/
+/* Polymorphic dispatchers for C = B^T @ A and C = B^T @ diag(d) @ A. Each
+   operand may be permuted_dense, sparse_matrix, or stacked_pd. The
+   dispatcher branches on B's type and delegates to a fixed-B dispatcher
+   (BTA_pd_matrices, BTA_spd_matrices, or BTA_sparse_matrices), which in
+   turn branches on A's type and routes to the appropriate spd-aware
+   primitive — no operand is ever materialized as a temporary CSC.
 
-/* Polymorphic dispatchers for C = BT @ A and C = BT @ diag(d) @ A. Each
-   operand may be PD, sparse_matrix, or stacked_pd. Operands are reduced
-   to an "effective type" (PD or CSC) before dispatch: PD passes through,
-   sparse_matrix exposes its csc_cache, stacked_pd is materialized as a
-   temporary CSC via to_csr + csr_to_csc_alloc (correctness-first
-   fallback; future fused spd kernels can replace this). Output type
-   follows the effective-type pair: PD if at least one operand is PD,
-   sparse_matrix otherwise. (Here PD = permuted_dense.)
+   Output type varies with the operand pair:
+     - B is PD                          -> output is permuted_dense.
+     - B is stacked_pd                  -> output is stacked_pd.
+     - B is sparse_matrix, A is PD      -> output is permuted_dense.
+     - B is sparse_matrix, A is spd     -> output is stacked_pd.
+     - B is sparse_matrix, A is sparse  -> output is sparse_matrix.
+   Callers should not assume a specific output type; use the matrix
+   vtable for downstream operations (to_csr, transpose_alloc, etc.) and
+   pass the alloc-returned matrix back to _fill_values verbatim.
 
-   Contract: for sparse_matrix operands, the caller is still responsible
-   for refreshing csc_cache values before BTDA_matrices_fill_values
-   (refresh_csc_values). stacked_pd operands need no preparation; their
-   csr_cache is refreshed internally on each call. */
+   Contract: for sparse_matrix operands (A or B), the caller is
+   responsible for refreshing csc_cache values via refresh_csc_values
+   before BTDA_matrices_fill_values. stacked_pd operands need no
+   preparation; their internal caches are refreshed on each call. */
 
-/* Allocate sparsity for C = BT @ A. */
+/* Allocate sparsity for C = B^T @ A. */
 matrix *BTA_matrices_alloc(matrix *A, matrix *B);
 
-/* Fill values of C = BT @ diag(d) @ A. */
+/* Fill values of C = B^T @ diag(d) @ A. */
 void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C);
 
 /* Polymorphic dispatcher for C = B @ A where B is PD and A is any matrix type.

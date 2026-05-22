@@ -285,18 +285,17 @@ const char *test_BTDA_matrices_pd_spd(void)
     B_sparse->refresh_csc_values(B_sparse);
     BTDA_matrices_fill_values(A, d, B_sparse, C_ref);
 
-    permuted_dense *C_spd_pd = (permuted_dense *) C_spd;
-    permuted_dense *C_ref_pd = (permuted_dense *) C_ref;
-    mu_assert("m", C_spd->m == C_ref->m);
-    mu_assert("n", C_spd->n == C_ref->n);
-    mu_assert("m0", C_spd_pd->m0 == C_ref_pd->m0);
-    mu_assert("n0", C_spd_pd->n0 == C_ref_pd->n0);
-    mu_assert("row_perm",
-              cmp_int_array(C_spd_pd->row_perm, C_ref_pd->row_perm, C_spd_pd->m0));
-    mu_assert("col_perm",
-              cmp_int_array(C_spd_pd->col_perm, C_ref_pd->col_perm, C_spd_pd->n0));
-    mu_assert("X", cmp_double_array(C_spd_pd->X, C_ref_pd->X,
-                                    (size_t) C_spd_pd->m0 * C_spd_pd->n0));
+    /* Output types now differ: the spd-B route returns stacked_pd (via
+       BTA_spd_matrices), the sparse-B route returns permuted_dense (via
+       BTA_sparse_matrices' PD branch). Compare via to_csr. */
+    CSR_matrix *csr_spd = C_spd->to_csr(C_spd);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_spd->m == csr_ref->m);
+    mu_assert("n", csr_spd->n == csr_ref->n);
+    mu_assert("nnz", csr_spd->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_spd->p, csr_ref->p, csr_spd->m + 1));
+    mu_assert("i", cmp_int_array(csr_spd->i, csr_ref->i, csr_spd->nnz));
+    mu_assert("x", cmp_double_array(csr_spd->x, csr_ref->x, csr_spd->nnz));
 
     free_matrix(C_ref);
     free_matrix(B_sparse);
@@ -306,8 +305,9 @@ const char *test_BTDA_matrices_pd_spd(void)
     return 0;
 }
 
-/* Wrapper dispatch: (A=spd, B=spd). Both operands materialize to CSC ->
-   BTA_alloc / BTDA_fill_values; result is sparse_matrix. */
+/* Wrapper dispatch: (A=spd, B=spd). The spd-spd route returns stacked_pd
+   (via BTA_spd_matrices); the sparse-sparse fallback returns sparse_matrix.
+   Compare via to_csr. */
 const char *test_BTDA_matrices_spd_spd(void)
 {
     /* A: 4x3 spd. */
@@ -348,9 +348,10 @@ const char *test_BTDA_matrices_spd_spd(void)
     B_sparse->refresh_csc_values(B_sparse);
     BTDA_matrices_fill_values(A_sparse, d, B_sparse, C_ref);
 
-    /* Both outputs are sparse_matrix. Compare CSRs structurally + by value. */
-    CSR_matrix *csr_spd = ((sparse_matrix *) C_spd)->csr;
-    CSR_matrix *csr_ref = ((sparse_matrix *) C_ref)->csr;
+    /* Output types differ: spd-spd route returns stacked_pd, sparse-sparse
+       returns sparse_matrix. Compare via to_csr. */
+    CSR_matrix *csr_spd = C_spd->to_csr(C_spd);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
     mu_assert("m", csr_spd->m == csr_ref->m);
     mu_assert("n", csr_spd->n == csr_ref->n);
     mu_assert("nnz", csr_spd->nnz == csr_ref->nnz);
