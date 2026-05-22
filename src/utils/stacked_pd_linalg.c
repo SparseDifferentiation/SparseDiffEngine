@@ -155,19 +155,23 @@ void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
 }
 
 // ---------------------------------------------------------------------------------
-// BA_pd_spd: C = B @ A where B is a permuted_dense and A is a stacked_pd. C is also
-// permuted_dense. C has the same row_perm as B, and its col_perm is the sorted union
-// of the col_perms of the contributing A-blocks. An A-block contributes if its
-// row_perm overlaps B's col_perm. We compute this as
-// C = \sum_k B[:, C_k] @ A_k, where C_k is the col_perm of A's k'th block.
+// BTA_pd_spd: C = B^T @ A where B is a permuted_dense and A is a stacked_pd. C is
+// also permuted_dense. C has row_perm = B->col_perm, and its col_perm is the sorted
+// union of the col_perms of the contributing A-blocks. An A-block contributes if its
+// row_perm overlaps B's row_perm. We compute this as
+// C = \sum_k (B[r_k, :])^T @ A_k, where r_k = A_k->row_perm.
+//
+// This is the canonical (cache-friendly) kernel: the gather of B is a single
+// memcpy per gathered row, since B is row-major. BA_pd_spd_* is a thin wrapper
+// that transposes its B argument and calls into this kernel.
 // ----------------------------------------------------------------------------------
-matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
+matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 {
     int n_blocks = A->n_blocks;
 
     // ------------------------------------------------------------------------------
     // Find column permutations of C. An A-block contributes if its row_perm overlaps
-    // B's col_perm.
+    // B's row_perm.
     // ------------------------------------------------------------------------------
     const int **col_perms = (const int **) SP_MALLOC(n_blocks * sizeof(int *));
     int *lens = (int *) SP_MALLOC(n_blocks * sizeof(int));
@@ -176,7 +180,7 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     for (int k = 0; k < n_blocks; k++)
     {
         permuted_dense *Ak = A->blocks[k];
-        if (has_overlap(B->col_perm, B->n0, Ak->row_perm, Ak->m0, 0))
+        if (has_overlap(B->row_perm, B->m0, Ak->row_perm, Ak->m0, 0))
         {
             col_perms[n_contributing_A_blocks] = Ak->col_perm;
             lens[n_contributing_A_blocks] = Ak->n0;
@@ -188,10 +192,10 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     sorted_union_int_arrays(col_perms, lens, n_contributing_A_blocks, col_union);
 
     // -------------------------------------------------------------------------------
-    // Allocate C with the same row_perm as B and col_perm = col_union.
+    // Allocate C with row_perm = B->col_perm and col_perm = col_union.
     // -------------------------------------------------------------------------------
-    matrix *C = new_permuted_dense(B->base.m, A->base.n, B->m0, col_union->len,
-                                   B->row_perm, col_union->data, NULL);
+    matrix *C = new_permuted_dense(B->base.n, A->base.n, B->n0, col_union->len,
+                                   B->col_perm, col_union->data, NULL);
 
     iVec_free(col_union);
     free(col_perms);
@@ -201,9 +205,9 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     // Set up workspace. We need:
     // 1. (s_max, max_n0_A) - worst-case intersection size and worst-case A-block
     //    column count across all k. Used to size all other scratch buffers.
-    // 2. (idx_B, idx_A) - arrays to find columns of B that overlap with rows of A_k.
-    // 3. Bg and Ag to hold the gathered columns of B and gathered rows of Ak.
-    // 4. Cg = Bg @ Ag which is then scattered into C.
+    // 2. (idx_B, idx_A) - arrays to find rows of B that overlap with rows of A_k.
+    // 3. Bg and Ag to hold the gathered rows of B and gathered rows of Ak.
+    // 4. Cg = Bg^T @ Ag which is then scattered into C.
     // 5. out_cols - work array for cache-friendly scattering
     // -------------------------------------------------------------------------------
     permuted_dense *C_pd = (permuted_dense *) C;
@@ -212,7 +216,7 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     for (int k = 0; k < n_blocks; k++)
     {
         permuted_dense *Ak = A->blocks[k];
-        int s = B->n0 < Ak->m0 ? B->n0 : Ak->m0;
+        int s = B->m0 < Ak->m0 ? B->m0 : Ak->m0;
         if (s > s_max) s_max = s;
         if (Ak->n0 > max_n0_A) max_n0_A = Ak->n0;
     }
@@ -222,15 +226,15 @@ matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     C_pd->kernel_iwork[0] = s_max;
     C_pd->kernel_iwork[1] = max_n0_A;
 
-    size_t dwork_total = (size_t) B->m0 * s_max + (size_t) s_max * max_n0_A +
-                         (size_t) B->m0 * max_n0_A;
+    size_t dwork_total = (size_t) B->n0 * s_max + (size_t) s_max * max_n0_A +
+                         (size_t) B->n0 * max_n0_A;
     permuted_dense_ensure_kernel_dwork(C_pd, dwork_total);
 
     return C;
 }
 
-void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
-                           permuted_dense *C)
+void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                            permuted_dense *C)
 {
     /* return if C is empty */
     if (C->base.nnz == 0)
@@ -248,7 +252,7 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     int *idx_A = idx_B + s_max;
     int *out_cols = idx_A + s_max;
     double *Bg = C->kernel_dwork;
-    double *Ag = Bg + (size_t) B->m0 * s_max;
+    double *Ag = Bg + (size_t) s_max * B->n0;
     double *Cg = Ag + (size_t) s_max * max_n0_A;
 
     /* for each block Ak of A */
@@ -256,21 +260,19 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     {
         permuted_dense *Ak = A->blocks[k];
 
-        /* find columns of B that overlap with rows of A_k */
-        int s = sorted_intersect_indices(B->col_perm, B->n0, Ak->row_perm, Ak->m0,
+        /* find rows of B that overlap with rows of A_k */
+        int s = sorted_intersect_indices(B->row_perm, B->m0, Ak->row_perm, Ak->m0,
                                          idx_B, idx_A);
         if (s == 0)
         {
             continue;
         }
 
-        /* Bg = B[:, idx_B] where idx_B contains the overlapping column indices */
-        for (int i = 0; i < B->m0; i++)
+        /* Bg = B[idx_B, :] where idx_B contains the overlapping row indices. One
+           contiguous memcpy per gathered row (row-major-friendly). */
+        for (int p = 0; p < s; p++)
         {
-            for (int p = 0; p < s; p++)
-            {
-                Bg[i * s + p] = B->X[i * B->n0 + idx_B[p]];
-            }
+            memcpy(Bg + p * B->n0, B->X + idx_B[p] * B->n0, B->n0 * sizeof(double));
         }
 
         /* Ag = A[idx_A, :] where idx_A contains the overlapping row indices */
@@ -280,9 +282,10 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                    Ak->n0 * sizeof(double));
         }
 
-        /* Cg = Bg @ Ag. */
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, B->m0, Ak->n0, s, 1.0,
-                    Bg, s, Ag, Ak->n0, 0.0, Cg, Ak->n0);
+        /* Cg = Bg^T @ Ag. Bg is (s, B->n0) row-major (lda = B->n0); we want
+           output Cg = (B->n0, Ak->n0). */
+        cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, B->n0, Ak->n0, s, 1.0,
+                    Bg, B->n0, Ag, Ak->n0, 0.0, Cg, Ak->n0);
 
         /* precompute scatter positions once per block */
         for (int j = 0; j < Ak->n0; j++)
@@ -291,7 +294,7 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
         }
 
         /* C += Cg  (scatter + add into C) */
-        for (int i = 0; i < B->m0; i++)
+        for (int i = 0; i < B->n0; i++)
         {
             double *C_row = C->X + i * C->n0;
             const double *Cg_row = Cg + i * Ak->n0;
@@ -304,26 +307,22 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
 }
 
 // ---------------------------------------------------------------------------------
-// BTA_pd_spd: C = B^T @ A where B is permuted_dense and A is stacked_pd. We
-// transpose B into a fresh permuted_dense BT and delegate to BA_pd_spd_*.
-// BT is allocated and freed per call; if this shows up in profiles, cache BT
-// on C via a new aux_pd slot (mirror of stacked_pd's pre_coalesce pattern).
+// BA_pd_spd: C = B @ A where B is permuted_dense and A is stacked_pd. Thin
+// wrapper over the canonical BTA_pd_spd_* kernel: use B's lazily-cached
+// transpose and call BTA. The cache is populated on first call (in alloc)
+// and reused across subsequent fills, so this wrapper does not allocate
+// a fresh transpose per call.
 // ---------------------------------------------------------------------------------
-matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
+matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 {
-    /* BA_pd_spd_alloc reads only BT's metadata (m0, n0, row_perm, col_perm),
-       not BT->X, so leaving BT->X uninitialized here is safe. */
-    permuted_dense *BT = (permuted_dense *) transpose_pd_alloc(B);
-    matrix *C = BA_pd_spd_alloc(BT, A);
-    free_matrix((matrix *) BT);
-    return C;
+    permuted_dense *BT = permuted_dense_ensure_transpose_cache(B);
+    return BTA_pd_spd_alloc(BT, A);
 }
 
-void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
-                            permuted_dense *C)
+void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                           permuted_dense *C)
 {
-    permuted_dense *BT = (permuted_dense *) transpose_pd_alloc(B);
+    permuted_dense *BT = B->transpose_cache;
     transpose_pd_fill_values(B, BT);
-    BA_pd_spd_fill_values(BT, A, C);
-    free_matrix((matrix *) BT);
+    BTA_pd_spd_fill_values(BT, A, C);
 }

@@ -65,6 +65,10 @@ typedef struct permuted_dense
        read). Allocated lazily. */
     int *kernel_iwork;
     size_t kernel_iwork_size;
+
+    /* Cached transpose of this PD as another permuted_dense, allocated lazily
+       on first call to permuted_dense_ensure_transpose_cache. */
+    struct permuted_dense *transpose_cache;
 } permuted_dense;
 
 /* Constructor. row_perm and col_perm must be strictly increasing in their

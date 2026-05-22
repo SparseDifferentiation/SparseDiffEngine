@@ -19,6 +19,7 @@
 
 #include "utils/cblas_wrapper.h"
 #include "utils/iVec.h"
+#include "utils/mini_numpy.h"
 #include "utils/permuted_dense.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
@@ -34,24 +35,29 @@ matrix *copy_sparsity_pd_alloc(const permuted_dense *A)
 
 matrix *transpose_pd_alloc(const permuted_dense *A)
 {
-    /* Swap (m, n), (m0, n0), and (row_perm, col_perm). The constructor
-       asserts strict increase of both perms, which holds by construction. */
+    /* swap (m, n), (m0, n0), and (row_perm, col_perm) */
     return new_permuted_dense(A->base.n, A->base.m, A->n0, A->m0, A->col_perm,
                               A->row_perm, NULL);
 }
 
-void transpose_pd_fill_values(const permuted_dense *A, permuted_dense *out)
+void transpose_pd_fill_values(const permuted_dense *A, permuted_dense *C)
 {
-    int m0 = A->m0;
-    int n0 = A->n0;
-    /* out has shape (n0, m0); transpose A->X into out->X. */
-    for (int ii = 0; ii < m0; ii++)
+    A_transpose(C->X, A->X, A->m0, A->n0);
+}
+
+permuted_dense *permuted_dense_ensure_transpose_cache(const permuted_dense *B_const)
+{
+    /* const-cast: we don't modify B's externally observable state, just
+       lazily populate the cache slot. Same convention as
+       permuted_dense_ensure_kernel_dwork and sparse_matrix_ensure_csc_cache. */
+    permuted_dense *B = (permuted_dense *) B_const;
+    if (B->transpose_cache != NULL)
     {
-        for (int jj = 0; jj < n0; jj++)
-        {
-            out->X[jj * m0 + ii] = A->X[ii * n0 + jj];
-        }
+        return B->transpose_cache;
     }
+    permuted_dense *BT = (permuted_dense *) transpose_pd_alloc(B);
+    B->transpose_cache = BT;
+    return BT;
 }
 
 void DA_pd_fill_values(const double *d, const permuted_dense *A, permuted_dense *C)
@@ -166,8 +172,9 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     assert(s > 0);
 
     // ------------------------------------------------------------------------
-    // Gather the matching rows into A->kernel_dwork and B->kernel_dwork. dwork is pre-sized
-    // by BTA_pd_pd_alloc (one ensure_dwork call per operand at alloc time).
+    // Gather the matching rows into A->kernel_dwork and B->kernel_dwork. dwork is
+    // pre-sized by BTA_pd_pd_alloc (one ensure_dwork call per operand at alloc
+    // time).
     // ------------------------------------------------------------------------
     for (int k = 0; k < s; k++)
     {
@@ -351,9 +358,9 @@ void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     assert(s > 0);
 
     // ------------------------------------------------------------------------
-    // Gather the matching slices into B->kernel_dwork (column gather) and A->kernel_dwork
-    // (row gather). dwork is pre-sized by BA_pd_pd_alloc (one ensure_dwork
-    // call per operand at alloc time).
+    // Gather the matching slices into B->kernel_dwork (column gather) and
+    // A->kernel_dwork (row gather). dwork is pre-sized by BA_pd_pd_alloc (one
+    // ensure_dwork call per operand at alloc time).
     // ------------------------------------------------------------------------
     /* B_sub shape (B->m0, s) row-major: B_sub[ii, kk] = B->X[ii, idx_B[kk]]. */
     for (int ii = 0; ii < B->m0; ii++)
@@ -479,8 +486,9 @@ static void BTA_csc_pd_fill_values(const CSC_matrix *B, const double *A_T, int m
 }
 
 /* C = B^T diag(d) A. Folds diag(d) into A's dense block (writing
-   (diag(d_perm) X_A)^T into A->kernel_dwork) and delegates to BTA_csc_pd_fill_values.
-   Mirrors how BTDA_pd_csc_fill_values wraps BA_pd_csc_fill_values. */
+   (diag(d_perm) X_A)^T into A->kernel_dwork) and delegates to
+   BTA_csc_pd_fill_values. Mirrors how BTDA_pd_csc_fill_values wraps
+   BA_pd_csc_fill_values. */
 void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
                              const permuted_dense *A, permuted_dense *C)
 {

@@ -84,4 +84,12 @@ matrix *transpose_pd_alloc(const permuted_dense *A);
 /* Fill values of C = A^T. */
 void transpose_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
+/* Lazily allocate B's transpose_cache (a PD with swapped (m,n), (m0,n0),
+   (row_perm,col_perm)) and return it. Idempotent: on subsequent calls
+   the existing cache is returned. The cache's X buffer is allocated but
+   uninitialized — callers must refresh it via transpose_pd_fill_values(B,
+   B->transpose_cache) before reading X. Const-casts B internally; mirrors
+   sparse_matrix_ensure_csc_cache's convention. */
+permuted_dense *permuted_dense_ensure_transpose_cache(const permuted_dense *B);
+
 #endif /* PERMUTED_DENSE_LINALG_H */
