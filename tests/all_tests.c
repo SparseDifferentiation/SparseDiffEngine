@@ -447,6 +447,9 @@ int main(void)
     mu_run_test(test_BTA_pd_matrices_csc_A, tests_run);
     mu_run_test(test_BTA_pd_matrices_spd_A, tests_run);
     mu_run_test(test_BTDA_csc_spd_overlapping, tests_run);
+    mu_run_test(test_BTA_sparse_matrices_pd_A, tests_run);
+    mu_run_test(test_BTA_sparse_matrices_csc_A, tests_run);
+    mu_run_test(test_BTA_sparse_matrices_spd_A, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
     mu_run_test(test_coalesce_three_signatures, tests_run);

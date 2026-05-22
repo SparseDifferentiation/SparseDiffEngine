@@ -14,6 +14,7 @@
 
 #include "matrix.h"
 #include "permuted_dense.h"
+#include "sparse_matrix.h"
 #include "stacked_pd.h"
 
 /* TODO: clean up documentation of this file.*/
@@ -67,6 +68,23 @@ void BTDA_pd_matrices_fill_values(const permuted_dense *B, const double *d,
 matrix *BTA_spd_matrices_alloc(const stacked_pd *B, matrix *A);
 void BTDA_spd_matrices_fill_values(const stacked_pd *B, const double *d,
                                    const matrix *A, stacked_pd *C);
+
+/* Polymorphic dispatcher for C = B^T @ (diag(d) @) A where B is sparse_matrix
+   and A is any matrix type (PD, stacked_pd, or sparse_matrix). Output type
+   varies with A:
+     - A is PD             -> output is permuted_dense.
+     - A is stacked_pd     -> output is stacked_pd.
+     - A is sparse_matrix  -> output is sparse_matrix.
+   Caller passes the alloc-returned matrix to _fill_values.
+
+   The dispatcher ensures B's csc_cache structure exists at alloc time, and
+   on the sparse-A branch also ensures sm_A->csc_cache structure. Before
+   calling _fill_values, caller must refresh both csc_cache value buffers
+   via refresh_csc_values (same fill-side contract as the other
+   *_matrices_fill_values dispatchers). */
+matrix *BTA_sparse_matrices_alloc(const sparse_matrix *B, matrix *A);
+void BTDA_sparse_matrices_fill_values(const sparse_matrix *B, const double *d,
+                                      const matrix *A, matrix *C);
 
 /* Polymorphic dispatcher for C = B @ A where B is stacked_pd and A is any
    matrix type (PD, stacked_pd, or sparse_matrix). C is always stacked_pd.
