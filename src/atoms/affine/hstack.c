@@ -94,10 +94,11 @@ static void eval_jacobian(expr *node)
     {
         expr *child = hnode->args[i];
         child->eval_jacobian(child);
-        /* copy values */
-        memcpy(node->jacobian->x + node->jacobian->nnz, child->jacobian->x,
-               child->jacobian->nnz * sizeof(double));
-        node->jacobian->nnz += child->jacobian->nnz;
+        /* to_csr needed for stacked_pd */
+        CSR_matrix *child_csr = child->jacobian->to_csr(child->jacobian);
+        memcpy(node->jacobian->x + node->jacobian->nnz, child_csr->x,
+               child_csr->nnz * sizeof(double));
+        node->jacobian->nnz += child_csr->nnz;
     }
 }
 

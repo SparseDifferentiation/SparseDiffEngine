@@ -113,6 +113,7 @@ struct matrix
     int m, n, nnz;
     double *x; /* non-owning pointer to the value buffer */
     bool is_permuted_dense;
+    bool is_stacked_pd;
 
     /* Operator ops */
     matrix_block_left_mult_vec_fn block_left_mult_vec;

@@ -5,9 +5,11 @@
 #include "old-code/old_permuted_dense.h"
 #include "test_helpers.h"
 #include "utils/CSC_matrix.h"
-#include "utils/matrix_BTA.h"
+#include "utils/matmul_dispatchers.h"
 #include "utils/permuted_dense.h"
+#include "utils/permuted_dense_linalg.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
 #include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
@@ -958,6 +960,50 @@ const char *test_BA_pd_matrices_pd_csc(void)
     free_matrix(C_m);
     free_matrix(A_m);
     free_matrix(B_m);
+    return 0;
+}
+
+/* BA_pd_matrices dispatcher routes B(PD) @ A(spd) to BA_pd_spd_*. Fixture
+   mirrors test_BA_pd_spd_two_blocks_disjoint_cols; the assertion is that
+   the dispatcher and the direct kernel produce identical output. */
+const char *test_BA_pd_matrices_spd_A(void)
+{
+    int B_rp[3] = {0, 1, 2};
+    int B_cp[3] = {0, 1, 3};
+    double BX[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    matrix *B = new_permuted_dense(3, 4, 3, 3, B_rp, B_cp, BX);
+
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 4};
+    double A0X[4] = {10, 11, 12, 13};
+    matrix *A0 = new_permuted_dense(4, 6, 2, 2, A0_rp, A0_cp, A0X);
+
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 4};
+    double A1X[4] = {20, 21, 22, 23};
+    matrix *A1 = new_permuted_dense(4, 6, 2, 2, A1_rp, A1_cp, A1X);
+
+    permuted_dense *blocks[2] = {(permuted_dense *) A0, (permuted_dense *) A1};
+    matrix *A = new_stacked_pd(4, 6, 2, blocks, NULL, NULL);
+
+    matrix *C_m = BA_pd_matrices_alloc((permuted_dense *) B, A);
+    BA_pd_matrices_fill_values((permuted_dense *) B, A, (permuted_dense *) C_m);
+    permuted_dense *C = (permuted_dense *) C_m;
+
+    mu_assert("C m", C_m->m == 3);
+    mu_assert("C n", C_m->n == 6);
+    mu_assert("C m0", C->m0 == 3);
+    mu_assert("C n0", C->n0 == 3);
+    int rp_exp[3] = {0, 1, 2};
+    int cp_exp[3] = {0, 1, 4};
+    mu_assert("C row_perm", cmp_int_array(C->row_perm, rp_exp, 3));
+    mu_assert("C col_perm", cmp_int_array(C->col_perm, cp_exp, 3));
+    double CX_exp[9] = {34, 66, 106, 100, 132, 247, 166, 198, 388};
+    mu_assert("C X", cmp_double_array(C->X, CX_exp, 9));
+
+    free_matrix(C_m);
+    free_matrix(A);
+    free_matrix(B);
     return 0;
 }
 

@@ -19,9 +19,10 @@
 #include "subexpr.h"
 #include "utils/CSR_matrix.h"
 #include "utils/CSR_sum.h"
-#include "utils/matrix_BTA.h"
+#include "utils/matmul_dispatchers.h"
 #include "utils/matrix_sum.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
@@ -153,11 +154,11 @@ static void wsum_hess_init_impl(expr *node)
 
         /* For sparse matrices we need the CSC cache to be valid for the
            BTA_matrices_alloc / BTDA_matrices_fill_values calls below. */
-        if (!x->jacobian->is_permuted_dense)
+        if (!x->jacobian->is_permuted_dense && !x->jacobian->is_stacked_pd)
         {
             sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
         }
-        if (!y->jacobian->is_permuted_dense)
+        if (!y->jacobian->is_permuted_dense && !y->jacobian->is_stacked_pd)
         {
             sparse_matrix_ensure_csc_cache((sparse_matrix *) y->jacobian);
         }
@@ -186,6 +187,32 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->idx_map_CT = maps[1];
         mul_node->idx_map_Hx = maps[2];
         mul_node->idx_map_Hy = maps[3];
+
+        /* If C / CT / x->wsum_hess / y->wsum_hess come out as stacked_pd,
+           re-index the corresponding idx_map from CSR position so the
+           accumulator below can read each matrix's ->x directly. */
+        if (C->is_stacked_pd)
+        {
+            compose_csr_idx_map_for_spd((const stacked_pd *) C, C->to_csr(C),
+                                        mul_node->idx_map_C);
+        }
+        if (CT->is_stacked_pd)
+        {
+            compose_csr_idx_map_for_spd((const stacked_pd *) CT, CT->to_csr(CT),
+                                        mul_node->idx_map_CT);
+        }
+        if (x->wsum_hess->is_stacked_pd)
+        {
+            compose_csr_idx_map_for_spd((const stacked_pd *) x->wsum_hess,
+                                        x->wsum_hess->to_csr(x->wsum_hess),
+                                        mul_node->idx_map_Hx);
+        }
+        if (y->wsum_hess->is_stacked_pd)
+        {
+            compose_csr_idx_map_for_spd((const stacked_pd *) y->wsum_hess,
+                                        y->wsum_hess->to_csr(y->wsum_hess),
+                                        mul_node->idx_map_Hy);
+        }
     }
 }
 

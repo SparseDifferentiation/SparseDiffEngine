@@ -54,21 +54,6 @@ void scaled_ones(double *result, int size, double value)
     }
 }
 
-void mat_mat_mult(const double *X, const double *Y, double *Z, int m, int k, int n)
-{
-    for (int j = 0; j < n; ++j)
-    {
-        for (int i = 0; i < m; ++i)
-        {
-            Z[i + j * m] = 0.0;
-            for (int l = 0; l < k; ++l)
-            {
-                Z[i + j * m] += X[i + l * m] * Y[l + j * k];
-            }
-        }
-    }
-}
-
 void A_transpose(double *AT, const double *A, int m, int n)
 {
     for (int i = 0; i < m; i++)

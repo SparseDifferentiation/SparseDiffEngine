@@ -13,6 +13,7 @@
 #include "utils/CSR_sum.h"
 #include "utils/Timer.h"
 #include "utils/permuted_dense.h"
+#include "utils/permuted_dense_linalg.h"
 
 /* Profile and validate Jacobian + Hessian of obj = sum(logistic(A x)).
 

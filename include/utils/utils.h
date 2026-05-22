@@ -18,6 +18,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "iVec.h"
 #include <stdbool.h>
 
 #ifndef MAX
@@ -32,9 +33,22 @@ void sort_int_array(int *array, int size);
 
 /* Return true if sorted index arrays a_idx and b_idx (lengths a_len, b_len)
    share any value, where b_idx entries are shifted by b_offset before
-   comparison (a_idx[ai] == b_idx[bi] - b_offset). Use b_offset = 0 for a
-   plain intersection check.  */
+   comparison (a_idx[ai] == b_idx[bi] - b_offset). */
 bool has_overlap(const int *a_idx, int a_len, const int *b_idx, int b_len,
                  int b_offset);
+
+/* Find positions where two sorted, ascending int arrays match. For each match
+   (a[ii] == b[jj]) writes ii into idx_a and jj into idx_b. Returns the count. */
+int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
+                             int *idx_a, int *idx_b);
+
+/* Merges 'n_arrs' sorted, ascending integer arrays into 'out', 'producing the
+   sorted deduplicated union. 'arrs[a]' has length 'lens[a]'. 'out' is cleared
+   (length reset, capacity reused) and populated. */
+void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
+                             iVec *out);
+
+/* in-place cumulative sum */
+void cumsum(int *p, int n);
 
 #endif // UTILS_H

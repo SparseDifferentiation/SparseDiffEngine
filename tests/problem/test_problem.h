@@ -347,4 +347,73 @@ const char *test_problem_hessian(void)
     return 0;
 }
 
+/* Mirror the Python pipeline: build the user-reported sum(exp(A @ X.T))
+   as a problem objective (no constraints), call problem_hessian, then
+   read prob->lagrange_hessian. Uses the exact A and X values the user
+   shared so the printed values can be compared directly against their
+   Python output. */
+const char *test_problem_hessian_sum_exp_left_matmul_dense_transpose(void)
+{
+    /* X = [[0.42, 0.65], [0.44, 0.89]] row-major → col-major vec(X) =
+       [X[0,0], X[1,0], X[0,1], X[1,1]] = [0.42, 0.44, 0.65, 0.89]. */
+    double u_vals[4] = {0.42, 0.44, 0.65, 0.89};
+    /* A row-major: A[0,0]=0.55, A[0,1]=0.72, A[1,0]=0.6, A[1,1]=0.54. */
+    double A[4] = {0.55, 0.72, 0.60, 0.54};
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *XT = new_transpose(X);
+    expr *AX = new_left_matmul_dense(NULL, XT, 2, 2, A);
+    expr *exp_AX = new_exp(AX);
+    expr *objective = new_sum(exp_AX, -1);
+
+    problem *prob = new_problem(objective, NULL, 0, false);
+
+    problem_init_derivatives(prob);
+    problem_objective_forward(prob, u_vals);
+    /* problem_gradient populates the objective's Jacobian (which the
+       Hessian path then reads). Mirrors the IPOPT call order. */
+    problem_gradient(prob);
+    problem_hessian(prob, 1.0, NULL);
+
+    /* Densify prob->lagrange_hessian to a 4x4 row-major buffer and
+       print it for direct comparison with the user-reported Python
+       output. */
+    CSR_matrix *H = prob->lagrange_hessian;
+    double dense[16] = {0};
+    for (int r = 0; r < H->m; r++)
+    {
+        for (int kk = H->p[r]; kk < H->p[r + 1]; kk++)
+        {
+            dense[r * 4 + H->i[kk]] = H->x[kk];
+        }
+    }
+
+    printf("\nproblem->lagrange_hessian (densified 4x4):\n");
+    for (int r = 0; r < 4; r++)
+    {
+        printf("  [%9.6f %9.6f %9.6f %9.6f]\n", dense[r * 4 + 0], dense[r * 4 + 1],
+               dense[r * 4 + 2], dense[r * 4 + 3]);
+    }
+
+    /* Hand-derived analytical Hessian (also matches the expression-level
+       check_wsum_hess test). If this asserts pass, the C problem layer
+       is correct end-to-end and the Python discrepancy is elsewhere. */
+    double expected[16] = {1.266485, 0.0,      1.388789, 0.0,     0.0,      1.489358,
+                           0.0,      1.639607, 1.388789, 0.0,     1.575812, 0.0,
+                           0.0,      1.639607, 0.0,      1.867307};
+    for (int k = 0; k < 16; k++)
+    {
+        if (fabs(dense[k] - expected[k]) >= 1e-5)
+        {
+            printf("  MISMATCH at flat index %d: got %.6f, expected %.6f\n", k,
+                   dense[k], expected[k]);
+        }
+        mu_assert("lagrange_hessian mismatch (see printed log)",
+                  fabs(dense[k] - expected[k]) < 1e-5);
+    }
+
+    free_problem(prob);
+    return 0;
+}
+
 #endif /* TEST_PROBLEM_H */

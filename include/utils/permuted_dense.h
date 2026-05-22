@@ -19,66 +19,61 @@
 #define PERMUTED_DENSE_H
 
 #include "matrix.h"
+#include <stdbool.h>
 #include <stddef.h>
 
-/* permuted_dense represents a matrix whose only nonzeros lie in a dense
-   block, after rows and columns are restricted to chosen subsets of the
-   global index space. For local indices (ii, jj) with 0 <= ii < m0
-   and 0 <= jj < n0,
+/* permuted_dense represents a matrix whose only nonzeros lie in a dense block
+   of size m0 x n0, after rows and columns are restricted to chosen subsets of
+   the global index space. For local indices (ii, jj) with 0 <= ii < m0 and 0 <=
+   jj < n0,
 
        M[row_perm[ii], col_perm[jj]] = X[ii, jj].
 
-   All other entries of M are zero. row_perm and col_perm are stored in
-   strictly increasing order; the constructor asserts this. */
+   All other entries of M are zero. row_perm and col_perm are stored in strictly
+   increasing order; the constructor asserts this. */
 typedef struct permuted_dense
 {
     matrix base;
-    int m0;                /* rows of dense block (= len(row_perm))      */
-    int n0;                /* cols of dense block (= len(col_perm))      */
-    int *row_perm;         /* row_perm[ii] in [0, base.m), sorted        */
-    int *col_perm;         /* col_perm[jj] in [0, base.n), sorted        */
-    double *X;             /* m0 * n0, row-major               */
-    int *col_inv;          /* length base.n: col_inv[col_perm[jj]] = jj, */
-                           /* otherwise -1; used by `x CSC_matrix` allocation.  */
-    int *row_inv;          /* length base.m: row_inv[row_perm[ii]] = ii, */
-                           /* otherwise -1; used by index_alloc.         */
-    CSR_matrix *csr_cache; /* lazy CSR_matrix view built by to_csr; structure */
-                           /* allocated on first call, values refilled */
-                           /* on every call. NULL until first call.    */
-    /* Mutable double-precision BLAS scratch shared across kernels that
-       operate on this PD. Two non-overlapping roles (a given fill call uses
-       at most one):
-         - Y-buffer: holds diag(d_perm) X for ATDA / BTDA_pd_pd (size m0*n0).
-         - transpose: holds (diag(d) X)^T for the BA_pd_csc-based BTDA
-                     kernels (BTDA_pd_csc and, transitively, BTDA_csc_pd
-                     via its delegate). Size m0*n0 doubles.
-       Allocated lazily on the first kernel that needs it; grown in place
-       (free + SP_MALLOC, contents not preserved) if a later kernel needs
-       more. `dwork == NULL` and `dwork_size == 0` before first use.
-       Functions taking a const permuted_dense * may still mutate `dwork`. */
-    double *dwork;
-    size_t dwork_size;
+    int m0;
+    int n0;
+    int *row_perm;
+    int *col_perm;
+    int *col_inv; /* col_inv[col_perm[jj]] = jj, otherwise -1 */
+    int *row_inv; /* row_inv[row_perm[ii]] = ii, otherwise -1 */
 
-    /* Mutable int scratch. Currently only used to hold the row-intersection
-       index arrays idx_A / idx_B in BTA_pd_pd_fill_values and the
-       slow path of BTDA_pd_pd_fill_values; allocated by
-       BTA_pd_pd_alloc for those outputs (NULL on PDs from other
-       allocators). Fill kernels fall back to a per-call SP_MALLOC if
-       iwork_size is too small. */
-    int *iwork;
-    size_t iwork_size;
+    /* Row-major block of size m0 x n0. Owned by this PD when owns_X == true,
+       and otherwise X is a view into a buffer (eg., stacked_pd's shared values
+       buffer) and must not be freed by this PD. */
+    double *X;
+    bool owns_X;
 
-    /* CONTRACT: `dwork` and `iwork` are freely overwritten by every kernel
-       that takes this PD as input or output — contents do NOT survive
-       across calls. Do not use them to cache precomputed factors or carry
-       state between kernel invocations: any subsequent call (ATDA, BTDA,
-       BTA gather, …) may clobber them without warning. If you need
-       persistence, add a dedicated field. */
+    /* Cached CSR_matrix view of the permuted dense, built on demand by to_csr.
+       The structure (p/i arrays) is allocated on the first call to to_csr and
+       reused thereafter; the values array aliases self->X so is always live with
+       no separate fill needed. */
+    CSR_matrix *csr_cache;
+
+    /* Workspace used for BLAS operations. Allocated lazily by the first kernel
+       that needs it, and resizes if another kernel needs more space than
+       currently allocated (that's why we store dwork_size) */
+    double *kernel_dwork;
+    size_t kernel_dwork_size;
+
+    /* Private buffers owned by the kernel that produced this PD. The
+       producing kernel may use them for per-call scratch and/or small
+       persistent state (e.g. cached config the fill_values needs to
+       read). Allocated lazily. */
+    int *kernel_iwork;
+    size_t kernel_iwork_size;
+
+    /* Cached transpose of this PD as another permuted_dense, allocated lazily
+       on first call to permuted_dense_ensure_transpose_cache. */
+    struct permuted_dense *transpose_cache;
 } permuted_dense;
 
 /* Constructor. row_perm and col_perm must be strictly increasing in their
-   respective ranges. If X_data is NULL the value buffer is allocated but
-   left uninitialized; otherwise m0 * n0 entries are copied. */
+   respective ranges. If X_data is NULL the value buffer is allocated but left
+   uninitialized. Otherwise m0 * n0 entries are copied. */
 matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
                            const int *col_perm, const double *X_data);
 
@@ -86,71 +81,35 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
    col_perm = [0..n-1], dense block fills the full (m, n) shape. */
 matrix *new_permuted_dense_full(int m, int n, const double *data);
 
-/* CSR_matrix view: callers should use the vtable, i.e. base.to_csr(base). The PD
-   owns and caches the returned CSR_matrix; its value array aliases self->X,
-   so values are always live with no separate fill needed. Callers must not
-   free the returned CSR_matrix — it's released by free_matrix on the PD. */
+/* Ensure A->kernel_dwork is sized at least 'size' doubles. Grows in
+   place; contents are NOT preserved. */
+void permuted_dense_ensure_kernel_dwork(const permuted_dense *A, size_t size);
 
-/* Fill values of C = diag(d) @ A where len(d) = number of (global) rows of A */
-void DA_pd_fill_values(const double *d, const permuted_dense *A, permuted_dense *C);
+/* Allocate C = broadcast(A, type, d1, d2), where A and C are permuted dense. */
+matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
+                           int d2);
 
-/* Allocate new permuted dense for C = AT @ A */
-matrix *ATA_pd_alloc(const permuted_dense *A);
+/* Fill values of C = broadcast(A, type, d1, d2). */
+void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
+                              int d2, permuted_dense *C);
 
-/* Fill values of C = AT @ diag(d) @ A */
-void ATDA_pd_fill_values(const permuted_dense *A, const double *d,
-                         permuted_dense *C);
+/* Allocate C = A[indices, :], where A and C are permuted dense. */
+matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs);
 
-/* Allocate new permuted dense forC = BT @ A where A and B are both permuted_dense.
-   (If B and A have no overlapping rows, then C is empty) */
-matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A);
-
-/* Fill values of C = BT @ A where A and B are both permuted dense. */
-void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
-                           permuted_dense *C);
-
-/* Fill values of C = BT @ diag(d) @ A where A and B are both permuted dense. */
-void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
-                            const permuted_dense *A, permuted_dense *C);
-
-/* Allocate new permuted dense for C = B @ A where B is PD and A is CSC.
-   This function is currently never used in production, but we keep it
-   here because it is simple and might be useful in the future. */
-matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
-
-/* Fill values of C = B @ A where B is value buffer to permuted dense and A is CSC.
-
-   The raw-buffer signature for B lets callers pass a transposed dense block
-   (e.g. (diag(d) B)^T stored in B->dwork) without needing to build a transposed
-   permuted dense. */
-void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
-                           const CSC_matrix *A, permuted_dense *C);
-
-/* Allocate new permuted dense for C = B @ A where B and A are both PD. Both
-   may have arbitrary (sorted) row_perm / col_perm; no full-block assumption.
-   If B->col_perm and A->row_perm have no overlap C is structurally empty;
-   otherwise C has row_perm = B->row_perm, col_perm = A->col_perm. */
-matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A);
-
-/* Fill values of C = B @ A for two PDs (general row_perm / col_perm).
-   Intersects B->col_perm with A->row_perm, gathers the matching column
-   slice of B and row slice of A into the operands' dwork scratch, and
-   computes one cblas_dgemm. */
-void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
+/* Fill values of C = A[indices, :]. */
+void index_pd_fill_values(const permuted_dense *A, const int *indices, int n_idxs,
                           permuted_dense *C);
 
-/* Allocate new permuted dense for C = B^T @ A where B is PD and A is CSC */
-matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
+/* Allocate C = promote(A, size), where A and C are permuted dense. */
+matrix *promote_pd_alloc(const permuted_dense *A, int size);
 
-/* Fill values of C = B^T @ diag(d) @ A where B is PD and A is CSC */
-void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
-                             const CSC_matrix *A, permuted_dense *C);
+/* Fill values of C = promote(A, size). */
+void promote_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
-/* Allocate new permuted_dense for C = B^T @ A where B is Sparse CSC and A is PD. */
-matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A);
+/* Allocate C = diag_vec(A), where A and C are permuted dense. */
+matrix *diag_vec_pd_alloc(const permuted_dense *A);
 
-/* Fill values of C = B^T @ diag(d) @ A where B is CSC and A is PD */
-void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
-                             const permuted_dense *A, permuted_dense *C);
+/* Fill values of C = diag_vec(A). */
+void diag_vec_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
 #endif /* PERMUTED_DENSE_H */

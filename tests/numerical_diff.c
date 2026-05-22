@@ -127,11 +127,12 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
 
     memcpy(u_work, u, n * sizeof(double));
 
-    /* Hoist the CSR_matrix view once. For sparse_matrix (the only type used by tests
-       that reach here), csr->x aliases node->jacobian->x, so eval_jacobian
-       writes inside the loop update jac->x in place. A PD-backed Jacobian
-       would need a per-iteration to_csr refresh; not exercised today. */
-    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
+    /* CSR view must be re-fetched after every eval_jacobian: for sparse_matrix
+       and permuted_dense the cached csr->x aliases the underlying value
+       buffer (so the same call returns the same valid view), but for
+       stacked_pd the csr_cache->x is a separate buffer that to_csr
+       memcpy-refreshes from block X each call. */
+    CSR_matrix *jac;
 
     for (int j = 0; j < n; j++)
     {
@@ -139,6 +140,7 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
         u_work[j] = u[j] + h;
         node->forward(node, u_work);
         node->eval_jacobian(node);
+        jac = node->jacobian->to_csr(node->jacobian);
         memset(g_plus, 0, n * sizeof(double));
         csr_transpose_mult_vec(jac, w, g_plus);
 
@@ -146,6 +148,7 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
         u_work[j] = u[j] - h;
         node->forward(node, u_work);
         node->eval_jacobian(node);
+        jac = node->jacobian->to_csr(node->jacobian);
         memset(g_minus, 0, n * sizeof(double));
         csr_transpose_mult_vec(jac, w, g_minus);
 

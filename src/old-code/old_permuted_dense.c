@@ -67,11 +67,11 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
        reads it as (B->m0, s_A), so size B->m0 * s_A doubles suffices. */
     permuted_dense *C_pd = (permuted_dense *) C;
     size_t gather_size = B->m0 * s_A;
-    if (gather_size > C_pd->dwork_size)
+    if (gather_size > C_pd->kernel_dwork_size)
     {
-        free(C_pd->dwork);
-        C_pd->dwork_size = gather_size;
-        C_pd->dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
+        free(C_pd->kernel_dwork);
+        C_pd->kernel_dwork_size = gather_size;
+        C_pd->kernel_dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
     }
     return C;
 }
@@ -90,9 +90,9 @@ void BTA_pd_csr_fill_values(const permuted_dense *B, const CSR_matrix *A_csr,
     }
 
     /* Use C->col_inv (pre-built by new_permuted_dense) as col_inv_out and
-       C->dwork as A_sub_dense; both are owned by C. dwork is sized at alloc
+       C->kernel_dwork as A_sub_dense; both are owned by C. dwork is sized at alloc
        time to cover m0 * s_A; only that prefix is touched. */
-    double *A_sub_dense = C->dwork;
+    double *A_sub_dense = C->kernel_dwork;
     size_t used = m0 * s_A;
     memset(A_sub_dense, 0, used * sizeof(double));
 
@@ -131,7 +131,7 @@ void BTDA_pd_csr_fill_values(const permuted_dense *B, const double *d,
         return;
     }
 
-    double *A_sub_dense = C->dwork;
+    double *A_sub_dense = C->kernel_dwork;
     size_t used = m0 * s_A;
     memset(A_sub_dense, 0, used * sizeof(double));
 
@@ -199,11 +199,11 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
        BTDA_csr_pd_fill_values: shape (A->m0, r_B) row-major. */
     permuted_dense *C_pd = (permuted_dense *) C;
     size_t gather_size = A->m0 * r_B;
-    if (gather_size > C_pd->dwork_size)
+    if (gather_size > C_pd->kernel_dwork_size)
     {
-        free(C_pd->dwork);
-        C_pd->dwork_size = gather_size;
-        C_pd->dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
+        free(C_pd->kernel_dwork);
+        C_pd->kernel_dwork_size = gather_size;
+        C_pd->kernel_dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
     }
     return C;
 }
@@ -223,9 +223,9 @@ void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
     }
 
     /* Use C->row_inv (pre-built by new_permuted_dense) as row_inv_out and
-       C->dwork as B_sub_dense; both are owned by C. dwork is sized at alloc
+       C->kernel_dwork as B_sub_dense; both are owned by C. dwork is sized at alloc
        time to cover m0 * r_B; only that prefix is touched. */
-    double *B_sub_dense = C->dwork;
+    double *B_sub_dense = C->kernel_dwork;
     size_t used = m0 * r_B;
     memset(B_sub_dense, 0, used * sizeof(double));
 
@@ -262,7 +262,7 @@ void BTDA_csr_pd_fill_values(const CSR_matrix *B_csr, const double *d,
         return;
     }
 
-    double *B_sub_dense = C->dwork;
+    double *B_sub_dense = C->kernel_dwork;
     size_t used = m0 * r_B;
     memset(B_sub_dense, 0, used * sizeof(double));
 

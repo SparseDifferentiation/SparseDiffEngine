@@ -21,6 +21,7 @@
 #include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
 #include "utils/sparse_matrix.h"
+#include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
@@ -113,6 +114,15 @@ static void jacobian_init_impl(expr *node)
     {
         sum_evenly_spaced_rows_csr_alloc(Jx, jac, node->size, node->work->iwork,
                                          snode->idx_map);
+    }
+
+    /* For stacked_pd children, child->jacobian->base.x is block-major while
+       csr->x is row-major sorted. Re-index idx_map so it can be applied
+       directly to base.x in eval_jacobian. */
+    if (x->jacobian->is_stacked_pd)
+    {
+        compose_csr_idx_map_for_spd((const stacked_pd *) x->jacobian, Jx,
+                                    snode->idx_map);
     }
 
     node->jacobian = new_sparse_matrix(jac);

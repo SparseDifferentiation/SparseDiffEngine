@@ -5,6 +5,7 @@
 #include "minunit.h"
 #include "numerical_diff.h"
 #include "test_helpers.h"
+#include <stdio.h>
 
 const char *test_wsum_hess_exp_sum(void)
 {
@@ -37,6 +38,128 @@ const char *test_wsum_hess_exp_sum_mult(void)
               check_wsum_hess(exp_sum_xy, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(exp_sum_xy);
+    return 0;
+}
+
+/* Regression: sum(multiply(sin(A @ X.T), cos(X))) — user-reported Python
+   failure. Exercises elementwise_mult with two spd-producing children
+   (sin path produces spd from left_matmul, cos path produces spd from
+   the variable Jacobian via copy_sparsity). Goes through the BTA/BTDA
+   dispatcher's to_csr fallback for the spd operands. */
+const char *test_wsum_hess_sum_mult_sin_left_matmul_cos(void)
+{
+    double u_vals[4] = {0.42, 0.44, 0.65, 0.89};
+    double A[4] = {0.55, 0.72, 0.60, 0.54};
+    double w = 1.0;
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *XT = new_transpose(X);
+    expr *AX = new_left_matmul_dense(NULL, XT, 2, 2, A);
+    expr *sin_AX = new_sin(AX);
+    expr *X2 = new_variable(2, 2, 0, 4);
+    expr *cos_X = new_cos(X2);
+    expr *mult = new_elementwise_mult(sin_AX, cos_X);
+    expr *node = new_sum(mult, -1);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+/* Regression: sum(exp(A @ X.T)) — user-reported wrong-Hessian case.
+   Triggers left_matmul_dense over the transpose of a multi-column
+   variable, producing an spd Jacobian with non-trivial col_perm
+   (because the child Jacobian is the transpose permutation PD).
+   Uses the exact A and X values from the user report. */
+const char *test_wsum_hess_sum_exp_left_matmul_dense_transpose(void)
+{
+    /* X = [[0.42, 0.65], [0.44, 0.89]] in row-major -> column-major
+       vec is [X[0,0], X[1,0], X[0,1], X[1,1]] = [0.42, 0.44, 0.65, 0.89]. */
+    double u_vals[4] = {0.42, 0.44, 0.65, 0.89};
+    /* A row-major: A[0,0]=0.55, A[0,1]=0.72, A[1,0]=0.60, A[1,1]=0.54. */
+    double A[4] = {0.55, 0.72, 0.60, 0.54};
+    double w = 1.0;
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *XT = new_transpose(X);
+    expr *AX = new_left_matmul_dense(NULL, XT, 2, 2, A);
+    expr *exp_AX = new_exp(AX);
+    expr *node = new_sum(exp_AX, -1);
+
+    /* Compute and print the analytical Hessian to compare with the
+       user-reported c_hess_dense. */
+    jacobian_init(node);
+    wsum_hess_init(node);
+    node->forward(node, u_vals);
+    node->eval_jacobian(node);
+    node->eval_wsum_hess(node, &w);
+
+    CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
+    double dense[16] = {0};
+    for (int r = 0; r < H->m; r++)
+    {
+        for (int kk = H->p[r]; kk < H->p[r + 1]; kk++)
+        {
+            dense[r * 4 + H->i[kk]] = H->x[kk];
+        }
+    }
+    printf("\nC analytical Hessian (row-major 4x4):\n");
+    for (int r = 0; r < 4; r++)
+    {
+        printf("  [%.6f %.6f %.6f %.6f]\n", dense[r * 4 + 0], dense[r * 4 + 1],
+               dense[r * 4 + 2], dense[r * 4 + 3]);
+    }
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+/* Regression: neg(sin(A @ X)) exercises neg's eval_jacobian flat ->x
+   loop with an spd child (sin's jacobian inherits spd from
+   left_matmul_dense via copy_sparsity) and neg's wsum_hess path. */
+const char *test_wsum_hess_neg_sin_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+    double w[9] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *sin_AX = new_sin(AX);
+    expr *node = new_neg(sin_AX);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+/* sum(sin(A @ X)) where A is 3x3 dense, X is 3x3 variable. Mirrors a
+   user-reported Python case that previously segfaulted because:
+     (1) sum's eval_jacobian reads child->jacobian->x directly (NULL on spd)
+     (2) sum's eval_wsum_hess memcpy's child->wsum_hess->x (NULL on spd)
+   Both paths now route through to_csr / block-wise copy. */
+const char *test_wsum_hess_sum_sin_left_matmul_dense(void)
+{
+    double u_vals[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double A[9] = {1.0, 0.5, -0.3, 0.2, 1.0, 0.7, -0.1, 0.4, 1.0};
+    double w = 1.0;
+
+    expr *X = new_variable(3, 3, 0, 9);
+    expr *AX = new_left_matmul_dense(NULL, X, 3, 3, A);
+    expr *sin_AX = new_sin(AX);
+    expr *node = new_sum(sin_AX, -1);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
     return 0;
 }
 
@@ -385,5 +508,42 @@ const char *test_wsum_hess_quad_form_exp(void)
 
     free_expr(node);
     free_CSR_matrix(Q);
+    return 0;
+}
+
+/* Python regression: sum( multiply( reshape(sin(A@x), (m,1)),
+                                     reshape(cos(B@y), (1,m)) ) ).
+   Reported segfault via prob.solve(nlp=True) which exercises wsum_hess. */
+const char *test_wsum_hess_sum_outer_product_sin_cos_left_matmul_dense(void)
+{
+    int m = 6;
+    int n = 5;
+    double u_vals[10] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
+    double w = 1.0;
+    double A[30] = {0.5488, 0.7152, 0.6028, 0.5449, 0.4237, 0.6459, 0.4376, 0.8918,
+                    0.9637, 0.3834, 0.7917, 0.5289, 0.5680, 0.9256, 0.0710, 0.0871,
+                    0.0202, 0.8326, 0.7782, 0.8700, 0.9786, 0.7992, 0.4615, 0.7805,
+                    0.1183, 0.6399, 0.1434, 0.9447, 0.5218, 0.4147};
+    double B[30] = {0.2645, 0.7742, 0.4561, 0.5684, 0.0188, 0.6176, 0.6121, 0.6169,
+                    0.9437, 0.6818, 0.3595, 0.4370, 0.6976, 0.0602, 0.6668, 0.6706,
+                    0.2104, 0.1289, 0.3154, 0.3637, 0.5702, 0.4386, 0.9884, 0.1020,
+                    0.2089, 0.1613, 0.6531, 0.2533, 0.4663, 0.2444};
+
+    expr *X = new_variable(n, 1, 0, 2 * n);
+    expr *Y = new_variable(n, 1, n, 2 * n);
+    expr *AX = new_left_matmul_dense(NULL, X, m, n, A);
+    expr *BY = new_left_matmul_dense(NULL, Y, m, n, B);
+    expr *sin_AX = new_sin(AX);
+    expr *cos_BY = new_cos(BY);
+    expr *cos_BY_row = new_reshape(cos_BY, 1, m);
+    expr *left = new_broadcast(sin_AX, m, m);
+    expr *right = new_broadcast(cos_BY_row, m, m);
+    expr *prod = new_elementwise_mult(left, right);
+    expr *node = new_sum(prod, -1);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
     return 0;
 }
