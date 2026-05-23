@@ -206,7 +206,7 @@ expr *new_rel_entr_vector_args(expr *left, expr *right)
         exit(EXIT_FAILURE);
     }
 
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, left->d1, left->d2, left->n_vars, forward_vector_args,
               jacobian_init_vectors_args, eval_jacobian_vector_args, is_affine,
               wsum_hess_init_vector_args, eval_wsum_hess_vector_args, NULL);

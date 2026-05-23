@@ -105,8 +105,7 @@ static void wsum_hess_init_vector_scalar(expr *node)
     int var_id_x = x->var_id;
     int var_id_y = y->var_id;
 
-    CSR_matrix *H =
-        new_CSR_matrix(node->n_vars, node->n_vars, 3 * node->size + 1);
+    CSR_matrix *H = new_CSR_matrix(node->n_vars, node->n_vars, 3 * node->size + 1);
 
     if (var_id_x < var_id_y)
     {
@@ -221,7 +220,7 @@ static bool is_affine(const expr *node)
 expr *new_rel_entr_second_arg_scalar(expr *left, expr *right)
 {
     assert(right->d1 == 1 && right->d2 == 1);
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, left->d1, left->d2, left->n_vars, forward_vector_scalar,
               jacobian_init_vector_scalar, eval_jacobian_vector_scalar, is_affine,
               wsum_hess_init_vector_scalar, eval_wsum_hess_vector_scalar, NULL);

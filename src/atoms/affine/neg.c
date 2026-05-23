@@ -85,7 +85,7 @@ static bool is_affine(const expr *node)
 
 expr *new_neg(expr *child)
 {
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;

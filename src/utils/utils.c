@@ -86,7 +86,7 @@ void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs
                              iVec *out)
 {
     iVec_clear_no_resize(out);
-    int *cursor = (int *) SP_CALLOC(n_arrs, sizeof(int));
+    int *cursor = (int *) sp_calloc(n_arrs, sizeof(int));
     while (1)
     {
         int min_val = 0;

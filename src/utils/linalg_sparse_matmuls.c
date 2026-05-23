@@ -96,7 +96,7 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
         row_offset;
 
     /* allocate column pointers and an estimate of row indices */
-    int *Cp = (int *) SP_MALLOC((J->n + 1) * sizeof(int));
+    int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
     iVec *Ci = iVec_new(J->n * m);
     Cp[0] = 0;
 
@@ -250,8 +250,8 @@ void csr_csc_matmul_fill_values(const CSR_matrix *A, const CSC_matrix *B,
     }
 }
 
-/* C = A @ B where A is CSR_matrix (m x n), B is CSC_matrix (n x p). Result C is CSR_matrix (m x p)
-  with precomputed sparsity pattern */
+/* C = A @ B where A is CSR_matrix (m x n), B is CSC_matrix (n x p). Result C is
+  CSR_matrix (m x p) with precomputed sparsity pattern */
 CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
 {
     int m = A->m;
@@ -259,7 +259,7 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
 
     int len_a, len_b;
 
-    int *Cp = (int *) SP_MALLOC((m + 1) * sizeof(int));
+    int *Cp = (int *) sp_malloc((m + 1) * sizeof(int));
     iVec *Ci = iVec_new(m);
 
     Cp[0] = 0;

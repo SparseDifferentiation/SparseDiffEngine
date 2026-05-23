@@ -398,7 +398,7 @@ static void free_type_data(expr *node)
 
 expr *new_prod_axis_one(expr *child)
 {
-    prod_axis *pnode = (prod_axis *) SP_CALLOC(1, sizeof(prod_axis));
+    prod_axis *pnode = (prod_axis *) sp_calloc(1, sizeof(prod_axis));
     expr *node = &pnode->base;
 
     /* output is always a row vector 1 x d1 (one product per row) */
@@ -407,9 +407,9 @@ expr *new_prod_axis_one(expr *child)
               free_type_data);
 
     /* allocate arrays to store per-row statistics */
-    pnode->num_of_zeros = (int *) SP_CALLOC(child->d1, sizeof(int));
-    pnode->zero_index = (int *) SP_CALLOC(child->d1, sizeof(int));
-    pnode->prod_nonzero = (double *) SP_CALLOC(child->d1, sizeof(double));
+    pnode->num_of_zeros = (int *) sp_calloc(child->d1, sizeof(int));
+    pnode->zero_index = (int *) sp_calloc(child->d1, sizeof(int));
+    pnode->prod_nonzero = (double *) sp_calloc(child->d1, sizeof(double));
 
     node->left = child;
     expr_retain(child);

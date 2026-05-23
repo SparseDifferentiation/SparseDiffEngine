@@ -65,7 +65,7 @@ matrix *new_sparse_matrix(CSR_matrix *A);
 void sparse_matrix_ensure_csc_cache(sparse_matrix *sm)
 {
     if (sm->csc_cache != NULL) return;
-    sm->csc_iwork = (int *) SP_MALLOC(sm->csr->n * sizeof(int));
+    sm->csc_iwork = (int *) sp_malloc(sm->csr->n * sizeof(int));
     sm->csc_cache = csr_to_csc_alloc(sm->csr, sm->csc_iwork);
 }
 
@@ -105,7 +105,7 @@ static CSR_matrix *sparse_to_csr(matrix *self)
 static matrix *sparse_transpose_alloc(const matrix *self)
 {
     const sparse_matrix *sm = (const sparse_matrix *) self;
-    int *iwork = (int *) SP_MALLOC(sm->csr->n * sizeof(int));
+    int *iwork = (int *) sp_malloc(sm->csr->n * sizeof(int));
     CSR_matrix *AT = AT_alloc(sm->csr, iwork);
     sparse_matrix *out = (sparse_matrix *) new_sparse_matrix(AT);
     out->transpose_iwork = iwork;
@@ -301,7 +301,8 @@ static void sparse_diag_vec_fill_values(matrix *self, matrix *out)
     }
 }
 
-/* Build CSC_matrix structure on first call; refill values from csr->x on every call. */
+/* Build CSC_matrix structure on first call; refill values from csr->x on every call.
+ */
 static void sparse_refresh_csc_values(matrix *self)
 {
     sparse_matrix *sm = (sparse_matrix *) self;
@@ -335,7 +336,7 @@ static void wire_vtable(sparse_matrix *sm)
 
 matrix *new_sparse_matrix(CSR_matrix *A)
 {
-    sparse_matrix *sm = (sparse_matrix *) SP_CALLOC(1, sizeof(sparse_matrix));
+    sparse_matrix *sm = (sparse_matrix *) sp_calloc(1, sizeof(sparse_matrix));
     sm->base.m = A->m;
     sm->base.n = A->n;
     sm->base.nnz = A->nnz;
@@ -353,7 +354,7 @@ matrix *new_sparse_matrix_alloc(int m, int n, int nnz)
 matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork)
 {
     CSR_matrix *AT = transpose(self->csr, iwork);
-    sparse_matrix *sm = (sparse_matrix *) SP_CALLOC(1, sizeof(sparse_matrix));
+    sparse_matrix *sm = (sparse_matrix *) sp_calloc(1, sizeof(sparse_matrix));
     sm->base.m = AT->m;
     sm->base.n = AT->n;
     sm->base.nnz = AT->nnz;

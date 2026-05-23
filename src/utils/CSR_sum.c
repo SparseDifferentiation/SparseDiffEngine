@@ -373,7 +373,7 @@ CSR_matrix *sum_4_csr_alloc(const CSR_matrix *A, const CSR_matrix *B,
     CSR_matrix *out = new_CSR_matrix(m, n, nnz_ub);
     for (int k = 0; k < 4; k++)
     {
-        idx_maps[k] = (int *) SP_MALLOC(inputs[k]->nnz * sizeof(int));
+        idx_maps[k] = (int *) sp_malloc(inputs[k]->nnz * sizeof(int));
     }
 
     /* 4-way sorted merge per row */

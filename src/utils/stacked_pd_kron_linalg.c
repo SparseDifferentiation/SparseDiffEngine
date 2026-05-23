@@ -56,8 +56,8 @@ static permuted_dense *kron_scratch_init(const permuted_dense *A, int p)
     int n = A->n0;
 
     /* Initial block-0 perms. */
-    int *row_perm = (int *) SP_MALLOC(m * sizeof(int));
-    int *col_perm = (int *) SP_MALLOC(n * sizeof(int));
+    int *row_perm = (int *) sp_malloc(m * sizeof(int));
+    int *col_perm = (int *) sp_malloc(n * sizeof(int));
     for (int i = 0; i < m; i++) row_perm[i] = i;
     for (int j = 0; j < n; j++) col_perm[j] = j;
 
@@ -82,8 +82,8 @@ static permuted_dense *kron_BT_alloc(const permuted_dense *A, int p)
 {
     int n = A->n0;
     int m = A->m0;
-    int *row_perm = (int *) SP_MALLOC(n * sizeof(int));
-    int *col_perm = (int *) SP_MALLOC(m * sizeof(int));
+    int *row_perm = (int *) sp_malloc(n * sizeof(int));
+    int *col_perm = (int *) sp_malloc(m * sizeof(int));
     for (int j = 0; j < n; j++) row_perm[j] = j;
     for (int i = 0; i < m; i++) col_perm[i] = i;
     matrix *BT_m = new_permuted_dense(n * p, m * p, n, m, row_perm, col_perm, NULL);
@@ -136,8 +136,8 @@ static matrix *kron_alloc_blockwise(permuted_dense *state, int p, int Cm, int Cn
     }
 
     permuted_dense **C_blocks =
-        (permuted_dense **) SP_MALLOC(p * sizeof(permuted_dense *));
-    int *C_src = (int *) SP_MALLOC(p * sizeof(int));
+        (permuted_dense **) sp_malloc(p * sizeof(permuted_dense *));
+    int *C_src = (int *) sp_malloc(p * sizeof(int));
 
     int out_nb = 0;
     int last_k = 0;
@@ -159,7 +159,7 @@ static matrix *kron_alloc_blockwise(permuted_dense *state, int p, int Cm, int Cn
         }
     }
 
-    int *C_src_p = (int *) SP_MALLOC((out_nb + 1) * sizeof(int));
+    int *C_src_p = (int *) sp_malloc((out_nb + 1) * sizeof(int));
     for (int k = 0; k <= out_nb; k++) C_src_p[k] = k;
 
     matrix *C = new_stacked_pd(Cm, Cn, out_nb, C_blocks, C_src_p, C_src);

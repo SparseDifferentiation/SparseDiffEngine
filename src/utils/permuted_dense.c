@@ -111,7 +111,7 @@ static void permuted_dense_vtable_transpose_fill_values(const matrix *self,
 matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs)
 {
     /* Scan indices: which output positions i hit a row in A->row_perm? */
-    int *new_row_perm = (int *) SP_MALLOC(n_idxs * sizeof(int));
+    int *new_row_perm = (int *) sp_malloc(n_idxs * sizeof(int));
     int new_m0 = 0;
     for (int i = 0; i < n_idxs; i++)
     {
@@ -164,7 +164,7 @@ matrix *promote_pd_alloc(const permuted_dense *A, int size)
                                   NULL);
     }
 
-    int *new_row_perm = (int *) SP_MALLOC(size * sizeof(int));
+    int *new_row_perm = (int *) sp_malloc(size * sizeof(int));
     for (int i = 0; i < size; i++)
     {
         new_row_perm[i] = i;
@@ -220,7 +220,7 @@ matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
                                   NULL);
     }
 
-    int *new_row_perm = (int *) SP_MALLOC(new_m0 * sizeof(int));
+    int *new_row_perm = (int *) sp_malloc(new_m0 * sizeof(int));
     int k = 0;
     if (type == BROADCAST_SCALAR)
     {
@@ -319,7 +319,7 @@ matrix *diag_vec_pd_alloc(const permuted_dense *A)
                                   NULL);
     }
 
-    int *new_row_perm = (int *) SP_MALLOC(A->m0 * sizeof(int));
+    int *new_row_perm = (int *) sp_malloc(A->m0 * sizeof(int));
     for (int ii = 0; ii < A->m0; ii++)
     {
         new_row_perm[ii] = A->row_perm[ii] * (n + 1);
@@ -444,7 +444,7 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
         assert(col_perm[0] >= 0 && col_perm[n0 - 1] < n);
     }
 
-    permuted_dense *pd = (permuted_dense *) SP_CALLOC(1, sizeof(permuted_dense));
+    permuted_dense *pd = (permuted_dense *) sp_calloc(1, sizeof(permuted_dense));
     pd->base.m = m;
     pd->base.n = n;
     pd->base.nnz = m0 * n0;
@@ -454,13 +454,13 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->n0 = n0;
 
     int sz = m0 * n0;
-    pd->row_perm = (int *) SP_MALLOC(m0 * sizeof(int));
-    pd->col_perm = (int *) SP_MALLOC(n0 * sizeof(int));
-    pd->X = (double *) SP_MALLOC(sz * sizeof(double));
+    pd->row_perm = (int *) sp_malloc(m0 * sizeof(int));
+    pd->col_perm = (int *) sp_malloc(n0 * sizeof(int));
+    pd->X = (double *) sp_malloc(sz * sizeof(double));
     pd->base.x = pd->X;
     pd->owns_X = true;
-    pd->col_inv = (int *) SP_MALLOC(n * sizeof(int));
-    pd->row_inv = (int *) SP_MALLOC(m * sizeof(int));
+    pd->col_inv = (int *) sp_malloc(n * sizeof(int));
+    pd->row_inv = (int *) sp_malloc(m * sizeof(int));
 
     if (m0 > 0)
     {
@@ -499,8 +499,8 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
 
 matrix *new_permuted_dense_full(int m, int n, const double *data)
 {
-    int *row_perm = (int *) SP_MALLOC(m * sizeof(int));
-    int *col_perm = (int *) SP_MALLOC(n * sizeof(int));
+    int *row_perm = (int *) sp_malloc(m * sizeof(int));
+    int *col_perm = (int *) sp_malloc(n * sizeof(int));
     for (int i = 0; i < m; i++) row_perm[i] = i;
     for (int j = 0; j < n; j++) col_perm[j] = j;
     matrix *out = new_permuted_dense(m, n, m, n, row_perm, col_perm, data);
@@ -548,6 +548,6 @@ void permuted_dense_ensure_kernel_dwork(const permuted_dense *pd_const, size_t s
     permuted_dense *pd = (permuted_dense *) pd_const;
     if (pd->kernel_dwork_size >= size) return;
     free(pd->kernel_dwork);
-    pd->kernel_dwork = (double *) SP_MALLOC(size * sizeof(double));
+    pd->kernel_dwork = (double *) sp_malloc(size * sizeof(double));
     pd->kernel_dwork_size = size;
 }

@@ -69,7 +69,7 @@ static bool is_affine(const expr *node)
 expr *new_reshape(expr *child, int d1, int d2)
 {
     assert(d1 * d2 == child->size);
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;

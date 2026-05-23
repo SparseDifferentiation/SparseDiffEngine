@@ -58,7 +58,7 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_matrix *A)
 {
     /* We can express right matmul using left matmul and transpose:
        u @ A = (A^T @ u^T)^T. */
-    int *work_transpose = (int *) SP_MALLOC(A->n * sizeof(int));
+    int *work_transpose = (int *) sp_malloc(A->n * sizeof(int));
     CSR_matrix *AT = transpose(A, work_transpose);
 
     expr *u_transpose = new_transpose(u);
@@ -104,7 +104,7 @@ expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
     }
     else
     {
-        double *AT = (double *) SP_MALLOC(n * m * sizeof(double));
+        double *AT = (double *) sp_malloc(n * m * sizeof(double));
         A_transpose(AT, data, m, n);
         left_matmul_node = new_left_matmul_dense(NULL, u_transpose, n, m, AT);
         free(AT);

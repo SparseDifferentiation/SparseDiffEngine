@@ -61,7 +61,7 @@ static bool is_affine(const expr *node)
 
 expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *values)
 {
-    parameter_expr *pnode = (parameter_expr *) SP_CALLOC(1, sizeof(parameter_expr));
+    parameter_expr *pnode = (parameter_expr *) sp_calloc(1, sizeof(parameter_expr));
     expr *node = &pnode->base;
     init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);

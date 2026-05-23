@@ -32,8 +32,11 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
-    g_allocated_bytes = 0;
-    problem *prob = (problem *) SP_CALLOC(1, sizeof(problem));
+    /* we don't reset g_peak_bytes or g_allocated_bytes since allocations
+       using sp_malloc/sp_calloc might have happened before new_problem in eg.,
+       left_matmul, and their frees will subtract from this counter. */
+    g_peak_bytes = g_allocated_bytes;
+    problem *prob = (problem *) sp_calloc(1, sizeof(problem));
     if (!prob) return NULL;
 
     /* objective */
@@ -47,7 +50,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->n_constraints = n_constraints;
     if (n_constraints > 0)
     {
-        prob->constraints = (expr **) SP_MALLOC(n_constraints * sizeof(expr *));
+        prob->constraints = (expr **) sp_malloc(n_constraints * sizeof(expr *));
         for (int i = 0; i < n_constraints; i++)
         {
             prob->constraints[i] = constraints[i];
@@ -58,8 +61,8 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
 
     /* allocation */
     prob->constraint_values =
-        (double *) SP_CALLOC(prob->total_constraint_size, sizeof(double));
-    prob->gradient_values = (double *) SP_CALLOC(prob->n_vars, sizeof(double));
+        (double *) sp_calloc(prob->total_constraint_size, sizeof(double));
+    prob->gradient_values = (double *) sp_calloc(prob->n_vars, sizeof(double));
 
     /* Initialize statistics */
     prob->stats.time_init_derivatives = 0.0;
@@ -251,8 +254,8 @@ void problem_init_hessian(problem *prob)
     prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, nnz);
     memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
     prob->stats.nnz_hessian = nnz;
-    prob->hess_idx_map = (int *) SP_MALLOC(nnz * sizeof(int));
-    int *iwork = (int *) SP_MALLOC(MAX(nnz, prob->n_vars) * sizeof(int));
+    prob->hess_idx_map = (int *) sp_malloc(nnz * sizeof(int));
+    int *iwork = (int *) sp_malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
     free(iwork);
 
@@ -321,7 +324,7 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
     char mem_buf[64];
     format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
-    printf("  Allocated memory:                       %s\n", mem_buf);
+    printf("  Peak memory:                            %s\n", mem_buf);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
@@ -349,7 +352,7 @@ void free_problem(problem *prob)
 
     if (prob->verbose)
     {
-        prob->stats.memory_bytes = g_allocated_bytes;
+        prob->stats.memory_bytes = g_peak_bytes;
         print_end_message(&prob->stats);
     }
 
@@ -380,7 +383,7 @@ void free_problem(problem *prob)
 void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)
 {
     prob->n_param_nodes = n_param_nodes;
-    prob->param_nodes = (expr **) SP_MALLOC(n_param_nodes * sizeof(expr *));
+    prob->param_nodes = (expr **) sp_malloc(n_param_nodes * sizeof(expr *));
     memcpy(prob->param_nodes, param_nodes, n_param_nodes * sizeof(expr *));
 
     prob->total_parameter_size = 0;

@@ -217,7 +217,7 @@ I think they return row vectors.*/
 expr *new_prod(expr *child)
 {
     /* Output is scalar: 1 x 1 */
-    prod_expr *pnode = (prod_expr *) SP_CALLOC(1, sizeof(prod_expr));
+    prod_expr *pnode = (prod_expr *) sp_calloc(1, sizeof(prod_expr));
     expr *node = &pnode->base;
     init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
