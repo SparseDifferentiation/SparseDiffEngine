@@ -182,6 +182,8 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
 
 void problem_init_jacobian(problem *prob)
 {
+    if (prob->jacobian != NULL) return;
+
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
 
@@ -236,6 +238,8 @@ void problem_init_jacobian(problem *prob)
 
 void problem_init_hessian(problem *prob)
 {
+    if (prob->lagrange_hessian != NULL) return;
+
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
 
@@ -270,6 +274,8 @@ void problem_init_hessian(problem *prob)
 void problem_init_jacobian_coo(problem *prob)
 {
     problem_init_jacobian(prob);
+    if (prob->jacobian_coo != NULL) return;
+
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     prob->jacobian_coo = new_COO_matrix(prob->jacobian);
@@ -280,6 +286,8 @@ void problem_init_jacobian_coo(problem *prob)
 void problem_init_hessian_coo_lower_triangular(problem *prob)
 {
     problem_init_hessian(prob);
+    if (prob->lagrange_hessian_coo != NULL) return;
+
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
     prob->lagrange_hessian_coo =
@@ -354,9 +362,9 @@ void free_problem(problem *prob)
 {
     if (prob == NULL) return;
 
+    prob->stats.memory_bytes = g_peak_bytes;
     if (prob->verbose)
     {
-        prob->stats.memory_bytes = g_peak_bytes;
         print_end_message(&prob->stats);
     }
 
@@ -401,9 +409,6 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
             exit(1);
         }
 
-        // TODO do we need to skip fixed params? maybe we adopt the convention
-        // that we don't ever register fixed params?
-        if (((parameter_expr *) param_nodes[i])->param_id == PARAM_FIXED) continue;
         prob->total_parameter_size += param_nodes[i]->size;
     }
 }
@@ -430,7 +435,6 @@ void problem_update_params(problem *prob, const double *theta)
             exit(1);
         }
 
-        if (param->param_id == PARAM_FIXED) continue;
         int offset = param->param_id;
         memcpy(pnode->value, theta + offset, pnode->size * sizeof(double));
     }
