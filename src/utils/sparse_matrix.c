@@ -22,6 +22,7 @@
 #include "utils/matrix.h"
 #include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
+#include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -122,7 +123,7 @@ static void sparse_transpose_fill_values(const matrix *self, matrix *out)
 static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
 {
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, Jx->nnz);
+    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, MIN(Jx->nnz, n_idxs * self->n));
 
     J->p[0] = 0;
     for (int i = 0; i < n_idxs; i++)
