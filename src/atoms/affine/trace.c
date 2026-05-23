@@ -72,14 +72,14 @@ static void jacobian_init_impl(expr *node)
     // fill sparsity pattern and idx_map
     // ---------------------------------------------------------------
     trace_expr *tnode = (trace_expr *) node;
-    node->work->iwork = SP_MALLOC(MAX(jac->n, total_nnz) * sizeof(int));
+    node->work->iwork = sp_malloc(MAX(jac->n, total_nnz) * sizeof(int));
 
     /* the idx_map array maps each nonzero entry j in the original matrix A (from the
        selected, evenly spaced rows) to the corresponding index in the output row
        matrix C. Specifically, for each nonzero entry j in A (from the selected
        rows), idx_map[j] gives the position in C->x where the value from A->x[j]
        should be accumulated. */
-    tnode->idx_map = SP_MALLOC(A->nnz * sizeof(int));
+    tnode->idx_map = sp_malloc(A->nnz * sizeof(int));
     sum_spaced_rows_into_row_csr_alloc(A, jac, row_spacing, node->work->iwork,
                                        tnode->idx_map);
     node->jacobian = new_sparse_matrix(jac);
@@ -107,7 +107,7 @@ static void wsum_hess_init_impl(expr *node)
     /* initialize child's hessian */
     wsum_hess_init(x);
 
-    node->work->dwork = (double *) SP_CALLOC(x->size, sizeof(double));
+    node->work->dwork = (double *) sp_calloc(x->size, sizeof(double));
 
     /* We copy over the sparsity pattern from the child. This also includes the
        contribution to wsum_hess of entries of the child that will always have
@@ -148,7 +148,7 @@ static void free_type_data(expr *node)
 
 expr *new_trace(expr *child)
 {
-    trace_expr *tnode = (trace_expr *) SP_CALLOC(1, sizeof(trace_expr));
+    trace_expr *tnode = (trace_expr *) sp_calloc(1, sizeof(trace_expr));
     expr *node = &tnode->base;
     init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);

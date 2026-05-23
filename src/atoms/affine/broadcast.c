@@ -96,7 +96,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
     /* allocate space for weight vector */
-    node->work->dwork = SP_MALLOC(node->size * sizeof(double));
+    node->work->dwork = sp_malloc(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -176,7 +176,7 @@ expr *new_broadcast(expr *child, int d1, int d2)
         exit(1);
     }
 
-    broadcast_expr *bcast = (broadcast_expr *) SP_CALLOC(1, sizeof(broadcast_expr));
+    broadcast_expr *bcast = (broadcast_expr *) sp_calloc(1, sizeof(broadcast_expr));
     expr *node = (expr *) bcast;
 
     // --------------------------------------------------------------------------

@@ -22,10 +22,7 @@
 #include <stdlib.h>
 
 /* Platform shim for "how many usable bytes are at this malloc'd pointer".
-   Apple's malloc_size, glibc's malloc_usable_size, MSVC's _msize. The
-   returned size is the *usable* size (may exceed the requested size by a
-   few bytes of allocator rounding), but alloc and free use the same
-   function so the running totals stay symmetric. */
+    Used to track total live bytes */
 #if defined(__APPLE__)
 #include <malloc/malloc.h>
 #define TRACKED_BLOCK_SIZE(p) malloc_size(p)
@@ -40,29 +37,38 @@
 extern size_t g_allocated_bytes; /* current live bytes */
 extern size_t g_peak_bytes;      /* high-water mark since last reset */
 
-static inline void *SP_MALLOC(size_t size)
+/* All allocations in src/ must go through these wrappers (and pair sp_free
+   with sp_malloc / sp_calloc). Tests may use plain malloc/free — those
+   bytes are simply not tracked. */
+static inline void *sp_malloc(size_t size)
 {
     void *ptr = malloc(size);
     if (ptr)
     {
         g_allocated_bytes += TRACKED_BLOCK_SIZE(ptr);
-        if (g_allocated_bytes > g_peak_bytes) g_peak_bytes = g_allocated_bytes;
+        if (g_allocated_bytes > g_peak_bytes)
+        {
+            g_peak_bytes = g_allocated_bytes;
+        }
     }
     return ptr;
 }
 
-static inline void *SP_CALLOC(size_t count, size_t size)
+static inline void *sp_calloc(size_t count, size_t size)
 {
     void *ptr = calloc(count, size);
     if (ptr)
     {
         g_allocated_bytes += TRACKED_BLOCK_SIZE(ptr);
-        if (g_allocated_bytes > g_peak_bytes) g_peak_bytes = g_allocated_bytes;
+        if (g_allocated_bytes > g_peak_bytes)
+        {
+            g_peak_bytes = g_allocated_bytes;
+        }
     }
     return ptr;
 }
 
-static inline void SP_FREE(void *ptr)
+static inline void sp_free(void *ptr)
 {
     if (ptr)
     {
@@ -70,12 +76,5 @@ static inline void SP_FREE(void *ptr)
         free(ptr);
     }
 }
-
-/* Auto-route plain malloc/calloc/free in caller translation units through
-   the tracked wrappers. Defined AFTER the wrapper bodies so SP_MALLOC /
-   SP_CALLOC / SP_FREE themselves still see the real stdlib symbols. */
-#define malloc SP_MALLOC
-#define calloc SP_CALLOC
-#define free SP_FREE
 
 #endif /* TRACKED_ALLOC_H */

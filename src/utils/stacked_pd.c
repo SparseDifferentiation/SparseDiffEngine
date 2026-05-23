@@ -157,8 +157,8 @@ matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op 
     }
 
     permuted_dense **C_blocks =
-        (permuted_dense **) SP_MALLOC(B->n_blocks * sizeof(permuted_dense *));
-    int *C_src = (int *) SP_MALLOC(B->n_blocks * sizeof(int));
+        (permuted_dense **) sp_malloc(B->n_blocks * sizeof(permuted_dense *));
+    int *C_src = (int *) sp_malloc(B->n_blocks * sizeof(int));
 
     int out_nb = 0;
     for (int k = 0; k < B->n_blocks; k++)
@@ -176,7 +176,7 @@ matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op 
         }
     }
 
-    int *C_src_p = (int *) SP_MALLOC((out_nb + 1) * sizeof(int));
+    int *C_src_p = (int *) sp_malloc((out_nb + 1) * sizeof(int));
     for (int k = 0; k <= out_nb; k++)
     {
         C_src_p[k] = k;
@@ -198,7 +198,7 @@ void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
        col_perm straight into csr->i, the n0 CSR entries for any row are
        exactly that block's columns in order — CSR position is just
        csr->p[row] + jj. */
-    int *scratch = (int *) SP_MALLOC(spd->base.nnz * sizeof(int));
+    int *scratch = (int *) sp_malloc(spd->base.nnz * sizeof(int));
     int native = 0;
     for (int k = 0; k < spd->n_blocks; k++)
     {
@@ -283,7 +283,7 @@ static matrix *stacked_pd_vtable_diag_vec_alloc(matrix *self)
 {
     stacked_pd *A = (stacked_pd *) self;
     permuted_dense **tmp_blocks =
-        (permuted_dense **) SP_MALLOC(A->n_blocks * sizeof(permuted_dense *));
+        (permuted_dense **) sp_malloc(A->n_blocks * sizeof(permuted_dense *));
     for (int k = 0; k < A->n_blocks; k++)
     {
         tmp_blocks[k] = (permuted_dense *) diag_vec_pd_alloc(A->blocks[k]);
@@ -409,7 +409,7 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     // --------------------------------------------------------------------------------
     //                          Set up basic fields
     // --------------------------------------------------------------------------------
-    stacked_pd *spd = (stacked_pd *) SP_CALLOC(1, sizeof(stacked_pd));
+    stacked_pd *spd = (stacked_pd *) sp_calloc(1, sizeof(stacked_pd));
     spd->base.m = m;
     spd->base.n = n;
     int nnz = 0;
@@ -421,8 +421,8 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     wire_vtable(spd);
 
     spd->n_blocks = n_blocks;
-    spd->blocks = (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
-    spd->src_block_idx_p = (int *) SP_MALLOC((n_blocks + 1) * sizeof(int));
+    spd->blocks = (permuted_dense **) sp_malloc(n_blocks * sizeof(permuted_dense *));
+    spd->src_block_idx_p = (int *) sp_malloc((n_blocks + 1) * sizeof(int));
     spd->src_block_idx_p[0] = 0;
     if (n_blocks > 0)
     {
@@ -435,7 +435,7 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     if (src_block_idx_p == NULL)
     {
         /* identity: each output block has itself as its one source */
-        spd->src_block_idx = (int *) SP_MALLOC(n_blocks * sizeof(int));
+        spd->src_block_idx = (int *) sp_malloc(n_blocks * sizeof(int));
         for (int k = 0; k < n_blocks; k++)
         {
             spd->src_block_idx_p[k + 1] = k + 1;
@@ -446,7 +446,7 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     {
         int total = src_block_idx_p[n_blocks];
         memcpy(spd->src_block_idx_p, src_block_idx_p, (n_blocks + 1) * sizeof(int));
-        spd->src_block_idx = (int *) SP_MALLOC(total * sizeof(int));
+        spd->src_block_idx = (int *) sp_malloc(total * sizeof(int));
         if (total > 0)
         {
             memcpy(spd->src_block_idx, src_block_idx, total * sizeof(int));
@@ -456,7 +456,7 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     // ---------------------------------------------------------------------------
     // Absorb each block's X into a single shared values buffer owned by this spd.
     // ----------------------------------------------------------------------------
-    spd->base.x = (double *) SP_MALLOC(spd->base.nnz * sizeof(double));
+    spd->base.x = (double *) sp_malloc(spd->base.nnz * sizeof(double));
     int offset = 0;
     for (int k = 0; k < n_blocks; k++)
     {

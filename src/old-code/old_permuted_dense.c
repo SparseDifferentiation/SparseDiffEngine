@@ -30,7 +30,7 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
     /* Gather the union of columns appearing in A's rows at positions
        row_perm_B. Use a bitmap of size A->n for O(nnz) collection. */
     int p = A->n;
-    char *seen = (char *) SP_CALLOC(p, sizeof(char));
+    char *seen = (char *) sp_calloc(p, sizeof(char));
     int s_A = 0;
     for (int kk = 0; kk < B->m0; kk++)
     {
@@ -46,7 +46,7 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
         }
     }
 
-    int *col_active = (int *) SP_MALLOC((s_A > 0 ? s_A : 1) * sizeof(int));
+    int *col_active = (int *) sp_malloc((s_A > 0 ? s_A : 1) * sizeof(int));
     int idx = 0;
     for (int j = 0; j < p; j++)
     {
@@ -71,7 +71,7 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
     {
         free(C_pd->kernel_dwork);
         C_pd->kernel_dwork_size = gather_size;
-        C_pd->kernel_dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
+        C_pd->kernel_dwork = (double *) sp_calloc(gather_size, sizeof(double));
     }
     return C;
 }
@@ -163,7 +163,7 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
     /* Gather the union of columns appearing in B's rows at positions
        row_perm_A. Bitmap of size B_csr->n for O(nnz) collection. */
     int q = B_csr->n;
-    char *seen = (char *) SP_CALLOC(q, sizeof(char));
+    char *seen = (char *) sp_calloc(q, sizeof(char));
     int r_B = 0;
     for (int kk = 0; kk < A->m0; kk++)
     {
@@ -179,7 +179,7 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
         }
     }
 
-    int *row_active = (int *) SP_MALLOC((r_B > 0 ? r_B : 1) * sizeof(int));
+    int *row_active = (int *) sp_malloc((r_B > 0 ? r_B : 1) * sizeof(int));
     int idx = 0;
     for (int i = 0; i < q; i++)
     {
@@ -203,7 +203,7 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
     {
         free(C_pd->kernel_dwork);
         C_pd->kernel_dwork_size = gather_size;
-        C_pd->kernel_dwork = (double *) SP_CALLOC(gather_size, sizeof(double));
+        C_pd->kernel_dwork = (double *) sp_calloc(gather_size, sizeof(double));
     }
     return C;
 }

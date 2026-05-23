@@ -15,11 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
 #include "utils/cblas_wrapper.h"
 #include "utils/iVec.h"
-#include "utils/linalg_dense_sparse_matmuls.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -35,7 +35,7 @@ CSC_matrix *I_kron_A_alloc(const matrix *A, const CSC_matrix *J, int p)
     int n = A->n;
     int i, j, jj, block, block_start, block_end, block_jj_start, row_offset;
 
-    int *Cp = (int *) SP_MALLOC((J->n + 1) * sizeof(int));
+    int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
     iVec *Ci = iVec_new(J->n * m);
     Cp[0] = 0;
 
@@ -147,8 +147,8 @@ void I_kron_A_fill_values(const matrix *A, const CSC_matrix *J, CSC_matrix *C,
                     j_dense[J->i[s] - block_start] = J->x[s];
                 }
 
-                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, A->x, n,
-                            j_dense, 1, 0.0, C->x + i, 1);
+                cblas_dgemv(CblasRowMajor, CblasNoTrans, m, n, 1.0, A->x, n, j_dense,
+                            1, 0.0, C->x + i, 1);
             }
         }
     }
@@ -174,7 +174,7 @@ CSR_matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_matrix *J)
     // ---------------------------------------------------------------
     //           build sparsity pattern per blk_row
     // ---------------------------------------------------------------
-    iVec **pattern = (iVec **) SP_MALLOC(m * sizeof(iVec *));
+    iVec **pattern = (iVec **) sp_malloc(m * sizeof(iVec *));
     total_nnz = 0;
     for (blk_row = 0; blk_row < m; blk_row++)
     {
@@ -262,7 +262,7 @@ CSR_matrix *I_kron_X_alloc(int m, int k, int n, const CSC_matrix *J)
      *         nonzero in row range [blk*k, blk*k + k). */
     int i, j, ii, blk;
 
-    iVec **pattern = (iVec **) SP_MALLOC(n * sizeof(iVec *));
+    iVec **pattern = (iVec **) sp_malloc(n * sizeof(iVec *));
     int total_nnz = 0;
     for (blk = 0; blk < n; blk++)
     {

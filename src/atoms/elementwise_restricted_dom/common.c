@@ -63,7 +63,7 @@ bool is_affine_restricted(const expr *node)
 
 expr *new_restricted(expr *child)
 {
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     if (!node) return NULL;
 
     init_expr(node, child->d1, child->d2, child->n_vars, NULL,

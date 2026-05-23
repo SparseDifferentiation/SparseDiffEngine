@@ -149,7 +149,7 @@ static void wsum_hess_init_impl(expr *node)
         /* used for computing weights to wsum_hess of children */
         if (!x->is_affine(x) || !y->is_affine(y))
         {
-            node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
+            node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
         }
 
         /* For sparse matrices we need the CSC cache to be valid for the
@@ -318,7 +318,7 @@ static bool is_affine(const expr *node)
 expr *new_elementwise_mult(expr *left, expr *right)
 {
     elementwise_mult_expr *mul_node =
-        (elementwise_mult_expr *) SP_CALLOC(1, sizeof(elementwise_mult_expr));
+        (elementwise_mult_expr *) sp_calloc(1, sizeof(elementwise_mult_expr));
     expr *node = &mul_node->base;
 
     init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,

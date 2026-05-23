@@ -433,12 +433,12 @@ static void wsum_hess_init_chain_rule(expr *node)
     mnode->B = build_cross_hessian_sparsity(m, k, n);
     mnode->BJg = csr_csc_matmul_alloc(mnode->B, Jg);
     int max_alloc = MAX(mnode->BJg->m, mnode->BJg->n);
-    mnode->BJg_csc_work = (int *) SP_MALLOC(max_alloc * sizeof(int));
+    mnode->BJg_csc_work = (int *) sp_malloc(max_alloc * sizeof(int));
     mnode->BJg_CSC = csr_to_csc_alloc(mnode->BJg, mnode->BJg_csc_work);
     mnode->C = BTA_alloc(mnode->BJg_CSC, Jf);
 
     /* initialize C^T */
-    node->work->iwork = (int *) SP_MALLOC(mnode->C->m * sizeof(int));
+    node->work->iwork = (int *) sp_malloc(mnode->C->m * sizeof(int));
     mnode->CT = AT_alloc(mnode->C, node->work->iwork);
 
     /* initialize Hessians of children */
@@ -475,7 +475,7 @@ static void wsum_hess_init_chain_rule(expr *node)
     if (!f->is_affine(f) || !g->is_affine(g))
     {
         node->work->dwork =
-            (double *) SP_MALLOC(MAX(f->size, g->size) * sizeof(double));
+            (double *) sp_malloc(MAX(f->size, g->size) * sizeof(double));
     }
 }
 
@@ -560,7 +560,7 @@ expr *new_matmul(expr *x, expr *y)
     }
 
     /* Allocate the expression node */
-    expr *node = (expr *) SP_CALLOC(1, sizeof(matmul_expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(matmul_expr));
 
     /* Choose no-chain-rule or chain-rule function pointers */
     bool use_chain_rule = !(x->var_id != NOT_A_VARIABLE &&

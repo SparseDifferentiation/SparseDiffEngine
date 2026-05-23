@@ -201,7 +201,7 @@ static void wsum_hess_init_impl(expr *node)
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
     int dim = ((left_matmul_expr *) node)->AT->m * n_blocks;
-    node->work->dwork = (double *) SP_MALLOC(dim * sizeof(double));
+    node->work->dwork = (double *) sp_malloc(dim * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -263,7 +263,7 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
 
     /* Allocate the type-specific struct */
     left_matmul_expr *lnode =
-        (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
+        (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
     /* Sparse A — always the general CSC-mirror path. */
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_sparse,
@@ -276,8 +276,8 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
        (requiring size node->n_vars).
        csc_to_csr_work is used for converting J_CSC to CSR_matrix (requiring
        node->size) */
-    node->work->iwork = (int *) SP_MALLOC(node->n_vars * sizeof(int));
-    lnode->csc_to_csr_work = (int *) SP_MALLOC(node->size * sizeof(int));
+    node->work->iwork = (int *) sp_malloc(node->n_vars * sizeof(int));
+    lnode->csc_to_csr_work = (int *) sp_malloc(node->size * sizeof(int));
     lnode->n_blocks = n_blocks;
 
     /* store A and AT. new_sparse_matrix takes ownership, so clone first. */
@@ -304,7 +304,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     compute_dims(u, m, n, &d1, &d2, &n_blocks);
 
     left_matmul_expr *lnode =
-        (left_matmul_expr *) SP_CALLOC(1, sizeof(left_matmul_expr));
+        (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_dense,
               eval_jacobian_dense, is_affine, wsum_hess_init_impl, eval_wsum_hess,

@@ -27,10 +27,10 @@
 
 CSR_matrix *new_CSR_matrix(int m, int n, int nnz)
 {
-    CSR_matrix *matrix = (CSR_matrix *) SP_MALLOC(sizeof(CSR_matrix));
-    matrix->p = (int *) SP_CALLOC(m + 1, sizeof(int));
-    matrix->i = (int *) SP_CALLOC(nnz, sizeof(int));
-    matrix->x = (double *) SP_MALLOC(nnz * sizeof(double));
+    CSR_matrix *matrix = (CSR_matrix *) sp_malloc(sizeof(CSR_matrix));
+    matrix->p = (int *) sp_calloc(m + 1, sizeof(int));
+    matrix->i = (int *) sp_calloc(nnz, sizeof(int));
+    matrix->x = (double *) sp_malloc(nnz * sizeof(double));
     matrix->m = m;
     matrix->n = n;
     matrix->nnz = nnz;
@@ -258,7 +258,7 @@ void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_matrix *C)
     int i, j, col;
 
     /* Count entries per row */
-    int *counts = (int *) SP_CALLOC(m, sizeof(int));
+    int *counts = (int *) sp_calloc(m, sizeof(int));
     for (i = 0; i < m; i++)
     {
         for (j = Ap[i]; j < Ap[i + 1]; j++)

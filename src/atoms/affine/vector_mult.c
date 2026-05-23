@@ -85,7 +85,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
     /* workspace for storing scaled weights */
-    node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
+    node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -124,7 +124,7 @@ static bool is_affine(const expr *node)
 expr *new_vector_mult(expr *param_node, expr *child)
 {
     vector_mult_expr *vnode =
-        (vector_mult_expr *) SP_CALLOC(1, sizeof(vector_mult_expr));
+        (vector_mult_expr *) sp_calloc(1, sizeof(vector_mult_expr));
     expr *node = &vnode->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,

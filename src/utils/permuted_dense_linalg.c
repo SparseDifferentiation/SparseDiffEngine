@@ -127,7 +127,7 @@ matrix *BTA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
        in iwork, hence 2 * s_max). */
     permuted_dense *C_pd = (permuted_dense *) C;
     C_pd->kernel_iwork_size = (size_t) 2 * s_max;
-    C_pd->kernel_iwork = (int *) SP_MALLOC(C_pd->kernel_iwork_size * sizeof(int));
+    C_pd->kernel_iwork = (int *) sp_malloc(C_pd->kernel_iwork_size * sizeof(int));
 
     return C;
 }
@@ -328,7 +328,7 @@ matrix *BA_pd_pd_alloc(const permuted_dense *B, const permuted_dense *A)
        same idiom as BTA_pd_pd_alloc. */
     permuted_dense *C_pd = (permuted_dense *) C;
     C_pd->kernel_iwork_size = (size_t) 2 * s_max;
-    C_pd->kernel_iwork = (int *) SP_MALLOC(C_pd->kernel_iwork_size * sizeof(int));
+    C_pd->kernel_iwork = (int *) sp_malloc(C_pd->kernel_iwork_size * sizeof(int));
 
     return C;
 }
