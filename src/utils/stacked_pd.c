@@ -394,8 +394,8 @@ static void assert_disjoint_row_perms(int n_blocks, permuted_dense *const *block
    existing CSR helper, then re-index idx_map from CSR ordering into A's
    block-major base.x ordering so a downstream values-fill pass can read
    directly from A->base.x. */
-static matrix *stacked_pd_vtable_sum_alloc(matrix *self, int axis, int d1,
-                                           int *idx_map)
+static matrix *stacked_pd_vtable_sum_row_partition_alloc(matrix *self, int axis,
+                                                         int d1, int *idx_map)
 {
     stacked_pd *spd = (stacked_pd *) self;
 
@@ -488,7 +488,7 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
     spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
     spd->base.broadcast_fill_values = stacked_pd_vtable_broadcast_fill_values;
-    spd->base.sum_alloc = stacked_pd_vtable_sum_alloc;
+    spd->base.sum_row_partition_alloc = stacked_pd_vtable_sum_row_partition_alloc;
 }
 
 matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,

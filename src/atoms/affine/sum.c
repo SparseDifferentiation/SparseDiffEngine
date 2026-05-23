@@ -87,11 +87,11 @@ static void jacobian_init_impl(expr *node)
     sum_expr *snode = (sum_expr *) node;
     jacobian_init(x);
 
-    /* sum_alloc fills idx_map so eval_jacobian can accumulate from
+    /* sum_row_partition_alloc fills idx_map so eval_jacobian can accumulate from
        child->jacobian->x. */
     snode->idx_map = sp_malloc(x->jacobian->nnz * sizeof(int));
-    node->jacobian =
-        x->jacobian->sum_alloc(x->jacobian, snode->axis, x->d1, snode->idx_map);
+    node->jacobian = x->jacobian->sum_row_partition_alloc(x->jacobian, snode->axis,
+                                                          x->d1, snode->idx_map);
 }
 
 static void eval_jacobian(expr *node)

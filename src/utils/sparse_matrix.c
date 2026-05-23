@@ -312,7 +312,8 @@ static void sparse_refresh_csc_values(matrix *self)
     csr_to_csc_fill_values(sm->csr, sm->csc_cache, sm->csc_iwork);
 }
 
-static matrix *sparse_sum_alloc(matrix *self, int axis, int d1, int *idx_map)
+static matrix *sparse_sum_row_partition_alloc(matrix *self, int axis, int d1,
+                                              int *idx_map)
 {
     CSR_matrix *A = ((sparse_matrix *) self)->csr;
     int m;
@@ -369,7 +370,7 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.broadcast_fill_values = sparse_broadcast_fill_values;
     sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
     sm->base.diag_vec_fill_values = sparse_diag_vec_fill_values;
-    sm->base.sum_alloc = sparse_sum_alloc;
+    sm->base.sum_row_partition_alloc = sparse_sum_row_partition_alloc;
     sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;
 }

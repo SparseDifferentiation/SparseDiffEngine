@@ -523,8 +523,8 @@ static matrix *sum_evenly_spaced_rows_pd_alloc(matrix *self, int d1, int *idx_ma
     return C;
 }
 
-static matrix *permuted_dense_vtable_sum_alloc(matrix *self, int axis, int d1,
-                                               int *idx_map)
+static matrix *permuted_dense_vtable_sum_row_partition_alloc(matrix *self, int axis,
+                                                             int d1, int *idx_map)
 {
     if (axis == -1)
     {
@@ -562,7 +562,7 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
     pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
     pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
-    pd->base.sum_alloc = permuted_dense_vtable_sum_alloc;
+    pd->base.sum_row_partition_alloc = permuted_dense_vtable_sum_row_partition_alloc;
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
 }
 
