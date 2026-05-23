@@ -81,6 +81,15 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
    col_perm = [0..n-1], dense block fills the full (m, n) shape. */
 matrix *new_permuted_dense_full(int m, int n, const double *data);
 
+/* Like new_permuted_dense, but the X buffer is borrowed from the caller
+   (owns_X = false). The caller is responsible for keeping borrowed_X alive
+   for at least the lifetime of the returned PD and for freeing it
+   separately. row_perm / col_perm / row_inv / col_inv are still owned by
+   the PD (copied / computed internally). Used by stacked_pd output blocks
+   that share one shared values buffer. */
+matrix *new_permuted_dense_view(int m, int n, int m0, int n0, const int *row_perm,
+                                const int *col_perm, double *borrowed_X);
+
 /* Ensure A->kernel_dwork is sized at least 'size' doubles. Grows in
    place; contents are NOT preserved. */
 void permuted_dense_ensure_kernel_dwork(const permuted_dense *A, size_t size);

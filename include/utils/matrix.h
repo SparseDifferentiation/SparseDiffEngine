@@ -106,6 +106,17 @@ typedef void (*matrix_broadcast_fill_values_fn)(matrix *A, broadcast_type type,
 typedef matrix *(*matrix_diag_vec_alloc_fn)(matrix *A);
 typedef void (*matrix_diag_vec_fill_values_fn)(matrix *A, matrix *out);
 
+/* sum_all_rows: C = sum over all rows of A. Output shape is (1, A->n).
+   Implementations choose the output's matrix type to preserve structure
+   (sparse → sparse, permuted_dense → permuted_dense, stacked_pd →
+   permuted_dense over the union of block col_perms). idx_map (sized at
+   A->nnz, allocated by caller) is filled such that idx_map[k] is the
+   position in C->x where A's k-th cell (in A->base.x ordering)
+   accumulates — eval consumers run `accumulator(A->x, A->nnz, idx_map,
+   C->x)` unchanged. No paired _fill_values is needed: sum's existing
+   eval_jacobian does the value fill polymorphically. */
+typedef matrix *(*matrix_sum_all_rows_alloc_fn)(matrix *A, int *idx_map);
+
 typedef void (*matrix_free_fn)(matrix *self);
 
 struct matrix
@@ -141,6 +152,7 @@ struct matrix
     matrix_broadcast_fill_values_fn broadcast_fill_values;
     matrix_diag_vec_alloc_fn diag_vec_alloc;
     matrix_diag_vec_fill_values_fn diag_vec_fill_values;
+    matrix_sum_all_rows_alloc_fn sum_all_rows_alloc;
 
     /* Lifecycle */
     matrix_free_fn free_fn;

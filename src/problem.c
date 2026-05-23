@@ -32,7 +32,11 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
-    g_allocated_bytes = 0;
+    /* Baseline the peak watermark to the current live bytes — peak then
+       captures any growth during this problem's lifetime. Don't reset
+       g_allocated_bytes itself: allocations made before new_problem are
+       still alive, and their frees would subtract from this counter. */
+    g_peak_bytes = g_allocated_bytes;
     problem *prob = (problem *) SP_CALLOC(1, sizeof(problem));
     if (!prob) return NULL;
 
@@ -321,7 +325,7 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
     char mem_buf[64];
     format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
-    printf("  Allocated memory:                       %s\n", mem_buf);
+    printf("  Peak memory:                            %s\n", mem_buf);
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
@@ -349,7 +353,7 @@ void free_problem(problem *prob)
 
     if (prob->verbose)
     {
-        prob->stats.memory_bytes = g_allocated_bytes;
+        prob->stats.memory_bytes = g_peak_bytes;
         print_end_message(&prob->stats);
     }
 

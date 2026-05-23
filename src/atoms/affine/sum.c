@@ -89,43 +89,57 @@ static void jacobian_init_impl(expr *node)
 
     /* initialize child's jacobian */
     jacobian_init(x);
-    CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
-    /* we never have to store more than the child's nnz */
-    CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, Jx->nnz);
-    node->work->iwork = SP_MALLOC(MAX(jac->n, Jx->nnz) * sizeof(int));
-    snode->idx_map = SP_MALLOC(Jx->nnz * sizeof(int));
-
-    /* the idx_map array maps each nonzero entry j in x->jacobian
-       to the corresponding index in the output row matrix C. Specifically, for
-       each nonzero entry j in A, idx_map[j] gives the position in C->x where
-       the value from x->jacobian->x[j] should be accumulated. */
+    /* idx_map maps each nonzero entry j of x->jacobian (in its native
+       base.x order) to the corresponding index in this node's jacobian
+       value array. eval_jacobian then runs
+           accumulator(x->jacobian->x, x->jacobian->nnz, idx_map, ...). */
+    snode->idx_map = SP_MALLOC(x->jacobian->nnz * sizeof(int));
 
     if (axis == -1)
     {
-        sum_all_rows_csr_alloc(Jx, jac, node->work->iwork, snode->idx_map);
+        /* Polymorphic native-layout sum: walks x->jacobian without going
+           through CSR. The output's matrix type follows the input's
+           (sparse → sparse, PD → PD, stacked_pd → PD over col union).
+           idx_map comes back in x->jacobian->base.x ordering, so no CSR
+           re-permutation is needed. */
+        node->jacobian =
+            x->jacobian->sum_all_rows_alloc(x->jacobian, snode->idx_map);
     }
-    else if (axis == 0)
+    else
     {
-        sum_block_of_rows_csr_alloc(Jx, jac, x->d1, node->work->iwork,
-                                    snode->idx_map);
-    }
-    else if (axis == 1)
-    {
-        sum_evenly_spaced_rows_csr_alloc(Jx, jac, node->size, node->work->iwork,
-                                         snode->idx_map);
-    }
+        /* axis=0 / axis=1: still go through CSR. The output has multiple
+           rows and the natural per-type output is less clean; the CSR
+           path is fine since these aren't hot in current benchmarks. */
+        CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
+        size_t max_out_nnz =
+            MIN((size_t) Jx->nnz, (size_t) node->size * (size_t) node->n_vars);
+        CSR_matrix *jac =
+            new_CSR_matrix(node->size, node->n_vars, (int) max_out_nnz);
+        node->work->iwork = SP_MALLOC(MAX(jac->n, Jx->nnz) * sizeof(int));
 
-    /* For stacked_pd children, child->jacobian->base.x is block-major while
-       csr->x is row-major sorted. Re-index idx_map so it can be applied
-       directly to base.x in eval_jacobian. */
-    if (x->jacobian->is_stacked_pd)
-    {
-        compose_csr_idx_map_for_spd((const stacked_pd *) x->jacobian, Jx,
-                                    snode->idx_map);
-    }
+        if (axis == 0)
+        {
+            sum_block_of_rows_csr_alloc(Jx, jac, x->d1, node->work->iwork,
+                                        snode->idx_map);
+        }
+        else
+        {
+            sum_evenly_spaced_rows_csr_alloc(Jx, jac, node->size, node->work->iwork,
+                                             snode->idx_map);
+        }
 
-    node->jacobian = new_sparse_matrix(jac);
+        /* For stacked_pd children, child->jacobian->base.x is block-major
+           while csr->x is row-major sorted. Re-index idx_map so it can be
+           applied directly to base.x in eval_jacobian. */
+        if (x->jacobian->is_stacked_pd)
+        {
+            compose_csr_idx_map_for_spd((const stacked_pd *) x->jacobian, Jx,
+                                        snode->idx_map);
+        }
+
+        node->jacobian = new_sparse_matrix(jac);
+    }
 }
 
 static void eval_jacobian(expr *node)

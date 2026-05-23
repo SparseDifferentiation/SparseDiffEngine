@@ -17,6 +17,7 @@
  */
 #include "utils/stacked_pd.h"
 
+#include "utils/iVec.h"
 #include "utils/matrix.h"
 #include "utils/permuted_dense.h"
 #include "utils/stacked_pd_linalg.h"
@@ -49,6 +50,24 @@ static void stacked_pd_free(matrix *self)
         free_matrix(&spd->kernel_pd_scratch->base);
     }
 
+    /* Streaming-fill state (NULL when not used). */
+    free(spd->scratch_X);
+    free(spd->scratch_dwork);
+    free(spd->scratch_iwork);
+    free(spd->scratch_row_inv);
+    free(spd->scratch_col_inv);
+    if (spd->per_block_shapes != NULL)
+    {
+        for (int k = 0; k < spd->n_input_blocks; k++)
+        {
+            free(spd->per_block_shapes[k].row_perm);
+            free(spd->per_block_shapes[k].col_perm);
+        }
+    }
+    free(spd->per_block_shapes);
+    free(spd->src_to_outs_p);
+    free(spd->src_to_outs_data);
+
     free_CSR_matrix(spd->csr_cache);
     free(spd->base.x);
     free(spd);
@@ -77,6 +96,61 @@ static void stacked_pd_vtable_ATDA_fill_values(const matrix *self, const double 
                                                matrix *out)
 {
     ATDA_spd_fill_values((const stacked_pd *) self, d, (stacked_pd *) out);
+}
+
+/* C = sum over all rows of self. Output is a single PD over the sorted
+   union of all block col_perms — the dense storage cost (1 row × union
+   size) matches the actual sparsity of the sum. idx_map is written in
+   block-major order to match self->base.x layout, so eval_jacobian's
+   `accumulator(child->x, child->nnz, idx_map, out->x)` works unchanged
+   without a CSR re-permutation step. */
+static matrix *stacked_pd_vtable_sum_all_rows_alloc(matrix *self, int *idx_map)
+{
+    stacked_pd *spd = (stacked_pd *) self;
+
+    /* Output col_perm = sorted union of blocks' col_perms (each already
+       sorted), via a multi-way merge — no sort buffer needed. */
+    iVec *col_union = iVec_new(8);
+    const int **col_arrs = (const int **) SP_MALLOC(spd->n_blocks * sizeof(int *));
+    int *col_lens = (int *) SP_MALLOC(spd->n_blocks * sizeof(int));
+    for (int k = 0; k < spd->n_blocks; k++)
+    {
+        col_arrs[k] = spd->blocks[k]->col_perm;
+        col_lens[k] = spd->blocks[k]->n0;
+    }
+    sorted_union_int_arrays(col_arrs, col_lens, spd->n_blocks, col_union);
+    free(col_arrs);
+    free(col_lens);
+
+    /* col_to_pos[global col] -> output position. Only the union's
+       positions are written; other entries are never read. */
+    int *col_to_pos = (int *) SP_MALLOC(self->n * sizeof(int));
+    for (int p = 0; p < col_union->len; p++)
+    {
+        col_to_pos[col_union->data[p]] = p;
+    }
+
+    int row_zero = 0;
+    matrix *out = new_permuted_dense(1, self->n, 1, col_union->len, &row_zero,
+                                     col_union->data, NULL);
+    iVec_free(col_union);
+
+    /* Fill idx_map in block-major order (matches spd->base.x). */
+    int native_pos = 0;
+    for (int k = 0; k < spd->n_blocks; k++)
+    {
+        permuted_dense *blk = spd->blocks[k];
+        for (int i = 0; i < blk->m0; i++)
+        {
+            for (int j = 0; j < blk->n0; j++)
+            {
+                idx_map[native_pos++] = col_to_pos[blk->col_perm[j]];
+            }
+        }
+    }
+    free(col_to_pos);
+
+    return out;
 }
 
 static matrix *stacked_pd_vtable_transpose_alloc(const matrix *self)
@@ -398,17 +472,20 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
     spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
     spd->base.broadcast_fill_values = stacked_pd_vtable_broadcast_fill_values;
+    spd->base.sum_all_rows_alloc = stacked_pd_vtable_sum_all_rows_alloc;
 }
 
-matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,
-                                 const int *src_block_idx_p,
-                                 const int *src_block_idx)
+/* Allocate the stacked_pd struct, set basic fields, copy blocks, and wire
+   src_block_idx_p / src_block_idx. Does NOT touch spd->base.x — the caller
+   is responsible for setting it (either by absorbing per-block X buffers
+   into a fresh shared buffer, or by adopting a pre-existing shared buffer). */
+static stacked_pd *stacked_pd_alloc_metadata_only(int m, int n, int n_blocks,
+                                                  permuted_dense **blocks,
+                                                  const int *src_block_idx_p,
+                                                  const int *src_block_idx)
 {
     assert((src_block_idx_p == NULL) == (src_block_idx == NULL));
 
-    // --------------------------------------------------------------------------------
-    //                          Set up basic fields
-    // --------------------------------------------------------------------------------
     stacked_pd *spd = (stacked_pd *) SP_CALLOC(1, sizeof(stacked_pd));
     spd->base.m = m;
     spd->base.n = n;
@@ -429,9 +506,6 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
         memcpy(spd->blocks, blocks, n_blocks * sizeof(permuted_dense *));
     }
 
-    // --------------------------------------------------------------------------------
-    //                         Set up source block index mapping
-    // --------------------------------------------------------------------------------
     if (src_block_idx_p == NULL)
     {
         /* identity: each output block has itself as its one source */
@@ -452,6 +526,16 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
             memcpy(spd->src_block_idx, src_block_idx, total * sizeof(int));
         }
     }
+
+    return spd;
+}
+
+matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,
+                                 const int *src_block_idx_p,
+                                 const int *src_block_idx)
+{
+    stacked_pd *spd = stacked_pd_alloc_metadata_only(m, n, n_blocks, blocks,
+                                                     src_block_idx_p, src_block_idx);
 
     // ---------------------------------------------------------------------------
     // Absorb each block's X into a single shared values buffer owned by this spd.
@@ -475,6 +559,61 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
     }
 
     return &spd->base;
+}
+
+matrix *new_stacked_pd_borrowed_x(int m, int n, int n_blocks,
+                                  permuted_dense **blocks,
+                                  const int *src_block_idx_p,
+                                  const int *src_block_idx, double *shared_x)
+{
+    stacked_pd *spd = stacked_pd_alloc_metadata_only(m, n, n_blocks, blocks,
+                                                     src_block_idx_p, src_block_idx);
+
+    /* Blocks already point into shared_x (via new_permuted_dense_view); no
+       memcpy / absorb. The spd just adopts the buffer. */
+#ifndef NDEBUG
+    for (int k = 0; k < n_blocks; k++)
+    {
+        assert(spd->blocks[k]->owns_X == false);
+    }
+#endif
+    spd->base.x = shared_x;
+
+    return &spd->base;
+}
+
+matrix *new_stacked_pd_from_shapes_unchecked(int m, int n, int n_blocks,
+                                             const spd_per_block_shape *shapes)
+{
+    /* Sum total nnz and compute per-block offsets. */
+    size_t total_nnz = 0;
+    for (int k = 0; k < n_blocks; k++)
+    {
+        total_nnz += (size_t) shapes[k].m0 * (size_t) shapes[k].n0;
+    }
+
+    /* One SP_MALLOC for the shared X buffer; the resulting stacked_pd
+       takes ownership of it. */
+    double *shared_x =
+        (double *) SP_MALLOC((total_nnz > 0 ? total_nnz : 1) * sizeof(double));
+
+    /* Build view PDs pointing into shared_x at sequential offsets. */
+    permuted_dense **blocks = (permuted_dense **) SP_MALLOC(
+        (n_blocks > 0 ? n_blocks : 1) * sizeof(permuted_dense *));
+    size_t offset = 0;
+    for (int k = 0; k < n_blocks; k++)
+    {
+        blocks[k] = (permuted_dense *) new_permuted_dense_view(
+            m, n, shapes[k].m0, shapes[k].n0, shapes[k].row_perm, shapes[k].col_perm,
+            shared_x + offset);
+        offset += (size_t) shapes[k].m0 * (size_t) shapes[k].n0;
+    }
+
+    /* Identity src_block_idx (one source per output block). */
+    matrix *C =
+        new_stacked_pd_borrowed_x(m, n, n_blocks, blocks, NULL, NULL, shared_x);
+    free(blocks);
+    return C;
 }
 
 matrix *new_stacked_pd(int m, int n, int n_blocks, permuted_dense **blocks,

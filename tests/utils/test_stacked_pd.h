@@ -884,8 +884,6 @@ const char *test_ATDA_spd_empty(void)
 
     mu_assert("n_blocks", C->n_blocks == 0);
     mu_assert("nnz", C_m->nnz == 0);
-    mu_assert("pre_coalesce not NULL", C->pre_coalesce != NULL);
-    mu_assert("pre_coalesce n_blocks", C->pre_coalesce->n_blocks == 0);
 
     free_matrix(C_m);
     free_matrix(A_m);

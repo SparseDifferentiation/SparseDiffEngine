@@ -18,10 +18,12 @@
 #include "utils/sparse_matrix.h"
 
 #include "utils/CSC_matrix.h"
+#include "utils/CSR_sum.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/matrix.h"
 #include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
+#include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -301,7 +303,22 @@ static void sparse_diag_vec_fill_values(matrix *self, matrix *out)
     }
 }
 
-/* Build CSC_matrix structure on first call; refill values from csr->x on every call. */
+/* C = sum over all rows of self. Output is a single-row sparse_matrix
+   with the union of self's column indices. idx_map[j] (j in [0, self->nnz))
+   gives the position in C's CSR x-array for each of self's CSR cells. */
+static matrix *sparse_sum_all_rows_alloc(matrix *self, int *idx_map)
+{
+    CSR_matrix *A = self->to_csr(self);
+    int max_out_nnz = (int) MIN((size_t) A->nnz, (size_t) A->n);
+    CSR_matrix *out = new_CSR_matrix(1, A->n, max_out_nnz);
+    int *iwork = (int *) SP_MALLOC(MAX(A->n, A->nnz) * sizeof(int));
+    sum_all_rows_csr_alloc(A, out, iwork, idx_map);
+    free(iwork);
+    return new_sparse_matrix(out);
+}
+
+/* Build CSC_matrix structure on first call; refill values from csr->x on every call.
+ */
 static void sparse_refresh_csc_values(matrix *self)
 {
     sparse_matrix *sm = (sparse_matrix *) self;
@@ -329,6 +346,7 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.broadcast_fill_values = sparse_broadcast_fill_values;
     sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
     sm->base.diag_vec_fill_values = sparse_diag_vec_fill_values;
+    sm->base.sum_all_rows_alloc = sparse_sum_all_rows_alloc;
     sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;
 }

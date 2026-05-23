@@ -34,15 +34,18 @@
 matrix *copy_sparsity_spd_alloc(const stacked_pd *A)
 {
     int n_blocks = A->n_blocks;
-    permuted_dense **C_blocks =
-        (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
+    spd_per_block_shape *shapes = (spd_per_block_shape *) SP_CALLOC(
+        n_blocks > 0 ? n_blocks : 1, sizeof(*shapes));
     for (int k = 0; k < n_blocks; k++)
     {
-        C_blocks[k] = (permuted_dense *) copy_sparsity_pd_alloc(A->blocks[k]);
+        shapes[k].m0 = A->blocks[k]->m0;
+        shapes[k].n0 = A->blocks[k]->n0;
+        shapes[k].row_perm = A->blocks[k]->row_perm;
+        shapes[k].col_perm = A->blocks[k]->col_perm;
     }
-
-    matrix *C = new_stacked_pd(A->base.m, A->base.n, n_blocks, C_blocks, NULL, NULL);
-    free(C_blocks);
+    matrix *C =
+        new_stacked_pd_from_shapes_unchecked(A->base.m, A->base.n, n_blocks, shapes);
+    free(shapes);
     return C;
 }
 
@@ -114,28 +117,133 @@ void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C)
 // BTA_spd_csc / BTDA_spd_csc, BTA_spd_spd / BTDA_spd_spd,
 // BTA_csc_spd / BTDA_csc_spd, and ATA_spd / ATDA_spd.
 // ====================================================================================
-typedef matrix *(*spd_per_block_alloc_fn)(const permuted_dense *blk,
-                                          const void *ctx);
+/* Streaming alloc: each call walks the input blocks twice — once to gather
+   shapes and max scratch sizes, once (inside coalesce_spd_alloc_from_shapes)
+   to materialize the coalesced output. No per-block PD allocations. The
+   matching fill op is the existing _fill_values, which writes into the
+   shared scratch PD; the scatter loop here moves those values into the
+   final coalesced output blocks.
+ */
+/* SP_MALLOC + memcpy an int array. Used by shape callbacks to give the
+   per_block_shapes struct its own row_perm / col_perm copies (uniform
+   ownership: stacked_pd_free frees them unconditionally). */
+static int *clone_int_array(const int *src, int n)
+{
+    int *dst = (int *) SP_MALLOC((n > 0 ? n : 1) * sizeof(int));
+    if (n > 0) memcpy(dst, src, n * sizeof(int));
+    return dst;
+}
+
+typedef spd_per_block_shape (*spd_per_block_shape_fn)(const permuted_dense *blk,
+                                                      const void *ctx);
 
 typedef void (*spd_per_block_fill_fn)(const permuted_dense *blk, const double *d,
                                       const void *ctx, permuted_dense *Ck);
 
+/* Build the inverse of src_block_idx_p / src_block_idx (CSR map from
+   output blocks to source blocks): a CSR map from each source block to
+   the output blocks it contributes to. */
+static void build_src_to_outs_inverse(int n_input_blocks, int n_out_blocks,
+                                      const int *src_block_idx_p,
+                                      const int *src_block_idx_data, int **p_out,
+                                      int **data_out)
+{
+    int total = src_block_idx_p[n_out_blocks];
+
+    int *p = (int *) SP_CALLOC(n_input_blocks + 1, sizeof(int));
+    for (int t = 0; t < total; t++)
+    {
+        p[src_block_idx_data[t] + 1]++;
+    }
+    for (int k = 0; k < n_input_blocks; k++)
+    {
+        p[k + 1] += p[k];
+    }
+
+    int *data = (int *) SP_MALLOC((total > 0 ? total : 1) * sizeof(int));
+    int *cursor = (int *) SP_CALLOC(n_input_blocks, sizeof(int));
+    for (int out_k = 0; out_k < n_out_blocks; out_k++)
+    {
+        int lo = src_block_idx_p[out_k];
+        int hi = src_block_idx_p[out_k + 1];
+        for (int t = lo; t < hi; t++)
+        {
+            int src_k = src_block_idx_data[t];
+            data[p[src_k] + cursor[src_k]++] = out_k;
+        }
+    }
+    free(cursor);
+
+    *p_out = p;
+    *data_out = data;
+}
+
 static matrix *spd_blockwise_alloc_coalesce(const stacked_pd *spd_iter, int Cm,
-                                            int Cn, spd_per_block_alloc_fn op,
+                                            int Cn, spd_per_block_shape_fn shape_fn,
                                             const void *ctx)
 {
     int n_blocks = spd_iter->n_blocks;
-    permuted_dense **partials =
-        (permuted_dense **) SP_MALLOC(n_blocks * sizeof(permuted_dense *));
+
+    /* Pass 1: shape pass — calls into the per-wrapper shape callback for
+       each input block. Each callback (a) computes the would-be output
+       shape, (b) pre-sizes any input-side kernel_dwork the matching fill
+       op will read at fill time, and (c) reports the dest-side scratch
+       sizes the matching fill op needs from its destination PD. */
+    spd_per_block_shape *shapes = (spd_per_block_shape *) SP_MALLOC(
+        (n_blocks > 0 ? n_blocks : 1) * sizeof(spd_per_block_shape));
+    size_t max_scratch_X = 0;
+    size_t max_scratch_dwork = 0;
+    size_t max_scratch_iwork = 0;
     for (int k = 0; k < n_blocks; k++)
     {
-        partials[k] = (permuted_dense *) op(spd_iter->blocks[k], ctx);
+        shapes[k] = shape_fn(spd_iter->blocks[k], ctx);
+        size_t sz = (size_t) shapes[k].m0 * (size_t) shapes[k].n0;
+        if (sz > max_scratch_X) max_scratch_X = sz;
+        if (shapes[k].scratch_dwork_needed > max_scratch_dwork)
+            max_scratch_dwork = shapes[k].scratch_dwork_needed;
+        if (shapes[k].scratch_iwork_needed > max_scratch_iwork)
+            max_scratch_iwork = shapes[k].scratch_iwork_needed;
     }
-    matrix *raw = new_stacked_pd_unchecked(Cm, Cn, n_blocks, partials, NULL, NULL);
-    free(partials);
-    matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) raw);
-    ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
-    return C;
+
+    /* Pass 2: symbolic coalesce + output materialization. Output blocks
+       are views into one shared X buffer that the output stacked_pd owns. */
+    matrix *C_mat =
+        coalesce_spd_alloc_from_shapes_unchecked(shapes, n_blocks, Cm, Cn);
+    stacked_pd *C = (stacked_pd *) C_mat;
+
+    /* Build the inverse src→outs map so fill can iterate "for each input
+       block, scatter into the output blocks it contributes to". */
+    build_src_to_outs_inverse(n_blocks, C->n_blocks, C->src_block_idx_p,
+                              C->src_block_idx, &C->src_to_outs_p,
+                              &C->src_to_outs_data);
+
+    /* Scratch buffers for the streaming fill — sized once at max across
+       blocks; fill never grows them. */
+    C->scratch_X_capacity = max_scratch_X;
+    C->scratch_X = (double *) SP_MALLOC((max_scratch_X > 0 ? max_scratch_X : 1) *
+                                        sizeof(double));
+    C->scratch_dwork_capacity = max_scratch_dwork;
+    C->scratch_dwork = max_scratch_dwork > 0
+                           ? (double *) SP_MALLOC(max_scratch_dwork * sizeof(double))
+                           : NULL;
+    C->scratch_iwork_capacity = max_scratch_iwork;
+    C->scratch_iwork = max_scratch_iwork > 0
+                           ? (int *) SP_MALLOC(max_scratch_iwork * sizeof(int))
+                           : NULL;
+
+    /* Inverse maps for the scratch PD. Sized at the global (m, n); reset
+       and repopulated each iteration from per_block_shapes[k].row_perm /
+       col_perm. Some fill ops (BTA_pd_spd) read scratch->col_inv to map
+       global col indices to scratch-local positions. */
+    C->scratch_row_inv = (int *) SP_MALLOC(Cm * sizeof(int));
+    C->scratch_col_inv = (int *) SP_MALLOC(Cn * sizeof(int));
+
+    /* Keep shapes on the output so fill can re-aim the scratch PD. The
+       output stacked_pd takes ownership (and frees in its destructor). */
+    C->per_block_shapes = shapes;
+    C->n_input_blocks = n_blocks;
+
+    return &C->base;
 }
 
 static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *spd_iter,
@@ -145,13 +253,67 @@ static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *spd_iter,
 {
     if (C->base.nnz == 0) return;
 
-    stacked_pd *raw = C->pre_coalesce;
+    /* Stack-allocated scratch PD view, re-aimed at each input block's
+       shape each iteration. No SP_MALLOC anywhere in this loop —
+       per the project invariant on _fill_values. */
+    permuted_dense scratch = {0};
+    scratch.X = C->scratch_X;
+    scratch.base.x = C->scratch_X;
+    scratch.owns_X = false;
+    scratch.kernel_dwork = C->scratch_dwork;
+    scratch.kernel_dwork_size = C->scratch_dwork_capacity;
+    scratch.kernel_iwork = C->scratch_iwork;
+    scratch.kernel_iwork_size = C->scratch_iwork_capacity;
+    scratch.row_inv = C->scratch_row_inv;
+    scratch.col_inv = C->scratch_col_inv;
+    scratch.base.m = C->base.m;
+    scratch.base.n = C->base.n;
+
+    memset(C->base.x, 0, C->base.nnz * sizeof(double));
+
     for (int k = 0; k < spd_iter->n_blocks; k++)
     {
-        op(spd_iter->blocks[k], d, ctx, raw->blocks[k]);
+        const spd_per_block_shape *sh = &C->per_block_shapes[k];
+        scratch.m0 = sh->m0;
+        scratch.n0 = sh->n0;
+        scratch.row_perm = (int *) sh->row_perm;
+        scratch.col_perm = (int *) sh->col_perm;
+        scratch.base.nnz = sh->m0 * sh->n0;
+
+        /* Repopulate row_inv / col_inv for this block. memset(-1) works on
+           int arrays because two's-complement makes 0xFFFFFFFF == -1. */
+        memset(scratch.row_inv, -1, (size_t) C->base.m * sizeof(int));
+        memset(scratch.col_inv, -1, (size_t) C->base.n * sizeof(int));
+        for (int ii = 0; ii < sh->m0; ii++)
+        {
+            scratch.row_inv[sh->row_perm[ii]] = ii;
+        }
+        for (int jj = 0; jj < sh->n0; jj++)
+        {
+            scratch.col_inv[sh->col_perm[jj]] = jj;
+        }
+
+        /* Some fill ops (BTA_pd_spd) read leading metadata from the
+           destination PD's kernel_iwork[0..init_len) at fill time. The
+           shape callback computed those values at alloc time; copy them
+           into the shared scratch_iwork before invoking the op. */
+        for (int j = 0; j < sh->iwork_init_len; j++)
+        {
+            scratch.kernel_iwork[j] = sh->iwork_init[j];
+        }
+
+        op(spd_iter->blocks[k], d, ctx, &scratch);
+
+        /* Scatter scratch into each output block this source contributes to. */
+        int lo = C->src_to_outs_p[k];
+        int hi = C->src_to_outs_p[k + 1];
+        for (int t = lo; t < hi; t++)
+        {
+            int out_idx = C->src_to_outs_data[t];
+            scatter_one_source_into_one_output_accumulate(&scratch,
+                                                          C->blocks[out_idx]);
+        }
     }
-    memset(C->base.x, 0, C->base.nnz * sizeof(double));
-    coalesce_spd_fill_values_accumulate(raw, C);
 }
 
 // ------------------------------------------------------------------------------------
@@ -166,18 +328,24 @@ A ^ T A decomposes as Σ_k B_k ^ T B_k, where summands with overlapping col_perm
 share cells.The output groups cols of A by signature sig_C(c) = {k: c ∈ C_k}; each
    unique signature becomes one output PD with row_perm = group cols
    and col_perm = ⋃ C_k for k in the signature. No structural zeros.
-   The output's `pre_coalesce` slot holds per-source scratch PDs (one symmetric
-   PD per source block, row_perm = col_perm = C_k) that
-   ATDA_spd_fill_values writes into.
 
-   Note on per-block kernel choice: we use ATA_pd_alloc (rather than
-   new_permuted_dense directly) because it also pre-sizes
-   A->blocks[k]->kernel_dwork — that scratch buffer is what
-   ATDA_pd_fill_values reads from during the fill phase. */
-static matrix *wrapper_ATA_pd(const permuted_dense *Ak, const void *ctx)
+   The shape callback returns the (n0, n0) per-block Gram shape (col_perm =
+   Ak->col_perm) and pre-sizes Ak's kernel_dwork — both the same setup
+   ATA_pd_alloc would do, minus the per-block PD allocation. The matching
+   fill (ATDA_pd_fill_values) reads Ak->kernel_dwork and writes into a
+   caller-supplied destination's X; no destination kernel state is read. */
+static spd_per_block_shape wrapper_ATA_pd_shape(const permuted_dense *Ak,
+                                                const void *ctx)
 {
     (void) ctx;
-    return ATA_pd_alloc(Ak);
+    /* Same pre-sizing ATA_pd_alloc does at permuted_dense_linalg.c:83. */
+    permuted_dense_ensure_kernel_dwork(Ak, (size_t) Ak->m0 * Ak->n0);
+    spd_per_block_shape shape = {0};
+    shape.m0 = Ak->n0;
+    shape.n0 = Ak->n0;
+    shape.row_perm = clone_int_array(Ak->col_perm, Ak->n0);
+    shape.col_perm = clone_int_array(Ak->col_perm, Ak->n0);
+    return shape;
 }
 
 static void wrapper_ATDA_pd(const permuted_dense *Ak, const double *d,
@@ -189,8 +357,8 @@ static void wrapper_ATDA_pd(const permuted_dense *Ak, const double *d,
 
 matrix *ATA_spd_alloc(const stacked_pd *A)
 {
-    return spd_blockwise_alloc_coalesce(A, A->base.n, A->base.n, wrapper_ATA_pd,
-                                        NULL);
+    return spd_blockwise_alloc_coalesce(A, A->base.n, A->base.n,
+                                        wrapper_ATA_pd_shape, NULL);
 }
 
 void ATDA_spd_fill_values(const stacked_pd *A, const double *d, stacked_pd *C)
@@ -395,9 +563,33 @@ void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
 // path. Must be fixed — same future remedy as the per-block BTDA: fold
 // diag(d) directly into BTA_pd_pd's gather step.
 // ---------------------------------------------------------------------------------
-static matrix *wrapper_BTA_pd_pd(const permuted_dense *Bk, const void *ctx)
+/* Same shape derivation as BTA_pd_pd_alloc (permuted_dense_linalg.c:105),
+   minus the per-block PD allocation. Preserves the input-side dwork
+   pre-sizing on both Bk and A, and reports the destination's iwork need
+   (2 * s_max) so the streaming alloc sizes the shared scratch_iwork once
+   at the max across blocks. */
+static spd_per_block_shape wrapper_BTA_pd_pd_shape(const permuted_dense *Bk,
+                                                   const void *ctx)
 {
-    return BTA_pd_pd_alloc(Bk, (const permuted_dense *) ctx);
+    const permuted_dense *A = (const permuted_dense *) ctx;
+    spd_per_block_shape shape = {0};
+
+    if (!has_overlap(A->row_perm, A->m0, Bk->row_perm, Bk->m0, 0))
+    {
+        /* empty output block */
+        return shape;
+    }
+
+    int s_max = A->m0 < Bk->m0 ? A->m0 : Bk->m0;
+    permuted_dense_ensure_kernel_dwork(A, (size_t) s_max * A->n0);
+    permuted_dense_ensure_kernel_dwork(Bk, (size_t) s_max * Bk->n0);
+
+    shape.m0 = Bk->n0;
+    shape.n0 = A->n0;
+    shape.row_perm = clone_int_array(Bk->col_perm, Bk->n0);
+    shape.col_perm = clone_int_array(A->col_perm, A->n0);
+    shape.scratch_iwork_needed = (size_t) 2 * s_max;
+    return shape;
 }
 
 static void wrapper_BTDA_pd_pd(const permuted_dense *Bk, const double *d,
@@ -408,8 +600,8 @@ static void wrapper_BTDA_pd_pd(const permuted_dense *Bk, const double *d,
 
 matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
 {
-    return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_pd,
-                                        A);
+    return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n,
+                                        wrapper_BTA_pd_pd_shape, A);
 }
 
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
@@ -425,9 +617,51 @@ void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
 // Unlike the pd-on-the-right path, BTDA_pd_csc reuses the per-block
 // B_k->kernel_dwork sized by BTA_pd_csc_alloc — no temp DA allocation.
 // ---------------------------------------------------------------------------------
-static matrix *wrapper_BTA_pd_csc(const permuted_dense *Bk, const void *ctx)
+/* Same shape derivation as BTA_pd_csc_alloc (permuted_dense_linalg.c:391),
+   minus the per-block PD allocation. col_perm is computed from A's nnz
+   pattern intersected with Bk->row_inv — freshly SP_MALLOC'd and owned by
+   the shape (freed when the per_block_shapes lifetime ends). */
+static spd_per_block_shape wrapper_BTA_pd_csc_shape(const permuted_dense *Bk,
+                                                    const void *ctx)
 {
-    return BTA_pd_csc_alloc(Bk, (const CSC_matrix *) ctx);
+    const CSC_matrix *A = (const CSC_matrix *) ctx;
+    spd_per_block_shape shape = {0};
+
+    iVec *col_active = iVec_new(8);
+    for (int j = 0; j < A->n; j++)
+    {
+        int start = A->p[j];
+        int len = A->p[j + 1] - start;
+        /* Inline of permuted_dense_linalg.c's idxs_hits_set: any row index
+           of column j that lies in Bk's row_perm (Bk->row_inv != -1)
+           contributes — column j of the output is active. */
+        bool hits = false;
+        for (int e = 0; e < len; e++)
+        {
+            if (Bk->row_inv[A->i[start + e]] != -1)
+            {
+                hits = true;
+                break;
+            }
+        }
+        if (hits)
+        {
+            iVec_append(col_active, j);
+        }
+    }
+
+    int n0 = col_active->len;
+    int *col_perm_owned = clone_int_array(col_active->data, n0);
+    iVec_free(col_active);
+
+    /* Pre-size Bk's dwork (same as BTA_pd_csc_alloc:413). */
+    permuted_dense_ensure_kernel_dwork(Bk, (size_t) Bk->m0 * Bk->n0);
+
+    shape.m0 = Bk->n0;
+    shape.n0 = n0;
+    shape.row_perm = clone_int_array(Bk->col_perm, Bk->n0);
+    shape.col_perm = col_perm_owned;
+    return shape;
 }
 
 static void wrapper_BTDA_pd_csc(const permuted_dense *Bk, const double *d,
@@ -438,7 +672,8 @@ static void wrapper_BTDA_pd_csc(const permuted_dense *Bk, const double *d,
 
 matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
 {
-    return spd_blockwise_alloc_coalesce(B, B->base.n, A->n, wrapper_BTA_pd_csc, A);
+    return spd_blockwise_alloc_coalesce(B, B->base.n, A->n, wrapper_BTA_pd_csc_shape,
+                                        A);
 }
 
 void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
@@ -454,9 +689,60 @@ void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
 // internally handles the iteration over A's blocks. The "double nesting"
 // over (B_k, A_j) pairs is hidden inside BTA_pd_spd_alloc.
 // ---------------------------------------------------------------------------------
-static matrix *wrapper_BTA_pd_spd(const permuted_dense *Bk, const void *ctx)
+/* Same shape derivation as BTA_pd_spd_alloc (this file, ~L344), minus
+   the per-block PD allocation. col_perm is the sorted union of
+   overlapping A-blocks' col_perms — freshly SP_MALLOC'd and owned by the
+   shape. The fill (BTDA_pd_spd_fill_values) reads C->kernel_iwork[0..1]
+   for s_max and max_n0_A; we store those in iwork_init so the streaming
+   fill can seed the shared scratch_iwork before each per-block call. */
+static spd_per_block_shape wrapper_BTA_pd_spd_shape(const permuted_dense *Bk,
+                                                    const void *ctx)
 {
-    return BTA_pd_spd_alloc(Bk, (const stacked_pd *) ctx);
+    const stacked_pd *A = (const stacked_pd *) ctx;
+    int n_blocks_A = A->n_blocks;
+    spd_per_block_shape shape = {0};
+
+    const int **col_perms = (const int **) SP_MALLOC(n_blocks_A * sizeof(int *));
+    int *lens = (int *) SP_MALLOC(n_blocks_A * sizeof(int));
+
+    int n_contributing_A_blocks = 0;
+    int s_max = 0;
+    int max_n0_A = 0;
+    for (int k = 0; k < n_blocks_A; k++)
+    {
+        permuted_dense *Ak = A->blocks[k];
+        int s = Bk->m0 < Ak->m0 ? Bk->m0 : Ak->m0;
+        if (s > s_max) s_max = s;
+        if (Ak->n0 > max_n0_A) max_n0_A = Ak->n0;
+        if (has_overlap(Bk->row_perm, Bk->m0, Ak->row_perm, Ak->m0, 0))
+        {
+            col_perms[n_contributing_A_blocks] = Ak->col_perm;
+            lens[n_contributing_A_blocks] = Ak->n0;
+            n_contributing_A_blocks++;
+        }
+    }
+
+    iVec *col_union = iVec_new(8);
+    sorted_union_int_arrays(col_perms, lens, n_contributing_A_blocks, col_union);
+    free(col_perms);
+    free(lens);
+
+    int n0 = col_union->len;
+    int *col_perm_owned = clone_int_array(col_union->data, n0);
+    iVec_free(col_union);
+
+    shape.m0 = Bk->n0;
+    shape.n0 = n0;
+    shape.row_perm = clone_int_array(Bk->col_perm, Bk->n0);
+    shape.col_perm = col_perm_owned;
+    shape.scratch_iwork_needed = (size_t) 2 + (size_t) 2 * s_max + (size_t) max_n0_A;
+    shape.scratch_dwork_needed = (size_t) Bk->n0 * (size_t) s_max +
+                                 (size_t) s_max * (size_t) max_n0_A +
+                                 (size_t) Bk->n0 * (size_t) max_n0_A;
+    shape.iwork_init[0] = s_max;
+    shape.iwork_init[1] = max_n0_A;
+    shape.iwork_init_len = 2;
+    return shape;
 }
 
 static void wrapper_BTDA_pd_spd(const permuted_dense *Bk, const double *d,
@@ -467,8 +753,8 @@ static void wrapper_BTDA_pd_spd(const permuted_dense *Bk, const double *d,
 
 matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
 {
-    return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_spd,
-                                        A);
+    return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n,
+                                        wrapper_BTA_pd_spd_shape, A);
 }
 
 void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
@@ -489,9 +775,47 @@ void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
 // shared helper. Cells overlap across k (both row_perms and col_perms can
 // collide), so we use the unchecked raw + accumulating coalesce.
 // ---------------------------------------------------------------------------------
-static matrix *wrapper_BTA_csc_pd(const permuted_dense *Ak, const void *ctx)
+/* Same shape derivation as BTA_csc_pd_alloc (permuted_dense_linalg.c:444),
+   minus the per-block PD allocation. row_perm is computed from B's nnz
+   pattern intersected with Ak->row_inv — freshly SP_MALLOC'd and owned. */
+static spd_per_block_shape wrapper_BTA_csc_pd_shape(const permuted_dense *Ak,
+                                                    const void *ctx)
 {
-    return BTA_csc_pd_alloc((const CSC_matrix *) ctx, Ak);
+    const CSC_matrix *B = (const CSC_matrix *) ctx;
+    spd_per_block_shape shape = {0};
+
+    iVec *row_active = iVec_new(8);
+    for (int i = 0; i < B->n; i++)
+    {
+        int start = B->p[i];
+        int len = B->p[i + 1] - start;
+        bool hits = false;
+        for (int e = 0; e < len; e++)
+        {
+            if (Ak->row_inv[B->i[start + e]] != -1)
+            {
+                hits = true;
+                break;
+            }
+        }
+        if (hits)
+        {
+            iVec_append(row_active, i);
+        }
+    }
+
+    int m0 = row_active->len;
+    int *row_perm_owned = clone_int_array(row_active->data, m0);
+    iVec_free(row_active);
+
+    /* Pre-size Ak's dwork (same as BTA_csc_pd_alloc:467). */
+    permuted_dense_ensure_kernel_dwork(Ak, (size_t) Ak->m0 * Ak->n0);
+
+    shape.m0 = m0;
+    shape.n0 = Ak->n0;
+    shape.row_perm = row_perm_owned;
+    shape.col_perm = clone_int_array(Ak->col_perm, Ak->n0);
+    return shape;
 }
 
 static void wrapper_BTDA_csc_pd(const permuted_dense *Ak, const double *d,
@@ -502,7 +826,8 @@ static void wrapper_BTDA_csc_pd(const permuted_dense *Ak, const double *d,
 
 matrix *BTA_csc_spd_alloc(const CSC_matrix *B, const stacked_pd *A)
 {
-    return spd_blockwise_alloc_coalesce(A, B->n, A->base.n, wrapper_BTA_csc_pd, B);
+    return spd_blockwise_alloc_coalesce(A, B->n, A->base.n, wrapper_BTA_csc_pd_shape,
+                                        B);
 }
 
 void BTDA_csc_spd_fill_values(const CSC_matrix *B, const double *d,

@@ -81,6 +81,26 @@ static void permuted_dense_vtable_ATDA_fill_values(const matrix *self,
     ATDA_pd_fill_values((const permuted_dense *) self, d, (permuted_dense *) out);
 }
 
+/* C = sum over all rows of self. Output is PD (1, self->n) over the same
+   active column set as self (m0=1, n0=pd->n0, col_perm shared). Each
+   input cell at local (i, j), base.x position i*n0+j, contributes to
+   output column j — so idx_map is just `i*n0 + j ↦ j` for every cell. */
+static matrix *permuted_dense_vtable_sum_all_rows_alloc(matrix *self, int *idx_map)
+{
+    permuted_dense *pd = (permuted_dense *) self;
+    int row_zero = 0;
+    matrix *out =
+        new_permuted_dense(1, self->n, 1, pd->n0, &row_zero, pd->col_perm, NULL);
+    for (int i = 0; i < pd->m0; i++)
+    {
+        for (int j = 0; j < pd->n0; j++)
+        {
+            idx_map[i * pd->n0 + j] = j;
+        }
+    }
+    return out;
+}
+
 /* Forward decl; definition lower in the file. */
 static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A);
 
@@ -420,11 +440,16 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
     pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
     pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
+    pd->base.sum_all_rows_alloc = permuted_dense_vtable_sum_all_rows_alloc;
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
 }
 
-matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
-                           const int *col_perm, const double *X_data)
+/* Shared init for new_permuted_dense and new_permuted_dense_view. Allocates
+   and populates everything except the X buffer (the caller wires that up:
+   either SP_MALLOC + memcpy, or borrow). */
+static permuted_dense *permuted_dense_alloc_common(int m, int n, int m0, int n0,
+                                                   const int *row_perm,
+                                                   const int *col_perm)
 {
     /* Validate sorted invariants. */
     for (int ii = 1; ii < m0; ii++)
@@ -453,12 +478,8 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->m0 = m0;
     pd->n0 = n0;
 
-    int sz = m0 * n0;
     pd->row_perm = (int *) SP_MALLOC(m0 * sizeof(int));
     pd->col_perm = (int *) SP_MALLOC(n0 * sizeof(int));
-    pd->X = (double *) SP_MALLOC(sz * sizeof(double));
-    pd->base.x = pd->X;
-    pd->owns_X = true;
     pd->col_inv = (int *) SP_MALLOC(n * sizeof(int));
     pd->row_inv = (int *) SP_MALLOC(m * sizeof(int));
 
@@ -489,10 +510,37 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
         pd->row_inv[row_perm[ii]] = ii;
     }
 
+    return pd;
+}
+
+matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
+                           const int *col_perm, const double *X_data)
+{
+    permuted_dense *pd =
+        permuted_dense_alloc_common(m, n, m0, n0, row_perm, col_perm);
+
+    int sz = m0 * n0;
+    pd->X = (double *) SP_MALLOC(sz * sizeof(double));
+    pd->base.x = pd->X;
+    pd->owns_X = true;
+
     if (X_data != NULL && sz > 0)
     {
         memcpy(pd->X, X_data, sz * sizeof(double));
     }
+
+    return &pd->base;
+}
+
+matrix *new_permuted_dense_view(int m, int n, int m0, int n0, const int *row_perm,
+                                const int *col_perm, double *borrowed_X)
+{
+    permuted_dense *pd =
+        permuted_dense_alloc_common(m, n, m0, n0, row_perm, col_perm);
+
+    pd->X = borrowed_X;
+    pd->base.x = borrowed_X;
+    pd->owns_X = false;
 
     return &pd->base;
 }
