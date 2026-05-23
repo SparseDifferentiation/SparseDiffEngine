@@ -20,6 +20,7 @@
 #include "utils/CSR_sum.h"
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
+#include "utils/utils.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -114,9 +115,10 @@ static void wsum_hess_init_impl(expr *node)
     }
 
     /* worst-case scenario the nnz of node->wsum_hess is the sum of children's
-       nnz */
-    CSR_matrix *H = new_CSR_matrix(node->n_vars, node->n_vars, nnz);
-    hnode->CSR_work = new_CSR_matrix(node->n_vars, node->n_vars, nnz);
+       nnz, capped by the output cell count */
+    int nnz_ub = MIN(nnz, node->n_vars * node->n_vars);
+    CSR_matrix *H = new_CSR_matrix(node->n_vars, node->n_vars, nnz_ub);
+    hnode->CSR_work = new_CSR_matrix(node->n_vars, node->n_vars, nnz_ub);
 
     /* fill sparsity pattern */
     H->nnz = 0;

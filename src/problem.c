@@ -251,12 +251,14 @@ void problem_init_hessian(problem *prob)
         nnz += prob->constraints[i]->wsum_hess->nnz;
     }
 
-    prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, nnz);
-    memset(prob->lagrange_hessian->x, 0, nnz * sizeof(double)); /* affine shortcut */
-    prob->stats.nnz_hessian = nnz;
+    int hess_nnz_ub = MIN(nnz, prob->n_vars * prob->n_vars);
+    prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, hess_nnz_ub);
+    memset(prob->lagrange_hessian->x, 0,
+           hess_nnz_ub * sizeof(double)); /* affine shortcut */
     prob->hess_idx_map = (int *) sp_malloc(nnz * sizeof(int));
     int *iwork = (int *) sp_malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
+    prob->stats.nnz_hessian = prob->lagrange_hessian->nnz;
     free(iwork);
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
