@@ -192,8 +192,7 @@ const char *test_const_sum_scalar_mult(void)
 
     problem_init_derivatives(prob);
 
-    /* point for evaluating */
-    double x_vals[1] = {4.0};
+    double x_vals[6] = {4.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     problem_constraint_forward(prob, x_vals);
     double constrs[1] = {6.0 * 4.0};
@@ -226,8 +225,7 @@ const char *test_param_sum_scalar_mult(void)
     problem_register_params(prob, param_nodes, 1);
     problem_init_derivatives(prob);
 
-    /* point for evaluating */
-    double x_vals[1] = {4.0};
+    double x_vals[6] = {4.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     problem_constraint_forward(prob, x_vals);
     double constrs[1] = {6.0 * 4.0};
