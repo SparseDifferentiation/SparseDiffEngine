@@ -93,8 +93,8 @@ static void jacobian_init_impl(expr *node)
 
     /* we never have to store more than the child's nnz */
     CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, Jx->nnz);
-    node->work->iwork = SP_MALLOC(MAX(jac->n, Jx->nnz) * sizeof(int));
-    snode->idx_map = SP_MALLOC(Jx->nnz * sizeof(int));
+    node->work->iwork = sp_malloc(MAX(jac->n, Jx->nnz) * sizeof(int));
+    snode->idx_map = sp_malloc(Jx->nnz * sizeof(int));
 
     /* the idx_map array maps each nonzero entry j in x->jacobian
        to the corresponding index in the output row matrix C. Specifically, for
@@ -150,7 +150,7 @@ static void wsum_hess_init_impl(expr *node)
 
     /* we never have to store more than the child's nnz */
     node->wsum_hess = child->wsum_hess->copy_sparsity(child->wsum_hess);
-    node->work->dwork = SP_MALLOC(child->size * sizeof(double));
+    node->work->dwork = sp_malloc(child->size * sizeof(double));
 }
 
 static void eval_wsum_hess(expr *node, const double *w)
@@ -210,7 +210,7 @@ expr *new_sum(expr *child, int axis)
     }
 
     /* Allocate the type-specific struct */
-    sum_expr *snode = (sum_expr *) SP_CALLOC(1, sizeof(sum_expr));
+    sum_expr *snode = (sum_expr *) sp_calloc(1, sizeof(sum_expr));
     expr *node = &snode->base;
 
     /* to be consistent with CVXPY and NumPy we treat the result from

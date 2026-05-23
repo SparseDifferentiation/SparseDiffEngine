@@ -70,7 +70,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* workspace for extracting diagonal weights */
-    node->work->dwork = (double *) SP_CALLOC(x->size, sizeof(double));
+    node->work->dwork = (double *) sp_calloc(x->size, sizeof(double));
 
     /* Copy child's Hessian structure (diag_vec is linear, so its own Hessian is
      * zero) */
@@ -106,7 +106,7 @@ expr *new_diag_vec(expr *child)
 
     /* n is the number of elements (works for both row and column vectors) */
     int n = child->size;
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, n, n, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;

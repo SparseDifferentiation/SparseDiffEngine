@@ -39,7 +39,7 @@ typedef struct
 
 static int_csr *int_csr_create(int *p, int *data, int n)
 {
-    int_csr *csr = (int_csr *) SP_MALLOC(sizeof(int_csr));
+    int_csr *csr = (int_csr *) sp_malloc(sizeof(int_csr));
     csr->p = p;
     csr->data = data;
     csr->n = n;
@@ -118,7 +118,7 @@ static int_csr *build_row_to_blocks_csr(const stacked_pd *A, int *scratch)
     int m = A->base.m;
     int n_blocks = A->n_blocks;
 
-    int *p = (int *) SP_CALLOC(m + 1, sizeof(int));
+    int *p = (int *) sp_calloc(m + 1, sizeof(int));
     for (int k = 0; k < n_blocks; k++)
     {
         permuted_dense *Ak = A->blocks[k];
@@ -129,7 +129,7 @@ static int_csr *build_row_to_blocks_csr(const stacked_pd *A, int *scratch)
     }
     cumsum(p, m);
 
-    int *data = (int *) SP_MALLOC(p[m] * sizeof(int));
+    int *data = (int *) sp_malloc(p[m] * sizeof(int));
     int *blocks_added_per_row = scratch;
     for (int k = 0; k < n_blocks; k++)
     {
@@ -148,7 +148,7 @@ static void catalog_signatures(const int_csr *row_to_blocks, iVec *catalog_sig_p
                                iVec *catalog_sig_data, int **row_to_sig_out)
 {
     int m = row_to_blocks->n;
-    int *row_to_sig = (int *) SP_MALLOC(m * sizeof(int));
+    int *row_to_sig = (int *) sp_malloc(m * sizeof(int));
     for (int i = 0; i < m; i++)
     {
         int signature_len;
@@ -169,7 +169,7 @@ static void catalog_signatures(const int_csr *row_to_blocks, iVec *catalog_sig_p
 static int_csr *group_rows_by_signature(int m, int n_sigs, const int *row_to_sig,
                                         int *scratch)
 {
-    int *p = (int *) SP_CALLOC(n_sigs + 1, sizeof(int));
+    int *p = (int *) sp_calloc(n_sigs + 1, sizeof(int));
     for (int i = 0; i < m; i++)
     {
         if (row_to_sig[i] >= 0)
@@ -179,7 +179,7 @@ static int_csr *group_rows_by_signature(int m, int n_sigs, const int *row_to_sig
     }
     cumsum(p, n_sigs);
 
-    int *data = (int *) SP_MALLOC(p[n_sigs] * sizeof(int));
+    int *data = (int *) sp_malloc(p[n_sigs] * sizeof(int));
     int *rows_added_per_sig = scratch;
     for (int i = 0; i < m; i++)
     {
@@ -208,13 +208,13 @@ static permuted_dense **build_output_blocks(const stacked_pd *A,
     int n = A->base.n;
     int n_sigs = catalog_sig_p->len - 1;
 
-    permuted_dense **out_blocks = (permuted_dense **) SP_MALLOC(
+    permuted_dense **out_blocks = (permuted_dense **) sp_malloc(
         (n_sigs > 0 ? n_sigs : 1) * sizeof(permuted_dense *));
     iVec *col_union = iVec_new(8);
     /* col_arrs / col_lens: scratch passed to sorted_union_int_arrays.
        Max sig size is bounded by A->n_blocks, so size once outside the loop. */
-    const int **col_arrs = (const int **) SP_MALLOC(A->n_blocks * sizeof(int *));
-    int *col_lens = (int *) SP_MALLOC(A->n_blocks * sizeof(int));
+    const int **col_arrs = (const int **) sp_malloc(A->n_blocks * sizeof(int *));
+    int *col_lens = (int *) sp_malloc(A->n_blocks * sizeof(int));
 
     for (int s = 0; s < n_sigs; s++)
     {
@@ -247,7 +247,7 @@ static matrix *coalesce_spd_alloc_impl(const stacked_pd *A,
 {
     int m = A->base.m;
     int n = A->base.n;
-    int *iwork = (int *) SP_CALLOC(m, sizeof(int));
+    int *iwork = (int *) sp_calloc(m, sizeof(int));
 
     // ---------------------------------------------------------------------------
     // For each global row in A, catalog which blocks contain it.

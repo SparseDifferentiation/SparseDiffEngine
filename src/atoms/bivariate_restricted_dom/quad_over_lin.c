@@ -84,10 +84,10 @@ static void jacobian_init_impl(expr *node)
     }
     else /* left node is not a variable (guaranteed to be a linear operator) */
     {
-        node->work->dwork = (double *) SP_MALLOC(x->size * sizeof(double));
+        node->work->dwork = (double *) sp_malloc(x->size * sizeof(double));
 
         /* compute required allocation and allocate jacobian */
-        bool *col_nz = (bool *) SP_CALLOC(
+        bool *col_nz = (bool *) sp_calloc(
             node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
         CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
         int nonzero_cols = count_nonzero_cols(Jx, col_nz);
@@ -114,7 +114,7 @@ static void jacobian_init_impl(expr *node)
         jac->p[1] = jac->nnz;
 
         /* find position where y should be inserted */
-        node->work->iwork = (int *) SP_MALLOC(sizeof(int));
+        node->work->iwork = (int *) sp_malloc(sizeof(int));
         for (int j = 0; j < jac->nnz; j++)
         {
             if (jac->i[j] == y->var_id)
@@ -340,7 +340,7 @@ expr *new_quad_over_lin(expr *left, expr *right)
         exit(EXIT_FAILURE);
     }
 
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
               is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = left;

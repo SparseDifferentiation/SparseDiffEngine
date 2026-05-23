@@ -29,7 +29,7 @@
  * Returns true if duplicates exist, false otherwise. */
 static bool check_for_duplicates(const int *indices, int n_idxs, int max_idx)
 {
-    bool *seen = (bool *) SP_CALLOC(max_idx, sizeof(bool));
+    bool *seen = (bool *) sp_calloc(max_idx, sizeof(bool));
     bool has_dup = false;
     for (int i = 0; i < n_idxs && !has_dup; i++)
     {
@@ -89,7 +89,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* for setting weight vector to evaluate hessian of child */
-    node->work->dwork = (double *) SP_CALLOC(x->size, sizeof(double));
+    node->work->dwork = (double *) sp_calloc(x->size, sizeof(double));
 
     /* in the implementation of eval_wsum_hess we evaluate the
        child's hessian with a weight vector that has w[i] = 0
@@ -148,7 +148,7 @@ expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)
 {
     assert(d1 * d2 == n_idxs);
     /* allocate type-specific struct */
-    index_expr *idx = (index_expr *) SP_CALLOC(1, sizeof(index_expr));
+    index_expr *idx = (index_expr *) sp_calloc(1, sizeof(index_expr));
     expr *node = &idx->base;
 
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
@@ -159,7 +159,7 @@ expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)
     expr_retain(child);
 
     /* copy indices */
-    idx->indices = (int *) SP_MALLOC(n_idxs * sizeof(int));
+    idx->indices = (int *) sp_malloc(n_idxs * sizeof(int));
     memcpy(idx->indices, indices, n_idxs * sizeof(int));
     idx->n_idxs = n_idxs;
 

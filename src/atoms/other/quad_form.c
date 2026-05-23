@@ -18,8 +18,8 @@
 #include "atoms/non_elementwise_full_dom.h"
 #include "subexpr.h"
 #include "utils/CSC_matrix.h"
-#include "utils/matrix_sum.h"
 #include "utils/cblas_wrapper.h"
+#include "utils/matrix_sum.h"
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
@@ -107,8 +107,8 @@ static void eval_jacobian(expr *node)
 
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), x->work->jacobian_csc,
-                                   x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian),
+                                   x->work->jacobian_csc, x->work->csc_work);
 
             if (x->is_affine(x))
             {
@@ -173,8 +173,7 @@ static void wsum_hess_init_impl(expr *node)
         node->work->hess_term2 = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
         /* hess = term1 + term2 */
-        int max_nnz =
-            node->work->hess_term1->nnz + node->work->hess_term2->nnz;
+        int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
         node->wsum_hess =
             new_sparse_matrix_alloc(node->n_vars, node->n_vars, max_nnz);
         sum_matrices_alloc(node->work->hess_term1, node->work->hess_term2,
@@ -201,7 +200,8 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSC_matrix *Jf = x->work->jacobian_csc;
         if (!x->work->jacobian_csc_filled)
         {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jf, x->work->csc_work);
+            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jf,
+                                   x->work->csc_work);
 
             if (x->is_affine(x))
             {
@@ -222,8 +222,10 @@ static void eval_wsum_hess(expr *node, const double *w)
                x->wsum_hess->nnz * sizeof(double));
 
         /* scale both terms by 2w */
-        cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x, 1);
-        cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x, 1);
+        cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
+                    1);
+        cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
+                    1);
 
         /* sum the two terms */
         sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
@@ -253,7 +255,7 @@ static bool is_affine(const expr *node)
 expr *new_quad_form(expr *left, CSR_matrix *Q)
 {
     assert(left->d1 == 1 || left->d2 == 1); /* left must be a vector */
-    quad_form_expr *qnode = (quad_form_expr *) SP_CALLOC(1, sizeof(quad_form_expr));
+    quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
     init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
@@ -266,6 +268,6 @@ expr *new_quad_form(expr *left, CSR_matrix *Q)
     copy_CSR_matrix(Q, qnode->Q);
 
     /* dwork stores the result of Q @ f(x) in the forward pass */
-    node->work->dwork = (double *) SP_MALLOC(left->size * sizeof(double));
+    node->work->dwork = (double *) sp_malloc(left->size * sizeof(double));
     return node;
 }

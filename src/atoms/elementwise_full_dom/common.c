@@ -47,9 +47,9 @@ void jacobian_init_elementwise(expr *node)
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
         jacobian_init(child);
         node->jacobian = child->jacobian->copy_sparsity(child->jacobian);
-        node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
+        node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
         node->work->local_jac_diag =
-            (double *) SP_MALLOC(node->size * sizeof(double));
+            (double *) sp_malloc(node->size * sizeof(double));
     }
 }
 
@@ -118,8 +118,7 @@ void wsum_hess_init_elementwise(expr *node)
                 child->wsum_hess->copy_sparsity(child->wsum_hess);
 
             /* wsum_hess = term1 + term2 */
-            int max_nnz =
-                node->work->hess_term1->nnz + node->work->hess_term2->nnz;
+            int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
             node->wsum_hess =
                 new_sparse_matrix_alloc(node->n_vars, node->n_vars, max_nnz);
             sum_matrices_alloc(node->work->hess_term1, node->work->hess_term2,
@@ -175,8 +174,8 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
                    child->wsum_hess->nnz * sizeof(double));
 
             /* wsum_hess = term1 + term2 */
-            sum_matrices_fill_values(node->work->hess_term1,
-                                     node->work->hess_term2, node->wsum_hess);
+            sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
+                                     node->wsum_hess);
         }
     }
 }
@@ -202,7 +201,7 @@ void init_elementwise(expr *node, expr *child)
 
 expr *new_elementwise(expr *child)
 {
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     if (!node) return NULL;
 
     init_elementwise(node, child);

@@ -42,9 +42,9 @@ const char *profile_hessian_exp_AX(void)
 
     /* Random A (row-major), X (col-major vec), w. Values in [-0.5, 0.5]
        to keep exp() bounded and finite. */
-    double *A_data = (double *) SP_MALLOC(n_vars * sizeof(double));
-    double *X_vals = (double *) SP_MALLOC(n_vars * sizeof(double));
-    double *w = (double *) SP_MALLOC(n_vars * sizeof(double));
+    double *A_data = (double *) sp_malloc(n_vars * sizeof(double));
+    double *X_vals = (double *) sp_malloc(n_vars * sizeof(double));
+    double *w = (double *) sp_malloc(n_vars * sizeof(double));
     for (int k = 0; k < n_vars; k++)
     {
         A_data[k] = ((double) rand() / (double) RAND_MAX) - 0.5;
@@ -86,7 +86,7 @@ const char *profile_hessian_exp_AX(void)
     /* AX_cm[j*n + i] = sum_k A_data[i*n + k] * X_vals[j*n + k]      */
     /*                = A[i, :] · X[:, j].                           */
     /* ------------------------------------------------------------ */
-    double *AX_cm = (double *) SP_MALLOC(n_vars * sizeof(double));
+    double *AX_cm = (double *) sp_malloc(n_vars * sizeof(double));
     for (int j = 0; j < n; j++)
     {
         for (int i = 0; i < n; i++)
@@ -99,7 +99,7 @@ const char *profile_hessian_exp_AX(void)
             AX_cm[j * n + i] = s;
         }
     }
-    double *d = (double *) SP_MALLOC(n_vars * sizeof(double));
+    double *d = (double *) sp_malloc(n_vars * sizeof(double));
     for (int k = 0; k < n_vars; k++)
     {
         d[k] = w[k] * exp(AX_cm[k]);
@@ -114,8 +114,8 @@ const char *profile_hessian_exp_AX(void)
     Timer t2a;
     clock_gettime(CLOCK_MONOTONIC, &t2a.start);
     permuted_dense **j_blocks =
-        (permuted_dense **) SP_MALLOC(n * sizeof(permuted_dense *));
-    int *row_perm = (int *) SP_MALLOC(n * sizeof(int));
+        (permuted_dense **) sp_malloc(n * sizeof(permuted_dense *));
+    int *row_perm = (int *) sp_malloc(n * sizeof(int));
     for (int k = 0; k < n; k++)
     {
         for (int i = 0; i < n; i++)
@@ -140,8 +140,8 @@ const char *profile_hessian_exp_AX(void)
     /* Densify both Hessians to a 2500 x 2500 row-major buffer and   */
     /* compute max-abs diff.                                         */
     /* ------------------------------------------------------------ */
-    double *D1 = (double *) SP_CALLOC(N, sizeof(double));
-    double *D2 = (double *) SP_CALLOC(N, sizeof(double));
+    double *D1 = (double *) sp_calloc(N, sizeof(double));
+    double *D2 = (double *) sp_calloc(N, sizeof(double));
 
     CSR_matrix *csr = H1->to_csr(H1);
     for (int i = 0; i < csr->m; i++)

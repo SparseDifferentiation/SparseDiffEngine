@@ -44,7 +44,7 @@ static void jacobian_init_impl(expr *node)
 
     /* The transpose's Jacobian is a row permutation of the child's:
        J_node[r, :] = J_child[k(r), :] where k(r) = (r/d1) + (r%d1)*d2. */
-    int *indices = (int *) SP_MALLOC(n_out * sizeof(int));
+    int *indices = (int *) sp_malloc(n_out * sizeof(int));
     for (int r = 0; r < n_out; r++)
     {
         indices[r] = (r / d1) + (r % d1) * d2;
@@ -74,7 +74,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
     /* for computing Kw where K is the commutation matrix */
-    node->work->dwork = (double *) SP_MALLOC(node->size * sizeof(double));
+    node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
 }
 static void eval_wsum_hess(expr *node, const double *w)
 {
@@ -104,7 +104,7 @@ static bool is_affine(const expr *node)
 
 expr *new_transpose(expr *child)
 {
-    expr *node = (expr *) SP_CALLOC(1, sizeof(expr));
+    expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, child->d2, child->d1, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
     node->left = child;
