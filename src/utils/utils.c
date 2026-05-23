@@ -114,7 +114,7 @@ void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs
         }
         cursor[min_arr]++;
     }
-    free(cursor);
+    sp_free(cursor);
 }
 
 void cumsum(int *p, int n)

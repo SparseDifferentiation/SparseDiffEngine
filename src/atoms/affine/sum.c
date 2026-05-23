@@ -188,7 +188,7 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     sum_expr *snode = (sum_expr *) node;
-    free(snode->idx_map);
+    sp_free(snode->idx_map);
 }
 
 expr *new_sum(expr *child, int axis)

@@ -46,7 +46,7 @@ void set_int_double_pair_array(int_double_pair *pair, int *ints, double *doubles
 
 void free_int_double_pair_array(int_double_pair *array)
 {
-    free(array);
+    sp_free(array);
 }
 
 void sort_int_double_pair_array(int_double_pair *array, int size)

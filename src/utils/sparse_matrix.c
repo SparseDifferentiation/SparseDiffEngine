@@ -52,9 +52,9 @@ static void sparse_free(matrix *self)
     sparse_matrix *sm = (sparse_matrix *) self;
     free_CSR_matrix(sm->csr);
     free_CSC_matrix(sm->csc_cache);
-    free(sm->csc_iwork);
-    free(sm->transpose_iwork);
-    free(sm);
+    sp_free(sm->csc_iwork);
+    sp_free(sm->transpose_iwork);
+    sp_free(sm);
 }
 
 /* Forward decl: ctor is referenced by copy_sparsity below. */

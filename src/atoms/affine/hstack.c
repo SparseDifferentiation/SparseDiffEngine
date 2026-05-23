@@ -174,7 +174,7 @@ static void free_type_data(expr *node)
 
     free_CSR_matrix(hnode->CSR_work);
     hnode->CSR_work = NULL;
-    free(hnode->args);
+    sp_free(hnode->args);
     hnode->args = NULL;
 }
 

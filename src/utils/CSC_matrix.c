@@ -33,10 +33,10 @@ CSC_matrix *new_CSC_matrix(int m, int n, int nnz)
 
     if (!matrix->p || !matrix->i || !matrix->x)
     {
-        free(matrix->p);
-        free(matrix->i);
-        free(matrix->x);
-        free(matrix);
+        sp_free(matrix->p);
+        sp_free(matrix->i);
+        sp_free(matrix->x);
+        sp_free(matrix);
         return NULL;
     }
 
@@ -51,10 +51,10 @@ void free_CSC_matrix(CSC_matrix *matrix)
 {
     if (matrix)
     {
-        free(matrix->p);
-        free(matrix->i);
-        free(matrix->x);
-        free(matrix);
+        sp_free(matrix->p);
+        sp_free(matrix->i);
+        sp_free(matrix->x);
+        sp_free(matrix);
     }
 }
 
@@ -106,7 +106,7 @@ CSR_matrix *ATA_alloc(const CSC_matrix *A)
     symmetrize_csr(Cp, Ci->data, n, C);
 
     /* free workspace */
-    free(Cp);
+    sp_free(Cp);
     iVec_free(Ci);
 
     return C;
@@ -383,7 +383,7 @@ CSR_matrix *BTA_alloc(const CSC_matrix *A, const CSC_matrix *B)
     memcpy(C->i, Ci->data, nnz * sizeof(int));
 
     /* free workspace */
-    free(Cp);
+    sp_free(Cp);
     iVec_free(Ci);
 
     return C;
@@ -529,8 +529,8 @@ CSC_matrix *symBA_alloc(const CSR_matrix *B, const CSC_matrix *A)
     memcpy(C->p, Cp, (n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, total_nnz * sizeof(int));
 
-    free(marker);
-    free(Cp);
+    sp_free(marker);
+    sp_free(Cp);
     iVec_free(Ci);
 
     return C;

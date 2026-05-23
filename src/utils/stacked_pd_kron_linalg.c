@@ -63,11 +63,11 @@ static permuted_dense *kron_scratch_init(const permuted_dense *A, int p)
 
     /* X_data=NULL leaves the buffer uninitialized; we drop it and alias A->X. */
     matrix *pd_m = new_permuted_dense(m * p, n * p, m, n, row_perm, col_perm, NULL);
-    free(row_perm);
-    free(col_perm);
+    sp_free(row_perm);
+    sp_free(col_perm);
 
     permuted_dense *pd = (permuted_dense *) pd_m;
-    free(pd->X);
+    sp_free(pd->X);
     pd->X = A->X;
     pd->base.x = A->X;
     pd->owns_X = false;
@@ -87,8 +87,8 @@ static permuted_dense *kron_BT_alloc(const permuted_dense *A, int p)
     for (int j = 0; j < n; j++) row_perm[j] = j;
     for (int i = 0; i < m; i++) col_perm[i] = i;
     matrix *BT_m = new_permuted_dense(n * p, m * p, n, m, row_perm, col_perm, NULL);
-    free(row_perm);
-    free(col_perm);
+    sp_free(row_perm);
+    sp_free(col_perm);
     return (permuted_dense *) BT_m;
 }
 
@@ -163,9 +163,9 @@ static matrix *kron_alloc_blockwise(permuted_dense *state, int p, int Cm, int Cn
     for (int k = 0; k <= out_nb; k++) C_src_p[k] = k;
 
     matrix *C = new_stacked_pd(Cm, Cn, out_nb, C_blocks, C_src_p, C_src);
-    free(C_blocks);
-    free(C_src);
-    free(C_src_p);
+    sp_free(C_blocks);
+    sp_free(C_src);
+    sp_free(C_src_p);
 
     /* Restore "block 0 set" invariant for the next call. */
     kron_scratch_set_block(state, 0, last_k);

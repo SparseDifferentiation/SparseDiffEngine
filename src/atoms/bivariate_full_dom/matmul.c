@@ -113,13 +113,13 @@ static void free_matmul_data(expr *node)
     free_CSR_matrix(mnode->B);
     free_CSR_matrix(mnode->BJg);
     free_CSC_matrix(mnode->BJg_CSC);
-    free(mnode->BJg_csc_work);
+    sp_free(mnode->BJg_csc_work);
     free_CSR_matrix(mnode->C);
     free_CSR_matrix(mnode->CT);
-    free(mnode->idx_map_C);
-    free(mnode->idx_map_CT);
-    free(mnode->idx_map_Hf);
-    free(mnode->idx_map_Hg);
+    sp_free(mnode->idx_map_C);
+    sp_free(mnode->idx_map_CT);
+    sp_free(mnode->idx_map_Hf);
+    sp_free(mnode->idx_map_Hg);
 }
 
 static bool is_affine(const expr *node)

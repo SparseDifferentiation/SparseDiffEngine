@@ -55,7 +55,7 @@ static void free_type_data(expr *node)
     linear_op_expr *lin_node = (linear_op_expr *) node;
     if (lin_node->b != NULL)
     {
-        free(lin_node->b);
+        sp_free(lin_node->b);
         lin_node->b = NULL;
     }
 }

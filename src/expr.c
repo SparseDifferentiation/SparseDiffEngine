@@ -75,25 +75,25 @@ void free_expr(expr *node)
     }
 
     /* free value array and derivative matrices */
-    free(node->value);
+    sp_free(node->value);
     free_matrix(node->jacobian);
     free_matrix(node->wsum_hess);
 
     /* free workspace */
     if (node->work)
     {
-        free(node->work->dwork);
-        free(node->work->iwork);
+        sp_free(node->work->dwork);
+        sp_free(node->work->iwork);
         free_CSC_matrix(node->work->jacobian_csc);
-        free(node->work->csc_work);
-        free(node->work->local_jac_diag);
+        sp_free(node->work->csc_work);
+        sp_free(node->work->local_jac_diag);
         free_matrix(node->work->hess_term1);
         free_matrix(node->work->hess_term2);
-        free(node->work);
+        sp_free(node->work);
     }
 
     /* free the node itself */
-    free(node);
+    sp_free(node);
 }
 
 void jacobian_init(expr *node)

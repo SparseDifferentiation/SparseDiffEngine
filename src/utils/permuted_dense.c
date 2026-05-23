@@ -30,10 +30,10 @@
 static void permuted_dense_free(matrix *self)
 {
     permuted_dense *pd = (permuted_dense *) self;
-    free(pd->row_perm);
-    free(pd->col_perm);
-    free(pd->col_inv);
-    free(pd->row_inv);
+    sp_free(pd->row_perm);
+    sp_free(pd->col_perm);
+    sp_free(pd->col_inv);
+    sp_free(pd->row_inv);
     /* csr_cache->x aliases pd->X (set in permuted_dense_to_csr_alloc); NULL it
        so free_CSR_matrix doesn't double-free the shared buffer. */
     if (pd->csr_cache != NULL)
@@ -43,12 +43,12 @@ static void permuted_dense_free(matrix *self)
     free_CSR_matrix(pd->csr_cache);
     if (pd->owns_X)
     {
-        free(pd->X);
+        sp_free(pd->X);
     }
-    free(pd->kernel_dwork);
-    free(pd->kernel_iwork);
+    sp_free(pd->kernel_dwork);
+    sp_free(pd->kernel_iwork);
     free_matrix((matrix *) pd->transpose_cache);
-    free(pd);
+    sp_free(pd);
 }
 
 /* permuted_dense has no CSC_matrix mirror; chain-rule kernels operate on X directly.
@@ -123,7 +123,7 @@ matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs)
 
     matrix *out = new_permuted_dense(n_idxs, A->base.n, new_m0, A->n0, new_row_perm,
                                      A->col_perm, NULL);
-    free(new_row_perm);
+    sp_free(new_row_perm);
     return out;
 }
 
@@ -171,7 +171,7 @@ matrix *promote_pd_alloc(const permuted_dense *A, int size)
     }
     matrix *out = new_permuted_dense(size, A->base.n, size, A->n0, new_row_perm,
                                      A->col_perm, NULL);
-    free(new_row_perm);
+    sp_free(new_row_perm);
     return out;
 }
 
@@ -253,7 +253,7 @@ matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
 
     matrix *out = new_permuted_dense(out_m, A->base.n, new_m0, A->n0, new_row_perm,
                                      A->col_perm, NULL);
-    free(new_row_perm);
+    sp_free(new_row_perm);
     return out;
 }
 
@@ -326,7 +326,7 @@ matrix *diag_vec_pd_alloc(const permuted_dense *A)
     }
     matrix *out = new_permuted_dense(out_m, A->base.n, A->m0, A->n0, new_row_perm,
                                      A->col_perm, NULL);
-    free(new_row_perm);
+    sp_free(new_row_perm);
     return out;
 }
 
@@ -504,8 +504,8 @@ matrix *new_permuted_dense_full(int m, int n, const double *data)
     for (int i = 0; i < m; i++) row_perm[i] = i;
     for (int j = 0; j < n; j++) col_perm[j] = j;
     matrix *out = new_permuted_dense(m, n, m, n, row_perm, col_perm, data);
-    free(row_perm);
-    free(col_perm);
+    sp_free(row_perm);
+    sp_free(col_perm);
     return out;
 }
 
@@ -520,7 +520,7 @@ static CSR_matrix *permuted_dense_to_csr_alloc(const permuted_dense *A)
        CSR_matrix view's value array would hold, so values are always live with no
        memcpy needed. The PD owns the buffer; permuted_dense_free nulls
        C->x before free_CSR_matrix to avoid double-free. */
-    free(C->x);
+    sp_free(C->x);
     C->x = A->X;
 
     /* fill column indices (each dense row contributes a copy of col_perm) */
@@ -547,7 +547,7 @@ void permuted_dense_ensure_kernel_dwork(const permuted_dense *pd_const, size_t s
      * a general function, not necessarily tied to permuted_dense*/
     permuted_dense *pd = (permuted_dense *) pd_const;
     if (pd->kernel_dwork_size >= size) return;
-    free(pd->kernel_dwork);
+    sp_free(pd->kernel_dwork);
     pd->kernel_dwork = (double *) sp_malloc(size * sizeof(double));
     pd->kernel_dwork_size = size;
 }

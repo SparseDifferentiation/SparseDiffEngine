@@ -76,7 +76,7 @@ expr *new_right_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     expr *node = new_transpose(left_matmul);
 
     free_CSR_matrix(AT);
-    free(work_transpose);
+    sp_free(work_transpose);
     return node;
 }
 
@@ -107,7 +107,7 @@ expr *new_right_matmul_dense(expr *param_node, expr *u, int m, int n,
         double *AT = (double *) sp_malloc(n * m * sizeof(double));
         A_transpose(AT, data, m, n);
         left_matmul_node = new_left_matmul_dense(NULL, u_transpose, n, m, AT);
-        free(AT);
+        sp_free(AT);
     }
 
     return new_transpose(left_matmul_node);

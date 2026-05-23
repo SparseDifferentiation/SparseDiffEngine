@@ -350,9 +350,9 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     prod_axis *pnode = (prod_axis *) node;
-    free(pnode->num_of_zeros);
-    free(pnode->zero_index);
-    free(pnode->prod_nonzero);
+    sp_free(pnode->num_of_zeros);
+    sp_free(pnode->zero_index);
+    sp_free(pnode->prod_nonzero);
 }
 
 /* TODO: refactor to remove diagonal entry as nonzero since it's always zero */

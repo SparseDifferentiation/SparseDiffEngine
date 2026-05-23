@@ -39,7 +39,7 @@ static bool check_for_duplicates(const int *indices, int n_idxs, int max_idx)
         }
         seen[indices[i]] = true;
     }
-    free(seen);
+    sp_free(seen);
     return has_dup;
 }
 
@@ -139,7 +139,7 @@ static void free_type_data(expr *node)
     index_expr *idx = (index_expr *) node;
     if (idx->indices)
     {
-        free(idx->indices);
+        sp_free(idx->indices);
         idx->indices = NULL;
     }
 }

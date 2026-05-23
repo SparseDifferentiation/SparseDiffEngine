@@ -98,7 +98,7 @@ static void free_type_data(expr *node)
     free_matrix(lnode->AT);
     free_CSC_matrix(lnode->Jchild_CSC);
     free_CSC_matrix(lnode->J_CSC);
-    free(lnode->csc_to_csr_work);
+    sp_free(lnode->csc_to_csr_work);
     free_expr(lnode->param_source);
 
     lnode->A = NULL;

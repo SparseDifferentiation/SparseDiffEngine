@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 
@@ -28,13 +29,13 @@ expr *new_diag_mat(expr *child)
     assert(child->d1 == child->d2);
     int n = child->d1;
 
-    int *indices = (int *) malloc(n * sizeof(int));
+    int *indices = (int *) sp_malloc(n * sizeof(int));
     for (int i = 0; i < n; i++)
     {
         indices[i] = i * (n + 1);
     }
 
     expr *node = new_index(child, n, 1, indices, n);
-    free(indices);
+    sp_free(indices);
     return node;
 }

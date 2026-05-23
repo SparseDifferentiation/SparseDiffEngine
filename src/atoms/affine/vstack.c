@@ -42,7 +42,7 @@ expr *new_vstack(expr **args, int n_args, int n_vars)
     }
 
     expr *hstacked = new_hstack(transposed, n_args, n_vars);
-    free(transposed);
+    sp_free(transposed);
 
     return new_transpose(hstacked);
 }

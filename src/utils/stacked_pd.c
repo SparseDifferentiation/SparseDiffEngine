@@ -35,9 +35,9 @@ static void stacked_pd_free(matrix *self)
         free_matrix((matrix *) spd->blocks[k]);
     }
 
-    free(spd->blocks);
-    free(spd->src_block_idx_p);
-    free(spd->src_block_idx);
+    sp_free(spd->blocks);
+    sp_free(spd->src_block_idx_p);
+    sp_free(spd->src_block_idx);
 
     if (spd->pre_coalesce != NULL)
     {
@@ -50,8 +50,8 @@ static void stacked_pd_free(matrix *self)
     }
 
     free_CSR_matrix(spd->csr_cache);
-    free(spd->base.x);
-    free(spd);
+    sp_free(spd->base.x);
+    sp_free(spd);
 }
 
 /* Vtable adapters — each downcasts matrix * to stacked_pd * and
@@ -183,9 +183,9 @@ matrix *spd_map_filter_blocks(const stacked_pd *B, int Cm, int Cn, spd_block_op 
     }
 
     matrix *C = new_stacked_pd(Cm, Cn, out_nb, C_blocks, C_src_p, C_src);
-    free(C_blocks);
-    free(C_src);
-    free(C_src_p);
+    sp_free(C_blocks);
+    sp_free(C_src);
+    sp_free(C_src_p);
     return C;
 }
 
@@ -213,7 +213,7 @@ void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
         }
     }
     memcpy(idx_map, scratch, spd->base.nnz * sizeof(int));
-    free(scratch);
+    sp_free(scratch);
 }
 
 // -----------------------------------------------------------------------------
@@ -291,7 +291,7 @@ static matrix *stacked_pd_vtable_diag_vec_alloc(matrix *self)
 
     matrix *out = new_stacked_pd(A->base.m * A->base.m, A->base.n, A->n_blocks,
                                  tmp_blocks, NULL, NULL);
-    free(tmp_blocks);
+    sp_free(tmp_blocks);
     return out;
 }
 
@@ -467,7 +467,7 @@ matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **bl
         }
 
         memcpy(spd->base.x + offset, spd->blocks[k]->X, nnz_block * sizeof(double));
-        free(spd->blocks[k]->X);
+        sp_free(spd->blocks[k]->X);
         spd->blocks[k]->X = spd->base.x + offset;
         spd->blocks[k]->base.x = spd->blocks[k]->X;
         spd->blocks[k]->owns_X = false;

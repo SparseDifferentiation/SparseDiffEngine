@@ -101,10 +101,10 @@ void free_COO_matrix(COO_matrix *matrix)
 {
     if (matrix)
     {
-        free(matrix->rows);
-        free(matrix->cols);
-        free(matrix->x);
-        free(matrix->value_map);
-        free(matrix);
+        sp_free(matrix->rows);
+        sp_free(matrix->cols);
+        sp_free(matrix->x);
+        sp_free(matrix->value_map);
+        sp_free(matrix);
     }
 }

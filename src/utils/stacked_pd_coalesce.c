@@ -48,9 +48,9 @@ static int_csr *int_csr_create(int *p, int *data, int n)
 
 static void int_csr_free(int_csr *csr)
 {
-    free(csr->p);
-    free(csr->data);
-    free(csr);
+    sp_free(csr->p);
+    sp_free(csr->data);
+    sp_free(csr);
 }
 
 /* Slice of csr->data for key k. Sets *out_len. */
@@ -237,8 +237,8 @@ static permuted_dense **build_output_blocks(const stacked_pd *A,
     }
 
     iVec_free(col_union);
-    free(col_arrs);
-    free(col_lens);
+    sp_free(col_arrs);
+    sp_free(col_lens);
     return out_blocks;
 }
 
@@ -297,13 +297,13 @@ static matrix *coalesce_spd_alloc_impl(const stacked_pd *A,
     matrix *C = new_stacked_pd(m, n, n_sigs, out_blocks, catalog_sig_p->data,
                                catalog_sig_data->data);
 
-    free(out_blocks);
+    sp_free(out_blocks);
     int_csr_free(sig_to_rows);
-    free(row_to_sig);
+    sp_free(row_to_sig);
     iVec_free(catalog_sig_p);
     iVec_free(catalog_sig_data);
     int_csr_free(row_to_blocks);
-    free(iwork);
+    sp_free(iwork);
 
     return C;
 }

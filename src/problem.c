@@ -261,7 +261,7 @@ void problem_init_hessian(problem *prob)
     int *iwork = (int *) sp_malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
     prob->stats.nnz_hessian = prob->lagrange_hessian->nnz;
-    free(iwork);
+    sp_free(iwork);
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
@@ -361,16 +361,16 @@ void free_problem(problem *prob)
     }
 
     /* Free param_nodes array (weak refs, don't free the nodes) */
-    free(prob->param_nodes);
+    sp_free(prob->param_nodes);
 
     /* Free allocated arrays */
-    free(prob->constraint_values);
-    free(prob->gradient_values);
+    sp_free(prob->constraint_values);
+    sp_free(prob->gradient_values);
     free_CSR_matrix(prob->jacobian);
     free_CSR_matrix(prob->lagrange_hessian);
     free_COO_matrix(prob->jacobian_coo);
     free_COO_matrix(prob->lagrange_hessian_coo);
-    free(prob->hess_idx_map);
+    sp_free(prob->hess_idx_map);
 
     /* Release expression references (decrements refcount) */
     free_expr(prob->objective);
@@ -378,10 +378,10 @@ void free_problem(problem *prob)
     {
         free_expr(prob->constraints[i]);
     }
-    free(prob->constraints);
+    sp_free(prob->constraints);
 
     /* Free problem struct */
-    free(prob);
+    sp_free(prob);
 }
 
 void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes)

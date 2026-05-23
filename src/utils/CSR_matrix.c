@@ -58,10 +58,10 @@ void free_CSR_matrix(CSR_matrix *matrix)
 {
     if (matrix)
     {
-        free(matrix->p);
-        free(matrix->i);
-        free(matrix->x);
-        free(matrix);
+        sp_free(matrix->p);
+        sp_free(matrix->i);
+        sp_free(matrix->x);
+        sp_free(matrix);
     }
 }
 
@@ -296,5 +296,5 @@ void symmetrize_csr(const int *Ap, const int *Ai, int m, CSR_matrix *C)
         }
     }
 
-    free(counts);
+    sp_free(counts);
 }

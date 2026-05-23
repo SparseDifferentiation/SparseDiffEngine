@@ -160,7 +160,7 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
     CSC_matrix *C = new_CSC_matrix(m * p, J->n, Ci->len);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
-    free(Cp);
+    sp_free(Cp);
     iVec_free(Ci);
 
     return C;
@@ -289,7 +289,7 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
     CSR_matrix *C = new_CSR_matrix(m, p, nnz);
     memcpy(C->p, Cp, (m + 1) * sizeof(int));
     memcpy(C->i, Ci->data, nnz * sizeof(int));
-    free(Cp);
+    sp_free(Cp);
     iVec_free(Ci);
 
     return C;

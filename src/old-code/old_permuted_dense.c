@@ -58,8 +58,8 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
 
     matrix *C =
         new_permuted_dense(B->base.n, p, B->n0, s_A, B->col_perm, col_active, NULL);
-    free(col_active);
-    free(seen);
+    sp_free(col_active);
+    sp_free(seen);
 
     /* Upgrade `dwork` (currently sized for the Y-role at m0_C * n0_C = B->n0 *
        s_A) to fit the gather buffer A_sub_dense used by BTA_csr_pd /
@@ -69,7 +69,7 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
     size_t gather_size = B->m0 * s_A;
     if (gather_size > C_pd->kernel_dwork_size)
     {
-        free(C_pd->kernel_dwork);
+        sp_free(C_pd->kernel_dwork);
         C_pd->kernel_dwork_size = gather_size;
         C_pd->kernel_dwork = (double *) sp_calloc(gather_size, sizeof(double));
     }
@@ -191,8 +191,8 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
 
     matrix *C =
         new_permuted_dense(q, A->base.n, r_B, A->n0, row_active, A->col_perm, NULL);
-    free(row_active);
-    free(seen);
+    sp_free(row_active);
+    sp_free(seen);
 
     /* Upgrade `dwork` (currently sized for the Y-role at m0_C * n0_C = r_B *
        A->n0) to fit the gather buffer B_sub_dense used by BTA_csr_pd /
@@ -201,7 +201,7 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
     size_t gather_size = A->m0 * r_B;
     if (gather_size > C_pd->kernel_dwork_size)
     {
-        free(C_pd->kernel_dwork);
+        sp_free(C_pd->kernel_dwork);
         C_pd->kernel_dwork_size = gather_size;
         C_pd->kernel_dwork = (double *) sp_calloc(gather_size, sizeof(double));
     }

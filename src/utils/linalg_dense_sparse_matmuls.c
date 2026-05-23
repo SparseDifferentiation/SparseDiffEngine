@@ -85,7 +85,7 @@ CSC_matrix *I_kron_A_alloc(const matrix *A, const CSC_matrix *J, int p)
     CSC_matrix *C = new_CSC_matrix(m * p, J->n, Ci->len);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
     memcpy(C->i, Ci->data, Ci->len * sizeof(int));
-    free(Cp);
+    sp_free(Cp);
     iVec_free(Ci);
 
     return C;
@@ -215,7 +215,7 @@ CSR_matrix *YT_kron_I_alloc(int m, int k, int n, const CSC_matrix *J)
     {
         iVec_free(pattern[blk_row]);
     }
-    free(pattern);
+    sp_free(pattern);
     return C;
 }
 
@@ -304,7 +304,7 @@ CSR_matrix *I_kron_X_alloc(int m, int k, int n, const CSC_matrix *J)
     {
         iVec_free(pattern[blk]);
     }
-    free(pattern);
+    sp_free(pattern);
     return C;
 }
 

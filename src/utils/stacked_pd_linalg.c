@@ -42,7 +42,7 @@ matrix *copy_sparsity_spd_alloc(const stacked_pd *A)
     }
 
     matrix *C = new_stacked_pd(A->base.m, A->base.n, n_blocks, C_blocks, NULL, NULL);
-    free(C_blocks);
+    sp_free(C_blocks);
     return C;
 }
 
@@ -77,7 +77,7 @@ matrix *transpose_spd_alloc(const stacked_pd *A)
        overlap so use the unchecked constructor. */
     matrix *raw = new_stacked_pd_unchecked(A->base.n, A->base.m, n_blocks, AT_blocks,
                                            NULL, NULL);
-    free(AT_blocks);
+    sp_free(AT_blocks);
 
     matrix *C = coalesce_spd_alloc((stacked_pd *) raw);
     ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
@@ -132,7 +132,7 @@ static matrix *spd_blockwise_alloc_coalesce(const stacked_pd *spd_iter, int Cm,
         partials[k] = (permuted_dense *) op(spd_iter->blocks[k], ctx);
     }
     matrix *raw = new_stacked_pd_unchecked(Cm, Cn, n_blocks, partials, NULL, NULL);
-    free(partials);
+    sp_free(partials);
     matrix *C = coalesce_spd_alloc_unchecked((stacked_pd *) raw);
     ((stacked_pd *) C)->pre_coalesce = (stacked_pd *) raw;
     return C;
@@ -242,8 +242,8 @@ matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
                                    B->col_perm, col_union->data, NULL);
 
     iVec_free(col_union);
-    free(col_perms);
-    free(lens);
+    sp_free(col_perms);
+    sp_free(lens);
 
     // -------------------------------------------------------------------------------
     // Set up workspace. We need:

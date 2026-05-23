@@ -77,4 +77,22 @@ static inline void sp_free(void *ptr)
     }
 }
 
+static inline void *sp_realloc(void *ptr, size_t size)
+{
+    size_t old_block_size = ptr ? TRACKED_BLOCK_SIZE(ptr) : 0;
+    void *new_ptr = realloc(ptr, size);
+    if (new_ptr)
+    {
+        g_allocated_bytes =
+            g_allocated_bytes - old_block_size + TRACKED_BLOCK_SIZE(new_ptr);
+        if (g_allocated_bytes > g_peak_bytes)
+        {
+            g_peak_bytes = g_allocated_bytes;
+        }
+    }
+    /* realloc returning NULL means failure — original block is still live
+       per C standard, so no counter adjustment. */
+    return new_ptr;
+}
+
 #endif /* TRACKED_ALLOC_H */

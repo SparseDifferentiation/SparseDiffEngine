@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 
@@ -40,7 +41,7 @@ expr *new_upper_tri(expr *child)
     int *indices = NULL;
     if (n_elems > 0)
     {
-        indices = (int *) malloc(n_elems * sizeof(int));
+        indices = (int *) sp_malloc(n_elems * sizeof(int));
         int k = 0;
         for (int i = 0; i < n; i++)
         {
@@ -53,6 +54,6 @@ expr *new_upper_tri(expr *child)
     }
 
     expr *node = new_index(child, n_elems, 1, indices, n_elems);
-    free(indices);
+    sp_free(indices);
     return node;
 }

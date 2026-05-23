@@ -303,10 +303,10 @@ static void free_type_data(expr *node)
     elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
     free_matrix(mul_node->C);
     free_matrix(mul_node->CT);
-    free(mul_node->idx_map_C);
-    free(mul_node->idx_map_CT);
-    free(mul_node->idx_map_Hx);
-    free(mul_node->idx_map_Hy);
+    sp_free(mul_node->idx_map_C);
+    sp_free(mul_node->idx_map_CT);
+    sp_free(mul_node->idx_map_Hx);
+    sp_free(mul_node->idx_map_Hy);
 }
 
 static bool is_affine(const expr *node)

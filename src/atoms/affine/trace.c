@@ -142,7 +142,7 @@ static void free_type_data(expr *node)
     if (node)
     {
         trace_expr *tnode = (trace_expr *) node;
-        free(tnode->idx_map);
+        sp_free(tnode->idx_map);
     }
 }
 
