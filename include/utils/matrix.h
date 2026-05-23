@@ -111,8 +111,8 @@ typedef void (*matrix_diag_vec_fill_values_fn)(matrix *A, matrix *out);
      - axis = -1: sum all rows of A. C has shape (1, A->n).
      - axis = 0:  block-sum rows in consecutive groups of d1. C has shape (A->m
                   / d1, A->n). C[j, :] = sum_{i in [j*d1, (j+1)*d1)} A[i, :].
-     - axis = 1:  stride-sum rows at modular spacing d1. C has shape (d1, A->n).
-                  C[j, :] = sum_{i : i % d1 == j} A[i, :].
+     - axis = 1:  stride-sum rows at spacing d1. C has shape (d1, A->n). C[j, :]
+                  = sum_{i : i % d1 == j} A[i, :].
 
    Caller pre-allocates idx_map of size A->nnz that can be used to compute the
    numerical result of the operation using via accumulation. */
