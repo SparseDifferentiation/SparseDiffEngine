@@ -18,6 +18,7 @@
 #include "utils/sparse_matrix.h"
 
 #include "utils/CSC_matrix.h"
+#include "utils/CSR_sum.h"
 #include "utils/linalg_sparse_matmuls.h"
 #include "utils/matrix.h"
 #include "utils/mini_numpy.h"
@@ -311,6 +312,43 @@ static void sparse_refresh_csc_values(matrix *self)
     csr_to_csc_fill_values(sm->csr, sm->csc_cache, sm->csc_iwork);
 }
 
+static matrix *sparse_sum_alloc(matrix *self, int axis, int d1, int *idx_map)
+{
+    CSR_matrix *A = ((sparse_matrix *) self)->csr;
+    int m;
+    if (axis == -1)
+    {
+        m = 1;
+    }
+    else if (axis == 0)
+    {
+        m = A->m / d1;
+    }
+    else
+    {
+        m = d1;
+    }
+    int max_nnz = MIN(A->nnz, m * A->n);
+    CSR_matrix *out = new_CSR_matrix(m, A->n, max_nnz);
+    int *iwork = (int *) sp_malloc(MAX(A->n, A->nnz) * sizeof(int));
+
+    if (axis == -1)
+    {
+        sum_all_rows_csr_alloc(A, out, iwork, idx_map);
+    }
+    else if (axis == 0)
+    {
+        sum_block_of_rows_csr_alloc(A, out, d1, iwork, idx_map);
+    }
+    else
+    {
+        sum_evenly_spaced_rows_csr_alloc(A, out, m, iwork, idx_map);
+    }
+
+    sp_free(iwork);
+    return new_sparse_matrix(out);
+}
+
 static void wire_vtable(sparse_matrix *sm)
 {
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
@@ -331,6 +369,7 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.broadcast_fill_values = sparse_broadcast_fill_values;
     sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
     sm->base.diag_vec_fill_values = sparse_diag_vec_fill_values;
+    sm->base.sum_alloc = sparse_sum_alloc;
     sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;
 }

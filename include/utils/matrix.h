@@ -106,6 +106,24 @@ typedef void (*matrix_broadcast_fill_values_fn)(matrix *A, broadcast_type type,
 typedef matrix *(*matrix_diag_vec_alloc_fn)(matrix *A);
 typedef void (*matrix_diag_vec_fill_values_fn)(matrix *A, matrix *out);
 
+/* Allocate C as a row-wise reduction of A. The reduction pattern is chosen by
+   axis:
+     - axis = -1: sum all rows of A. C has shape (1, A->n).
+                  C[0, k] = sum_{i in [0, A->m)} A[i, k].
+     - axis = 0:  block-sum rows in consecutive groups of d1 (requires
+                  A->m % d1 == 0). C has shape (A->m / d1, A->n).
+                  C[j, k] = sum_{i in [j*d1, (j+1)*d1)} A[i, k].
+     - axis = 1:  stride-sum rows at modular spacing d1 (requires
+                  A->m % d1 == 0). C has shape (d1, A->n).
+                  C[j, k] = sum_{i : i % d1 == j} A[i, k].
+   d1 is ignored when axis == -1.
+
+   Caller pre-allocates idx_map of size A->nnz. On return idx_map[ii] holds the
+   position in C's base.x where A's base.x[ii] scatter-adds. A values-fill pass
+   can compute C->x by zeroing it and accumulating A->x[ii] into
+   C->x[idx_map[ii]] for ii in [0, A->nnz). */
+typedef matrix *(*matrix_sum_alloc_fn)(matrix *A, int axis, int d1, int *idx_map);
+
 typedef void (*matrix_free_fn)(matrix *self);
 
 struct matrix
@@ -141,6 +159,7 @@ struct matrix
     matrix_broadcast_fill_values_fn broadcast_fill_values;
     matrix_diag_vec_alloc_fn diag_vec_alloc;
     matrix_diag_vec_fill_values_fn diag_vec_fill_values;
+    matrix_sum_alloc_fn sum_alloc;
 
     /* Lifecycle */
     matrix_free_fn free_fn;

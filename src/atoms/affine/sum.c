@@ -85,49 +85,13 @@ static void jacobian_init_impl(expr *node)
 {
     expr *x = node->left;
     sum_expr *snode = (sum_expr *) node;
-    int axis = snode->axis;
-
-    /* initialize child's jacobian */
     jacobian_init(x);
-    CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
 
-    /* we never have to store more than the child's nnz, nor more than the
-       output's cell count */
-    int max_nnz = MIN(Jx->nnz, node->size * node->n_vars);
-    CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, max_nnz);
-    node->work->iwork = sp_malloc(MAX(jac->n, Jx->nnz) * sizeof(int));
-    snode->idx_map = sp_malloc(Jx->nnz * sizeof(int));
-
-    /* the idx_map array maps each nonzero entry j in x->jacobian
-       to the corresponding index in the output row matrix C. Specifically, for
-       each nonzero entry j in A, idx_map[j] gives the position in C->x where
-       the value from x->jacobian->x[j] should be accumulated. */
-
-    if (axis == -1)
-    {
-        sum_all_rows_csr_alloc(Jx, jac, node->work->iwork, snode->idx_map);
-    }
-    else if (axis == 0)
-    {
-        sum_block_of_rows_csr_alloc(Jx, jac, x->d1, node->work->iwork,
-                                    snode->idx_map);
-    }
-    else if (axis == 1)
-    {
-        sum_evenly_spaced_rows_csr_alloc(Jx, jac, node->size, node->work->iwork,
-                                         snode->idx_map);
-    }
-
-    /* For stacked_pd children, child->jacobian->base.x is block-major while
-       csr->x is row-major sorted. Re-index idx_map so it can be applied
-       directly to base.x in eval_jacobian. */
-    if (x->jacobian->is_stacked_pd)
-    {
-        compose_csr_idx_map_for_spd((const stacked_pd *) x->jacobian, Jx,
-                                    snode->idx_map);
-    }
-
-    node->jacobian = new_sparse_matrix(jac);
+    /* sum_alloc fills idx_map so eval_jacobian can accumulate from
+       child->jacobian->x. */
+    snode->idx_map = sp_malloc(x->jacobian->nnz * sizeof(int));
+    node->jacobian =
+        x->jacobian->sum_alloc(x->jacobian, snode->axis, x->d1, snode->idx_map);
 }
 
 static void eval_jacobian(expr *node)

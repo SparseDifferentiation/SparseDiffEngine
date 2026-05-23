@@ -6,6 +6,7 @@
 #include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "test_helpers.h"
 
 const char *test_jacobian_sum_log(void)
@@ -191,6 +192,40 @@ const char *test_jacobian_sum_log_axis_1(void)
     mu_assert("vals fail", cmp_values(sum_node->jacobian, expected_Ax, 6));
     mu_assert("sparsity fail",
               cmp_sparsity(sum_node->jacobian, expected_Ap, expected_Ai, 3, 6));
+
+    free_expr(sum_node);
+    return 0;
+}
+
+/* End-to-end test that the polymorphic sum vtable (axis=-1) dispatches
+   correctly when the child Jacobian is a permuted_dense. Constructed as
+   sum(A2 @ (A1 @ x), -1): a single left_matmul on a leaf variable goes
+   through the sparse leaf-var fast path, but the outer left_matmul on a
+   composite child fires the PD jacobian_init path (BA_pd_matrices_alloc),
+   giving us a PD child for sum. We assert the PD-ness of the child and then
+   verify the resulting sum Jacobian by finite differences.
+
+   PD child Jacobians with d2 > 1 (needed to make axis=0/1 non-trivial via
+   the sum atom) are hard to construct from leaf variables — the multi-column
+   left_matmul path produces a stacked_pd instead. Direct unit tests on the
+   PD vtable for axis=0 and axis=1 live in tests/utils/test_permuted_dense.h. */
+const char *test_jacobian_sum_axis_minus_one_pd_child(void)
+{
+    double A1_data[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double A2_data[12] = {1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+                          1.0, 0.0, 1.0, 0.0, 1.0, 0.0};
+
+    expr *x = new_variable(2, 1, 0, 2);
+    expr *A1_x = new_left_matmul_dense(NULL, x, 3, 2, A1_data);
+    expr *A2_A1_x = new_left_matmul_dense(NULL, A1_x, 4, 3, A2_data);
+    expr *sum_node = new_sum(A2_A1_x, -1);
+
+    double u_vals[2] = {0.5, -1.5};
+    jacobian_init(sum_node);
+    mu_assert("child Jacobian should be PD", A2_A1_x->jacobian->is_permuted_dense);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(sum_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(sum_node);
     return 0;

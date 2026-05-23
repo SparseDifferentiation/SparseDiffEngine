@@ -66,8 +66,8 @@
 #include "utils/test_csr_matrix.h"
 #include "utils/test_linalg_sparse_matmuls.h"
 #include "utils/test_linalg_utils_matmul_chain_rule.h"
-#include "utils/test_matrix.h"
 #include "utils/test_matmul_dispatchers.h"
+#include "utils/test_matrix.h"
 #include "utils/test_permuted_dense.h"
 #include "utils/test_stacked_pd.h"
 #include "wsum_hess/affine/test_broadcast.h"
@@ -211,6 +211,7 @@ int main(void)
     mu_run_test(test_jacobian_sum_log_axis_0, tests_run);
     mu_run_test(test_jacobian_sum_add_log_axis_0, tests_run);
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
+    mu_run_test(test_jacobian_sum_axis_minus_one_pd_child, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
     mu_run_test(test_jacobian_vstack_vectors, tests_run);
@@ -405,6 +406,9 @@ int main(void)
     mu_run_test(test_permuted_dense_BTA_empty_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTA_partial_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
+    mu_run_test(test_permuted_dense_sum_all_rows, tests_run);
+    mu_run_test(test_permuted_dense_sum_block_of_rows, tests_run);
+    mu_run_test(test_permuted_dense_sum_evenly_spaced_rows, tests_run);
     mu_run_test(test_BTA_pd_csc_matches_csr, tests_run);
     mu_run_test(test_BA_pd_matrices_pd_pd_full_block_B, tests_run);
     mu_run_test(test_BA_pd_matrices_pd_pd_general_B, tests_run);

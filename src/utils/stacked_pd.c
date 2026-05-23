@@ -17,8 +17,11 @@
  */
 #include "utils/stacked_pd.h"
 
+#include "utils/CSR_sum.h"
+#include "utils/iVec.h"
 #include "utils/matrix.h"
 #include "utils/permuted_dense.h"
+#include "utils/sparse_matrix.h"
 #include "utils/stacked_pd_linalg.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
@@ -378,6 +381,93 @@ static void assert_disjoint_row_perms(int n_blocks, permuted_dense *const *block
 }
 #endif
 
+/* C = sum(A, axis) for a stacked_pd A.
+
+   axis == -1: native union path. C is a 1-row permuted_dense whose col_perm
+   is the sorted union of all blocks' col_perms (every input cell collapses
+   to exactly one output column). idx_map is filled in block-major order
+   matching A's base.x layout.
+
+   axis == 0 or 1: internal CSR fallback. A row-reduction of a stacked_pd
+   doesn't in general fit a single PD output (different output rows may have
+   different col footprints), so we materialize via to_csr, dispatch to the
+   existing CSR helper, then re-index idx_map from CSR ordering into A's
+   block-major base.x ordering so a downstream values-fill pass can read
+   directly from A->base.x. */
+static matrix *stacked_pd_vtable_sum_alloc(matrix *self, int axis, int d1,
+                                           int *idx_map)
+{
+    stacked_pd *spd = (stacked_pd *) self;
+
+    if (axis == -1)
+    {
+        /* multi-way sorted union of each block's col_perm */
+        iVec *col_union = iVec_new(8);
+        const int **col_arrs =
+            (const int **) sp_malloc(spd->n_blocks * sizeof(int *));
+        int *col_lens = (int *) sp_malloc(spd->n_blocks * sizeof(int));
+        for (int k = 0; k < spd->n_blocks; k++)
+        {
+            col_arrs[k] = spd->blocks[k]->col_perm;
+            col_lens[k] = spd->blocks[k]->n0;
+        }
+        sorted_union_int_arrays(col_arrs, col_lens, spd->n_blocks, col_union);
+        sp_free(col_arrs);
+        sp_free(col_lens);
+
+        /* inverse map: column-id (in [0, self->n)) → its position in col_union */
+        int *col_to_pos = (int *) sp_malloc(self->n * sizeof(int));
+        for (int p = 0; p < col_union->len; p++)
+        {
+            col_to_pos[col_union->data[p]] = p;
+        }
+
+        int row_zero = 0;
+        matrix *out = new_permuted_dense(1, self->n, 1, col_union->len, &row_zero,
+                                         col_union->data, NULL);
+        iVec_free(col_union);
+
+        /* fill idx_map in block-major order matching spd->base.x layout */
+        int native_pos = 0;
+        for (int k = 0; k < spd->n_blocks; k++)
+        {
+            permuted_dense *blk = spd->blocks[k];
+            for (int i = 0; i < blk->m0; i++)
+            {
+                for (int j = 0; j < blk->n0; j++)
+                {
+                    idx_map[native_pos++] = col_to_pos[blk->col_perm[j]];
+                }
+            }
+        }
+        sp_free(col_to_pos);
+        return out;
+    }
+
+    /* axis == 0 or 1: CSR fallback */
+    CSR_matrix *A = self->to_csr(self);
+    int m_out = (axis == 0) ? A->m / d1 : d1;
+    int max_out_nnz = MIN(A->nnz, m_out * A->n);
+    CSR_matrix *out = new_CSR_matrix(m_out, A->n, max_out_nnz);
+    int *iwork = (int *) sp_malloc(MAX(A->n, A->nnz) * sizeof(int));
+
+    if (axis == 0)
+    {
+        sum_block_of_rows_csr_alloc(A, out, d1, iwork, idx_map);
+    }
+    else
+    {
+        sum_evenly_spaced_rows_csr_alloc(A, out, m_out, iwork, idx_map);
+    }
+    sp_free(iwork);
+
+    /* idx_map is currently in CSR row order; re-index to block-major base.x
+       order so eval_jacobian reads child->jacobian->x directly. */
+    compose_csr_idx_map_for_spd(spd, A, idx_map);
+
+    return new_sparse_matrix(out);
+}
+
 static void wire_vtable(stacked_pd *spd)
 {
     spd->base.is_stacked_pd = true;
@@ -398,6 +488,7 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
     spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
     spd->base.broadcast_fill_values = stacked_pd_vtable_broadcast_fill_values;
+    spd->base.sum_alloc = stacked_pd_vtable_sum_alloc;
 }
 
 matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,

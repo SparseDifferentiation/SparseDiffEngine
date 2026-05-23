@@ -1047,4 +1047,100 @@ const char *test_BA_pd_matrices_fast_path(void)
     return 0;
 }
 
+/* Direct vtable tests for sum_alloc. The test PD represents a (6, 4) matrix
+   with a (3, 2) dense block at rows {0, 3, 4}, cols {1, 3}. We exercise all
+   three axes; for axis=0 (d1=2) the buckets {0/2, 3/2, 4/2} = {0, 1, 2}
+   are all distinct and non-decreasing (linear-scan dedupe); for axis=1
+   (d1=3) the buckets {0%3, 3%3, 4%3} = {0, 0, 1} collapse two input rows
+   onto the same output row (bitmap dedupe), so multiple idx_map entries
+   point to the same output position — a values-fill pass would scatter-add. */
+const char *test_permuted_dense_sum_all_rows(void)
+{
+    int row_perm[3] = {0, 3, 4};
+    int col_perm[2] = {1, 3};
+    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
+
+    int idx_map[6];
+    matrix *out = M->sum_alloc(M, -1, /*d1 unused*/ 0, idx_map);
+
+    mu_assert("output is PD", out->is_permuted_dense);
+    permuted_dense *opd = (permuted_dense *) out;
+    mu_assert("out m", out->m == 1);
+    mu_assert("out n", out->n == 4);
+    mu_assert("out m0", opd->m0 == 1);
+    mu_assert("out n0", opd->n0 == 2);
+    int expected_row_perm[1] = {0};
+    int expected_col_perm[2] = {1, 3};
+    mu_assert("out row_perm", cmp_int_array(opd->row_perm, expected_row_perm, 1));
+    mu_assert("out col_perm", cmp_int_array(opd->col_perm, expected_col_perm, 2));
+    /* every input row collapses to row 0, so idx_map[i*n0+j] = j */
+    int expected_idx_map[6] = {0, 1, 0, 1, 0, 1};
+    mu_assert("idx_map", cmp_int_array(idx_map, expected_idx_map, 6));
+
+    free_matrix(out);
+    free_matrix(M);
+    return 0;
+}
+
+const char *test_permuted_dense_sum_block_of_rows(void)
+{
+    int row_perm[3] = {0, 3, 4};
+    int col_perm[2] = {1, 3};
+    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
+
+    int d1 = 2; /* child shape (d1, d2) = (2, 3); output rows = d2 = 3 */
+    int idx_map[6];
+    matrix *out = M->sum_alloc(M, 0, d1, idx_map);
+
+    mu_assert("output is PD", out->is_permuted_dense);
+    permuted_dense *opd = (permuted_dense *) out;
+    mu_assert("out m", out->m == 3);
+    mu_assert("out n", out->n == 4);
+    mu_assert("out m0", opd->m0 == 3);
+    mu_assert("out n0", opd->n0 == 2);
+    int expected_row_perm[3] = {0, 1, 2}; /* {0/2, 3/2, 4/2} */
+    int expected_col_perm[2] = {1, 3};
+    mu_assert("out row_perm", cmp_int_array(opd->row_perm, expected_row_perm, 3));
+    mu_assert("out col_perm", cmp_int_array(opd->col_perm, expected_col_perm, 2));
+    int expected_idx_map[6] = {0, 1, 2, 3, 4, 5};
+    mu_assert("idx_map", cmp_int_array(idx_map, expected_idx_map, 6));
+
+    free_matrix(out);
+    free_matrix(M);
+    return 0;
+}
+
+const char *test_permuted_dense_sum_evenly_spaced_rows(void)
+{
+    int row_perm[3] = {0, 3, 4};
+    int col_perm[2] = {1, 3};
+    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
+
+    int d1 = 3; /* output rows = d1 = 3, buckets = {0%3, 3%3, 4%3} = {0, 0, 1} */
+    int idx_map[6];
+    matrix *out = M->sum_alloc(M, 1, d1, idx_map);
+
+    mu_assert("output is PD", out->is_permuted_dense);
+    permuted_dense *opd = (permuted_dense *) out;
+    mu_assert("out m", out->m == 3);
+    mu_assert("out n", out->n == 4);
+    mu_assert("out m0", opd->m0 == 2); /* two distinct buckets {0, 1} */
+    mu_assert("out n0", opd->n0 == 2);
+    int expected_row_perm[2] = {0, 1};
+    int expected_col_perm[2] = {1, 3};
+    mu_assert("out row_perm", cmp_int_array(opd->row_perm, expected_row_perm, 2));
+    mu_assert("out col_perm", cmp_int_array(opd->col_perm, expected_col_perm, 2));
+    /* input rows 0 and 3 both bucket to output row 0 (idx_map → 0, 1);
+       input row 4 buckets to output row 1 (idx_map → 2, 3) */
+    int expected_idx_map[6] = {0, 1, 0, 1, 2, 3};
+    mu_assert("idx_map", cmp_int_array(idx_map, expected_idx_map, 6));
+
+    free_matrix(out);
+    free_matrix(M);
+    return 0;
+}
+
 #endif /* TEST_PERMUTED_DENSE_H */
