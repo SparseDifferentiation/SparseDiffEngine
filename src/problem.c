@@ -32,10 +32,9 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
-    /* Baseline the peak watermark to the current live bytes — peak then
-       captures any growth during this problem's lifetime. Don't reset
-       g_allocated_bytes itself: allocations made before new_problem are
-       still alive, and their frees would subtract from this counter. */
+    /* we don't reset g_peak_bytes or g_allocated_bytes since allocations
+       using sp_malloc/sp_calloc might have happened before new_problem in eg.,
+       left_matmul, and their frees will subtract from this counter. */
     g_peak_bytes = g_allocated_bytes;
     problem *prob = (problem *) sp_calloc(1, sizeof(problem));
     if (!prob) return NULL;
