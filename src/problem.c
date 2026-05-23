@@ -253,8 +253,10 @@ void problem_init_hessian(problem *prob)
 
     int hess_nnz_ub = MIN(nnz, prob->n_vars * prob->n_vars);
     prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, hess_nnz_ub);
-    memset(prob->lagrange_hessian->x, 0,
-           hess_nnz_ub * sizeof(double)); /* affine shortcut */
+
+    /* affine shortcut */
+    memset(prob->lagrange_hessian->x, 0, hess_nnz_ub * sizeof(double));
+
     prob->hess_idx_map = (int *) sp_malloc(nnz * sizeof(int));
     int *iwork = (int *) sp_malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
