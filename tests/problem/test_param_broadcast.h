@@ -192,9 +192,6 @@ const char *test_const_sum_scalar_mult(void)
 
     problem_init_derivatives(prob);
 
-    /* point for evaluating. Sized at n_vars (numerical derivative reads
-       n_vars doubles); only x_vals[0] feeds the lone variable, the rest
-       are unused but must be in valid memory. */
     double x_vals[6] = {4.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     problem_constraint_forward(prob, x_vals);
@@ -228,9 +225,6 @@ const char *test_param_sum_scalar_mult(void)
     problem_register_params(prob, param_nodes, 1);
     problem_init_derivatives(prob);
 
-    /* point for evaluating. Sized at n_vars (numerical derivative reads
-       n_vars doubles); only x_vals[0] feeds the lone variable, the rest
-       are unused but must be in valid memory. */
     double x_vals[6] = {4.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     problem_constraint_forward(prob, x_vals);
