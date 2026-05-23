@@ -67,6 +67,7 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     /* Initialize statistics */
     prob->stats.time_init_derivatives = 0.0;
     prob->stats.time_eval_jacobian = 0.0;
+    prob->stats.time_eval_gradient = 0.0;
     prob->stats.time_eval_hessian = 0.0;
     prob->stats.time_forward_obj = 0.0;
     prob->stats.time_forward_constraints = 0.0;
@@ -343,6 +344,8 @@ static inline void print_end_message(const Diff_engine_stats *stats)
            stats->time_init_derivatives);
     printf("  Jacobian evaluation:                 %8.3f\n",
            stats->time_eval_jacobian);
+    printf("  Gradient evaluation:                 %8.3f\n",
+           stats->time_eval_gradient);
     printf("  Hessian evaluation:                  %8.3f\n",
            stats->time_eval_hessian);
     printf("  Objective evaluation:                %8.3f\n",
@@ -351,8 +354,8 @@ static inline void print_end_message(const Diff_engine_stats *stats)
            stats->time_forward_constraints);
 
     double total_time = stats->time_init_derivatives + stats->time_eval_jacobian +
-                        stats->time_eval_hessian + stats->time_forward_obj +
-                        stats->time_forward_constraints;
+                        stats->time_eval_gradient + stats->time_eval_hessian +
+                        stats->time_forward_obj + stats->time_forward_constraints;
 
     printf("  ----------------------------------------------\n");
     printf("  Total differentiation time:          %8.3f\n", total_time);
