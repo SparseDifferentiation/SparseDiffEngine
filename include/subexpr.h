@@ -61,7 +61,7 @@ typedef struct quad_form_expr
     expr base;
     matrix *Q;
     CSC_matrix *QJf; /* Q * J_f in CSC_matrix (for chain rule hessian) */
-    int n;           /* = left->size (dense path only) */
+    int n;           /* quadratic dimension = left->size */
 
     /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
     expr *param_source;

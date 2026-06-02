@@ -33,25 +33,45 @@
    n x n permuted_dense (optionally parameter-fed) over a leaf variable, with the
    Hessian 2Q materialized as a dense block. Q is assumed symmetric. */
 
-/* ===================== sparse path (Q is a CSR_matrix) ===================== */
+/* ============ shared forward + jacobian (via the matrix vtable) ============ */
+
+/* Copy the latest parameter value into Q (symmetric: column-major == row-major). */
+static void refresh_dense_Q(quad_form_expr *qnode)
+{
+    memcpy(qnode->Q->x, qnode->param_source->value,
+           (size_t) qnode->n * qnode->n * sizeof(double));
+}
+
+/* Refresh Q from the parameter once per solve (no-op when Q is constant). */
+static void refresh_param_values_qf(quad_form_expr *qnode)
+{
+    if (qnode->param_source == NULL || !qnode->base.needs_parameter_refresh)
+    {
+        return;
+    }
+    qnode->base.needs_parameter_refresh = false;
+    refresh_dense_Q(qnode);
+}
 
 static void forward(expr *node, const double *u)
 {
+    quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
+
+    /* refresh Q from the parameter if needed (no-op on the constant/sparse path) */
+    if (qnode->param_source != NULL && node->needs_parameter_refresh)
+    {
+        qnode->param_source->forward(qnode->param_source, NULL);
+    }
+    refresh_param_values_qf(qnode);
 
     /* child's forward pass */
     x->forward(x, u);
 
-    /* local forward pass  */
-    CSR_matrix *Q =
-        ((quad_form_expr *) node)->Q->to_csr(((quad_form_expr *) node)->Q);
-    Ax_csr(Q, x->value, node->work->dwork, 0);
-    node->value[0] = 0.0;
-
-    for (int i = 0; i < x->size; i++)
-    {
-        node->value[0] += x->value[i] * node->work->dwork[i];
-    }
+    /* dwork = Q @ x; value = x' (Q x) */
+    matrix *Q = qnode->Q;
+    Q->block_left_mult_vec(Q, x->value, node->work->dwork, 1);
+    node->value[0] = cblas_ddot(qnode->n, x->value, 1, node->work->dwork, 1);
 }
 
 static void jacobian_init_impl(expr *node)
@@ -98,16 +118,16 @@ static void jacobian_init_impl(expr *node)
 
 static void eval_jacobian(expr *node)
 {
+    quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
-    CSR_matrix *Q =
-        ((quad_form_expr *) node)->Q->to_csr(((quad_form_expr *) node)->Q);
     CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        /* jacobian = 2 * (Q @ x)^T */
-        Ax_csr(Q, x->value, jac->x, 0);
-        cblas_dscal(x->size, 2.0, jac->x, 1);
+        /* jacobian = 2 * (Q @ x)^T (leaf x: sparsity is the variable block) */
+        matrix *Q = qnode->Q;
+        Q->block_left_mult_vec(Q, x->value, jac->x, 1);
+        cblas_dscal(qnode->n, 2.0, jac->x, 1);
     }
     else
     {
@@ -133,10 +153,13 @@ static void eval_jacobian(expr *node)
     }
 }
 
+/* ===== hessian, sparse backend (raw CSR/CSC symmetric products; the non-leaf
+   chain rule J_f^T Q J_f has no matrix-vtable equivalent) ===================== */
+
 static void wsum_hess_init_impl(expr *node)
 {
-    CSR_matrix *Q =
-        ((quad_form_expr *) node)->Q->to_csr(((quad_form_expr *) node)->Q);
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    CSR_matrix *Q = qnode->Q->to_csr(qnode->Q);
     expr *x = node->left;
 
     if (x->var_id != NOT_A_VARIABLE)
@@ -170,7 +193,6 @@ static void wsum_hess_init_impl(expr *node)
         */
 
         /* jacobian_csc_init(x) already called in jacobian_init */
-        quad_form_expr *qnode = (quad_form_expr *) node;
         CSC_matrix *Jf = x->work->jacobian_csc;
 
         /* term1 = Jf^T W Jf = Jf^T B*/
@@ -193,8 +215,8 @@ static void wsum_hess_init_impl(expr *node)
 
 static void eval_wsum_hess(expr *node, const double *w)
 {
-    CSR_matrix *Q =
-        ((quad_form_expr *) node)->Q->to_csr(((quad_form_expr *) node)->Q);
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    CSR_matrix *Q = qnode->Q->to_csr(qnode->Q);
     expr *x = node->left;
     double two_w = 2.0 * w[0];
 
@@ -220,7 +242,7 @@ static void eval_wsum_hess(expr *node, const double *w)
             }
         }
 
-        CSC_matrix *QJf = ((quad_form_expr *) node)->QJf;
+        CSC_matrix *QJf = qnode->QJf;
         CSR_matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
 
         /* term1 = J_f^T Q J_f = J_f^T B  */
@@ -244,58 +266,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
-/* ============== dense path (Q is an n x n permuted_dense block) ============= */
-
-/* Copy the latest parameter value into Q (symmetric: column-major == row-major). */
-static void refresh_dense_Q(quad_form_expr *qnode)
-{
-    memcpy(qnode->Q->x, qnode->param_source->value,
-           (size_t) qnode->n * qnode->n * sizeof(double));
-}
-
-/* Refresh Q from the parameter once per solve. */
-static void refresh_param_values_qf(quad_form_expr *qnode)
-{
-    if (qnode->param_source == NULL || !qnode->base.needs_parameter_refresh)
-    {
-        return;
-    }
-    qnode->base.needs_parameter_refresh = false;
-    refresh_dense_Q(qnode);
-}
-
-static void forward_dense(expr *node, const double *u)
-{
-    quad_form_expr *qnode = (quad_form_expr *) node;
-    expr *x = node->left;
-
-    /* refresh Q from the parameter if needed */
-    if (qnode->param_source != NULL && node->needs_parameter_refresh)
-    {
-        qnode->param_source->forward(qnode->param_source, NULL);
-    }
-    refresh_param_values_qf(qnode);
-
-    /* child's forward pass */
-    x->forward(x, u);
-
-    /* dwork = Q @ x; value = x' (Q x) */
-    matrix *Q = qnode->Q;
-    Q->block_left_mult_vec(Q, x->value, node->work->dwork, 1);
-    node->value[0] = cblas_ddot(qnode->n, x->value, 1, node->work->dwork, 1);
-}
-
-static void eval_jacobian_dense(expr *node)
-{
-    quad_form_expr *qnode = (quad_form_expr *) node;
-    expr *x = node->left;
-    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
-
-    /* jacobian = 2 * (Q @ x)^T (leaf x: sparsity is the variable block) */
-    matrix *Q = qnode->Q;
-    Q->block_left_mult_vec(Q, x->value, jac->x, 1);
-    cblas_dscal(qnode->n, 2.0, jac->x, 1);
-}
+/* ============== hessian, dense backend (permuted_dense block) ============== */
 
 static void wsum_hess_init_dense(expr *node)
 {
@@ -361,6 +332,7 @@ expr *new_quad_form(expr *left, CSR_matrix *Q)
 
     /* Set type-specific field. new_sparse_matrix takes ownership, so clone. */
     qnode->Q = new_sparse_matrix(new_csr(Q));
+    qnode->n = left->size; /* quadratic dimension; used by the shared forward */
 
     /* dwork stores the result of Q @ f(x) in the forward pass */
     node->work->dwork = (double *) sp_malloc(left->size * sizeof(double));
@@ -383,9 +355,8 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, child->n_vars, forward_dense, jacobian_init_impl,
-              eval_jacobian_dense, is_affine, wsum_hess_init_dense,
-              eval_wsum_hess_dense, free_type_data);
+    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
+              is_affine, wsum_hess_init_dense, eval_wsum_hess_dense, free_type_data);
     node->left = child;
     expr_retain(child);
 

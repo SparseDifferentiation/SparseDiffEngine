@@ -33,8 +33,7 @@
    Here, f(x) can be a vector-valued expression and a matrix-valued
    expression. The dimensions are A - m x n, f(x) - n x p, y - m x p.
    Note that here A does not have global column indices but it is a local matrix.
-   This is an important distinction compared to linear_op_expr. # Should we remove this
-   comment and all other mentions of linear_op_expr since it won't be used anymore?
+   This is an important distinction compared to linear_op_expr.
 
    * To compute the forward pass: vec(y) = A_kron @ vec(f(x)),
      where A_kron = I_p kron A is a Kronecker product of size (m*p) x (n*p),
@@ -42,9 +41,6 @@
      diagonal. In the refactored implementation we don't form A_kron explicitly,
      only conceptually. This led to a 100x speedup in the initialization of the
      Jacobian sparsity pattern.
-
-     This comment above now uses the permuted dense abstraction.
-     I think we can maybe update it?
 
    * To compute the Jacobian: J_y = A_kron @ J_f(x), where J_f(x) is the
      Jacobian of f(x) of size (n*p) x n_vars.
@@ -193,7 +189,6 @@ static void eval_jacobian_sparse(expr *node)
                            lnode->csc_to_csr_work);
 }
 
-/* question, why doesn't the hessian have different methods for sparse vs. dense? */
 static void wsum_hess_init_impl(expr *node)
 {
     /* initialize child's hessian */
