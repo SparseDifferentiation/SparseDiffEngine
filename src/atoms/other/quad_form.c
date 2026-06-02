@@ -33,8 +33,6 @@
    n x n permuted_dense (optionally parameter-fed) over a leaf variable, with the
    Hessian 2Q materialized as a dense block. Q is assumed symmetric. */
 
-/* ============ shared forward + jacobian (via the matrix vtable) ============ */
-
 /* Copy the latest parameter value into Q (symmetric: column-major == row-major). */
 static void refresh_dense_Q(quad_form_expr *qnode)
 {
@@ -153,9 +151,8 @@ static void eval_jacobian(expr *node)
     }
 }
 
-/* ===== hessian, sparse backend (raw CSR/CSC symmetric products; the non-leaf
-   chain rule J_f^T Q J_f has no matrix-vtable equivalent) ===================== */
-
+/* Sparse-backend hessian. The non-leaf chain rule J_f^T Q J_f uses raw CSR/CSC
+   symmetric products that have no matrix-vtable equivalent. */
 static void wsum_hess_init_impl(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -245,7 +242,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         CSC_matrix *QJf = qnode->QJf;
         CSR_matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
 
-        /* term1 = J_f^T Q J_f = J_f^T B  */
+        /* term1 = J_f^T Q J_f = J_f^T B */
         BA_fill_values(Q, Jf, QJf);
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
@@ -266,15 +263,14 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
-/* ============== hessian, dense backend (permuted_dense block) ============== */
-
+/* Dense-backend hessian: 2wQ as a permuted_dense block. */
 static void wsum_hess_init_dense(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
     int n = qnode->n;
 
-    /* Hessian is the dense block 2P over x's contiguous variable range. */
+    /* Hessian is the dense block 2Q over x's contiguous variable range. */
     int *perm = (int *) sp_malloc(n * sizeof(int));
     for (int i = 0; i < n; i++)
     {
@@ -295,8 +291,6 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
     memcpy(node->wsum_hess->x, qnode->Q->x, nn * sizeof(double));
     cblas_dscal(nn, 2.0 * w[0], node->wsum_hess->x, 1);
 }
-
-/* ============================= shared / ctors ============================== */
 
 static void free_type_data(expr *node)
 {
@@ -364,8 +358,7 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
     /* dwork stores Q @ x in the forward pass */
     node->work->dwork = (double *) sp_malloc(n * sizeof(double));
 
-    /* Convention: exactly one of P_data (constant) or param_source (parametric)
-       is set. */
+    /* parameter support */
     qnode->param_source = param_source;
     if (param_source != NULL)
     {
@@ -375,11 +368,14 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
                             "set\n");
             exit(1);
         }
+
         expr_retain(param_source);
+
         /* Q is filled by refresh_dense_Q on the first forward pass. */
         qnode->Q = new_permuted_dense_full(n, n, NULL);
         node->needs_parameter_refresh = true;
     }
+    /* constant matrix case */
     else
     {
         if (P_data == NULL)
@@ -387,6 +383,7 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
             fprintf(stderr, "Error in new_quad_form_dense: need P data\n");
             exit(1);
         }
+
         qnode->Q = new_permuted_dense_full(n, n, P_data);
     }
 

@@ -104,7 +104,6 @@
 #include "wsum_hess/other/test_prod_axis_zero.h"
 #include "wsum_hess/other/test_quad_form.h"
 #include "wsum_hess/other/test_quad_form_dense.h"
-#include "wsum_hess/other/test_quad_form_dense_param.h"
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
