@@ -54,12 +54,27 @@ typedef struct power_expr
     double p;
 } power_expr;
 
-/* Quadratic form: y = x'*Q*x */
+/* Quadratic form: y = x'*Q*x.
+ *
+ * Two storage paths share this struct:
+ *   - sparse: Q (CSR) is set, P_dense == NULL. The original code path.
+ *   - dense:  P_dense (n x n, row-major, symmetric) is set, Q == NULL. Used for a
+ *             dense or parametric quadratic matrix over a leaf variable; the Hessian
+ *             is materialized as a permuted_dense block (2*P) instead of a sparse CSR.
+ */
 typedef struct quad_form_expr
 {
     expr base;
     CSR_matrix *Q;
     CSC_matrix *QJf; /* Q * J_f in CSC_matrix (for chain rule hessian) */
+
+    /* dense path (NULL on the sparse path) */
+    matrix *P; /* n x n permuted_dense, row-major, symmetric */
+    int n;     /* = left->size (dense path only) */
+
+    /* parametric dense Q: param_source feeds P_dense each solve (NULL otherwise) */
+    expr *param_source;
+    void (*refresh_param_values)(struct quad_form_expr *);
 } quad_form_expr;
 
 /* Sum reduction along an axis */

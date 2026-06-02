@@ -20,6 +20,7 @@
 #include "utils/CSC_matrix.h"
 #include "utils/cblas_wrapper.h"
 #include "utils/matrix_sum.h"
+#include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
@@ -27,6 +28,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* This atom implements the quadratic form y = x' Q x. There are two storage
+   paths, chosen at construction time (mirroring left_matmul's sparse/dense
+   split): the sparse path stores Q as a CSR_matrix; the dense path stores Q as
+   an n x n permuted_dense P (optionally fed by a parameter) and materializes the
+   Hessian as a dense permuted_dense block. Both paths assume Q symmetric, so the
+   Hessian of x'Qx is taken to be 2Q. */
+
+/* ===================== sparse path (Q is a CSR_matrix) ===================== */
 
 static void forward(expr *node, const double *u)
 {
@@ -233,16 +243,107 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
+/* ============== dense path (P is an n x n permuted_dense block) ============= */
+
+/* Copy the latest parameter value into P's dense buffer. P is symmetric, so the
+   column-major layout Python sends equals the row-major layout we store. */
+static void refresh_dense_P(quad_form_expr *qnode)
+{
+    memcpy(qnode->P->x, qnode->param_source->value,
+           (size_t) qnode->n * qnode->n * sizeof(double));
+}
+
+/* Refresh wrapper mirroring left_matmul: runs the callback once per solve. */
+static void refresh_param_values_qf(quad_form_expr *qnode)
+{
+    if (qnode->param_source == NULL || !qnode->base.needs_parameter_refresh)
+    {
+        return;
+    }
+    qnode->base.needs_parameter_refresh = false;
+    qnode->refresh_param_values(qnode);
+}
+
+static void forward_dense(expr *node, const double *u)
+{
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    expr *x = node->left;
+
+    /* refresh P from the parameter if needed (mirrors left_matmul forward) */
+    if (qnode->param_source != NULL && node->needs_parameter_refresh)
+    {
+        qnode->param_source->forward(qnode->param_source, NULL);
+    }
+    refresh_param_values_qf(qnode);
+
+    /* child's forward pass */
+    x->forward(x, u);
+
+    /* dwork = P @ x; value = x' (P x) */
+    matrix *P = qnode->P;
+    P->block_left_mult_vec(P, x->value, node->work->dwork, 1);
+    node->value[0] = cblas_ddot(qnode->n, x->value, 1, node->work->dwork, 1);
+}
+
+static void eval_jacobian_dense(expr *node)
+{
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    expr *x = node->left;
+    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
+
+    /* jacobian = 2 * (P @ x)^T (leaf x: sparsity is the variable block) */
+    matrix *P = qnode->P;
+    P->block_left_mult_vec(P, x->value, jac->x, 1);
+    cblas_dscal(qnode->n, 2.0, jac->x, 1);
+}
+
+static void wsum_hess_init_dense(expr *node)
+{
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    expr *x = node->left;
+    int n = qnode->n;
+
+    /* Hessian is the dense block 2P over x's contiguous variable range. */
+    int *perm = (int *) sp_malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++)
+    {
+        perm[i] = x->var_id + i;
+    }
+    node->wsum_hess =
+        new_permuted_dense(node->n_vars, node->n_vars, n, n, perm, perm, NULL);
+    sp_free(perm);
+}
+
+static void eval_wsum_hess_dense(expr *node, const double *w)
+{
+    quad_form_expr *qnode = (quad_form_expr *) node;
+    int nn = qnode->n * qnode->n;
+
+    /* Hessian = 2 w P (P symmetric, constant up to the weight). The PD's value
+       buffer (->x) aliases its dense block, so writing it updates to_csr too. */
+    memcpy(node->wsum_hess->x, qnode->P->x, nn * sizeof(double));
+    cblas_dscal(nn, 2.0 * w[0], node->wsum_hess->x, 1);
+}
+
+/* ============================= shared / ctors ============================== */
+
 static void free_type_data(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
-    free_CSR_matrix(qnode->Q);
-    qnode->Q = NULL;
+    if (qnode->Q != NULL)
+    {
+        free_CSR_matrix(qnode->Q);
+        qnode->Q = NULL;
+    }
     if (qnode->QJf != NULL)
     {
         free_CSC_matrix(qnode->QJf);
         qnode->QJf = NULL;
     }
+    free_matrix(qnode->P);
+    qnode->P = NULL;
+    free_expr(qnode->param_source);
+    qnode->param_source = NULL;
 }
 
 static bool is_affine(const expr *node)
@@ -269,5 +370,60 @@ expr *new_quad_form(expr *left, CSR_matrix *Q)
 
     /* dwork stores the result of Q @ f(x) in the forward pass */
     node->work->dwork = (double *) sp_malloc(left->size * sizeof(double));
+    return node;
+}
+
+expr *new_quad_form_dense(expr *child, int n, const double *P_data,
+                          expr *param_source)
+{
+    assert(child->d1 == 1 || child->d2 == 1); /* child must be a vector */
+    assert(child->size == n);
+    /* Dense path supports a leaf variable only (the only case cvxpy emits). */
+    if (child->var_id == NOT_A_VARIABLE)
+    {
+        fprintf(stderr,
+                "Error in new_quad_form_dense: dense path requires a leaf "
+                "variable child\n");
+        exit(1);
+    }
+
+    quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
+    expr *node = &qnode->base;
+
+    init_expr(node, 1, 1, child->n_vars, forward_dense, jacobian_init_impl,
+              eval_jacobian_dense, is_affine, wsum_hess_init_dense,
+              eval_wsum_hess_dense, free_type_data);
+    node->left = child;
+    expr_retain(child);
+
+    qnode->n = n;
+    /* dwork stores P @ x in the forward pass */
+    node->work->dwork = (double *) sp_malloc(n * sizeof(double));
+
+    qnode->param_source = param_source;
+    if (param_source != NULL)
+    {
+        if (P_data != NULL)
+        {
+            fprintf(stderr, "Error in new_quad_form_dense: param and data both "
+                            "set\n");
+            exit(1);
+        }
+        expr_retain(param_source);
+        qnode->refresh_param_values = refresh_dense_P;
+        /* P buffer is filled by refresh_dense_P on the first forward pass. */
+        qnode->P = new_permuted_dense_full(n, n, NULL);
+        node->needs_parameter_refresh = true;
+    }
+    else
+    {
+        if (P_data == NULL)
+        {
+            fprintf(stderr, "Error in new_quad_form_dense: need P data\n");
+            exit(1);
+        }
+        qnode->P = new_permuted_dense_full(n, n, P_data);
+    }
+
     return node;
 }

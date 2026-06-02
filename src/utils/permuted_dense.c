@@ -157,6 +157,8 @@ matrix *promote_pd_alloc(const permuted_dense *A, int size)
 {
     assert(A->m0 <= 1);
 
+    /* does this actually happen? if so, when?
+    actually, what even is m0 here, we should have more documentation */
     if (A->m0 == 0)
     {
         /* source row is all-zero; output is also structurally all-zero. */
@@ -164,6 +166,8 @@ matrix *promote_pd_alloc(const permuted_dense *A, int size)
                                   NULL);
     }
 
+    /* does it make sense to use the row_permutation of the original pd matrix A?
+    it seems like the broadcast atom does that. */
     int *new_row_perm = (int *) sp_malloc(size * sizeof(int));
     for (int i = 0; i < size; i++)
     {
