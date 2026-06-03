@@ -31,8 +31,8 @@
 
 /* Dense cell count a*b for allocation upper bounds, clamped to INT_MAX on overflow.
    Used as MIN(loose_nnz_bound, sat_mul_int(rows, cols)): a real nnz bound is always
-   < INT_MAX, so on overflow the MIN correctly falls back to the loose bound instead of
-   selecting a wrapped (negative or small-positive) product. */
+   < INT_MAX, so on overflow the MIN correctly falls back to the loose bound instead
+   of selecting a wrapped (negative or small-positive) product. */
 static inline int sat_mul_int(int a, int b)
 {
     if (a <= 0 || b <= 0) return 0;

@@ -41,10 +41,10 @@ const char *test_sat_mul_int_clamps_on_overflow(void)
 }
 
 /* sparse_index_alloc sized its allocation as MIN(Jx->nnz, n_idxs * self->n). For a
-   large jacobian the dense product n_idxs * self->n overflows int (e.g. a transpose of
-   a 250000-variable matrix), wrapping negative so MIN selected it -> calloc overflow ->
-   SIGSEGV. This builds an index op whose product overflows and checks the result is a
-   valid CSR with the true (subset) nnz. */
+   large jacobian the dense product n_idxs * self->n overflows int (e.g. a transpose
+   of a 250000-variable matrix), wrapping negative so MIN selected it -> calloc
+   overflow -> SIGSEGV. This builds an index op whose product overflows and checks
+   the result is a valid CSR with the true (subset) nnz. */
 const char *test_sparse_index_alloc_no_int_overflow(void)
 {
     /* n_idxs * self->n = 25000 * 100000 = 2.5e9 overflows int32. */

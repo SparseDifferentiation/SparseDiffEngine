@@ -35,9 +35,9 @@ CSC_matrix *I_kron_A_alloc(const matrix *A, const CSC_matrix *J, int p)
     int n = A->n;
     int i, j, jj, block, block_start, block_end, block_jj_start, row_offset;
 
-    /* Ci grows via iVec_append, so this is only a capacity hint: seed from the source's
-       true nnz, never the dense product J->n * m (which overflows int for large operands
-       and over-allocates hugely for a sparse result). */
+    /* Ci grows via iVec_append, so this is only a capacity hint: seed from the
+       source's true nnz, never the dense product J->n * m (which overflows int for
+       large operands and over-allocates hugely for a sparse result). */
     int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
     iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
     Cp[0] = 0;
