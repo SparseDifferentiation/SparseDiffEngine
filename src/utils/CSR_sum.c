@@ -367,7 +367,7 @@ CSR_matrix *sum_4_csr_alloc(const CSR_matrix *A, const CSR_matrix *B,
     const CSR_matrix *inputs[4] = {A, B, C, D};
     int m = A->m;
     int n = A->n;
-    int nnz_ub = MIN(A->nnz + B->nnz + C->nnz + D->nnz, m * n);
+    int nnz_ub = MIN(A->nnz + B->nnz + C->nnz + D->nnz, sat_mul_int(m, n));
 
     /* allocate output and index maps */
     CSR_matrix *out = new_CSR_matrix(m, n, nnz_ub);

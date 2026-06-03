@@ -116,7 +116,7 @@ static void wsum_hess_init_impl(expr *node)
 
     /* worst-case scenario the nnz of node->wsum_hess is the sum of children's
        nnz, capped by the output cell count */
-    int nnz_ub = MIN(nnz, node->n_vars * node->n_vars);
+    int nnz_ub = MIN(nnz, sat_mul_int(node->n_vars, node->n_vars));
     CSR_matrix *H = new_CSR_matrix(node->n_vars, node->n_vars, nnz_ub);
     hnode->CSR_work = new_CSR_matrix(node->n_vars, node->n_vars, nnz_ub);
 

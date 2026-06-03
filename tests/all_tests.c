@@ -60,6 +60,7 @@
 #include "problem/test_param_prob.h"
 #include "problem/test_problem.h"
 #include "utils/test_COO_matrix.h"
+#include "utils/test_alloc_overflow.h"
 #include "utils/test_cblas.h"
 #include "utils/test_csc_matrix.h"
 #include "utils/test_csr_csc_conversion.h"
@@ -346,6 +347,8 @@ int main(void)
     mu_run_test(test_wsum_hess_matmul_X_X, tests_run);
 
     printf("\n--- Utility Tests ---\n");
+    mu_run_test(test_sat_mul_int_clamps_on_overflow, tests_run);
+    mu_run_test(test_sparse_index_alloc_no_int_overflow, tests_run);
     mu_run_test(test_cblas_ddot, tests_run);
     mu_run_test(test_diag_csr_mult, tests_run);
     mu_run_test(test_csr_sum, tests_run);
