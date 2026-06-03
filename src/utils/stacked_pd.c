@@ -447,7 +447,7 @@ static matrix *stacked_pd_vtable_sum_row_partition_alloc(matrix *self, int axis,
     /* axis == 0 or 1: CSR fallback */
     CSR_matrix *A = self->to_csr(self);
     int m_out = (axis == 0) ? A->m / d1 : d1;
-    int max_out_nnz = MIN(A->nnz, m_out * A->n);
+    int max_out_nnz = MIN(A->nnz, sat_mul_int(m_out, A->n));
     CSR_matrix *out = new_CSR_matrix(m_out, A->n, max_out_nnz);
     int *iwork = (int *) sp_malloc(MAX(A->n, A->nnz) * sizeof(int));
 

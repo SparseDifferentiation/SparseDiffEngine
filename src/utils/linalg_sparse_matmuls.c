@@ -95,9 +95,10 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
     int j, jj, block, block_start, block_end, block_jj_start, block_jj_end,
         row_offset;
 
-    /* allocate column pointers and an estimate of row indices */
+    /* Allocate column pointers and an estimate of row indices. Capacity hint
+       based on J->nnz and not on the dense product */
     int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
-    iVec *Ci = iVec_new(J->n * m);
+    iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
     Cp[0] = 0;
 
     /* for each column of J */

@@ -256,7 +256,7 @@ void problem_init_hessian(problem *prob)
         nnz += prob->constraints[i]->wsum_hess->nnz;
     }
 
-    int hess_nnz_ub = MIN(nnz, prob->n_vars * prob->n_vars);
+    int hess_nnz_ub = MIN(nnz, sat_mul_int(prob->n_vars, prob->n_vars));
     prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, hess_nnz_ub);
 
     /* affine shortcut */

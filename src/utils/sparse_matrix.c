@@ -124,7 +124,8 @@ static void sparse_transpose_fill_values(const matrix *self, matrix *out)
 static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
 {
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, MIN(Jx->nnz, n_idxs * self->n));
+    int alloc_ub = sat_mul_int(n_idxs, self->n);
+    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, MIN(Jx->nnz, alloc_ub));
 
     J->p[0] = 0;
     for (int i = 0; i < n_idxs; i++)
@@ -329,7 +330,7 @@ static matrix *sparse_sum_row_partition_alloc(matrix *self, int axis, int d1,
     {
         m = d1;
     }
-    int max_nnz = MIN(A->nnz, m * A->n);
+    int max_nnz = MIN(A->nnz, sat_mul_int(m, A->n));
     CSR_matrix *out = new_CSR_matrix(m, A->n, max_nnz);
     int *iwork = (int *) sp_malloc(MAX(A->n, A->nnz) * sizeof(int));
 

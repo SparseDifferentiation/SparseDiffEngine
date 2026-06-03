@@ -35,8 +35,9 @@ CSC_matrix *I_kron_A_alloc(const matrix *A, const CSC_matrix *J, int p)
     int n = A->n;
     int i, j, jj, block, block_start, block_end, block_jj_start, row_offset;
 
+    /* capacity hint based on J->nnz and not on the dense product */
     int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
-    iVec *Ci = iVec_new(J->n * m);
+    iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
     Cp[0] = 0;
 
     /* for each column of J */
