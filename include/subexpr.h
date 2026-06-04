@@ -60,8 +60,10 @@ typedef struct quad_form_expr
 {
     expr base;
     matrix *Q;
-    CSC_matrix *QJf; /* Q * J_f in CSC_matrix (for chain rule hessian) */
-    int n;           /* quadratic dimension = left->size */
+    CSC_matrix *QJf;   /* Q * J_f in CSC_matrix (sparse-path chain-rule hessian) */
+    matrix *QJf_dense; /* Q * J_f as permuted_dense (dense-path composition hessian) */
+    double *diag_w;    /* length-n diagonal (= 2w) fed to BTDA on the dense path */
+    int n;             /* quadratic dimension = left->size */
 
     /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
     expr *param_source;

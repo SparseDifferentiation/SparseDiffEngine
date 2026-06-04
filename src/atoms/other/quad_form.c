@@ -19,6 +19,7 @@
 #include "subexpr.h"
 #include "utils/CSC_matrix.h"
 #include "utils/cblas_wrapper.h"
+#include "utils/matmul_dispatchers.h"
 #include "utils/matrix_sum.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
@@ -30,8 +31,9 @@
 #include <string.h>
 
 /* Quadratic form y = x'Qx. Sparse path: Q is a CSR matrix. Dense path: Q is an
-   n x n permuted_dense (optionally parameter-fed) over a leaf variable, with the
-   Hessian 2Q materialized as a dense block. Q is assumed symmetric. */
+   n x n permuted_dense (optionally parameter-fed). For a leaf x the Hessian 2Q is
+   materialized as a dense block; for a composition x = f(u) the dense path forms the
+   chain rule J_f^T Q J_f via the PD matmul dispatchers. Q is assumed symmetric. */
 
 /* Copy the latest parameter value into Q (symmetric: column-major == row-major). */
 static void refresh_dense_Q(quad_form_expr *qnode)
@@ -263,33 +265,102 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 }
 
-/* Dense-backend hessian: 2wQ as a permuted_dense block. */
+/* Dense-backend hessian. Leaf x: 2wQ materialized as a permuted_dense block (the
+   fast common case). Composition x = f(u): the chain rule
+       H = J_f^T (2w Q) J_f  +  sum_i (2w Q f(u))_i nabla^2 f_i  =  term1 + term2,
+   with term1 formed via the PD matmul dispatchers (Q symmetric PD so QJf = Q J_f
+   is PD; J_f^T Q J_f = (Q J_f)^T J_f keeps the PD operand on the dispatch key). */
 static void wsum_hess_init_dense(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
     int n = qnode->n;
 
-    /* Hessian is the dense block 2Q over x's contiguous variable range. */
-    int *perm = (int *) sp_malloc(n * sizeof(int));
-    for (int i = 0; i < n; i++)
+    if (x->var_id != NOT_A_VARIABLE)
     {
-        perm[i] = x->var_id + i;
+        /* Hessian is the dense block 2Q over x's contiguous variable range. */
+        int *perm = (int *) sp_malloc(n * sizeof(int));
+        for (int i = 0; i < n; i++)
+        {
+            perm[i] = x->var_id + i;
+        }
+        node->wsum_hess =
+            new_permuted_dense(node->n_vars, node->n_vars, n, n, perm, perm, NULL);
+        sp_free(perm);
     }
-    node->wsum_hess =
-        new_permuted_dense(node->n_vars, node->n_vars, n, n, perm, perm, NULL);
-    sp_free(perm);
+    else
+    {
+        jacobian_init(x);
+
+        /* The dispatchers read a sparse child jacobian through its csc_cache. */
+        if (!x->jacobian->is_permuted_dense && !x->jacobian->is_stacked_pd)
+        {
+            sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
+        }
+
+        /* term1 = J_f^T Q J_f = (Q J_f)^T J_f. QJf is PD; passing it as the
+           transposed operand B keeps the PD type on the dispatch key. */
+        permuted_dense *Q_pd = (permuted_dense *) qnode->Q;
+        qnode->QJf_dense = BA_pd_matrices_alloc(Q_pd, x->jacobian);
+        node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf_dense);
+        qnode->diag_w = (double *) sp_malloc(n * sizeof(double));
+
+        /* term2 = sum_i (Q f(x))_i nabla^2 f_i */
+        wsum_hess_init(x);
+        node->work->hess_term2 = x->wsum_hess->copy_sparsity(x->wsum_hess);
+
+        /* hess = term1 + term2 (CSR-backed; sum_matrices is type-agnostic) */
+        int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
+        node->wsum_hess =
+            new_sparse_matrix_alloc(node->n_vars, node->n_vars, max_nnz);
+        sum_matrices_alloc(node->work->hess_term1, node->work->hess_term2,
+                           node->wsum_hess);
+    }
 }
 
 static void eval_wsum_hess_dense(expr *node, const double *w)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
-    int nn = qnode->n * qnode->n;
+    expr *x = node->left;
+    double two_w = 2.0 * w[0];
 
-    /* Hessian = 2 w Q (Q symmetric, constant up to the weight). The PD's value
-       buffer (->x) aliases its dense block, so writing it updates to_csr too. */
-    memcpy(node->wsum_hess->x, qnode->Q->x, nn * sizeof(double));
-    cblas_dscal(nn, 2.0 * w[0], node->wsum_hess->x, 1);
+    if (x->var_id != NOT_A_VARIABLE)
+    {
+        int nn = qnode->n * qnode->n;
+        /* Hessian = 2 w Q (Q symmetric, constant up to the weight). The PD's value
+           buffer (->x) aliases its dense block, so writing it updates to_csr too. */
+        memcpy(node->wsum_hess->x, qnode->Q->x, nn * sizeof(double));
+        cblas_dscal(nn, two_w, node->wsum_hess->x, 1);
+    }
+    else
+    {
+        /* Refresh the child jacobian's csc_cache unconditionally: the dispatchers
+           read it, and jacobian_csc_filled tracks the separate work->jacobian_csc
+           mirror (already set by the gradient pass), so it must NOT gate this. */
+        x->eval_jacobian(x);
+        x->jacobian->refresh_csc_values(x->jacobian);
+
+        /* term1 = 2w J_f^T Q J_f. The dispatcher fill is B^T diag(d) A (no plain
+           B^T A form); a constant diagonal d = 2w carries the weight. */
+        for (int i = 0; i < qnode->n; i++)
+        {
+            qnode->diag_w[i] = two_w;
+        }
+        BA_pd_matrices_fill_values((permuted_dense *) qnode->Q, x->jacobian,
+                                   (permuted_dense *) qnode->QJf_dense);
+        BTDA_matrices_fill_values(x->jacobian, qnode->diag_w, qnode->QJf_dense,
+                                  node->work->hess_term1);
+
+        /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
+        x->eval_wsum_hess(x, node->work->dwork);
+        memcpy(node->work->hess_term2->x, x->wsum_hess->x,
+               x->wsum_hess->nnz * sizeof(double));
+        cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
+                    1);
+
+        sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
+                                 node->wsum_hess);
+    }
 }
 
 static void free_type_data(expr *node)
@@ -301,6 +372,16 @@ static void free_type_data(expr *node)
     {
         free_CSC_matrix(qnode->QJf);
         qnode->QJf = NULL;
+    }
+    if (qnode->QJf_dense != NULL)
+    {
+        free_matrix(qnode->QJf_dense);
+        qnode->QJf_dense = NULL;
+    }
+    if (qnode->diag_w != NULL)
+    {
+        sp_free(qnode->diag_w);
+        qnode->diag_w = NULL;
     }
     free_expr(qnode->param_source);
     qnode->param_source = NULL;
@@ -338,13 +419,6 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
 {
     assert(child->d1 == 1 || child->d2 == 1); /* child must be a vector */
     assert(child->size == n);
-    /* Dense path supports a leaf variable only (the only case cvxpy emits). */
-    if (child->var_id == NOT_A_VARIABLE)
-    {
-        fprintf(stderr, "Error in new_quad_form_dense: dense path requires a leaf "
-                        "variable child\n");
-        exit(1);
-    }
 
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
