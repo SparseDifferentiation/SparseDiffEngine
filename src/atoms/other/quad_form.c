@@ -25,7 +25,6 @@
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,14 +34,8 @@
    materialized as a dense block; for a composition x = f(u) the dense path forms the
    chain rule J_f^T Q J_f via the PD matmul dispatchers. Q is assumed symmetric. */
 
-/* Copy the latest parameter value into Q (symmetric: column-major == row-major). */
-static void refresh_dense_Q(quad_form_expr *qnode)
-{
-    memcpy(qnode->Q->x, qnode->param_source->value,
-           (size_t) qnode->n * qnode->n * sizeof(double));
-}
-
-/* Refresh Q from the parameter once per solve (no-op when Q is constant). */
+/* Refresh Q from the parameter once per solve (no-op when Q is constant).
+   Q is symmetric, so column-major == row-major and the copy is verbatim. */
 static void refresh_param_values_qf(quad_form_expr *qnode)
 {
     if (qnode->param_source == NULL || !qnode->base.needs_parameter_refresh)
@@ -50,7 +43,8 @@ static void refresh_param_values_qf(quad_form_expr *qnode)
         return;
     }
     qnode->base.needs_parameter_refresh = false;
-    refresh_dense_Q(qnode);
+    memcpy(qnode->Q->x, qnode->param_source->value,
+           (size_t) qnode->n * qnode->n * sizeof(double));
 }
 
 static void forward(expr *node, const double *u)
@@ -432,7 +426,6 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
     /* dwork stores Q @ x in the forward pass */
     node->work->dwork = (double *) sp_malloc(n * sizeof(double));
 
-    /* parameter support */
     qnode->param_source = param_source;
     if (param_source != NULL)
     {
@@ -445,11 +438,10 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
 
         expr_retain(param_source);
 
-        /* Q is filled by refresh_dense_Q on the first forward pass. */
+        /* Q is filled from the parameter on the first forward pass. */
         qnode->Q = new_permuted_dense_full(n, n, NULL);
         node->needs_parameter_refresh = true;
     }
-    /* constant matrix case */
     else
     {
         if (P_data == NULL)
