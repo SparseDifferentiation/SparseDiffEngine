@@ -60,8 +60,9 @@ typedef struct quad_form_expr
 {
     expr base;
     matrix *Q;
-    /* Q * J_f for the composition chain-rule hessian: CSC on the sparse path,
-       permuted_dense on the dense path. */
+    /* Q * J_f for the composition chain-rule hessian; exactly one is used per
+       node. Sparse path: CSC (raw symmetric products, no matrix-vtable form).
+       Dense path: permuted_dense via the matrix dispatchers. */
     CSC_matrix *QJf;
     matrix *QJf_dense;
     double *diag_w; /* length-n diagonal (= 2w) fed to BTDA on the dense path */
