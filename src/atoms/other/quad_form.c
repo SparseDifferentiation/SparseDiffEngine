@@ -149,7 +149,7 @@ static void eval_jacobian(expr *node)
 
 /* Sparse-backend hessian. The non-leaf chain rule J_f^T Q J_f uses raw CSR/CSC
    symmetric products that have no matrix-vtable equivalent. */
-static void wsum_hess_init_impl(expr *node)
+static void wsum_hess_init_sparse(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     CSR_matrix *Q = qnode->Q->to_csr(qnode->Q);
@@ -206,7 +206,7 @@ static void wsum_hess_init_impl(expr *node)
     }
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_sparse(expr *node, const double *w)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     CSR_matrix *Q = qnode->Q->to_csr(qnode->Q);
@@ -284,8 +284,6 @@ static void wsum_hess_init_dense(expr *node)
     }
     else
     {
-        jacobian_init(x);
-
         /* The dispatchers read a sparse child jacobian through its csc_cache. */
         if (!x->jacobian->is_permuted_dense && !x->jacobian->is_stacked_pd)
         {
@@ -328,14 +326,14 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
     }
     else
     {
-        /* Refresh the child jacobian's csc_cache unconditionally: the dispatchers
-           read it, and jacobian_csc_filled tracks the separate work->jacobian_csc
-           mirror (already set by the gradient pass), so it must NOT gate this. */
-        x->eval_jacobian(x);
+        /* Mirror the child jacobian's current values into its csc_cache; the PD
+           dispatchers below read from it. */
         x->jacobian->refresh_csc_values(x->jacobian);
 
         /* term1 = 2w J_f^T Q J_f. The dispatcher fill is B^T diag(d) A (no plain
-           B^T A form); a constant diagonal d = 2w carries the weight. */
+           B^T A form); a constant diagonal d = 2w carries the weight.
+           Potential TODO: Add back BTA_matrices_fill_values_kernel so we don't have
+           to form diag_w. */
         for (int i = 0; i < qnode->n; i++)
         {
             qnode->diag_w[i] = two_w;
@@ -388,14 +386,15 @@ static bool is_affine(const expr *node)
     return false;
 }
 
-expr *new_quad_form(expr *left, CSR_matrix *Q)
+expr *new_quad_form_sparse(expr *left, CSR_matrix *Q)
 {
     assert(left->d1 == 1 || left->d2 == 1); /* left must be a vector */
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
     init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+              is_affine, wsum_hess_init_sparse, eval_wsum_hess_sparse,
+              free_type_data);
     node->left = left;
     expr_retain(left);
 

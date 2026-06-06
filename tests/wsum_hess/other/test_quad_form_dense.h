@@ -1,7 +1,9 @@
 #include "atoms/affine.h"
+#include "atoms/elementwise_full_dom.h"
 #include "atoms/non_elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "test_helpers.h"
 #include <math.h>
 #include <string.h>
@@ -52,6 +54,48 @@ const char *test_wsum_hess_quad_form_dense(void)
               cmp_sparsity(node->wsum_hess, expected_hp, expected_hi, 5, 9));
     mu_assert("dense quad_form hessian vals fail",
               cmp_values(node->wsum_hess, expected_hx, 9));
+
+    free_expr(node);
+    return 0;
+}
+
+/* Dense quad_form over an affine composition x = A u (term2 vanishes). */
+const char *test_wsum_hess_quad_form_dense_affine(void)
+{
+    double u_vals[3] = {0.5, 1.0, 1.5};
+    double w = 2.0;
+
+    /* row-major 3x3 dense P */
+    double P[9] = {1.0, 2.0, 0.0, 2.0, 3.0, 0.0, 0.0, 0.0, 4.0};
+    /* row-major 3x3 A (square, so A u has size n) */
+    double A[9] = {0.5, -1.0, 0.2, 0.3, 0.7, -0.4, -0.6, 0.1, 0.9};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *Ax = new_left_matmul_dense(NULL, x, 3, 3, A);
+    expr *node = new_quad_form_dense(Ax, 3, P, NULL);
+
+    mu_assert("dense quad_form affine composition wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    return 0;
+}
+
+/* Dense quad_form over a nonlinear composition x = exp(u) (nonzero term2). */
+const char *test_wsum_hess_quad_form_dense_exp(void)
+{
+    double u_vals[3] = {0.5, 1.0, 1.5};
+    double w = 3.0;
+
+    /* row-major 3x3 dense P */
+    double P[9] = {1.0, 2.0, 0.0, 2.0, 3.0, 0.0, 0.0, 0.0, 4.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *exp_x = new_exp(x);
+    expr *node = new_quad_form_dense(exp_x, 3, P, NULL);
+
+    mu_assert("dense quad_form nonlinear composition wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(node);
     return 0;
