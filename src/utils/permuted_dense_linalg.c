@@ -469,12 +469,12 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
     return C;
 }
 
-/* Internal helper for BTDA_csc_pd_fill_values: C = B^T @ A where B is CSC
-   and the right operand A is supplied as a transposed-layout raw buffer
-   (row j of A_T = m0_A contiguous doubles = the j-th column of A's dense
+/* Internal core for BTA_csc_pd_fill_values / BTDA_csc_pd_fill_values: C = B^T @ A
+   where B is CSC and the right operand A is supplied as a transposed-layout raw
+   buffer (row j of A_T = m0_A contiguous doubles = the j-th column of A's dense
    block). Transposed-output sibling of BA_pd_csc_fill_values. */
-static void BTA_csc_pd_fill_values(const CSC_matrix *B, const double *A_T, int m0_A,
-                                   const int *inv, permuted_dense *C)
+static void BTA_csc_denseT_fill_values(const CSC_matrix *B, const double *A_T,
+                                       int m0_A, const int *inv, permuted_dense *C)
 {
     /* C[i_C, j_C] = dot(col C->row_perm[i_C] of B, row j_C of A_T). */
     for (int i_C = 0; i_C < C->m0; i_C++)
@@ -491,9 +491,27 @@ static void BTA_csc_pd_fill_values(const CSC_matrix *B, const double *A_T, int m
     }
 }
 
+/* C = B^T @ A where B is CSC and A is permuted_dense. The csc_pd analogue of
+   BTDA_csc_pd_fill_values without the diagonal: transpose A's dense block into
+   A->kernel_dwork (the column-contiguous layout the core wants) and delegate. */
+void BTA_csc_pd_fill_values(const CSC_matrix *B, const permuted_dense *A,
+                            permuted_dense *C)
+{
+    if (C->base.nnz == 0)
+    {
+        return;
+    }
+
+    /* A->kernel_dwork = X_A^T, row-major shape (n0_A, m0_A). Pre-sized by
+       BTA_csc_pd_alloc; no allocation in fill. */
+    A_transpose(A->kernel_dwork, A->X, A->m0, A->n0);
+
+    BTA_csc_denseT_fill_values(B, A->kernel_dwork, A->m0, A->row_inv, C);
+}
+
 /* C = B^T diag(d) A. Folds diag(d) into A's dense block (writing
    (diag(d_perm) X_A)^T into A->kernel_dwork) and delegates to
-   BTA_csc_pd_fill_values. Mirrors how BTDA_pd_csc_fill_values wraps
+   BTA_csc_denseT_fill_values. Mirrors how BTDA_pd_csc_fill_values wraps
    BA_pd_csc_fill_values. */
 void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
                              const permuted_dense *A, permuted_dense *C)
@@ -509,7 +527,7 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
     /* A->kernel_dwork = (diag(d_perm) X_A)^T, row-major shape (n0_A, m0_A).
        Pre-sized by BTA_csc_pd_alloc; no allocation in fill.
        Column j of (diag(d) X_A) lives contiguously in dwork as row j —
-       which is exactly the layout BTA_csc_pd_fill_values wants. */
+       which is exactly the layout BTA_csc_denseT_fill_values wants. */
     for (int kk = 0; kk < m0_A; kk++)
     {
         double dk = d[A->row_perm[kk]];
@@ -519,7 +537,7 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
         }
     }
 
-    BTA_csc_pd_fill_values(B, A->kernel_dwork, m0_A, A->row_inv, C);
+    BTA_csc_denseT_fill_values(B, A->kernel_dwork, m0_A, A->row_inv, C);
 }
 
 /* Original transpose-via-Cprime implementation of BTDA_csc_pd_fill_values.
