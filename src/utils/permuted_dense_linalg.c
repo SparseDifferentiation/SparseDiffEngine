@@ -426,10 +426,7 @@ void BTA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
         return;
     }
 
-    /* B->kernel_dwork = B^T, row-major shape (n0, m0). Pre-sized by
-       BTA_pd_csc_alloc; no allocation in fill. */
     A_transpose(B->kernel_dwork, B->X, B->m0, B->n0);
-
     BA_pd_csc_fill_values(B->kernel_dwork, B->m0, B->row_inv, A, C);
 }
 
@@ -520,10 +517,8 @@ void BTA_csc_pd_fill_values(const CSC_matrix *B, const permuted_dense *A,
         return;
     }
 
-    /* A->kernel_dwork = X_A^T, row-major shape (n0_A, m0_A). Pre-sized by
-       BTA_csc_pd_alloc; no allocation in fill. */
+    /* A->kernel_dwork = X_A^T, row-major shape (n0_A, m0_A). */
     A_transpose(A->kernel_dwork, A->X, A->m0, A->n0);
-
     BTA_csc_denseT_fill_values(B, A->kernel_dwork, A->m0, A->row_inv, C);
 }
 
@@ -564,10 +559,10 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((unused))
 #endif
-static void BTDA_csc_pd_fill_values_via_transpose_dead(const CSC_matrix *B,
-                                                       const double *d,
-                                                       const permuted_dense *A,
-                                                       permuted_dense *C)
+static void
+BTDA_csc_pd_fill_values_via_transpose_dead(const CSC_matrix *B, const double *d,
+                                           const permuted_dense *A,
+                                           permuted_dense *C)
 {
     if (C->base.nnz == 0)
     {
