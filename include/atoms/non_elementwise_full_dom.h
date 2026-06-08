@@ -22,7 +22,15 @@
 #include "subexpr.h"
 #include "utils/CSR_matrix.h"
 
-expr *new_quad_form(expr *child, CSR_matrix *Q);
+/* quad-form with sparse constant matrix Q */
+expr *new_quad_form_sparse(expr *child, CSR_matrix *Q);
+
+/* quad-form with dense constant or parametric matrix Q (assumed to be
+   symmetric). For constant Q, Q_data should point to the values of Q in
+   row-major order. For parametric Q, Q_data should be NULL and param_source
+   should point to the parameter node. */
+expr *new_quad_form_dense(expr *child, int n, const double *Q_data,
+                          expr *param_source);
 
 /* product of all entries, without axis argument */
 expr *new_prod(expr *child);

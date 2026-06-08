@@ -21,7 +21,7 @@ const char *test_quad_form(void)
     memcpy(Q->x, Qx, 5 * sizeof(double));
     memcpy(Q->i, Qi, 5 * sizeof(int));
     memcpy(Q->p, Qp, 4 * sizeof(int));
-    expr *node = new_quad_form(x, Q);
+    expr *node = new_quad_form_sparse(x, Q);
 
     jacobian_init(node);
     node->forward(node, u_vals);
@@ -67,7 +67,7 @@ memcpy(A->x, Ax, 10 * sizeof(double));
 memcpy(A->i, Ai, 10 * sizeof(int));
 memcpy(A->p, Ap, 4 * sizeof(int));
 expr *Au = new_linear(u, A, NULL);
-expr *node = new_quad_form(Au, Q);
+expr *node = new_quad_form_sparse(Au, Q);
 
 jacobian_init(node);
 node->forward(node, u_vals);

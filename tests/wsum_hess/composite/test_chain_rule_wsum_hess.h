@@ -341,7 +341,7 @@ const char *test_wsum_hess_quad_form_Ax(void)
 
     expr *x = new_variable(4, 1, 1, 6);
     expr *Ax = new_left_matmul(NULL, x, A);
-    expr *node = new_quad_form(Ax, Q);
+    expr *node = new_quad_form_sparse(Ax, Q);
 
     mu_assert("check_wsum_hess failed",
               check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
@@ -371,7 +371,7 @@ const char *test_wsum_hess_quad_form_sin_Ax(void)
     expr *x = new_variable(4, 1, 1, 6);
     expr *Ax = new_left_matmul(NULL, x, A);
     expr *sin_Ax = new_sin(Ax);
-    expr *node = new_quad_form(sin_Ax, Q);
+    expr *node = new_quad_form_sparse(sin_Ax, Q);
 
     mu_assert("check_wsum_hess failed",
               check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
@@ -501,7 +501,7 @@ const char *test_wsum_hess_quad_form_exp(void)
 
     expr *x = new_variable(3, 1, 0, 3);
     expr *exp_x = new_exp(x);
-    expr *node = new_quad_form(exp_x, Q);
+    expr *node = new_quad_form_sparse(exp_x, Q);
 
     mu_assert("check_wsum_hess failed",
               check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));

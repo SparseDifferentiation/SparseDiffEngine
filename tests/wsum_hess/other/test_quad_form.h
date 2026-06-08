@@ -26,7 +26,7 @@ const char *test_wsum_hess_quad_form(void)
     memcpy(Q->p, Qp, 5 * sizeof(int));
 
     expr *x = new_variable(4, 1, 3, 10);
-    expr *node = new_quad_form(x, Q);
+    expr *node = new_quad_form_sparse(x, Q);
 
     jacobian_init(node);
     node->forward(node, u_vals);

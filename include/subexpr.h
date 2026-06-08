@@ -54,12 +54,22 @@ typedef struct power_expr
     double p;
 } power_expr;
 
-/* Quadratic form: y = x'*Q*x */
+/* Quadratic form: y = x'*Q*x. Q is a polymorphic matrix: a sparse (CSR) backend
+   on the sparse path, or a dense (permuted_dense) backend on the dense path. */
 typedef struct quad_form_expr
 {
     expr base;
-    CSR_matrix *Q;
-    CSC_matrix *QJf; /* Q * J_f in CSC_matrix (for chain rule hessian) */
+    matrix *Q;
+    /* Q * J_f for the composition chain-rule hessian; exactly one is used per
+       node. Sparse path: CSC (raw symmetric products, no matrix-vtable form).
+       Dense path: permuted_dense via the matrix dispatchers. */
+    CSC_matrix *QJf;
+    matrix *QJf_dense;
+    double *diag_w; /* length-n diagonal (= 2w) fed to BTDA on the dense path */
+    int n;          /* quadratic dimension = left->size */
+
+    /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
+    expr *param_source;
 } quad_form_expr;
 
 /* Sum reduction along an axis */

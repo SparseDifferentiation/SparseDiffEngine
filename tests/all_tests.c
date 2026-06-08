@@ -104,6 +104,7 @@
 #include "wsum_hess/other/test_prod_axis_one.h"
 #include "wsum_hess/other/test_prod_axis_zero.h"
 #include "wsum_hess/other/test_quad_form.h"
+#include "wsum_hess/other/test_quad_form_dense.h"
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
@@ -294,6 +295,10 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_over_lin_xy, tests_run);
     mu_run_test(test_wsum_hess_quad_over_lin_yx, tests_run);
     mu_run_test(test_wsum_hess_quad_form, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_dense, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_dense_affine, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_dense_exp, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_dense_param, tests_run);
     mu_run_test(test_wsum_hess_scalar_mult_log_vector, tests_run);
     mu_run_test(test_wsum_hess_scalar_mult_log_matrix, tests_run);
     mu_run_test(test_wsum_hess_vector_mult_log_vector, tests_run);
