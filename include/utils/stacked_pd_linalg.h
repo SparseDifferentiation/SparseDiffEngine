@@ -99,6 +99,11 @@ void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
    The output C is stacked_pd. */
 matrix *BTA_csc_spd_alloc(const CSC_matrix *B, const stacked_pd *A);
 
+/* Fill values of C = B^T @ A where B is CSC and A is stacked_pd, and C is
+   stacked_pd. C must be pre-allocated via BTA_csc_spd_alloc. */
+void BTA_csc_spd_fill_values(const CSC_matrix *B, const stacked_pd *A,
+                             stacked_pd *C);
+
 /* Fill values of C = B^T @ diag(d) @ A where B is CSC, A is stacked_pd,
    d is a global vector of length A->m, and C is stacked_pd. C must be
    pre-allocated via BTA_csc_spd_alloc. */

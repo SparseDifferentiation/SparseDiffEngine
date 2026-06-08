@@ -415,6 +415,24 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     return C;
 }
 
+/* C = B^T @ A = (B^T) A, with B^T materialized into B->kernel_dwork. The no-
+   diagonal analogue of BTDA_pd_csc_fill_values. */
+void BTA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
+                            permuted_dense *C)
+{
+    /* C may be empty */
+    if (C->base.nnz == 0)
+    {
+        return;
+    }
+
+    /* B->kernel_dwork = B^T, row-major shape (n0, m0). Pre-sized by
+       BTA_pd_csc_alloc; no allocation in fill. */
+    A_transpose(B->kernel_dwork, B->X, B->m0, B->n0);
+
+    BA_pd_csc_fill_values(B->kernel_dwork, B->m0, B->row_inv, A, C);
+}
+
 /* C = B^T diag(d) A = (diag (d) B)^T A */
 void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
                              const CSC_matrix *A, permuted_dense *C)

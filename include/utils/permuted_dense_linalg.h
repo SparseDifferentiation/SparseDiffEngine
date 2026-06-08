@@ -64,6 +64,11 @@ void BA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
 /* Allocate new permuted dense for C = B^T @ A where B is PD and A is CSC */
 matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A);
 
+/* Fill values of C = B^T @ A where B is PD and A is CSC. C must be
+   pre-allocated via BTA_pd_csc_alloc. */
+void BTA_pd_csc_fill_values(const permuted_dense *B, const CSC_matrix *A,
+                            permuted_dense *C);
+
 /* Fill values of C = B^T @ diag(d) @ A where B is PD and A is CSC */
 void BTDA_pd_csc_fill_values(const permuted_dense *B, const double *d,
                              const CSC_matrix *A, permuted_dense *C);

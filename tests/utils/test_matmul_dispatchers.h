@@ -374,6 +374,187 @@ const char *test_BTA_csc_pd_empty(void)
     return 0;
 }
 
+/* Primitive BTA_pd_csc kernel (no diagonal): C = B^T @ A, B is PD, A is CSC.
+   Mirror of the csc_pd tests with roles swapped. Route 1 calls BTA_pd_csc_alloc
+   + BTA_pd_csc_fill_values. Oracle flattens BOTH operands to sparse_matrix and
+   runs the dispatcher with d = ones (csc/csc sparse_dot path), sharing no code
+   with the pd_csc kernel. Both compared via to_csr. */
+const char *test_BTA_pd_csc_basic(void)
+{
+    /* B: 4x5 PD, row_perm = [1,3], col_perm = [0,2]. */
+    int row_perm_B[2] = {1, 3};
+    int col_perm_B[2] = {0, 2};
+    double XB[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *B_m = new_permuted_dense(4, 5, 2, 2, row_perm_B, col_perm_B, XB);
+
+    /* A: 4x4 CSR -> CSC. Rows: 0:{1} 1:{0,2} 2:{3} 3:{1,3}. All A-columns
+       overlap B's rows {1,3} (some partially). */
+    int Ap[5] = {0, 1, 3, 4, 6};
+    int Ai[6] = {1, 0, 2, 3, 1, 3};
+    double Ax[6] = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
+
+    CSR_matrix *A_csr = new_CSR_matrix(4, 4, 6);
+    memcpy(A_csr->p, Ap, sizeof Ap);
+    memcpy(A_csr->i, Ai, sizeof Ai);
+    memcpy(A_csr->x, Ax, sizeof Ax);
+    int *iwork = (int *) malloc(MAX(A_csr->m, A_csr->n) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
+    csr_to_csc_fill_values(A_csr, A_csc, iwork);
+
+    /* Route 1: our kernel. */
+    matrix *C_ours = BTA_pd_csc_alloc((permuted_dense *) B_m, A_csc);
+    BTA_pd_csc_fill_values((permuted_dense *) B_m, A_csc, (permuted_dense *) C_ours);
+
+    /* Oracle: both operands sparse, d = ones, csc/csc dispatch. Dispatcher arg
+       order is (rightA, leftB) and computes B^T @ A, so A goes first. */
+    matrix *B_sparse = spd_to_sparse_matrix_copy(B_m);
+    CSR_matrix *A_csr2 = new_CSR_matrix(4, 4, 6);
+    memcpy(A_csr2->p, Ap, sizeof Ap);
+    memcpy(A_csr2->i, Ai, sizeof Ai);
+    memcpy(A_csr2->x, Ax, sizeof Ax);
+    matrix *A_sparse = new_sparse_matrix(A_csr2);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sparse);
+    A_sparse->refresh_csc_values(A_sparse);
+    B_sparse->refresh_csc_values(B_sparse);
+    double d_ones[4] = {1.0, 1.0, 1.0, 1.0};
+    BTDA_matrices_fill_values(A_sparse, d_ones, B_sparse, C_ref);
+
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(B_sparse);
+    free_matrix(C_ours);
+    free_CSC_matrix(A_csc);
+    free_CSR_matrix(A_csr);
+    free(iwork);
+    free_matrix(B_m);
+    return 0;
+}
+
+/* BTA_pd_csc corner case: A columns that (a) hit no B-row -> excluded from C's
+   col_perm by BTA_pd_csc_alloc; (b) partially overlap B's rows (some A->i map to
+   row_inv == -1) -> exercises sparse_dot_dense's -1 filtering; (c) fully land in
+   B's rows. B->row_perm = {1,3}. A columns by source rows: col0:{0,2} (excluded),
+   col1:{1} (clean), col2:{0,1,3} (partial), col3:{3} (clean). */
+const char *test_BTA_pd_csc_partial_and_excluded_cols(void)
+{
+    int row_perm_B[2] = {1, 3};
+    int col_perm_B[2] = {0, 2};
+    double XB[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *B_m = new_permuted_dense(4, 5, 2, 2, row_perm_B, col_perm_B, XB);
+
+    /* A: 4x4. Rows: 0:{0,2} 1:{1,2} 2:{0} 3:{2,3}. */
+    int Ap[5] = {0, 2, 4, 5, 7};
+    int Ai[7] = {0, 2, 1, 2, 0, 2, 3};
+    double Ax[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+
+    CSR_matrix *A_csr = new_CSR_matrix(4, 4, 7);
+    memcpy(A_csr->p, Ap, sizeof Ap);
+    memcpy(A_csr->i, Ai, sizeof Ai);
+    memcpy(A_csr->x, Ax, sizeof Ax);
+    int *iwork = (int *) malloc(MAX(A_csr->m, A_csr->n) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
+    csr_to_csc_fill_values(A_csr, A_csc, iwork);
+
+    matrix *C_ours = BTA_pd_csc_alloc((permuted_dense *) B_m, A_csc);
+    BTA_pd_csc_fill_values((permuted_dense *) B_m, A_csc, (permuted_dense *) C_ours);
+
+    matrix *B_sparse = spd_to_sparse_matrix_copy(B_m);
+    CSR_matrix *A_csr2 = new_CSR_matrix(4, 4, 7);
+    memcpy(A_csr2->p, Ap, sizeof Ap);
+    memcpy(A_csr2->i, Ai, sizeof Ai);
+    memcpy(A_csr2->x, Ax, sizeof Ax);
+    matrix *A_sparse = new_sparse_matrix(A_csr2);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sparse);
+    A_sparse->refresh_csc_values(A_sparse);
+    B_sparse->refresh_csc_values(B_sparse);
+    double d_ones[4] = {1.0, 1.0, 1.0, 1.0};
+    BTDA_matrices_fill_values(A_sparse, d_ones, B_sparse, C_ref);
+
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(B_sparse);
+    free_matrix(C_ours);
+    free_CSC_matrix(A_csc);
+    free_CSR_matrix(A_csr);
+    free(iwork);
+    free_matrix(B_m);
+    return 0;
+}
+
+/* BTA_pd_csc corner case: every A column misses B's rows -> C->base.nnz == 0
+   early-out. B->row_perm = {1,3}; A has nonzeros only in rows {0,2}. */
+const char *test_BTA_pd_csc_empty(void)
+{
+    int row_perm_B[2] = {1, 3};
+    int col_perm_B[2] = {0, 2};
+    double XB[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *B_m = new_permuted_dense(4, 5, 2, 2, row_perm_B, col_perm_B, XB);
+
+    /* A: 4x4, nonzeros only in rows 0 and 2. Rows: 0:{0,1} 2:{2,3}. */
+    int Ap[5] = {0, 2, 2, 4, 4};
+    int Ai[4] = {0, 1, 2, 3};
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+
+    CSR_matrix *A_csr = new_CSR_matrix(4, 4, 4);
+    memcpy(A_csr->p, Ap, sizeof Ap);
+    memcpy(A_csr->i, Ai, sizeof Ai);
+    memcpy(A_csr->x, Ax, sizeof Ax);
+    int *iwork = (int *) malloc(MAX(A_csr->m, A_csr->n) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
+    csr_to_csc_fill_values(A_csr, A_csc, iwork);
+
+    matrix *C_ours = BTA_pd_csc_alloc((permuted_dense *) B_m, A_csc);
+    BTA_pd_csc_fill_values((permuted_dense *) B_m, A_csc, (permuted_dense *) C_ours);
+
+    matrix *B_sparse = spd_to_sparse_matrix_copy(B_m);
+    CSR_matrix *A_csr2 = new_CSR_matrix(4, 4, 4);
+    memcpy(A_csr2->p, Ap, sizeof Ap);
+    memcpy(A_csr2->i, Ai, sizeof Ai);
+    memcpy(A_csr2->x, Ax, sizeof Ax);
+    matrix *A_sparse = new_sparse_matrix(A_csr2);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sparse);
+    A_sparse->refresh_csc_values(A_sparse);
+    B_sparse->refresh_csc_values(B_sparse);
+    double d_ones[4] = {1.0, 1.0, 1.0, 1.0};
+    BTDA_matrices_fill_values(A_sparse, d_ones, B_sparse, C_ref);
+
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("nnz zero", csr_ours->nnz == 0);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(B_sparse);
+    free_matrix(C_ours);
+    free_CSC_matrix(A_csc);
+    free_CSR_matrix(A_csr);
+    free(iwork);
+    free_matrix(B_m);
+    return 0;
+}
+
 /* Wrapper dispatch: (A=spd, B=PD). The spd-fallback path goes through
    BTA_csc_pd_alloc / BTDA_csc_pd_fill_values; result must match the
    equivalent (A=sparse, B=PD) dispatch on the same matrix. */
@@ -1523,6 +1704,128 @@ const char *test_BTDA_csc_spd_overlapping(void)
     BTDA_matrices_fill_values(A_sparse, d, B_sm, C_ref);
 
     /* C_ours is stacked_pd, C_ref is sparse_matrix — compare via to_csr. */
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(C_ours);
+    free_matrix(B_sm);
+    free_matrix(A_spd);
+    return 0;
+}
+
+/* Primitive BTA_csc_spd kernel (no diagonal): C = B^T @ A, B is CSC, A is a
+   2-block stacked_pd whose col_perms share a column (so the accumulating coalesce
+   path fires). Same matrices as the BTDA variant above. Oracle is the dispatcher
+   with A flattened to sparse and d = ones (csc/csc sparse_dot path). */
+const char *test_BTA_csc_spd_overlapping(void)
+{
+    /* A: 4x3 spd, two blocks with overlapping col_perms (share col 2). */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 2};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *A_blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *A_blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A_blk0,
+                                   (permuted_dense *) A_blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    /* B: 4x3 sparse_matrix wrapping a CSR. */
+    CSR_matrix *B_csr = new_CSR_matrix(4, 3, 7);
+    int Bp[5] = {0, 2, 3, 6, 7};
+    int Bi[7] = {0, 2, 1, 0, 1, 2, 2};
+    double Bx[7] = {1, 2, 3, 4, 5, 6, 7};
+    memcpy(B_csr->p, Bp, sizeof(Bp));
+    memcpy(B_csr->i, Bi, sizeof(Bi));
+    memcpy(B_csr->x, Bx, sizeof(Bx));
+    matrix *B_sm = new_sparse_matrix(B_csr);
+
+    /* Route 1: new kernel. Ensure B's csc_cache and refresh values. */
+    sparse_matrix_ensure_csc_cache((sparse_matrix *) B_sm);
+    B_sm->refresh_csc_values(B_sm);
+    matrix *C_ours =
+        BTA_csc_spd_alloc(((sparse_matrix *) B_sm)->csc_cache, (stacked_pd *) A_spd);
+    BTA_csc_spd_fill_values(((sparse_matrix *) B_sm)->csc_cache,
+                            (stacked_pd *) A_spd, (stacked_pd *) C_ours);
+
+    /* Route 2: dispatcher with A flattened to sparse_matrix and d = ones, so
+       BTDA == BTA. BTA_matrices_alloc(A, B) computes B^T @ A, so A goes first. */
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sm);
+    A_sparse->refresh_csc_values(A_sparse);
+    double d_ones[4] = {1.0, 1.0, 1.0, 1.0};
+    BTDA_matrices_fill_values(A_sparse, d_ones, B_sm, C_ref);
+
+    CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(A_sparse);
+    free_matrix(C_ours);
+    free_matrix(B_sm);
+    free_matrix(A_spd);
+    return 0;
+}
+
+/* BTA_csc_spd corner case: one A-block whose row_perm matches no nonzero row of
+   any B column -> that block's per-block partial is empty (m0 = 0), while the
+   other block contributes. Exercises the empty-source-block path through
+   BTA_csc_pd_alloc and the accumulating coalesce. */
+const char *test_BTA_csc_spd_block_no_overlap(void)
+{
+    /* A: 4x3 spd, two blocks. blk0 rows {0,1}; blk1 rows {2,3}. */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 1};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *A_blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 2};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *A_blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) A_blk0,
+                                   (permuted_dense *) A_blk1};
+    matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+
+    /* B: 4x3, nonzeros only in rows {0,1} -> overlaps blk0 only; blk1's rows
+       {2,3} hit no B column -> empty partial for blk1. Rows: 0:{0,2} 1:{1}. */
+    CSR_matrix *B_csr = new_CSR_matrix(4, 3, 3);
+    int Bp[5] = {0, 2, 3, 3, 3};
+    int Bi[3] = {0, 2, 1};
+    double Bx[3] = {1, 2, 3};
+    memcpy(B_csr->p, Bp, sizeof(Bp));
+    memcpy(B_csr->i, Bi, sizeof(Bi));
+    memcpy(B_csr->x, Bx, sizeof(Bx));
+    matrix *B_sm = new_sparse_matrix(B_csr);
+
+    sparse_matrix_ensure_csc_cache((sparse_matrix *) B_sm);
+    B_sm->refresh_csc_values(B_sm);
+    matrix *C_ours =
+        BTA_csc_spd_alloc(((sparse_matrix *) B_sm)->csc_cache, (stacked_pd *) A_spd);
+    BTA_csc_spd_fill_values(((sparse_matrix *) B_sm)->csc_cache,
+                            (stacked_pd *) A_spd, (stacked_pd *) C_ours);
+
+    matrix *A_sparse = spd_to_sparse_matrix_copy(A_spd);
+    matrix *C_ref = BTA_matrices_alloc(A_sparse, B_sm);
+    A_sparse->refresh_csc_values(A_sparse);
+    double d_ones[4] = {1.0, 1.0, 1.0, 1.0};
+    BTDA_matrices_fill_values(A_sparse, d_ones, B_sm, C_ref);
+
     CSR_matrix *csr_ours = C_ours->to_csr(C_ours);
     CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
     mu_assert("m", csr_ours->m == csr_ref->m);
