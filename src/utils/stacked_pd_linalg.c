@@ -453,9 +453,24 @@ static void wrapper_BTDA_pd_csc(const permuted_dense *Bk, const double *d,
     BTDA_pd_csc_fill_values(Bk, d, (const CSC_matrix *) ctx, Ck);
 }
 
+/* BTA per-block fill: plain B_k^T @ A, no diagonal. The skeleton forwards d
+   verbatim and never dereferences it, so the caller passes d = NULL and we
+   ignore it. */
+static void wrapper_BTA_pd_csc_fill(const permuted_dense *Bk, const double *d,
+                                    const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_pd_csc_fill_values(Bk, (const CSC_matrix *) ctx, Ck);
+}
+
 matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
 {
     return spd_blockwise_alloc_coalesce(B, B->base.n, A->n, wrapper_BTA_pd_csc, A);
+}
+
+void BTA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, NULL, A, C, wrapper_BTA_pd_csc_fill);
 }
 
 void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
