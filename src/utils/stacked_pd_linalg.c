@@ -406,10 +406,27 @@ static void wrapper_BTDA_pd_pd(const permuted_dense *Bk, const double *d,
     BTDA_pd_pd_fill_values(Bk, d, (const permuted_dense *) ctx, Ck);
 }
 
+/* BTA per-block fill: plain B_k^T @ A, no diagonal. The shared skeleton
+   threads d through verbatim and never dereferences it, so the caller passes
+   d = NULL and we ignore it here. Calling BTA_pd_pd_fill_values directly (vs.
+   the BTDA wrapper) also sidesteps the per-block DA temp. */
+static void wrapper_BTA_pd_pd_fill(const permuted_dense *Bk, const double *d,
+                                   const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_pd_pd_fill_values(Bk, (const permuted_dense *) ctx, Ck);
+}
+
 matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
 {
     return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_pd,
                                         A);
+}
+
+void BTA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                            stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, NULL, A, C, wrapper_BTA_pd_pd_fill);
 }
 
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
@@ -465,10 +482,26 @@ static void wrapper_BTDA_pd_spd(const permuted_dense *Bk, const double *d,
     BTDA_pd_spd_fill_values(Bk, d, (const stacked_pd *) ctx, Ck);
 }
 
+/* BTA per-block fill: plain B_k^T @ A_spd, no diagonal. The skeleton forwards d
+   verbatim and never dereferences it, so the caller passes d = NULL and we
+   ignore it. Calling BTA_pd_spd_fill_values directly (vs. the BTDA wrapper) also
+   avoids the per-block DA temp. */
+static void wrapper_BTA_pd_spd_fill(const permuted_dense *Bk, const double *d,
+                                    const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_pd_spd_fill_values(Bk, (const stacked_pd *) ctx, Ck);
+}
+
 matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
 {
     return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_spd,
                                         A);
+}
+
+void BTA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, NULL, A, C, wrapper_BTA_pd_spd_fill);
 }
 
 void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
