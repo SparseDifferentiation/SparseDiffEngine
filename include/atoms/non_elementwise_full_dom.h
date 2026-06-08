@@ -22,20 +22,14 @@
 #include "subexpr.h"
 #include "utils/CSR_matrix.h"
 
+/* quad-form with sparse constant matrix Q */
 expr *new_quad_form_sparse(expr *child, CSR_matrix *Q);
 
-/* Dense / parametric quadratic form y = x' P x over a vector expression x (a
- * leaf variable, or a composition x = f(u) handled via the chain rule).
- *
- * P is n x n, row-major, and assumed symmetric (matching the new_quad_form_sparse
- * convention where the Hessian of x'Qx is taken to be 2Q). For a leaf x the
- * Hessian is materialized as a dense permuted_dense block.
- *
- *   - constant P:    P_data points to n*n doubles, param_source == NULL.
- *   - parametric P:  P_data == NULL, param_source is the parameter node that
- *                    supplies P (n*n doubles) and is refreshed each solve.
- */
-expr *new_quad_form_dense(expr *child, int n, const double *P_data,
+/* quad-form with dense constant or parametric matrix Q (assumed to be
+   symmetric). For constant Q, Q_data should point to the values of Q in
+   row-major order. For parametric Q, Q_data should be NULL and param_source
+   should point to the parameter node. */
+expr *new_quad_form_dense(expr *child, int n, const double *Q_data,
                           expr *param_source);
 
 /* product of all entries, without axis argument */
