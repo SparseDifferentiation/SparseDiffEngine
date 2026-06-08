@@ -452,6 +452,8 @@ int main(void)
     mu_run_test(test_BTDA_spd_pd_overlapping_cp, tests_run);
     mu_run_test(test_BTA_spd_pd_overlapping_cp, tests_run);
     mu_run_test(test_BTDA_spd_csc_overlapping_cp, tests_run);
+    mu_run_test(test_BTA_spd_csc_overlapping, tests_run);
+    mu_run_test(test_BTA_spd_csc_block_no_overlap, tests_run);
     mu_run_test(test_BTDA_spd_spd_overlapping, tests_run);
     mu_run_test(test_BTA_spd_spd_overlapping, tests_run);
     mu_run_test(test_BTA_spd_spd_multi_A_per_block, tests_run);
@@ -468,6 +470,10 @@ int main(void)
     mu_run_test(test_BTA_sparse_matrices_pd_A, tests_run);
     mu_run_test(test_BTA_sparse_matrices_csc_A, tests_run);
     mu_run_test(test_BTA_sparse_matrices_spd_A, tests_run);
+    mu_run_test(test_BTA_matrices_fill_pd_spd, tests_run);
+    mu_run_test(test_BTA_matrices_fill_spd_csc, tests_run);
+    mu_run_test(test_BTA_matrices_fill_csc_pd, tests_run);
+    mu_run_test(test_BTA_matrices_fill_csc_csc, tests_run);
     mu_run_test(test_BA_pd_kron_spd_no_cache_staleness, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
