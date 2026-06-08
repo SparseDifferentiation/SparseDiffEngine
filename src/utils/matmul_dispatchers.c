@@ -293,8 +293,7 @@ static void BTA_sparse_matrices_fill_values(const sparse_matrix *B, const matrix
         return;
     }
 
-    /* A is sparse. csc/csc has no separate BTA kernel; BTDA_fill_values
-       handles d == NULL. */
+    /* A is sparse */
     const sparse_matrix *sm_A = (const sparse_matrix *) A;
     BTDA_fill_values(sm_A->csc_cache, B->csc_cache, NULL,
                      ((sparse_matrix *) C)->csr);
