@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(DNLP_Diff_Engine C)
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(DIFF_ENGINE_VERSION_MAJOR 0)
