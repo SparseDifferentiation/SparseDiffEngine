@@ -24,8 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Kronecker product Z = kron(A, B), where exactly one operand is variable-free
- * (param_source) and the other (child = node->left) carries the variables.
+/* Kronecker product Z = kron(A, B). See the kron_expr definition in subexpr.h
+ * for the operand layout; the index math behind the scaled gather is below.
  *
  * With column-major (Fortran) flattening, an output index OUT = I + J*(p*r)
  * decomposes as I = i*r + k and J = j*s + l (i in [0,p), k in [0,r), j in [0,q),
@@ -40,18 +40,24 @@
  * forward, Jacobian and (affine) Hessian are all scaled gathers -- no
  * size_out x size_child coefficient matrix and no sparse matmul. */
 
+/* Pull current parameter values through any broadcast/promote wrappers. */
+static void refresh_param_values(kron_expr *knode)
+{
+    if (!knode->base.needs_parameter_refresh)
+    {
+        return;
+    }
+
+    knode->param_source->forward(knode->param_source, NULL);
+    knode->base.needs_parameter_refresh = false;
+}
+
 static void forward(expr *node, const double *u)
 {
     expr *child = node->left;
     kron_expr *knode = (kron_expr *) node;
 
-    /* Pull current parameter values through any broadcast/promote wrappers. */
-    if (knode->base.needs_parameter_refresh)
-    {
-        knode->param_source->forward(knode->param_source, NULL);
-        knode->base.needs_parameter_refresh = false;
-    }
-
+    refresh_param_values(knode);
     child->forward(child, u);
 
     const double *a = knode->param_source->value;
@@ -163,10 +169,14 @@ static void free_type_data(expr *node)
     sp_free(knode->child_row);
     sp_free(knode->coeff_idx);
     free_expr(knode->param_source);
+
+    knode->child_row = NULL;
+    knode->coeff_idx = NULL;
+    knode->param_source = NULL;
 }
 
-expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q,
-               int r, int s)
+expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q, int r,
+               int s)
 {
     int d1 = p * r;
     int d2 = q * s;

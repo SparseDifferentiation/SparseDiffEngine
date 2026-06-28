@@ -85,7 +85,7 @@ expr *new_convolve(expr *param_node, expr *child);
    variables and is passed as child. const_is_left selects which operand is the
    parameter: 1 -> A=param_node, B=child; 0 -> A=child, B=param_node. (p, q) are
    A's dims and (r, s) are B's dims. */
-expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q,
-               int r, int s);
+expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q, int r,
+               int s);
 
 #endif /* AFFINE_H */

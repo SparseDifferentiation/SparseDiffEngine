@@ -27,15 +27,13 @@ const char *test_jacobian_kron_const_left(void)
     mu_assert("kron J cols", Z->jacobian->n == 4);
     mu_assert("kron J nnz", Z->jacobian->nnz == 16);
 
-    int expected_p[17] = {0, 1, 2, 3, 4, 5, 6, 7, 8,
-                          9, 10, 11, 12, 13, 14, 15, 16};
+    int expected_p[17] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
     int expected_i[16] = {0, 1, 0, 1, 2, 3, 2, 3, 0, 1, 0, 1, 2, 3, 2, 3};
     double expected_x[16] = {1, 1, 3, 3, 1, 1, 3, 3, 2, 2, 4, 4, 2, 2, 4, 4};
 
     mu_assert("kron const-left J sparsity",
               cmp_sparsity(Z->jacobian, expected_p, expected_i, 16, 16));
-    mu_assert("kron const-left J values",
-              cmp_values(Z->jacobian, expected_x, 16));
+    mu_assert("kron const-left J values", cmp_values(Z->jacobian, expected_x, 16));
 
     free_expr(Z);
     return 0;
@@ -57,15 +55,13 @@ const char *test_jacobian_kron_const_right(void)
     mu_assert("kron J rows", Z->jacobian->m == 16);
     mu_assert("kron J nnz", Z->jacobian->nnz == 16);
 
-    int expected_p[17] = {0, 1, 2, 3, 4, 5, 6, 7, 8,
-                          9, 10, 11, 12, 13, 14, 15, 16};
+    int expected_p[17] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
     int expected_i[16] = {0, 0, 1, 1, 0, 0, 1, 1, 2, 2, 3, 3, 2, 2, 3, 3};
     double expected_x[16] = {1, 3, 1, 3, 2, 4, 2, 4, 1, 3, 1, 3, 2, 4, 2, 4};
 
     mu_assert("kron const-right J sparsity",
               cmp_sparsity(Z->jacobian, expected_p, expected_i, 16, 16));
-    mu_assert("kron const-right J values",
-              cmp_values(Z->jacobian, expected_x, 16));
+    mu_assert("kron const-right J values", cmp_values(Z->jacobian, expected_x, 16));
 
     free_expr(Z);
     return 0;

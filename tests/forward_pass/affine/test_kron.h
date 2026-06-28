@@ -42,8 +42,8 @@ const char *test_kron_forward_const_right(void)
     double u[4] = {5.0, 7.0, 6.0, 8.0}; /* col-major [[5,6],[7,8]] */
     Z->forward(Z, u);
 
-    double expected[16] = {5,  15, 7,  21, 10, 20, 14, 28,
-                           6,  18, 8,  24, 12, 24, 16, 32};
+    double expected[16] = {5, 15, 7, 21, 10, 20, 14, 28,
+                           6, 18, 8, 24, 12, 24, 16, 32};
 
     mu_assert("kron const-right d1=4", Z->d1 == 4);
     mu_assert("kron const-right d2=4", Z->d2 == 4);
@@ -70,8 +70,7 @@ const char *test_kron_forward_scalar(void)
 
     mu_assert("kron scalar d1=2", Z->d1 == 2);
     mu_assert("kron scalar d2=2", Z->d2 == 2);
-    mu_assert("kron scalar forward failed",
-              cmp_double_array(Z->value, expected, 4));
+    mu_assert("kron scalar forward failed", cmp_double_array(Z->value, expected, 4));
 
     free_expr(Z);
     return 0;
