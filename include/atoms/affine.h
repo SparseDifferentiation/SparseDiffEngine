@@ -80,4 +80,12 @@ expr *new_vector_mult(expr *param_node, expr *child);
    kernel and may either represent a constant or an updatable parameter */
 expr *new_convolve(expr *param_node, expr *child);
 
+/* Kronecker product Z = kron(A, B). Exactly one operand is variable-free and is
+   passed as param_node (constant or updatable parameter); the other carries the
+   variables and is passed as child. const_is_left selects which operand is the
+   parameter: 1 -> A=param_node, B=child; 0 -> A=child, B=param_node. (p, q) are
+   A's dims and (r, s) are B's dims. */
+expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q,
+               int r, int s);
+
 #endif /* AFFINE_H */

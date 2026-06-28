@@ -8,6 +8,7 @@
 #include "forward_pass/affine/test_add.h"
 #include "forward_pass/affine/test_broadcast.h"
 #include "forward_pass/affine/test_convolve.h"
+#include "forward_pass/affine/test_kron.h"
 #include "forward_pass/affine/test_diag_mat.h"
 #include "forward_pass/affine/test_hstack.h"
 #include "forward_pass/affine/test_left_matmul_dense.h"
@@ -27,6 +28,7 @@
 #include "forward_pass/other/test_prod_axis_zero.h"
 #include "jacobian_tests/affine/test_broadcast.h"
 #include "jacobian_tests/affine/test_convolve.h"
+#include "jacobian_tests/affine/test_kron.h"
 #include "jacobian_tests/affine/test_diag_mat.h"
 #include "jacobian_tests/affine/test_hstack.h"
 #include "jacobian_tests/affine/test_index.h"
@@ -73,6 +75,7 @@
 #include "utils/test_stacked_pd.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
+#include "wsum_hess/affine/test_kron.h"
 #include "wsum_hess/affine/test_diag_mat.h"
 #include "wsum_hess/affine/test_hstack.h"
 #include "wsum_hess/affine/test_index.h"
@@ -151,6 +154,9 @@ int main(void)
     mu_run_test(test_convolve_forward, tests_run);
     mu_run_test(test_convolve_forward_row, tests_run);
     mu_run_test(test_convolve_forward_param, tests_run);
+    mu_run_test(test_kron_forward_const_left, tests_run);
+    mu_run_test(test_kron_forward_const_right, tests_run);
+    mu_run_test(test_kron_forward_scalar, tests_run);
     mu_run_test(test_diag_mat_forward, tests_run);
     mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
@@ -244,6 +250,9 @@ int main(void)
     mu_run_test(test_jacobian_matmul, tests_run);
     mu_run_test(test_jacobian_convolve, tests_run);
     mu_run_test(test_jacobian_convolve_composite, tests_run);
+    mu_run_test(test_jacobian_kron_const_left, tests_run);
+    mu_run_test(test_jacobian_kron_const_right, tests_run);
+    mu_run_test(test_jacobian_kron_composite, tests_run);
     mu_run_test(test_jacobian_transpose, tests_run);
     mu_run_test(test_jacobian_transpose_pd_preserved, tests_run);
     mu_run_test(test_diag_mat_jacobian_variable, tests_run);
@@ -317,6 +326,8 @@ int main(void)
     mu_run_test(test_wsum_hess_right_matmul_vector, tests_run);
     mu_run_test(test_wsum_hess_convolve, tests_run);
     mu_run_test(test_wsum_hess_convolve_composite, tests_run);
+    mu_run_test(test_wsum_hess_kron, tests_run);
+    mu_run_test(test_wsum_hess_kron_composite, tests_run);
     mu_run_test(test_wsum_hess_broadcast_row, tests_run);
     mu_run_test(test_wsum_hess_broadcast_col, tests_run);
     mu_run_test(test_wsum_hess_broadcast_scalar_to_matrix, tests_run);
