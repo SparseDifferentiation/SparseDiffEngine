@@ -101,6 +101,20 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
     iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
     Cp[0] = 0;
 
+    /* Output-driven gather: row i of A intersects a block's child entries iff
+       i appears in A's CSC column list of one of those entries, so walk only
+       those columns instead of testing all m rows per (column, block). A CSC
+       view of A is built once; candidates are deduped with a generation-stamp
+       workspace and sorted to reproduce the ascending row order the old
+       has_overlap row scan emitted. */
+    int *iwork = (int *) sp_malloc((n > 0 ? n : 1) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A, iwork);
+    sp_free(iwork);
+
+    int *stamp = (int *) sp_calloc(m > 0 ? m : 1, sizeof(int)); /* 0 = unseen */
+    int *cand = (int *) sp_malloc((m > 0 ? m : 1) * sizeof(int));
+    int gen = 0;
+
     /* for each column of J */
     for (j = 0; j < J->n; j++)
     {
@@ -134,29 +148,44 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
             }
 
             block_jj_end = jj;
-            int nnz_in_block = block_jj_end - block_jj_start;
-            if (nnz_in_block == 0)
+            if (block_jj_end == block_jj_start)
             {
                 continue;
             }
 
             // -----------------------------------------------------------------
-            // check which rows of A overlap with the column indices of J in this
-            // block
+            // gather the rows of A that hit this block's child entries via the
+            // CSC columns of A, dedup with the generation stamp, sort ascending
             // -----------------------------------------------------------------
-            row_offset = block * m;
-            for (int i = 0; i < A->m; i++)
+            gen++;
+            int n_cand = 0;
+            for (int t = block_jj_start; t < block_jj_end; t++)
             {
-                int a_len = A->p[i + 1] - A->p[i];
-                if (has_overlap(A->i + A->p[i], a_len, J->i + block_jj_start,
-                                nnz_in_block, block_start))
+                int c = J->i[t] - block_start; /* column of A */
+                for (int q = A_csc->p[c]; q < A_csc->p[c + 1]; q++)
                 {
-                    iVec_append(Ci, row_offset + i);
+                    int i = A_csc->i[q];
+                    if (stamp[i] != gen)
+                    {
+                        stamp[i] = gen;
+                        cand[n_cand++] = i;
+                    }
                 }
+            }
+
+            sort_int_array(cand, n_cand);
+            row_offset = block * m;
+            for (int t = 0; t < n_cand; t++)
+            {
+                iVec_append(Ci, row_offset + cand[t]);
             }
         }
         Cp[j + 1] = Ci->len;
     }
+
+    free_CSC_matrix(A_csc);
+    sp_free(stamp);
+    sp_free(cand);
 
     CSC_matrix *C = new_CSC_matrix(m * p, J->n, Ci->len);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
@@ -258,12 +287,24 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
     int m = A->m;
     int p = B->n;
 
-    int len_a, len_b;
-
     int *Cp = (int *) sp_malloc((m + 1) * sizeof(int));
     iVec *Ci = iVec_new(m);
 
     Cp[0] = 0;
+
+    /* Output-driven gather: column j of B intersects row i of A iff j appears
+       in B's CSR row list of one of A's row-i column indices, so walk only
+       those rows of B instead of testing all p columns per row of A. A CSR
+       view of B is built once; candidates are deduped with a generation-stamp
+       workspace and sorted to reproduce the ascending column order the old
+       has_overlap column scan emitted. */
+    int *iwork = (int *) sp_malloc((B->m > 0 ? B->m : 1) * sizeof(int));
+    CSR_matrix *B_csr = csc_to_csr_alloc(B, iwork);
+    sp_free(iwork);
+
+    int *stamp = (int *) sp_calloc(p > 0 ? p : 1, sizeof(int)); /* 0 = unseen */
+    int *cand = (int *) sp_malloc((p > 0 ? p : 1) * sizeof(int));
+    int gen = 0;
 
     // --------------------------------------------------------------
     //            count nnz and fill column indices
@@ -271,21 +312,35 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
     int nnz = 0;
     for (int i = 0; i < A->m; i++)
     {
-        len_a = A->p[i + 1] - A->p[i];
-
-        for (int j = 0; j < B->n; j++)
+        gen++;
+        int n_cand = 0;
+        for (int t = A->p[i]; t < A->p[i + 1]; t++)
         {
-            len_b = B->p[j + 1] - B->p[j];
-
-            if (has_overlap(A->i + A->p[i], len_a, B->i + B->p[j], len_b, 0))
+            int k = A->i[t]; /* row of B */
+            for (int q = B_csr->p[k]; q < B_csr->p[k + 1]; q++)
             {
-                iVec_append(Ci, j);
-                nnz++;
+                int j = B_csr->i[q];
+                if (stamp[j] != gen)
+                {
+                    stamp[j] = gen;
+                    cand[n_cand++] = j;
+                }
             }
         }
 
+        sort_int_array(cand, n_cand);
+        for (int t = 0; t < n_cand; t++)
+        {
+            iVec_append(Ci, cand[t]);
+        }
+        nnz += n_cand;
+
         Cp[i + 1] = nnz;
     }
+
+    free_CSR_matrix(B_csr);
+    sp_free(stamp);
+    sp_free(cand);
 
     CSR_matrix *C = new_CSR_matrix(m, p, nnz);
     memcpy(C->p, Cp, (m + 1) * sizeof(int));
