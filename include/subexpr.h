@@ -185,10 +185,13 @@ typedef struct convolve_expr
 typedef struct kron_expr
 {
     expr base;
-    expr *param_source; /* the constant/parameter operand node (re-evaluated each solve) */
+    expr *param_source; /* the constant/parameter operand node (re-evaluated each
+                           solve) */
     int p, q, r, s;     /* A is p x q, B is r x s */
-    int *child_row;     /* size_out: child entry each output row gathers; -1 if inactive */
-    int *coeff_idx;     /* size_out: index into param_source->value (valid where child_row >= 0) */
+    int *child_row; /* size_out: child entry each output row gathers; -1 if inactive
+                     */
+    int *coeff_idx; /* size_out: index into param_source->value (valid where
+                       child_row >= 0) */
 } kron_expr;
 
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children

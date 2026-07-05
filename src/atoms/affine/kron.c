@@ -91,8 +91,7 @@ static void jacobian_init_impl(expr *node)
     for (int out = 0; out < node->size; out++)
     {
         int cr = knode->child_row[out];
-        if (cr >= 0)
-            total += Jc->p[cr + 1] - Jc->p[cr];
+        if (cr >= 0) total += Jc->p[cr + 1] - Jc->p[cr];
     }
 
     CSR_matrix *Jk = new_CSR_matrix(node->size, node->n_vars, total);
@@ -130,8 +129,7 @@ static void eval_jacobian(expr *node)
     for (int out = 0; out < node->size; out++)
     {
         int cr = knode->child_row[out];
-        if (cr < 0)
-            continue;
+        if (cr < 0) continue;
         double scale = a[knode->coeff_idx[out]];
         for (int t = Jc->p[cr]; t < Jc->p[cr + 1]; t++)
         {
@@ -164,8 +162,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     for (int out = 0; out < node->size; out++)
     {
         int cr = knode->child_row[out];
-        if (cr >= 0)
-            w_prime[cr] += a[knode->coeff_idx[out]] * w[out];
+        if (cr >= 0) w_prime[cr] += a[knode->coeff_idx[out]] * w[out];
     }
 
     child->eval_wsum_hess(child, w_prime);
@@ -192,8 +189,8 @@ static void free_type_data(expr *node)
 
 /* Allocate a kron node and its (all-inactive) index arrays. The left/right
    constructors then fill the active rows. */
-static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q,
-                                  int r, int s)
+static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q, int r,
+                                  int s)
 {
     int size_out = (p * r) * (q * s);
 

@@ -95,8 +95,7 @@ const char *test_kron_forward_sparse(void)
     double expected[36] = {0};
     int pos[12] = {0, 1, 6, 7, 14, 15, 20, 21, 28, 29, 34, 35};
     double vals[12] = {1, 3, 2, 4, 1, 3, 2, 4, 1, 3, 2, 4};
-    for (int t = 0; t < 12; t++)
-        expected[pos[t]] = vals[t];
+    for (int t = 0; t < 12; t++) expected[pos[t]] = vals[t];
 
     mu_assert("kron sparse d1=6", Z->d1 == 6);
     mu_assert("kron sparse d2=6", Z->d2 == 6);
