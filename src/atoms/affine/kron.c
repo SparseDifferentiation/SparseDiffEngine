@@ -20,25 +20,30 @@
 #include "utils/CSR_matrix.h"
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Kronecker product Z = kron(A, B). See the kron_expr definition in subexpr.h
- * for the operand layout; the index math behind the scaled gather is below.
+/* Kronecker product Z = kron(A, B), where one operand is variable-free
+ * (param_source) and the other (child = node->left) carries the variables.
+ *
+ * Built sparse-only: cvxpy passes the constant operand's active (nonzero) block
+ * indices, and new_left_kron / new_right_kron fill child_row[]/coeff_idx[] only
+ * for the output rows those blocks cover. Inactive output rows keep
+ * child_row == -1 (a zero kron entry) and contribute an empty Jacobian row.
  *
  * With column-major (Fortran) flattening, an output index OUT = I + J*(p*r)
- * decomposes as I = i*r + k and J = j*s + l (i in [0,p), k in [0,r), j in [0,q),
- * l in [0,s)). The output block (i, j) inner (k, l) equals A[i,j] * B[k,l], so
- * every output entry depends on a single child entry:
+ * decomposes as I = i*r + k and J = j*s + l. The output block (i, j) inner
+ * (k, l) equals A[i,j] * B[k,l], so every active output entry depends on a
+ * single child entry:
  *
  *   Z[OUT]        = coeff[OUT] * vec(child)[child_row[OUT]]
  *   J_kron[OUT,:] = coeff[OUT] * J_child[child_row[OUT], :]
  *
- * where coeff[OUT] = param_source->value[coeff_idx[OUT]]. child_row[] and
- * coeff_idx[] depend only on the shapes and are filled once in new_kron, so
- * forward, Jacobian and (affine) Hessian are all scaled gathers -- no
- * size_out x size_child coefficient matrix and no sparse matmul. */
+ * where coeff[OUT] = param_source->value[coeff_idx[OUT]]. The shared vtable
+ * below honors the child_row == -1 sentinel; only the construction loop differs
+ * between left_kron and right_kron. */
 
 /* Pull current parameter values through any broadcast/promote wrappers. */
 static void refresh_param_values(kron_expr *knode)
@@ -65,7 +70,8 @@ static void forward(expr *node, const double *u)
     double *y = node->value;
     for (int out = 0; out < node->size; out++)
     {
-        y[out] = a[knode->coeff_idx[out]] * x[knode->child_row[out]];
+        int cr = knode->child_row[out];
+        y[out] = (cr < 0) ? 0.0 : a[knode->coeff_idx[out]] * x[cr];
     }
 }
 
@@ -76,15 +82,17 @@ static void jacobian_init_impl(expr *node)
 
     jacobian_init(child);
 
-    /* Output row OUT shares the column set of child row child_row[OUT]. Build
-       the result CSR sparsity by copying those child rows (with repetition). */
+    /* Active output row OUT shares the column set of child row child_row[OUT];
+       inactive rows (child_row == -1) are empty. Build the result CSR sparsity
+       by copying the active child rows (with repetition). */
     CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
 
     int total = 0;
     for (int out = 0; out < node->size; out++)
     {
-        int cc = knode->child_row[out];
-        total += Jc->p[cc + 1] - Jc->p[cc];
+        int cr = knode->child_row[out];
+        if (cr >= 0)
+            total += Jc->p[cr + 1] - Jc->p[cr];
     }
 
     CSR_matrix *Jk = new_CSR_matrix(node->size, node->n_vars, total);
@@ -92,10 +100,13 @@ static void jacobian_init_impl(expr *node)
     Jk->p[0] = 0;
     for (int out = 0; out < node->size; out++)
     {
-        int cc = knode->child_row[out];
-        for (int t = Jc->p[cc]; t < Jc->p[cc + 1]; t++)
+        int cr = knode->child_row[out];
+        if (cr >= 0)
         {
-            Jk->i[idx++] = Jc->i[t];
+            for (int t = Jc->p[cr]; t < Jc->p[cr + 1]; t++)
+            {
+                Jk->i[idx++] = Jc->i[t];
+            }
         }
         Jk->p[out + 1] = idx;
     }
@@ -110,7 +121,7 @@ static void eval_jacobian(expr *node)
     child->eval_jacobian(child);
 
     /* Child sparsity is fixed after jacobian_init, so the result row offsets
-       still align; refill values as scale * child-row-values. */
+       still align; refill active rows as scale * child-row-values. */
     CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
     CSR_matrix *Jk = node->jacobian->to_csr(node->jacobian);
     const double *a = knode->param_source->value;
@@ -118,9 +129,11 @@ static void eval_jacobian(expr *node)
     int idx = 0;
     for (int out = 0; out < node->size; out++)
     {
-        int cc = knode->child_row[out];
+        int cr = knode->child_row[out];
+        if (cr < 0)
+            continue;
         double scale = a[knode->coeff_idx[out]];
-        for (int t = Jc->p[cc]; t < Jc->p[cc + 1]; t++)
+        for (int t = Jc->p[cr]; t < Jc->p[cr + 1]; t++)
         {
             Jk->x[idx++] = scale * Jc->x[t];
         }
@@ -150,7 +163,9 @@ static void eval_wsum_hess(expr *node, const double *w)
     memset(w_prime, 0, child->size * sizeof(double));
     for (int out = 0; out < node->size; out++)
     {
-        w_prime[knode->child_row[out]] += a[knode->coeff_idx[out]] * w[out];
+        int cr = knode->child_row[out];
+        if (cr >= 0)
+            w_prime[cr] += a[knode->coeff_idx[out]] * w[out];
     }
 
     child->eval_wsum_hess(child, w_prime);
@@ -175,16 +190,16 @@ static void free_type_data(expr *node)
     knode->param_source = NULL;
 }
 
-expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q, int r,
-               int s)
+/* Allocate a kron node and its (all-inactive) index arrays. The left/right
+   constructors then fill the active rows. */
+static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q,
+                                  int r, int s)
 {
-    int d1 = p * r;
-    int d2 = q * s;
-    int size_out = d1 * d2;
+    int size_out = (p * r) * (q * s);
 
     kron_expr *knode = (kron_expr *) sp_calloc(1, sizeof(kron_expr));
     expr *node = &knode->base;
-    init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
+    init_expr(node, p * r, q * s, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
               free_type_data);
     node->left = child;
@@ -196,32 +211,64 @@ expr *new_kron(expr *param_node, expr *child, int const_is_left, int p, int q, i
     knode->q = q;
     knode->r = r;
     knode->s = s;
-    knode->const_is_left = const_is_left;
 
     knode->child_row = (int *) sp_malloc(size_out * sizeof(int));
     knode->coeff_idx = (int *) sp_malloc(size_out * sizeof(int));
-
-    int n_rows = p * r; /* number of output rows */
     for (int out = 0; out < size_out; out++)
-    {
-        int I = out % n_rows;
-        int J = out / n_rows;
-        int i = I / r, k = I % r;
-        int j = J / s, l = J % s;
-        if (const_is_left)
-        {
-            /* A = param (p x q), B = child (r x s) */
-            knode->child_row[out] = k + l * r; /* col-major into B */
-            knode->coeff_idx[out] = i + j * p; /* col-major into A */
-        }
-        else
-        {
-            /* A = child (p x q), B = param (r x s) */
-            knode->child_row[out] = i + j * p; /* col-major into A */
-            knode->coeff_idx[out] = k + l * r; /* col-major into B */
-        }
-    }
+        knode->child_row[out] = -1; /* inactive until an active block fills it */
 
     knode->base.needs_parameter_refresh = true;
-    return node;
+    return knode;
+}
+
+/* Z = kron(A, B) with A = param_node (p x q) the constant, B = child (r x s) the
+   variable. active_blocks holds column-major indices i + j*p of A's nonzeros. */
+expr *new_left_kron(expr *param_node, expr *child, int p, int q, int r, int s,
+                    const int *active_blocks, int n_active)
+{
+    kron_expr *knode = new_kron_common(param_node, child, p, q, r, s);
+    int n_rows = p * r;
+    for (int b = 0; b < n_active; b++)
+    {
+        int bidx = active_blocks[b]; /* = i + j*p into A */
+        assert(0 <= bidx && bidx < p * q);
+        int i = bidx % p;
+        int j = bidx / p;
+        for (int l = 0; l < s; l++)
+        {
+            for (int k = 0; k < r; k++)
+            {
+                int out = (i * r + k) + (j * s + l) * n_rows;
+                knode->child_row[out] = k + l * r; /* col-major into B */
+                knode->coeff_idx[out] = bidx;      /* col-major into A */
+            }
+        }
+    }
+    return &knode->base;
+}
+
+/* Z = kron(A, B) with A = child (p x q) the variable, B = param_node (r x s) the
+   constant. active_blocks holds column-major indices k + l*r of B's nonzeros. */
+expr *new_right_kron(expr *param_node, expr *child, int p, int q, int r, int s,
+                     const int *active_blocks, int n_active)
+{
+    kron_expr *knode = new_kron_common(param_node, child, p, q, r, s);
+    int n_rows = p * r;
+    for (int b = 0; b < n_active; b++)
+    {
+        int bidx = active_blocks[b]; /* = k + l*r into B */
+        assert(0 <= bidx && bidx < r * s);
+        int k = bidx % r;
+        int l = bidx / r;
+        for (int j = 0; j < q; j++)
+        {
+            for (int i = 0; i < p; i++)
+            {
+                int out = (i * r + k) + (j * s + l) * n_rows;
+                knode->child_row[out] = i + j * p; /* col-major into A */
+                knode->coeff_idx[out] = bidx;      /* col-major into B */
+            }
+        }
+    }
+    return &knode->base;
 }

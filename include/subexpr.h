@@ -173,20 +173,22 @@ typedef struct convolve_expr
     CSC_matrix *Jchild_CSC;
 } convolve_expr;
 
-/* Kronecker product Z = kron(A, B) where exactly one operand is variable-free
- * (held by param_source) and the other (child = node->left) carries the
- * variables. Every output entry depends on a single child entry, so the output
- * Jacobian is the child Jacobian's rows gathered (with repetition) and scaled --
- * no coefficient matrix or matmul. child_row[OUT] and coeff_idx[OUT] depend only
- * on the operand shapes and are precomputed once at construction. */
+/* Kronecker product Z = kron(A, B) where one operand is variable-free (the
+ * constant/parameter, held by param_source) and the other (child = node->left)
+ * carries the variables. Built sparse-only by new_left_kron / new_right_kron:
+ * cvxpy passes the constant operand's active (nonzero) block indices, so only
+ * those output rows are filled; the rest stay inactive (child_row == -1) and
+ * contribute a zero value and an empty Jacobian row. Every active output entry
+ * depends on a single child entry, so the Jacobian is the child Jacobian's rows
+ * gathered (with repetition) and scaled by the constant -- no coefficient matrix
+ * or matmul. */
 typedef struct kron_expr
 {
     expr base;
-    expr *param_source; /* the constant/parameter operand */
+    expr *param_source; /* the constant/parameter operand node (re-evaluated each solve) */
     int p, q, r, s;     /* A is p x q, B is r x s */
-    int const_is_left;  /* 1: A=param, B=child; 0: A=child, B=param */
-    int *child_row;     /* size_out: child entry each output row gathers */
-    int *coeff_idx;     /* size_out: index into param_source->value (the scale) */
+    int *child_row;     /* size_out: child entry each output row gathers; -1 if inactive */
+    int *coeff_idx;     /* size_out: index into param_source->value (valid where child_row >= 0) */
 } kron_expr;
 
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children

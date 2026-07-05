@@ -157,6 +157,7 @@ int main(void)
     mu_run_test(test_kron_forward_const_left, tests_run);
     mu_run_test(test_kron_forward_const_right, tests_run);
     mu_run_test(test_kron_forward_scalar, tests_run);
+    mu_run_test(test_kron_forward_sparse, tests_run);
     mu_run_test(test_diag_mat_forward, tests_run);
     mu_run_test(test_upper_tri_forward_4x4, tests_run);
 
@@ -252,6 +253,7 @@ int main(void)
     mu_run_test(test_jacobian_convolve_composite, tests_run);
     mu_run_test(test_jacobian_kron_const_left, tests_run);
     mu_run_test(test_jacobian_kron_const_right, tests_run);
+    mu_run_test(test_jacobian_kron_sparse, tests_run);
     mu_run_test(test_jacobian_kron_composite, tests_run);
     mu_run_test(test_jacobian_transpose, tests_run);
     mu_run_test(test_jacobian_transpose_pd_preserved, tests_run);
