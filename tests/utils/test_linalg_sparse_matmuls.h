@@ -333,17 +333,28 @@ static CSC_matrix *block_left_multiply_fill_sparsity_ref(const CSR_matrix *A,
         {
             int block_start = block * n;
             int block_end = block_start + n;
-            while (jj < J->p[j + 1] && J->i[jj] < block_start) jj++;
+            while (jj < J->p[j + 1] && J->i[jj] < block_start)
+            {
+                jj++;
+            }
             int block_jj_start = jj;
-            while (jj < J->p[j + 1] && J->i[jj] < block_end) jj++;
+            while (jj < J->p[j + 1] && J->i[jj] < block_end)
+            {
+                jj++;
+            }
             int nnz_in_block = jj - block_jj_start;
-            if (nnz_in_block == 0) continue;
+            if (nnz_in_block == 0)
+            {
+                continue;
+            }
             for (int i = 0; i < m; i++)
             {
                 int a_len = A->p[i + 1] - A->p[i];
                 if (has_overlap(A->i + A->p[i], a_len, J->i + block_jj_start,
                                 nnz_in_block, block_start))
+                {
                     iVec_append(Ci, block * m + i);
+                }
             }
         }
         Cp[j + 1] = Ci->len;
@@ -363,16 +374,13 @@ const char *test_block_left_multiply_matches_reference_random(void)
 {
     srand(42);
     int n = 15, p = 3, k = 8;
-    int iwork_size;
 
     for (int trial = 0; trial < 5; trial++)
     {
         CSR_matrix *A = new_csr_random(20, n, 0.2);
         CSR_matrix *G = new_csr_random(n * p, k, 0.15);
 
-        iwork_size = G->n;
-        int *iwork =
-            (int *) sp_malloc((iwork_size > 0 ? iwork_size : 1) * sizeof(int));
+        int *iwork = (int *) sp_malloc(G->n * sizeof(int));
         CSC_matrix *J = csr_to_csc_alloc(G, iwork);
         sp_free(iwork);
 
