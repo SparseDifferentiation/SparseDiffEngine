@@ -45,6 +45,27 @@ COO_matrix *new_COO_matrix(const CSR_matrix *A)
     return coo;
 }
 
+COO_matrix *new_COO_matrix_from_pattern(const CSR_matrix *A, const int *rows,
+                                        const int *cols, int nnz)
+{
+    if (nnz != A->nnz) return NULL;
+
+    COO_matrix *coo = (COO_matrix *) sp_malloc(sizeof(COO_matrix));
+    coo->m = A->m;
+    coo->n = A->n;
+    coo->nnz = nnz;
+    coo->rows = (int *) sp_malloc(nnz * sizeof(int));
+    coo->cols = (int *) sp_malloc(nnz * sizeof(int));
+    coo->x = (double *) sp_malloc(nnz * sizeof(double));
+    coo->value_map = NULL;
+
+    memcpy(coo->rows, rows, nnz * sizeof(int));
+    memcpy(coo->cols, cols, nnz * sizeof(int));
+    memcpy(coo->x, A->x, nnz * sizeof(double));
+
+    return coo;
+}
+
 COO_matrix *new_COO_matrix_lower_triangular(const CSR_matrix *A)
 {
     /* Pass 1: count lower-triangular entries (col <= row) */

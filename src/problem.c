@@ -284,6 +284,22 @@ void problem_init_jacobian_coo(problem *prob)
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
 }
 
+int problem_init_jacobian_coo_from(problem *prob, const int *rows,
+                                   const int *cols, int nnz)
+{
+    problem_init_jacobian(prob);
+    if (prob->jacobian_coo != NULL) return 0;
+
+    Timer timer;
+    clock_gettime(CLOCK_MONOTONIC, &timer.start);
+    prob->jacobian_coo =
+        new_COO_matrix_from_pattern(prob->jacobian, rows, cols, nnz);
+    clock_gettime(CLOCK_MONOTONIC, &timer.end);
+    prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
+
+    return prob->jacobian_coo != NULL ? 0 : -1;
+}
+
 void problem_init_hessian_coo_lower_triangular(problem *prob)
 {
     problem_init_hessian(prob);

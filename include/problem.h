@@ -81,6 +81,14 @@ void problem_init_jacobian(problem *prob);
 void problem_init_hessian(problem *prob);
 void problem_init_derivatives(problem *prob);
 void problem_init_jacobian_coo(problem *prob);
+/* Like problem_init_jacobian_coo, but adopts a caller-provided COO pattern
+ * (as previously returned for a structurally identical problem) instead of
+ * expanding it from the CSR. The expression-level Jacobian structures are
+ * still initialized; only the COO view construction is skipped. Returns 0 on
+ * success, -1 if nnz does not match this problem's Jacobian (the pattern is
+ * then ignored and no COO view is created). */
+int problem_init_jacobian_coo_from(problem *prob, const int *rows,
+                                   const int *cols, int nnz);
 void problem_init_hessian_coo_lower_triangular(problem *prob);
 void free_problem(problem *prob);
 

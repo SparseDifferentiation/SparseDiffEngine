@@ -46,6 +46,12 @@ typedef struct COO_matrix
 /* COO from CSR */
 COO_matrix *new_COO_matrix(const CSR_matrix *A);
 
+/* COO from a caller-provided pattern (copied), values taken from A->x. The
+   pattern must be A's own pattern in row-major (CSR) order; the caller
+   certifies this, only nnz is validated (returns NULL on mismatch). */
+COO_matrix *new_COO_matrix_from_pattern(const CSR_matrix *A, const int *rows,
+                                        const int *cols, int nnz);
+
 /* Construct COO containing only the lower-triangular entries (col <= row) of a
    symmetric CSR. Populates value_map so that refresh_lower_triangular_coo can
    update values without recomputing structure. */

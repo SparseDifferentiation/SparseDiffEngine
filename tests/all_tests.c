@@ -514,6 +514,7 @@ int main(void)
     mu_run_test(test_problem_gradient, tests_run);
     mu_run_test(test_problem_jacobian, tests_run);
     mu_run_test(test_problem_jacobian_multi, tests_run);
+    mu_run_test(test_problem_jacobian_coo_from, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
     mu_run_test(test_problem_hessian_sum_exp_left_matmul_dense_transpose, tests_run);

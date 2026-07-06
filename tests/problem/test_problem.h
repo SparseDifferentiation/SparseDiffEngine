@@ -269,6 +269,66 @@ const char *test_problem_jacobian_multi(void)
 }
 
 /*
+ * Test problem_init_jacobian_coo_from: a second, structurally identical
+ * problem adopts the COO pattern computed by the first one. The adopted
+ * pattern must match what the engine would compute itself, evaluation must
+ * be unaffected, and a wrong-sized pattern must be rejected.
+ */
+const char *test_problem_jacobian_coo_from(void)
+{
+    int n_vars = 2;
+    double u[2] = {2.0, 4.0};
+
+    /* Reference problem: engine computes the COO pattern itself */
+    expr *x_a = new_variable(2, 1, 0, n_vars);
+    expr *obj_a = new_sum(new_log(x_a), -1);
+    expr *cons_a[2] = {new_log(x_a), new_exp(x_a)};
+    problem *prob_a = new_problem(obj_a, cons_a, 2, false);
+    problem_init_jacobian_coo(prob_a);
+    COO_matrix *coo_a = prob_a->jacobian_coo;
+
+    /* Identical problem adopts the reference pattern */
+    expr *x_b = new_variable(2, 1, 0, n_vars);
+    expr *obj_b = new_sum(new_log(x_b), -1);
+    expr *cons_b[2] = {new_log(x_b), new_exp(x_b)};
+    problem *prob_b = new_problem(obj_b, cons_b, 2, false);
+    int status = problem_init_jacobian_coo_from(prob_b, coo_a->rows,
+                                                coo_a->cols, coo_a->nnz);
+    mu_assert("coo_from failed", status == 0);
+    mu_assert("coo missing", prob_b->jacobian_coo != NULL);
+    mu_assert("coo nnz wrong", prob_b->jacobian_coo->nnz == coo_a->nnz);
+    mu_assert("coo rows wrong",
+              cmp_int_array(prob_b->jacobian_coo->rows, coo_a->rows, coo_a->nnz));
+    mu_assert("coo cols wrong",
+              cmp_int_array(prob_b->jacobian_coo->cols, coo_a->cols, coo_a->nnz));
+
+    /* Evaluation is unaffected by how the COO view was initialized */
+    problem_constraint_forward(prob_a, u);
+    problem_jacobian(prob_a);
+    problem_constraint_forward(prob_b, u);
+    problem_jacobian(prob_b);
+    mu_assert("jac vals differ", cmp_double_array(prob_b->jacobian->x,
+                                                  prob_a->jacobian->x,
+                                                  prob_a->jacobian->nnz));
+
+    /* A wrong-sized pattern is rejected and leaves no COO view */
+    expr *x_c = new_variable(2, 1, 0, n_vars);
+    expr *obj_c = new_sum(new_log(x_c), -1);
+    expr *cons_c[1] = {new_log(x_c)};
+    problem *prob_c = new_problem(obj_c, cons_c, 1, false);
+    status = problem_init_jacobian_coo_from(prob_c, coo_a->rows, coo_a->cols,
+                                            coo_a->nnz);
+    mu_assert("size mismatch not rejected", status == -1);
+    mu_assert("coo created despite mismatch", prob_c->jacobian_coo == NULL);
+
+    free_problem(prob_a);
+    free_problem(prob_b);
+    free_problem(prob_c);
+
+    return 0;
+}
+
+/*
  * Test problem_hessian: Lagrange Hessian of:
  *   Objective: sum(log(x)) where x is 3x1
  *   Constraint 1: exp(x)
