@@ -86,6 +86,35 @@ static inline double sparse_dot_offset(const double *a_x, const int *a_idx,
     return sum;
 }
 
+/* Symbolic phase of Gustavson's sparse matmul: an output row's (or column's)
+   sparsity pattern is the union of the operand index lists selected by keys,
+   i.e. the lists list_i[list_p[k] .. list_p[k+1]] for each k = keys[t] -
+   key_offset. Compute that union into cand, deduplicated with a
+   generation-stamped workspace and sorted ascending (the order the downstream
+   sparse dot products require). Returns the number of gathered indices. */
+static int sorted_pattern_union(const int *keys, int n_keys, int key_offset,
+                                const int *list_p, const int *list_i, int *stamp,
+                                int *cand, int *gen)
+{
+    int g = ++(*gen);
+    int n_cand = 0;
+    for (int t = 0; t < n_keys; t++)
+    {
+        int k = keys[t] - key_offset;
+        for (int q = list_p[k]; q < list_p[k + 1]; q++)
+        {
+            int i = list_i[q];
+            if (stamp[i] != g)
+            {
+                stamp[i] = g;
+                cand[n_cand++] = i;
+            }
+        }
+    }
+    sort_int_array(cand, n_cand);
+    return n_cand;
+}
+
 CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
                                               const CSC_matrix *J, int p)
 {
@@ -101,12 +130,9 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
     iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
     Cp[0] = 0;
 
-    /* Output-driven gather: row i of A intersects a block's child entries iff
-       i appears in A's CSC column list of one of those entries, so walk only
-       those columns instead of testing all m rows per (column, block). A CSC
-       view of A is built once; candidates are deduped with a generation-stamp
-       workspace and sorted to reproduce the ascending row order the old
-       has_overlap row scan emitted. */
+    /* Output-driven: row i of A intersects a block's child entries iff i
+       appears in the CSC column list of one of those entries, so gather those
+       columns instead of testing all m rows per (column, block). */
     int *iwork = (int *) sp_malloc((n > 0 ? n : 1) * sizeof(int));
     CSC_matrix *A_csc = csr_to_csc_alloc(A, iwork);
     sp_free(iwork);
@@ -154,26 +180,11 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
             }
 
             // -----------------------------------------------------------------
-            // gather the rows of A that hit this block's child entries via the
-            // CSC columns of A, dedup with the generation stamp, sort ascending
+            // gather the rows of A that hit this block's child entries
             // -----------------------------------------------------------------
-            gen++;
-            int n_cand = 0;
-            for (int t = block_jj_start; t < block_jj_end; t++)
-            {
-                int c = J->i[t] - block_start; /* column of A */
-                for (int q = A_csc->p[c]; q < A_csc->p[c + 1]; q++)
-                {
-                    int i = A_csc->i[q];
-                    if (stamp[i] != gen)
-                    {
-                        stamp[i] = gen;
-                        cand[n_cand++] = i;
-                    }
-                }
-            }
-
-            sort_int_array(cand, n_cand);
+            int n_cand = sorted_pattern_union(
+                J->i + block_jj_start, block_jj_end - block_jj_start, block_start,
+                A_csc->p, A_csc->i, stamp, cand, &gen);
             row_offset = block * m;
             for (int t = 0; t < n_cand; t++)
             {
@@ -292,12 +303,9 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
 
     Cp[0] = 0;
 
-    /* Output-driven gather: column j of B intersects row i of A iff j appears
-       in B's CSR row list of one of A's row-i column indices, so walk only
-       those rows of B instead of testing all p columns per row of A. A CSR
-       view of B is built once; candidates are deduped with a generation-stamp
-       workspace and sorted to reproduce the ascending column order the old
-       has_overlap column scan emitted. */
+    /* Output-driven: column j of B intersects row i of A iff j appears in the
+       CSR row list of one of A's row-i column indices, so gather those rows
+       instead of testing all p columns per row of A. */
     int *iwork = (int *) sp_malloc((B->m > 0 ? B->m : 1) * sizeof(int));
     CSR_matrix *B_csr = csc_to_csr_alloc(B, iwork);
     sp_free(iwork);
@@ -312,23 +320,8 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
     int nnz = 0;
     for (int i = 0; i < A->m; i++)
     {
-        gen++;
-        int n_cand = 0;
-        for (int t = A->p[i]; t < A->p[i + 1]; t++)
-        {
-            int k = A->i[t]; /* row of B */
-            for (int q = B_csr->p[k]; q < B_csr->p[k + 1]; q++)
-            {
-                int j = B_csr->i[q];
-                if (stamp[j] != gen)
-                {
-                    stamp[j] = gen;
-                    cand[n_cand++] = j;
-                }
-            }
-        }
-
-        sort_int_array(cand, n_cand);
+        int n_cand = sorted_pattern_union(A->i + A->p[i], A->p[i + 1] - A->p[i], 0,
+                                          B_csr->p, B_csr->i, stamp, cand, &gen);
         for (int t = 0; t < n_cand; t++)
         {
             iVec_append(Ci, cand[t]);
