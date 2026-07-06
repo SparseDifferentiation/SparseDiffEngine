@@ -57,6 +57,15 @@ COO_matrix *new_COO_matrix_from_pattern(const CSR_matrix *A, const int *rows,
    update values without recomputing structure. */
 COO_matrix *new_COO_matrix_lower_triangular(const CSR_matrix *A);
 
+/* Lower-triangular COO from a caller-provided pattern (copied). value_map is
+   still derived from A (evaluation needs it), but the counting pass and the
+   row/col writes are skipped. The pattern must be A's own lower-triangular
+   pattern in row-major order; only nnz is validated (NULL on mismatch). */
+COO_matrix *new_COO_matrix_lower_triangular_from_pattern(const CSR_matrix *A,
+                                                         const int *rows,
+                                                         const int *cols,
+                                                         int nnz);
+
 /* Refresh COO values from a new CSR_matrix value array using value_map */
 void refresh_lower_triangular_coo(COO_matrix *coo, const double *vals);
 

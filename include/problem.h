@@ -90,6 +90,12 @@ void problem_init_jacobian_coo(problem *prob);
 int problem_init_jacobian_coo_from(problem *prob, const int *rows,
                                    const int *cols, int nnz);
 void problem_init_hessian_coo_lower_triangular(problem *prob);
+/* Hessian analog of problem_init_jacobian_coo_from: adopts a caller-provided
+ * lower-triangular COO pattern. The value map is still derived from the CSR
+ * (evaluation needs it); same 0 / -1 contract. */
+int problem_init_hessian_coo_lower_triangular_from(problem *prob,
+                                                   const int *rows,
+                                                   const int *cols, int nnz);
 void free_problem(problem *prob);
 
 void problem_register_params(problem *prob, expr **param_nodes, int n_param_nodes);

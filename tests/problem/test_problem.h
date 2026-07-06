@@ -329,6 +329,75 @@ const char *test_problem_jacobian_coo_from(void)
 }
 
 /*
+ * Test problem_init_hessian_coo_lower_triangular_from: the Hessian analog of
+ * test_problem_jacobian_coo_from. The adopted lower-triangular pattern must
+ * match the engine-computed one including the value map (evaluation depends
+ * on it), and a wrong-sized pattern must be rejected.
+ */
+const char *test_problem_hessian_coo_from(void)
+{
+    int n_vars = 3;
+    double u[3] = {1.0, 2.0, 3.0};
+    double w[3] = {1.0, 2.0, 3.0};
+
+    /* Reference problem: sum(log(x)) objective, exp(x) constraint */
+    expr *x_a = new_variable(3, 1, 0, n_vars);
+    expr *obj_a = new_sum(new_log(x_a), -1);
+    expr *cons_a[1] = {new_exp(x_a)};
+    problem *prob_a = new_problem(obj_a, cons_a, 1, false);
+    problem_init_hessian_coo_lower_triangular(prob_a);
+    COO_matrix *coo_a = prob_a->lagrange_hessian_coo;
+
+    /* Identical problem adopts the reference pattern */
+    expr *x_b = new_variable(3, 1, 0, n_vars);
+    expr *obj_b = new_sum(new_log(x_b), -1);
+    expr *cons_b[1] = {new_exp(x_b)};
+    problem *prob_b = new_problem(obj_b, cons_b, 1, false);
+    int status = problem_init_hessian_coo_lower_triangular_from(
+        prob_b, coo_a->rows, coo_a->cols, coo_a->nnz);
+    mu_assert("hess coo_from failed", status == 0);
+    COO_matrix *coo_b = prob_b->lagrange_hessian_coo;
+    mu_assert("hess coo missing", coo_b != NULL);
+    mu_assert("hess coo nnz wrong", coo_b->nnz == coo_a->nnz);
+    mu_assert("hess coo rows wrong",
+              cmp_int_array(coo_b->rows, coo_a->rows, coo_a->nnz));
+    mu_assert("hess coo cols wrong",
+              cmp_int_array(coo_b->cols, coo_a->cols, coo_a->nnz));
+    mu_assert("hess value_map wrong",
+              cmp_int_array(coo_b->value_map, coo_a->value_map, coo_a->nnz));
+
+    /* Evaluation through the value map must be identical */
+    problem_objective_forward(prob_a, u);
+    problem_constraint_forward(prob_a, u);
+    problem_hessian(prob_a, 2.0, w);
+    refresh_lower_triangular_coo(coo_a, prob_a->lagrange_hessian->x);
+
+    problem_objective_forward(prob_b, u);
+    problem_constraint_forward(prob_b, u);
+    problem_hessian(prob_b, 2.0, w);
+    refresh_lower_triangular_coo(coo_b, prob_b->lagrange_hessian->x);
+    mu_assert("hess vals differ",
+              cmp_double_array(coo_b->x, coo_a->x, coo_a->nnz));
+
+    /* A wrong-sized pattern is rejected and leaves no COO view */
+    expr *x_c = new_variable(3, 1, 0, n_vars);
+    expr *obj_c = new_sum(new_log(x_c), -1);
+    expr *cons_c[1] = {new_exp(x_c)};
+    problem *prob_c = new_problem(obj_c, cons_c, 1, false);
+    status = problem_init_hessian_coo_lower_triangular_from(
+        prob_c, coo_a->rows, coo_a->cols, coo_a->nnz - 1);
+    mu_assert("hess size mismatch not rejected", status == -1);
+    mu_assert("hess coo created despite mismatch",
+              prob_c->lagrange_hessian_coo == NULL);
+
+    free_problem(prob_a);
+    free_problem(prob_b);
+    free_problem(prob_c);
+
+    return 0;
+}
+
+/*
  * Test problem_hessian: Lagrange Hessian of:
  *   Objective: sum(log(x)) where x is 3x1
  *   Constraint 1: exp(x)

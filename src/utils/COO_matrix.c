@@ -110,6 +110,48 @@ COO_matrix *new_COO_matrix_lower_triangular(const CSR_matrix *A)
     return coo;
 }
 
+COO_matrix *new_COO_matrix_lower_triangular_from_pattern(const CSR_matrix *A,
+                                                         const int *rows,
+                                                         const int *cols,
+                                                         int nnz)
+{
+    COO_matrix *coo = (COO_matrix *) sp_malloc(sizeof(COO_matrix));
+    coo->m = A->m;
+    coo->n = A->n;
+    coo->nnz = nnz;
+    coo->rows = (int *) sp_malloc(nnz * sizeof(int));
+    coo->cols = (int *) sp_malloc(nnz * sizeof(int));
+    coo->x = (double *) sp_malloc(nnz * sizeof(double));
+    coo->value_map = (int *) sp_malloc(nnz * sizeof(int));
+
+    /* value_map must still be derived from A; the counting pass and the
+       row/col writes are what the provided pattern saves. */
+    int idx = 0;
+    for (int r = 0; r < A->m; r++)
+    {
+        for (int k = A->p[r]; k < A->p[r + 1]; k++)
+        {
+            if (A->i[k] <= r)
+            {
+                if (idx == nnz) goto mismatch;
+                coo->x[idx] = A->x[k];
+                coo->value_map[idx] = k;
+                idx++;
+            }
+        }
+    }
+    if (idx != nnz) goto mismatch;
+
+    memcpy(coo->rows, rows, nnz * sizeof(int));
+    memcpy(coo->cols, cols, nnz * sizeof(int));
+
+    return coo;
+
+mismatch:
+    free_COO_matrix(coo);
+    return NULL;
+}
+
 void refresh_lower_triangular_coo(COO_matrix *coo, const double *vals)
 {
     for (int i = 0; i < coo->nnz; i++)
