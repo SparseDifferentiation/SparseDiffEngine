@@ -21,29 +21,20 @@
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
-/* Kronecker product Z = kron(A, B), where one operand is variable-free
- * (param_source) and the other (child = node->left) carries the variables.
+/* Kronecker product Z = kron(A, B), where one operand is variable-free (held by
+ * param_source) and the other (child = node->left) carries the variables.
  *
- * Built sparse-only: cvxpy passes the constant operand's active (nonzero) block
- * indices, and new_left_kron / new_right_kron fill child_row[]/coeff_idx[] only
- * for the output rows those blocks cover. Inactive output rows keep
- * child_row == -1 (a zero kron entry) and contribute an empty Jacobian row.
+ * With column-major flattening, output entry OUT = (i*r + k) + (j*s + l)*(p*r)
+ * equals A[i,j] * B[k,l], so each output entry depends on a single child entry:
  *
- * With column-major (Fortran) flattening, an output index OUT = I + J*(p*r)
- * decomposes as I = i*r + k and J = j*s + l. The output block (i, j) inner
- * (k, l) equals A[i,j] * B[k,l], so every active output entry depends on a
- * single child entry:
+ *   Z[OUT]     = coeff[OUT] * vec(child)[child_row[OUT]]
+ *   J[OUT, :]  = coeff[OUT] * J_child[child_row[OUT], :]
  *
- *   Z[OUT]        = coeff[OUT] * vec(child)[child_row[OUT]]
- *   J_kron[OUT,:] = coeff[OUT] * J_child[child_row[OUT], :]
- *
- * where coeff[OUT] = param_source->value[coeff_idx[OUT]]. The shared vtable
- * below honors the child_row == -1 sentinel; only the construction loop differs
- * between left_kron and right_kron. */
+ * where coeff[OUT] = param_source->value[coeff_idx[OUT]]. The constructors fill
+ * child_row/coeff_idx only for the constant operand's active (nonzero) blocks;
+ * the remaining rows keep child_row == -1 and are structurally zero. */
 
 /* Pull current parameter values through any broadcast/promote wrappers. */
 static void refresh_param_values(kron_expr *knode)
@@ -82,16 +73,18 @@ static void jacobian_init_impl(expr *node)
 
     jacobian_init(child);
 
-    /* Active output row OUT shares the column set of child row child_row[OUT];
-       inactive rows (child_row == -1) are empty. Build the result CSR sparsity
-       by copying the active child rows (with repetition). */
+    /* Row OUT of the result copies the sparsity of child row child_row[OUT]
+       (with repetition); inactive rows are empty. */
     CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
 
     int total = 0;
     for (int out = 0; out < node->size; out++)
     {
         int cr = knode->child_row[out];
-        if (cr >= 0) total += Jc->p[cr + 1] - Jc->p[cr];
+        if (cr >= 0)
+        {
+            total += Jc->p[cr + 1] - Jc->p[cr];
+        }
     }
 
     CSR_matrix *Jk = new_CSR_matrix(node->size, node->n_vars, total);
@@ -119,8 +112,8 @@ static void eval_jacobian(expr *node)
 
     child->eval_jacobian(child);
 
-    /* Child sparsity is fixed after jacobian_init, so the result row offsets
-       still align; refill active rows as scale * child-row-values. */
+    /* Sparsity is fixed after jacobian_init, so the row offsets still align;
+       refill active rows as scale * child-row-values. */
     CSR_matrix *Jc = child->jacobian->to_csr(child->jacobian);
     CSR_matrix *Jk = node->jacobian->to_csr(node->jacobian);
     const double *a = knode->param_source->value;
@@ -129,7 +122,10 @@ static void eval_jacobian(expr *node)
     for (int out = 0; out < node->size; out++)
     {
         int cr = knode->child_row[out];
-        if (cr < 0) continue;
+        if (cr < 0)
+        {
+            continue;
+        }
         double scale = a[knode->coeff_idx[out]];
         for (int t = Jc->p[cr]; t < Jc->p[cr + 1]; t++)
         {
@@ -155,14 +151,17 @@ static void eval_wsum_hess(expr *node, const double *w)
     const double *a = knode->param_source->value;
     double *w_prime = node->work->dwork;
 
-    /* kron is affine in child, so the Hessian is the child's with weights pushed
-       back through the linear gather: w'[child_row] += coeff * w[OUT]. Many
-       output rows map to one child entry, hence the accumulation. */
+    /* kron is affine in the child, so we only push the weights back through the
+       gather: w'[child_row[OUT]] += coeff[OUT] * w[OUT]. Many output rows map to
+       one child entry, hence the accumulation. */
     memset(w_prime, 0, child->size * sizeof(double));
     for (int out = 0; out < node->size; out++)
     {
         int cr = knode->child_row[out];
-        if (cr >= 0) w_prime[cr] += a[knode->coeff_idx[out]] * w[out];
+        if (cr >= 0)
+        {
+            w_prime[cr] += a[knode->coeff_idx[out]] * w[out];
+        }
     }
 
     child->eval_wsum_hess(child, w_prime);
@@ -204,15 +203,13 @@ static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q, i
 
     knode->param_source = param_node;
     expr_retain(param_node);
-    knode->p = p;
-    knode->q = q;
-    knode->r = r;
-    knode->s = s;
 
     knode->child_row = (int *) sp_malloc(size_out * sizeof(int));
     knode->coeff_idx = (int *) sp_malloc(size_out * sizeof(int));
     for (int out = 0; out < size_out; out++)
+    {
         knode->child_row[out] = -1; /* inactive until an active block fills it */
+    }
 
     knode->base.needs_parameter_refresh = true;
     return knode;

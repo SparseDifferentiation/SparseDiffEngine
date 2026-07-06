@@ -80,15 +80,13 @@ expr *new_vector_mult(expr *param_node, expr *child);
    kernel and may either represent a constant or an updatable parameter */
 expr *new_convolve(expr *param_node, expr *child);
 
-/* Kronecker product Z = kron(A, B), built sparse-only: one operand is the
-   variable-free constant/parameter (param_node), the other carries the variables
-   (child). active_blocks holds the column-major indices of the constant operand's
-   active (nonzero) blocks -- only those output rows are materialized. For a
-   parametric operand cvxpy passes all blocks (dense, slow). (p, q) are A's dims,
-   (r, s) are B's dims.
+/* Kronecker product Z = kron(A, B), where A is p x q and B is r x s. param_node
+   holds the variable-free constant/parameter operand and child the variable one.
+   active_blocks lists the column-major indices of the constant operand's nonzero
+   entries; only the output rows they cover are materialized.
 
-   left_kron:  A = param_node (p x q), B = child (r x s); active_blocks index A.
-   right_kron: A = child (p x q), B = param_node (r x s); active_blocks index B. */
+   left_kron:  A = param_node, B = child; active_blocks index into A.
+   right_kron: A = child, B = param_node; active_blocks index into B. */
 expr *new_left_kron(expr *param_node, expr *child, int p, int q, int r, int s,
                     const int *active_blocks, int n_active);
 expr *new_right_kron(expr *param_node, expr *child, int p, int q, int r, int s,
