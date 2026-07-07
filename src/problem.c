@@ -371,7 +371,11 @@ void free_problem(problem *prob)
         print_end_message(&prob->stats);
     }
 
-    /* Free param_nodes array (weak refs, don't free the nodes) */
+    /* Release registered parameter nodes, then the array */
+    for (int i = 0; i < prob->n_param_nodes; i++)
+    {
+        free_expr(prob->param_nodes[i]);
+    }
     sp_free(prob->param_nodes);
 
     /* Free allocated arrays */
@@ -412,6 +416,11 @@ void problem_register_params(problem *prob, expr **param_nodes, int n_param_node
             exit(1);
         }
 
+        /* The problem owns its registered nodes: a parameter may appear in
+           no expression tree (its value consumed elsewhere), in which case
+           dropping the Python capsule would otherwise free it while it is
+           still referenced here. */
+        expr_retain(param_nodes[i]);
         prob->total_parameter_size += param_nodes[i]->size;
     }
 }
