@@ -194,6 +194,7 @@ int main(void)
     mu_run_test(test_jacobian_elementwise_mult_2, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_3, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_4, tests_run);
+    mu_run_test(test_jacobian_elementwise_mult_duplicate_gathers, tests_run);
     mu_run_test(test_quad_over_lin1, tests_run);
     mu_run_test(test_quad_over_lin2, tests_run);
     mu_run_test(test_quad_over_lin3, tests_run);
@@ -223,6 +224,7 @@ int main(void)
     mu_run_test(test_index_jacobian_of_variable, tests_run);
     mu_run_test(test_index_jacobian_of_log, tests_run);
     mu_run_test(test_index_jacobian_repeated, tests_run);
+    mu_run_test(test_index_jacobian_duplicates_exceed_source_nnz, tests_run);
     mu_run_test(test_sum_of_index, tests_run);
     mu_run_test(test_promote_scalar_jacobian, tests_run);
     mu_run_test(test_promote_scalar_to_matrix_jacobian, tests_run);
@@ -307,6 +309,7 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
+    mu_run_test(test_wsum_hess_multiply_duplicate_gathers, tests_run);
     mu_run_test(test_wsum_hess_left_matmul, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_matrix, tests_run);
     mu_run_test(test_wsum_hess_left_matmul_exp_composite, tests_run);

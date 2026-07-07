@@ -118,6 +118,38 @@ const char *test_jacobian_elementwise_mult_3(void)
     return 0;
 }
 
+const char *test_jacobian_elementwise_mult_duplicate_gathers(void)
+{
+    // var = (a, b) where a is 4 x 1 at offset 0 and b is 4 x 1 at offset 4.
+    // We compute the jacobian of a[idx] * b[idx] with DUPLICATED gather
+    // indices idx = [0, 0, 1, 2, 2, 3] (cvxpy#3442): each gather Jacobian has
+    // 6 nnz, more than its source variable's 4.
+    double u_vals[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    int indices[6] = {0, 0, 1, 2, 2, 3};
+    expr *a = new_variable(4, 1, 0, 8);
+    expr *b = new_variable(4, 1, 4, 8);
+    expr *ga = new_index(a, 1, 6, indices, 6);
+    expr *gb = new_index(b, 1, 6, indices, 6);
+    expr *node = new_elementwise_mult(ga, gb);
+
+    node->forward(node, u_vals);
+    jacobian_init(node);
+    node->eval_jacobian(node);
+
+    double fwd[6] = {5.0, 5.0, 12.0, 21.0, 21.0, 32.0};
+    mu_assert("forward fail", cmp_double_array(node->value, fwd, 6));
+
+    /* row k: b[idx[k]] at col idx[k], a[idx[k]] at col 4 + idx[k] */
+    double vals[12] = {5.0, 1.0, 5.0, 1.0, 6.0, 2.0, 7.0, 3.0, 7.0, 3.0, 8.0, 4.0};
+    int rows[7] = {0, 2, 4, 6, 8, 10, 12};
+    int cols[12] = {0, 4, 0, 4, 1, 5, 2, 6, 2, 6, 3, 7};
+
+    mu_assert("vals fail", cmp_values(node->jacobian, vals, 12));
+    mu_assert("sparsity fail", cmp_sparsity(node->jacobian, rows, cols, 6, 12));
+    free_expr(node);
+    return 0;
+}
+
 const char *test_jacobian_elementwise_mult_4(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 3 x 1
