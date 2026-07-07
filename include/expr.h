@@ -66,6 +66,12 @@ typedef struct expr
     int d1, d2, size, n_vars, refcount, var_id;
     struct expr *left;
     struct expr *right;
+    /* Variable-free side subtree feeding cached parameter data (quad_form Q,
+       matmul A, scalar/vector mult a, convolve kernel). Not a regular child:
+       it is evaluated by the owning atom's refresh, not the main forward
+       recursion — but expr_set_needs_refresh must walk it like a child so
+       gating nodes inside it re-evaluate after a parameter update. */
+    struct expr *param_source;
 
     // ------------------------------------------------------------------------
     //                     oracle related quantities

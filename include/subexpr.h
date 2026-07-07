@@ -68,8 +68,7 @@ typedef struct quad_form_expr
     double *diag_w; /* length-n diagonal (= 2w) fed to BTDA on the dense path */
     int n;          /* quadratic dimension = left->size */
 
-    /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
-    expr *param_source;
+    /* parametric dense path: base.param_source feeds Q each solve */
 } quad_form_expr;
 
 /* Sum reduction along an axis */
@@ -139,15 +138,14 @@ typedef struct left_matmul_expr
     CSC_matrix *Jchild_CSC;
     CSC_matrix *J_CSC;
     int *csc_to_csr_work;
-    expr *param_source;
+    /* parametric A lives in base.param_source */
     void (*refresh_param_values)(struct left_matmul_expr *);
 } left_matmul_expr;
 
-/* Scalar multiplication: y = a * child where a comes from param_source */
+/* Scalar multiplication: y = a * child where a comes from base.param_source */
 typedef struct scalar_mult_expr
 {
     expr base;
-    expr *param_source;
 } scalar_mult_expr;
 
 /* Vector elementwise multiplication: y = a \circ child where a comes from
@@ -155,7 +153,6 @@ typedef struct scalar_mult_expr
 typedef struct vector_mult_expr
 {
     expr base;
-    expr *param_source;
 } vector_mult_expr;
 
 /* 1D convolution: y = conv(a, child) where a is a length-m kernel held by
@@ -166,10 +163,10 @@ typedef struct vector_mult_expr
 typedef struct convolve_expr
 {
     expr base;
-    expr *param_source; /* length-m kernel */
-    int m;              /* kernel length */
-    int n;              /* input length */
-    CSR_matrix *T;      /* (m+n-1) x n convolution matrix */
+    /* length-m kernel lives in base.param_source */
+    int m;         /* kernel length */
+    int n;         /* input length */
+    CSR_matrix *T; /* (m+n-1) x n convolution matrix */
     CSC_matrix *Jchild_CSC;
 } convolve_expr;
 

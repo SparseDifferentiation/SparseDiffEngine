@@ -32,6 +32,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->size = d1 * d2;
     node->n_vars = n_vars;
     node->refcount = 0;
+    node->param_source = NULL;
     node->value = (double *) sp_calloc(d1 * d2, sizeof(double));
     node->var_id = NOT_A_VARIABLE;
     node->forward = forward;
@@ -115,6 +116,11 @@ void expr_set_needs_refresh(expr *node)
     node->work->jacobian_csc_filled = false;
     expr_set_needs_refresh(node->left);
     expr_set_needs_refresh(node->right);
+    /* param_source is a side subtree evaluated by the owning atom's refresh,
+       not the main forward recursion; without this walk, gating nodes inside
+       a composite source (e.g. a power node in Q = I/p) would keep serving
+       cached values after a parameter update. */
+    expr_set_needs_refresh(node->param_source);
 }
 
 void expr_retain(expr *node)

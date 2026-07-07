@@ -39,20 +39,20 @@ static void forward(expr *node, const double *u)
 
     if (cnode->base.needs_parameter_refresh)
     {
-        cnode->param_source->forward(cnode->param_source, NULL);
+        cnode->base.param_source->forward(cnode->base.param_source, NULL);
         /* refresh the convolution matrix values if it exists (necessary to check
            for null in case someone calls forward before initializing the jacobian,
            which might happen when we expose Python bindings to SparseDiffEngine) */
         if (cnode->T != NULL)
         {
-            conv_matrix_fill_values(cnode->T, cnode->param_source->value);
+            conv_matrix_fill_values(cnode->T, cnode->base.param_source->value);
         }
         cnode->base.needs_parameter_refresh = false;
     }
 
     child->forward(child, u);
 
-    const double *a = cnode->param_source->value;
+    const double *a = cnode->base.param_source->value;
     const double *x = child->value;
     double *y = node->value;
 
@@ -72,7 +72,7 @@ static void jacobian_init_impl(expr *node)
     convolve_expr *cnode = (convolve_expr *) node;
     int m = cnode->m;
     int n = cnode->n;
-    const double *a = cnode->param_source->value;
+    const double *a = cnode->base.param_source->value;
 
     jacobian_init(child);
 
@@ -116,7 +116,7 @@ static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *child = node->left;
     convolve_expr *cnode = (convolve_expr *) node;
-    const double *a = cnode->param_source->value;
+    const double *a = cnode->base.param_source->value;
     double *w_prime = node->work->dwork;
 
     /* w' = conv_matrix.T w, so w'[j] = sum_{i=0..m-1} a[i] * w[i + j]. */
@@ -145,7 +145,7 @@ static void free_type_data(expr *node)
     convolve_expr *cnode = (convolve_expr *) node;
     free_CSR_matrix(cnode->T);
     free_CSC_matrix(cnode->Jchild_CSC);
-    free_expr(cnode->param_source);
+    free_expr(cnode->base.param_source);
 }
 
 expr *new_convolve(expr *param_node, expr *child)
@@ -183,7 +183,7 @@ expr *new_convolve(expr *param_node, expr *child)
     node->left = child;
     expr_retain(child);
 
-    cnode->param_source = param_node;
+    cnode->base.param_source = param_node;
     expr_retain(param_node);
     cnode->m = m;
     cnode->n = n;

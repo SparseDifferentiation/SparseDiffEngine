@@ -35,11 +35,11 @@ static void forward(expr *node, const double *u)
        its values) */
     if (vnode->base.needs_parameter_refresh)
     {
-        vnode->param_source->forward(vnode->param_source, NULL);
+        vnode->base.param_source->forward(vnode->base.param_source, NULL);
         vnode->base.needs_parameter_refresh = false;
     }
 
-    const double *a = vnode->param_source->value;
+    const double *a = vnode->base.param_source->value;
 
     /* child's forward pass */
     child->forward(child, u);
@@ -65,7 +65,7 @@ static void jacobian_init_impl(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *x = node->left;
-    const double *a = ((vector_mult_expr *) node)->param_source->value;
+    const double *a = node->param_source->value;
 
     /* evaluate jacobian of child */
     x->eval_jacobian(x);
@@ -91,7 +91,7 @@ static void wsum_hess_init_impl(expr *node)
 static void eval_wsum_hess(expr *node, const double *w)
 {
     expr *x = node->left;
-    const double *a = ((vector_mult_expr *) node)->param_source->value;
+    const double *a = node->param_source->value;
 
     /* scale weights w by a */
     for (int i = 0; i < node->size; i++)
@@ -109,10 +109,10 @@ static void eval_wsum_hess(expr *node, const double *w)
 static void free_type_data(expr *node)
 {
     vector_mult_expr *vnode = (vector_mult_expr *) node;
-    if (vnode->param_source != NULL)
+    if (vnode->base.param_source != NULL)
     {
-        free_expr(vnode->param_source);
-        vnode->param_source = NULL;
+        free_expr(vnode->base.param_source);
+        vnode->base.param_source = NULL;
     }
 }
 
@@ -133,7 +133,7 @@ expr *new_vector_mult(expr *param_node, expr *child)
     node->left = child;
     expr_retain(child);
 
-    vnode->param_source = param_node;
+    vnode->base.param_source = param_node;
     expr_retain(param_node);
 
     /* special case for handling broadcasting of constants correctly */

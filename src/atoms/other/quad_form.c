@@ -38,12 +38,12 @@
    Q is symmetric, so column-major == row-major and the copy is verbatim. */
 static void refresh_param_values_qf(quad_form_expr *qnode)
 {
-    if (qnode->param_source == NULL || !qnode->base.needs_parameter_refresh)
+    if (qnode->base.param_source == NULL || !qnode->base.needs_parameter_refresh)
     {
         return;
     }
     qnode->base.needs_parameter_refresh = false;
-    memcpy(qnode->Q->x, qnode->param_source->value,
+    memcpy(qnode->Q->x, qnode->base.param_source->value,
            (size_t) qnode->n * qnode->n * sizeof(double));
 }
 
@@ -53,9 +53,9 @@ static void forward(expr *node, const double *u)
     expr *x = node->left;
 
     /* refresh Q from the parameter if needed (no-op on the constant/sparse path) */
-    if (qnode->param_source != NULL && node->needs_parameter_refresh)
+    if (node->param_source != NULL && node->needs_parameter_refresh)
     {
-        qnode->param_source->forward(qnode->param_source, NULL);
+        node->param_source->forward(node->param_source, NULL);
     }
     refresh_param_values_qf(qnode);
 
@@ -375,8 +375,8 @@ static void free_type_data(expr *node)
         sp_free(qnode->diag_w);
         qnode->diag_w = NULL;
     }
-    free_expr(qnode->param_source);
-    qnode->param_source = NULL;
+    free_expr(qnode->base.param_source);
+    qnode->base.param_source = NULL;
 }
 
 static bool is_affine(const expr *node)
@@ -425,7 +425,7 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
     /* dwork stores Q @ x in the forward pass */
     node->work->dwork = (double *) sp_malloc(n * sizeof(double));
 
-    qnode->param_source = param_source;
+    qnode->base.param_source = param_source;
     if (param_source != NULL)
     {
         if (P_data != NULL)

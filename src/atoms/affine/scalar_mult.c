@@ -35,11 +35,11 @@ static void forward(expr *node, const double *u)
        its values) */
     if (snode->base.needs_parameter_refresh)
     {
-        snode->param_source->forward(snode->param_source, NULL);
+        snode->base.param_source->forward(snode->base.param_source, NULL);
         snode->base.needs_parameter_refresh = false;
     }
 
-    double a = snode->param_source->value[0];
+    double a = snode->base.param_source->value[0];
 
     /* child's forward pass */
     child->forward(child, u);
@@ -65,7 +65,7 @@ static void jacobian_init_impl(expr *node)
 static void eval_jacobian(expr *node)
 {
     expr *child = node->left;
-    double a = ((scalar_mult_expr *) node)->param_source->value[0];
+    double a = node->param_source->value[0];
 
     /* evaluate child */
     child->eval_jacobian(child);
@@ -93,7 +93,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     expr *x = node->left;
     x->eval_wsum_hess(x, w);
 
-    double a = ((scalar_mult_expr *) node)->param_source->value[0];
+    double a = node->param_source->value[0];
     for (int j = 0; j < x->wsum_hess->nnz; j++)
     {
         node->wsum_hess->x[j] = a * x->wsum_hess->x[j];
@@ -108,10 +108,10 @@ static bool is_affine(const expr *node)
 static void free_type_data(expr *node)
 {
     scalar_mult_expr *snode = (scalar_mult_expr *) node;
-    if (snode->param_source != NULL)
+    if (snode->base.param_source != NULL)
     {
-        free_expr(snode->param_source);
-        snode->param_source = NULL;
+        free_expr(snode->base.param_source);
+        snode->base.param_source = NULL;
     }
 }
 
@@ -127,7 +127,7 @@ expr *new_scalar_mult(expr *param_node, expr *child)
     node->left = child;
     expr_retain(child);
 
-    mult_node->param_source = param_node;
+    mult_node->base.param_source = param_node;
     expr_retain(param_node);
 
     /* special case for handling broadcasting of constants correctly */

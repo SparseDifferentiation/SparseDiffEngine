@@ -42,7 +42,7 @@ static void refresh_dense_right(left_matmul_expr *lnode)
 {
     /* This left_matmul_expr node corresponds to left multiplication with B = AT,
        where A is the original (m x n) matrix given to the right_matmul function.
-       Furthermore, lnode->param_source->value corresponds to the column-major
+       Furthermore, lnode->base.param_source->value corresponds to the column-major
        version of A, which is BT (an m x n matrix) */
 
     matrix *B = lnode->AT;
@@ -50,7 +50,7 @@ static void refresh_dense_right(left_matmul_expr *lnode)
     int m = B->n;
     int n = B->m;
 
-    memcpy(BT->x, lnode->param_source->value, m * n * sizeof(double));
+    memcpy(BT->x, lnode->base.param_source->value, m * n * sizeof(double));
     A_transpose(B->x, BT->x, m, n);
 }
 

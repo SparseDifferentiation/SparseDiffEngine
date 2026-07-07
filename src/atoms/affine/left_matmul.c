@@ -54,7 +54,7 @@
 
 static void refresh_param_values(left_matmul_expr *lnode)
 {
-    if (lnode->param_source == NULL || !lnode->base.needs_parameter_refresh)
+    if (lnode->base.param_source == NULL || !lnode->base.needs_parameter_refresh)
     {
         return;
     }
@@ -68,9 +68,9 @@ static void forward(expr *node, const double *u)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
 
     /* call forward on param_source if it exists and needs refresh */
-    if (lnode->param_source != NULL && lnode->base.needs_parameter_refresh)
+    if (lnode->base.param_source != NULL && lnode->base.needs_parameter_refresh)
     {
-        lnode->param_source->forward(lnode->param_source, NULL);
+        lnode->base.param_source->forward(lnode->base.param_source, NULL);
     }
 
     refresh_param_values(lnode);
@@ -99,14 +99,14 @@ static void free_type_data(expr *node)
     free_CSC_matrix(lnode->Jchild_CSC);
     free_CSC_matrix(lnode->J_CSC);
     sp_free(lnode->csc_to_csr_work);
-    free_expr(lnode->param_source);
+    free_expr(lnode->base.param_source);
 
     lnode->A = NULL;
     lnode->AT = NULL;
     lnode->Jchild_CSC = NULL;
     lnode->J_CSC = NULL;
     lnode->csc_to_csr_work = NULL;
-    lnode->param_source = NULL;
+    lnode->base.param_source = NULL;
 }
 
 /* jacobian_init for dense left matmul */
@@ -226,7 +226,7 @@ static void refresh_dense_left(left_matmul_expr *lnode)
     /* The parameter represents the A in left_matmul_dense(A, x) in column-major.
        In this diffengine, we store A in row-major order. Hence, param->vals
        actually corresponds to the transpose of A, and we transpose AT to get A. */
-    memcpy(lnode->AT->x, lnode->param_source->value, m * n * sizeof(double));
+    memcpy(lnode->AT->x, lnode->base.param_source->value, m * n * sizeof(double));
     A_transpose(lnode->A->x, lnode->AT->x, n, m);
 }
 
@@ -286,7 +286,7 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     lnode->A->transpose_fill_values(lnode->A, lnode->AT);
 
     /* parameter support */
-    lnode->param_source = param_node;
+    lnode->base.param_source = param_node;
     if (param_node != NULL)
     {
         fprintf(stderr, "Error in new_left_matmul: parameter for a sparse matrix "
@@ -315,7 +315,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     lnode->n_blocks = n_blocks;
 
     /* parameter support */
-    lnode->param_source = param_node;
+    lnode->base.param_source = param_node;
     if (param_node != NULL)
     {
         if (data != NULL)

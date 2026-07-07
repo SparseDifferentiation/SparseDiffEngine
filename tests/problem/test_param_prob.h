@@ -618,4 +618,109 @@ const char *test_param_convolve_problem(void)
     return 0;
 }
 
+/* Composite param_source refresh: minimize x'Qx with Q = (1/p) * I fed to a
+   dense quad_form through a scalar_mult(power(p,-1), I) side subtree. The
+   scalar_mult inside the source gates on needs_parameter_refresh, so this
+   pins expr_set_needs_refresh walking param_source: without it the source
+   keeps serving the stale 1/p after problem_update_params. */
+const char *test_param_composite_source_quad_form(void)
+{
+    int n = 2;
+
+    expr *x = new_variable(2, 1, 0, n);
+    double theta[1] = {2.0};
+    expr *p = new_parameter(1, 1, 0, n, theta);
+    expr *recip = new_power(p, -1.0);
+    double eye_vals[4] = {1.0, 0.0, 0.0, 1.0};
+    expr *eye_const = new_parameter(2, 2, PARAM_FIXED, n, eye_vals);
+    expr *Q_src = new_scalar_mult(recip, eye_const);
+    expr *objective = new_quad_form_dense(x, 2, NULL, Q_src);
+    problem *prob = new_problem(objective, NULL, 0, false);
+
+    expr *param_nodes[1] = {p};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    double x_vals[2] = {1.0, 2.0};
+
+    /* test 1: p=2 -> f = (1+4)/2, grad = 2x/2, hess = 2I/2 */
+    double obj_val = problem_objective_forward(prob, x_vals);
+    problem_gradient(prob);
+    problem_hessian(prob, 1.0, NULL);
+    mu_assert("vals fail", fabs(obj_val - 2.5) < 1e-10);
+    double grad[2] = {1.0, 2.0};
+    mu_assert("grad fail", cmp_double_array(prob->gradient_values, grad, 2));
+    double Hx[4] = {1.0, 0.0, 0.0, 1.0}; /* dense 2Q = 2I/p, CSC */
+    mu_assert("hess vals fail", cmp_double_array(prob->lagrange_hessian->x, Hx, 4));
+
+    /* test 2: p=4 -> the composite source must re-evaluate 1/p */
+    theta[0] = 4.0;
+    problem_update_params(prob, theta);
+    obj_val = problem_objective_forward(prob, x_vals);
+    problem_gradient(prob);
+    problem_hessian(prob, 1.0, NULL);
+    mu_assert("vals fail", fabs(obj_val - 1.25) < 1e-10);
+    grad[0] = 0.5;
+    grad[1] = 1.0;
+    mu_assert("grad fail", cmp_double_array(prob->gradient_values, grad, 2));
+    Hx[0] = 0.5;
+    Hx[3] = 0.5;
+    mu_assert("hess vals fail", cmp_double_array(prob->lagrange_hessian->x, Hx, 4));
+
+    free_problem(prob);
+
+    return 0;
+}
+
+/* Same staleness class for the matmul family: constraint A @ x with
+   A = (1/p) * C fed to left_matmul_dense through a gated composite source. */
+const char *test_param_composite_source_left_matmul(void)
+{
+    int n = 2;
+
+    expr *x = new_variable(2, 1, 0, n);
+    double theta[1] = {2.0};
+    expr *p = new_parameter(1, 1, 0, n, theta);
+    expr *recip = new_power(p, -1.0);
+    double C_vals[4] = {2.0, 4.0, 6.0, 8.0}; /* column-major C = [[2,6],[4,8]] */
+    expr *C_const = new_parameter(2, 2, PARAM_FIXED, n, C_vals);
+    expr *A_src = new_scalar_mult(recip, C_const);
+    expr *Ax = new_left_matmul_dense(A_src, x, 2, 2, NULL);
+    expr *objective = new_sum(new_log(x), -1);
+    expr *constraints[1] = {Ax};
+    problem *prob = new_problem(objective, constraints, 1, false);
+
+    expr *param_nodes[1] = {p};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    double x_vals[2] = {1.0, 1.0};
+
+    /* test 1: p=2 -> A = C/2 = [[1,3],[2,4]] */
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    double constrs[2] = {4.0, 6.0};
+    double Jx[4] = {1.0, 3.0, 2.0, 4.0};
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 2));
+    mu_assert("jac vals fail", cmp_double_array(prob->jacobian->x, Jx, 4));
+
+    /* test 2: p=4 -> A = C/4; the gated source must re-evaluate */
+    theta[0] = 4.0;
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    constrs[0] = 2.0;
+    constrs[1] = 3.0;
+    Jx[0] = 0.5;
+    Jx[1] = 1.5;
+    Jx[2] = 1.0;
+    Jx[3] = 2.0;
+    mu_assert("vals fail", cmp_double_array(prob->constraint_values, constrs, 2));
+    mu_assert("jac vals fail", cmp_double_array(prob->jacobian->x, Jx, 4));
+
+    free_problem(prob);
+
+    return 0;
+}
+
 #endif /* TEST_PARAM_PROB_H */
