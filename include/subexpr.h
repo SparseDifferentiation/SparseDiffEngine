@@ -173,6 +173,19 @@ typedef struct convolve_expr
     CSC_matrix *Jchild_CSC;
 } convolve_expr;
 
+/* Kronecker product Z = kron(A, B) where one operand is variable-free (held by
+ * param_source) and the other (child = node->left) carries the variables. Each
+ * output entry gathers a single child entry scaled by an entry of the constant
+ * operand; rows not covered by the constant's active blocks are inactive
+ * (child_row == -1) and stay structurally zero. */
+typedef struct kron_expr
+{
+    expr base;
+    expr *param_source; /* the constant/parameter operand */
+    int *child_row;     /* per output row: child entry gathered, -1 if inactive */
+    int *coeff_idx;     /* per output row: index into param_source->value */
+} kron_expr;
+
 /* Bivariate matrix multiplication: Z = f(u) @ g(u) where both children
  * may be composite expressions. */
 typedef struct matmul_expr

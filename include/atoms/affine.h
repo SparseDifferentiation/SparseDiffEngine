@@ -80,4 +80,16 @@ expr *new_vector_mult(expr *param_node, expr *child);
    kernel and may either represent a constant or an updatable parameter */
 expr *new_convolve(expr *param_node, expr *child);
 
+/* Kronecker product Z = kron(A, B), where A is p x q and B is r x s. param_node
+   holds the variable-free constant/parameter operand and child the variable one.
+   active_blocks lists the column-major indices of the constant operand's nonzero
+   entries; only the output rows they cover are materialized.
+
+   left_kron:  A = param_node, B = child; active_blocks index into A.
+   right_kron: A = child, B = param_node; active_blocks index into B. */
+expr *new_left_kron(expr *param_node, expr *child, int p, int q, int r, int s,
+                    const int *active_blocks, int n_active);
+expr *new_right_kron(expr *param_node, expr *child, int p, int q, int r, int s,
+                     const int *active_blocks, int n_active);
+
 #endif /* AFFINE_H */
