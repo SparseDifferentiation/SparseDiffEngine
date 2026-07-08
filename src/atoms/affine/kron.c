@@ -95,10 +95,9 @@ static void jacobian_init_impl(expr *node)
         int cr = knode->child_row[out];
         if (cr >= 0)
         {
-            for (int t = Jc->p[cr]; t < Jc->p[cr + 1]; t++)
-            {
-                Jk->i[idx++] = Jc->i[t];
-            }
+            int row_nnz = Jc->p[cr + 1] - Jc->p[cr];
+            memcpy(Jk->i + idx, Jc->i + Jc->p[cr], row_nnz * sizeof(int));
+            idx += row_nnz;
         }
         Jk->p[out + 1] = idx;
     }
