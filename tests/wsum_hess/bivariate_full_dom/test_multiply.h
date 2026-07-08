@@ -188,6 +188,40 @@ const char *test_wsum_hess_multiply_linear_ops(void)
     return 0;
 }
 
+const char *test_wsum_hess_multiply_duplicate_gathers(void)
+{
+    /* Hessian of w' (a[idx] * b[idx]) with DUPLICATED gather indices
+     * idx = [0, 0, 1, 2, 2, 3] (cvxpy#3442). a at offset 0, b at offset 4.
+     * d²/da[p] db[p] accumulates w_k over every k with idx[k] == p:
+     * H[p, 4+p] = {1+2, 3, 4+5, 6} = {3, 3, 9, 6}, plus the symmetric block. */
+    double u_vals[8] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
+    double w[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    int indices[6] = {0, 0, 1, 2, 2, 3};
+
+    expr *a = new_variable(4, 1, 0, 8);
+    expr *b = new_variable(4, 1, 4, 8);
+    expr *ga = new_index(a, 1, 6, indices, 6);
+    expr *gb = new_index(b, 1, 6, indices, 6);
+    expr *node = new_elementwise_mult(ga, gb);
+
+    node->forward(node, u_vals);
+    jacobian_init(node);
+    node->eval_jacobian(node);
+    wsum_hess_init(node);
+    node->eval_wsum_hess(node, w);
+
+    int expected_p[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    int expected_i[8] = {4, 5, 6, 7, 0, 1, 2, 3};
+    double expected_x[8] = {3.0, 3.0, 9.0, 6.0, 3.0, 3.0, 9.0, 6.0};
+
+    mu_assert("sparsity fail",
+              cmp_sparsity(node->wsum_hess, expected_p, expected_i, 8, 8));
+    mu_assert("vals fail", cmp_values(node->wsum_hess, expected_x, 8));
+
+    free_expr(node);
+    return 0;
+}
+
 const char *test_wsum_hess_multiply_2(void)
 {
     // Total 12 variables: [?, ?, ?, y0, y1, y2, ?, ?, x0, x1, x2, ?]

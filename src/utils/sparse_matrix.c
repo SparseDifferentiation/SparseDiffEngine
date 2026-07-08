@@ -24,6 +24,7 @@
 #include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -124,8 +125,24 @@ static void sparse_transpose_fill_values(const matrix *self, matrix *out)
 static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
 {
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    int alloc_ub = sat_mul_int(n_idxs, self->n);
-    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, MIN(Jx->nnz, alloc_ub));
+
+    /* Exact output nnz: sum the selected rows' nnz. Jx->nnz is NOT an upper
+       bound — duplicated indices select the same source row more than once
+       (cvxpy#3442). Duplicated gathers of dense rows can push the true count
+       past INT_MAX, which a CSR cannot represent, so fail before wrapping. */
+    int nnz = 0;
+    for (int i = 0; i < n_idxs; i++)
+    {
+        int len = Jx->p[indices[i] + 1] - Jx->p[indices[i]];
+        if (len > INT_MAX - nnz)
+        {
+            fprintf(stderr, "Error in sparse_index_alloc: gathered nnz "
+                            "exceeds INT_MAX.\n");
+            exit(1);
+        }
+        nnz += len;
+    }
+    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, nnz);
 
     J->p[0] = 0;
     for (int i = 0; i < n_idxs; i++)

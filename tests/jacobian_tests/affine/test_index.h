@@ -116,6 +116,32 @@ const char *test_index_jacobian_repeated(void)
     return 0;
 }
 
+const char *test_index_jacobian_duplicates_exceed_source_nnz(void)
+{
+    /* x[[0,0,1,2,2,3]] on a size-4 variable: the gathered Jacobian has 6
+     * nonzeros, MORE than the source identity's 4. Pins the allocator sizing
+     * the output by the true per-row sum instead of the source nnz
+     * (cvxpy#3442 — undersized buffers overflowed the heap on the extra rows). */
+    double u[4] = {1.0, 2.0, 3.0, 4.0};
+    int indices[6] = {0, 0, 1, 2, 2, 3};
+    expr *var = new_variable(4, 1, 0, 4);
+    expr *idx = new_index(var, 1, 6, indices, 6);
+    idx->forward(idx, u);
+    jacobian_init(idx);
+    idx->eval_jacobian(idx);
+
+    double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
+    int expected_i[6] = {0, 0, 1, 2, 2, 3};
+
+    mu_assert("vals fail", cmp_values(idx->jacobian, expected_x, 6));
+    mu_assert("sparsity fail",
+              cmp_sparsity(idx->jacobian, expected_p, expected_i, 6, 6));
+
+    free_expr(idx);
+    return 0;
+}
+
 const char *test_sum_of_index(void)
 {
     /* sum(x[0, 2]) = x[0] + x[2]
