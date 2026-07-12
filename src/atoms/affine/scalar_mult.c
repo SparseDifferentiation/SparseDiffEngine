@@ -35,6 +35,9 @@ static void forward(expr *node, const double *u)
        its values) */
     if (snode->base.needs_parameter_refresh)
     {
+        /* Composite sources hold gated nodes of their own (promote, nested
+           mults): mark the whole side subtree before re-evaluating it. */
+        expr_set_needs_refresh(snode->param_source);
         snode->param_source->forward(snode->param_source, NULL);
         snode->base.needs_parameter_refresh = false;
     }
