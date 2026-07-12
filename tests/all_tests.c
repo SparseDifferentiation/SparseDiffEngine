@@ -384,8 +384,12 @@ int main(void)
     mu_run_test(test_block_left_multiply_single_block, tests_run);
     mu_run_test(test_block_left_multiply_two_blocks, tests_run);
     mu_run_test(test_block_left_multiply_zero_column, tests_run);
+    mu_run_test(test_block_left_multiply_dedup_order, tests_run);
+    mu_run_test(test_block_left_multiply_matches_reference_random, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_basic, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_sparse, tests_run);
+    mu_run_test(test_csr_csc_matmul_alloc_dedup_order, tests_run);
+    mu_run_test(test_csr_csc_matmul_alloc_matches_reference_random, tests_run);
     mu_run_test(test_block_left_multiply_vec_single_block, tests_run);
     mu_run_test(test_block_left_multiply_vec_two_blocks, tests_run);
     mu_run_test(test_block_left_multiply_vec_sparse, tests_run);

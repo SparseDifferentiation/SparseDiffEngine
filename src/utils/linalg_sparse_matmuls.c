@@ -86,6 +86,35 @@ static inline double sparse_dot_offset(const double *a_x, const int *a_idx,
     return sum;
 }
 
+/* Symbolic phase of Gustavson's sparse matmul: an output row's (or column's)
+   sparsity pattern is the union of the operand index lists selected by keys,
+   i.e. the lists list_i[list_p[k] .. list_p[k+1]] for each k = keys[t] -
+   key_offset. Compute that union into cand, deduplicated with a
+   generation-stamped workspace and sorted ascending (the order the downstream
+   sparse dot products require). Returns the number of gathered indices. */
+static int sorted_pattern_union(const int *keys, int n_keys, int key_offset,
+                                const int *list_p, const int *list_i, int *stamp,
+                                int *cand, int *gen)
+{
+    int g = ++(*gen);
+    int n_cand = 0;
+    for (int t = 0; t < n_keys; t++)
+    {
+        int k = keys[t] - key_offset;
+        for (int q = list_p[k]; q < list_p[k + 1]; q++)
+        {
+            int i = list_i[q];
+            if (stamp[i] != g)
+            {
+                stamp[i] = g;
+                cand[n_cand++] = i;
+            }
+        }
+    }
+    sort_int_array(cand, n_cand);
+    return n_cand;
+}
+
 CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
                                               const CSC_matrix *J, int p)
 {
@@ -100,6 +129,17 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
     int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
     iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
     Cp[0] = 0;
+
+    /* Output-driven: row i of A intersects a block's child entries iff i
+       appears in the CSC column list of one of those entries, so gather those
+       columns instead of testing all m rows per (column, block). */
+    int *iwork = (int *) sp_malloc((n > 0 ? n : 1) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A, iwork);
+    sp_free(iwork);
+
+    int *stamp = (int *) sp_calloc(m > 0 ? m : 1, sizeof(int)); /* 0 = unseen */
+    int *cand = (int *) sp_malloc((m > 0 ? m : 1) * sizeof(int));
+    int gen = 0;
 
     /* for each column of J */
     for (j = 0; j < J->n; j++)
@@ -134,29 +174,29 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
             }
 
             block_jj_end = jj;
-            int nnz_in_block = block_jj_end - block_jj_start;
-            if (nnz_in_block == 0)
+            if (block_jj_end == block_jj_start)
             {
                 continue;
             }
 
             // -----------------------------------------------------------------
-            // check which rows of A overlap with the column indices of J in this
-            // block
+            // gather the rows of A that hit this block's child entries
             // -----------------------------------------------------------------
+            int n_cand = sorted_pattern_union(
+                J->i + block_jj_start, block_jj_end - block_jj_start, block_start,
+                A_csc->p, A_csc->i, stamp, cand, &gen);
             row_offset = block * m;
-            for (int i = 0; i < A->m; i++)
+            for (int t = 0; t < n_cand; t++)
             {
-                int a_len = A->p[i + 1] - A->p[i];
-                if (has_overlap(A->i + A->p[i], a_len, J->i + block_jj_start,
-                                nnz_in_block, block_start))
-                {
-                    iVec_append(Ci, row_offset + i);
-                }
+                iVec_append(Ci, row_offset + cand[t]);
             }
         }
         Cp[j + 1] = Ci->len;
     }
+
+    free_CSC_matrix(A_csc);
+    sp_free(stamp);
+    sp_free(cand);
 
     CSC_matrix *C = new_CSC_matrix(m * p, J->n, Ci->len);
     memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
@@ -258,12 +298,21 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
     int m = A->m;
     int p = B->n;
 
-    int len_a, len_b;
-
     int *Cp = (int *) sp_malloc((m + 1) * sizeof(int));
     iVec *Ci = iVec_new(m);
 
     Cp[0] = 0;
+
+    /* Output-driven: column j of B intersects row i of A iff j appears in the
+       CSR row list of one of A's row-i column indices, so gather those rows
+       instead of testing all p columns per row of A. */
+    int *iwork = (int *) sp_malloc((B->m > 0 ? B->m : 1) * sizeof(int));
+    CSR_matrix *B_csr = csc_to_csr_alloc(B, iwork);
+    sp_free(iwork);
+
+    int *stamp = (int *) sp_calloc(p > 0 ? p : 1, sizeof(int)); /* 0 = unseen */
+    int *cand = (int *) sp_malloc((p > 0 ? p : 1) * sizeof(int));
+    int gen = 0;
 
     // --------------------------------------------------------------
     //            count nnz and fill column indices
@@ -271,21 +320,20 @@ CSR_matrix *csr_csc_matmul_alloc(const CSR_matrix *A, const CSC_matrix *B)
     int nnz = 0;
     for (int i = 0; i < A->m; i++)
     {
-        len_a = A->p[i + 1] - A->p[i];
-
-        for (int j = 0; j < B->n; j++)
+        int n_cand = sorted_pattern_union(A->i + A->p[i], A->p[i + 1] - A->p[i], 0,
+                                          B_csr->p, B_csr->i, stamp, cand, &gen);
+        for (int t = 0; t < n_cand; t++)
         {
-            len_b = B->p[j + 1] - B->p[j];
-
-            if (has_overlap(A->i + A->p[i], len_a, B->i + B->p[j], len_b, 0))
-            {
-                iVec_append(Ci, j);
-                nnz++;
-            }
+            iVec_append(Ci, cand[t]);
         }
+        nnz += n_cand;
 
         Cp[i + 1] = nnz;
     }
+
+    free_CSR_matrix(B_csr);
+    sp_free(stamp);
+    sp_free(cand);
 
     CSR_matrix *C = new_CSR_matrix(m, p, nnz);
     memcpy(C->p, Cp, (m + 1) * sizeof(int));

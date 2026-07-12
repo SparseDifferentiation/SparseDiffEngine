@@ -7,7 +7,10 @@
 #include "test_helpers.h"
 #include "utils/CSC_matrix.h"
 #include "utils/CSR_matrix.h"
+#include "utils/iVec.h"
 #include "utils/linalg_sparse_matmuls.h"
+#include "utils/tracked_alloc.h"
+#include "utils/utils.h"
 
 /* Test block_left_multiply_fill_sparsity with simple case: single block */
 const char *test_block_left_multiply_single_block(void)
@@ -258,6 +261,254 @@ const char *test_csr_csc_matmul_alloc_sparse(void)
     free_CSR_matrix(C);
     free_CSR_matrix(A);
     free_CSC_matrix(B);
+    return NULL;
+}
+
+/* Dedup + ordering: one block whose child entries hit the same A row through
+ * several columns (dedup), with CSC column lists that interleave so a missing
+ * sort would emit rows out of ascending order. */
+const char *test_block_left_multiply_dedup_order(void)
+{
+    /* A is 4x3 CSR_matrix:
+     * [1.0  0.0  2.0]     CSC col 0: rows {0, 2}
+     * [0.0  3.0  0.0]     CSC col 1: rows {1, 3}
+     * [4.0  0.0  0.0]     CSC col 2: rows {0, 3}
+     * [0.0  5.0  6.0]
+     */
+    CSR_matrix *A = new_CSR_matrix(4, 3, 6);
+    double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    int Ai[6] = {0, 2, 1, 0, 1, 2};
+    int Ap[5] = {0, 2, 3, 4, 6};
+    memcpy(A->x, Ax, 6 * sizeof(double));
+    memcpy(A->i, Ai, 6 * sizeof(int));
+    memcpy(A->p, Ap, 5 * sizeof(int));
+
+    /* J is 3x1 dense column (p=1): child entries 0, 1, 2. Gathering CSC columns
+     * in child order visits rows 0,2 then 1,3 then 0,3 — rows 0 and 3 twice
+     * (dedup) and out of order (sort). Expected: all four rows, ascending. */
+    CSC_matrix *J = new_CSC_matrix(3, 1, 3);
+    double Jx[3] = {1.0, 1.0, 1.0};
+    int Ji[3] = {0, 1, 2};
+    int Jp[2] = {0, 3};
+    memcpy(J->x, Jx, 3 * sizeof(double));
+    memcpy(J->i, Ji, 3 * sizeof(int));
+    memcpy(J->p, Jp, 2 * sizeof(int));
+
+    CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
+
+    int expected_p[2] = {0, 4};
+    int expected_i[4] = {0, 1, 2, 3};
+
+    mu_assert("C dims incorrect", C->m == 4 && C->n == 1 && C->nnz == 4);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p, 2));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i, 4));
+
+    free_CSC_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(J);
+    return NULL;
+}
+
+/* Reference implementation of the block sparsity (the original per-row
+ * has_overlap scan) used to cross-check the gather rewrite on random input. */
+static CSC_matrix *block_left_multiply_fill_sparsity_ref(const CSR_matrix *A,
+                                                         const CSC_matrix *J, int p)
+{
+    int m = A->m;
+    int n = A->n;
+
+    int *Cp = (int *) sp_malloc((J->n + 1) * sizeof(int));
+    iVec *Ci = iVec_new(J->nnz > 0 ? J->nnz : 1);
+    Cp[0] = 0;
+
+    for (int j = 0; j < J->n; j++)
+    {
+        if (J->p[j] == J->p[j + 1])
+        {
+            Cp[j + 1] = Cp[j];
+            continue;
+        }
+        int jj = J->p[j];
+        for (int block = 0; block < p; block++)
+        {
+            int block_start = block * n;
+            int block_end = block_start + n;
+            while (jj < J->p[j + 1] && J->i[jj] < block_start)
+            {
+                jj++;
+            }
+            int block_jj_start = jj;
+            while (jj < J->p[j + 1] && J->i[jj] < block_end)
+            {
+                jj++;
+            }
+            int nnz_in_block = jj - block_jj_start;
+            if (nnz_in_block == 0)
+            {
+                continue;
+            }
+            for (int i = 0; i < m; i++)
+            {
+                int a_len = A->p[i + 1] - A->p[i];
+                if (has_overlap(A->i + A->p[i], a_len, J->i + block_jj_start,
+                                nnz_in_block, block_start))
+                {
+                    iVec_append(Ci, block * m + i);
+                }
+            }
+        }
+        Cp[j + 1] = Ci->len;
+    }
+
+    CSC_matrix *C = new_CSC_matrix(m * p, J->n, Ci->len);
+    memcpy(C->p, Cp, (J->n + 1) * sizeof(int));
+    memcpy(C->i, Ci->data, Ci->len * sizeof(int));
+    sp_free(Cp);
+    iVec_free(Ci);
+    return C;
+}
+
+/* Random cross-check: the gather rewrite must be byte-identical to the
+ * original has_overlap scan. */
+const char *test_block_left_multiply_matches_reference_random(void)
+{
+    srand(42);
+    int n = 15, p = 3, k = 8;
+
+    for (int trial = 0; trial < 5; trial++)
+    {
+        CSR_matrix *A = new_csr_random(20, n, 0.2);
+        CSR_matrix *G = new_csr_random(n * p, k, 0.15);
+
+        int *iwork = (int *) sp_malloc(G->n * sizeof(int));
+        CSC_matrix *J = csr_to_csc_alloc(G, iwork);
+        sp_free(iwork);
+
+        CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, p);
+        CSC_matrix *C_ref = block_left_multiply_fill_sparsity_ref(A, J, p);
+
+        mu_assert("random block sparsity nnz mismatch", C->nnz == C_ref->nnz);
+        mu_assert("random block sparsity col pointers mismatch",
+                  cmp_int_array(C->p, C_ref->p, J->n + 1));
+        mu_assert("random block sparsity row indices mismatch",
+                  cmp_int_array(C->i, C_ref->i, C_ref->nnz));
+
+        free_CSC_matrix(C);
+        free_CSC_matrix(C_ref);
+        free_CSC_matrix(J);
+        free_CSR_matrix(G);
+        free_CSR_matrix(A);
+    }
+    return NULL;
+}
+
+/* Dedup + ordering for csr_csc_matmul_alloc: A's row hits the same B column
+ * through several B rows (dedup), with B's CSR row lists interleaved so a
+ * missing sort would emit columns out of ascending order. */
+const char *test_csr_csc_matmul_alloc_dedup_order(void)
+{
+    /* A is 1x2 CSR_matrix: [1.0  1.0] */
+    CSR_matrix *A = new_CSR_matrix(1, 2, 2);
+    double Ax[2] = {1.0, 1.0};
+    int Ai[2] = {0, 1};
+    int Ap[2] = {0, 2};
+    memcpy(A->x, Ax, 2 * sizeof(double));
+    memcpy(A->i, Ai, 2 * sizeof(int));
+    memcpy(A->p, Ap, 2 * sizeof(int));
+
+    /* B is 2x3 CSC_matrix:
+     * [1.0  0.0  1.0]     CSR row 0: cols {0, 2}
+     * [0.0  1.0  1.0]     CSR row 1: cols {1, 2}
+     * Gathering rows 0 then 1 visits cols 0,2 then 1,2 — col 2 twice (dedup)
+     * and out of order (sort). Expected: cols {0, 1, 2} ascending. */
+    CSC_matrix *B = new_CSC_matrix(2, 3, 4);
+    double Bx[4] = {1.0, 1.0, 1.0, 1.0};
+    int Bi[4] = {0, 1, 0, 1};
+    int Bp[4] = {0, 1, 2, 4};
+    memcpy(B->x, Bx, 4 * sizeof(double));
+    memcpy(B->i, Bi, 4 * sizeof(int));
+    memcpy(B->p, Bp, 4 * sizeof(int));
+
+    CSR_matrix *C = csr_csc_matmul_alloc(A, B);
+
+    int expected_p[2] = {0, 3};
+    int expected_i[3] = {0, 1, 2};
+
+    mu_assert("C dims incorrect", C->m == 1 && C->n == 3 && C->nnz == 3);
+    mu_assert("C row pointers incorrect", cmp_int_array(C->p, expected_p, 2));
+    mu_assert("C col indices incorrect", cmp_int_array(C->i, expected_i, 3));
+
+    free_CSR_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(B);
+    return NULL;
+}
+
+/* Reference implementation of csr_csc_matmul_alloc (the original full
+ * row-times-column has_overlap loop) for the random cross-check. */
+static CSR_matrix *csr_csc_matmul_alloc_ref(const CSR_matrix *A, const CSC_matrix *B)
+{
+    int m = A->m;
+    int p = B->n;
+
+    int *Cp = (int *) sp_malloc((m + 1) * sizeof(int));
+    iVec *Ci = iVec_new(m);
+    Cp[0] = 0;
+
+    int nnz = 0;
+    for (int i = 0; i < m; i++)
+    {
+        int len_a = A->p[i + 1] - A->p[i];
+        for (int j = 0; j < p; j++)
+        {
+            int len_b = B->p[j + 1] - B->p[j];
+            if (has_overlap(A->i + A->p[i], len_a, B->i + B->p[j], len_b, 0))
+            {
+                iVec_append(Ci, j);
+                nnz++;
+            }
+        }
+        Cp[i + 1] = nnz;
+    }
+
+    CSR_matrix *C = new_CSR_matrix(m, p, nnz);
+    memcpy(C->p, Cp, (m + 1) * sizeof(int));
+    memcpy(C->i, Ci->data, nnz * sizeof(int));
+    sp_free(Cp);
+    iVec_free(Ci);
+    return C;
+}
+
+/* Random cross-check: the gather rewrite must be byte-identical to the
+ * original has_overlap pair loop. */
+const char *test_csr_csc_matmul_alloc_matches_reference_random(void)
+{
+    srand(7);
+
+    for (int trial = 0; trial < 5; trial++)
+    {
+        CSR_matrix *A = new_csr_random(20, 15, 0.2);
+        CSR_matrix *G = new_csr_random(15, 12, 0.2);
+
+        int *iwork = (int *) sp_malloc(G->n * sizeof(int));
+        CSC_matrix *B = csr_to_csc_alloc(G, iwork);
+        sp_free(iwork);
+
+        CSR_matrix *C = csr_csc_matmul_alloc(A, B);
+        CSR_matrix *C_ref = csr_csc_matmul_alloc_ref(A, B);
+
+        mu_assert("random matmul sparsity nnz mismatch", C->nnz == C_ref->nnz);
+        mu_assert("random matmul sparsity row pointers mismatch",
+                  cmp_int_array(C->p, C_ref->p, A->m + 1));
+        mu_assert("random matmul sparsity col indices mismatch",
+                  cmp_int_array(C->i, C_ref->i, C_ref->nnz));
+
+        free_CSR_matrix(C);
+        free_CSR_matrix(C_ref);
+        free_CSC_matrix(B);
+        free_CSR_matrix(G);
+        free_CSR_matrix(A);
+    }
     return NULL;
 }
 
