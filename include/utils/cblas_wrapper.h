@@ -20,6 +20,14 @@
 
 #ifdef __APPLE__
 #define ACCELERATE_NEW_LAPACK
+/* Apple's Accelerate/LAPACK/Sparse headers trip a large, SDK-dependent set
+ * of -Wpedantic/GNU-extension warnings (nullability qualifiers, zero-arg
+ * variadic macros, etc.) that we cannot fix and do not want in our build
+ * output. Treat everything included below as a system header so all of its
+ * warnings are suppressed, while our own code keeps full -Wpedantic
+ * strictness. This file contains nothing but the include, so the marker is
+ * effectively scoped to Accelerate. */
+#pragma clang system_header
 #include <Accelerate/Accelerate.h>
 #else
 #include <cblas.h>
