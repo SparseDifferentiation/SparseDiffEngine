@@ -39,6 +39,9 @@ static void forward(expr *node, const double *u)
 
     if (cnode->base.needs_parameter_refresh)
     {
+        /* Composite sources hold gated nodes of their own (promote, nested
+           mults): mark the whole side subtree before re-evaluating it. */
+        expr_set_needs_refresh(cnode->param_source);
         cnode->param_source->forward(cnode->param_source, NULL);
         /* refresh the convolution matrix values if it exists (necessary to check
            for null in case someone calls forward before initializing the jacobian,

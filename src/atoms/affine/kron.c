@@ -44,6 +44,9 @@ static void refresh_param_values(kron_expr *knode)
         return;
     }
 
+    /* Composite sources hold gated nodes of their own (promote, nested
+       mults): mark the whole side subtree before re-evaluating it. */
+    expr_set_needs_refresh(knode->param_source);
     knode->param_source->forward(knode->param_source, NULL);
     knode->base.needs_parameter_refresh = false;
 }

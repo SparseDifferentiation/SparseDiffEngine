@@ -55,6 +55,9 @@ static void forward(expr *node, const double *u)
     /* refresh Q from the parameter if needed (no-op on the constant/sparse path) */
     if (qnode->param_source != NULL && node->needs_parameter_refresh)
     {
+        /* Composite sources hold gated nodes of their own (promote, nested
+           mults): mark the whole side subtree before re-evaluating it. */
+        expr_set_needs_refresh(qnode->param_source);
         qnode->param_source->forward(qnode->param_source, NULL);
     }
     refresh_param_values_qf(qnode);
