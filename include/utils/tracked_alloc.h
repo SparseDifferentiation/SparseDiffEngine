@@ -34,8 +34,8 @@
 #define TRACKED_BLOCK_SIZE(p) malloc_usable_size(p)
 #endif
 
-extern size_t g_allocated_bytes; /* current live bytes */
-extern size_t g_peak_bytes;      /* high-water mark since last reset */
+extern _Thread_local size_t g_allocated_bytes; /* current live bytes */
+extern _Thread_local size_t g_peak_bytes;      /* high-water mark since last reset */
 
 /* All allocations in src/ must go through these wrappers (and pair sp_free
    with sp_malloc / sp_calloc). Tests may use plain malloc/free — those
