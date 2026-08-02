@@ -38,8 +38,14 @@ typedef struct permuted_dense
     int n0;
     int *row_perm;
     int *col_perm;
-    int *col_inv; /* col_inv[col_perm[jj]] = jj, otherwise -1 */
-    int *row_inv; /* row_inv[row_perm[ii]] = ii, otherwise -1 */
+
+    /* Dense inverse permutations, sized by the GLOBAL dims (n and m):
+       col_inv[col_perm[jj]] = jj and row_inv[row_perm[ii]] = ii, -1
+       elsewhere. PDs built by new_permuted_dense_compact leave both NULL;
+       consumers either fall back to sorted scans of the perms or call
+       permuted_dense_ensure_col_inv / _row_inv to materialize on demand. */
+    int *col_inv;
+    int *row_inv;
 
     /* Row-major block of size m0 x n0. Owned by this PD when owns_X == true,
        and otherwise X is a view into a buffer (eg., stacked_pd's shared values
@@ -80,6 +86,20 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
 /* Convenience constructor for the trivial-perm case: row_perm = [0..m-1],
    col_perm = [0..n-1], dense block fills the full (m, n) shape. */
 matrix *new_permuted_dense_full(int m, int n, const double *data);
+
+/* Compact constructor: like new_permuted_dense, but leaves col_inv and
+   row_inv NULL instead of allocating the two global-dimension inverse
+   arrays — storage stays proportional to the block, not the global shape.
+   Used where those arrays dominate memory (the kron-path blocks, whose
+   global dims are the full variable space); consumers materialize them on
+   demand via the ensure helpers below, or scan the sorted perms instead. */
+matrix *new_permuted_dense_compact(int m, int n, int m0, int n0, const int *row_perm,
+                                   const int *col_perm, const double *X_data);
+
+/* Materialize A->col_inv / A->row_inv if NULL. Same const-cast on-demand
+   slot convention as permuted_dense_ensure_kernel_dwork. */
+void permuted_dense_ensure_col_inv(const permuted_dense *A);
+void permuted_dense_ensure_row_inv(const permuted_dense *A);
 
 /* Ensure A->kernel_dwork is sized at least 'size' doubles. Grows in
    place; contents are NOT preserved. */

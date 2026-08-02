@@ -332,9 +332,21 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                     Bg, B->n0, Ag, Ak->n0, 0.0, Cg, Ak->n0);
 
         /* precompute scatter positions once per block */
-        for (int j = 0; j < Ak->n0; j++)
+        if (C->col_inv != NULL)
         {
-            out_cols[j] = C->col_inv[Ak->col_perm[j]];
+            for (int j = 0; j < Ak->n0; j++)
+            {
+                out_cols[j] = C->col_inv[Ak->col_perm[j]];
+            }
+        }
+        else
+        {
+            /* compact C (col_inv == NULL): Ak's columns are a subset of C's, both
+             * sorted */
+            for (int j = 0; j < Ak->n0; j++)
+            {
+                out_cols[j] = sorted_pos(C->col_perm, C->n0, Ak->col_perm[j]);
+            }
         }
 
         /* C += Cg  (scatter + add into C) */

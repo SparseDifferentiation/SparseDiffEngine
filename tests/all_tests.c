@@ -61,6 +61,7 @@
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_param_source_refresh.h"
+#include "problem/test_peak_memory.h"
 #include "problem/test_problem.h"
 #include "utils/test_COO_matrix.h"
 #include "utils/test_alloc_overflow.h"
@@ -425,6 +426,8 @@ int main(void)
     mu_run_test(test_permuted_dense_times_csc_no_active, tests_run);
     mu_run_test(test_permuted_dense_to_csr_lazy, tests_run);
     mu_run_test(test_permuted_dense_col_inv, tests_run);
+    mu_run_test(test_permuted_dense_compact_inv, tests_run);
+    mu_run_test(test_permuted_dense_times_csc_compact_output, tests_run);
     mu_run_test(test_permuted_dense_index, tests_run);
     mu_run_test(test_permuted_dense_promote, tests_run);
     mu_run_test(test_permuted_dense_broadcast_scalar, tests_run);
@@ -538,6 +541,7 @@ int main(void)
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
     mu_run_test(test_problem_hessian_sum_exp_left_matmul_dense_transpose, tests_run);
+    mu_run_test(test_peak_memory_kron_jacobian, tests_run);
 
     printf("\n--- Parameter Tests ---\n");
     mu_run_test(test_param_scalar_mult_problem, tests_run);

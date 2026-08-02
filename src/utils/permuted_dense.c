@@ -113,16 +113,44 @@ matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs)
     /* Scan indices: which output positions i hit a row in A->row_perm? */
     int *new_row_perm = (int *) sp_malloc(n_idxs * sizeof(int));
     int new_m0 = 0;
+    if (A->row_inv != NULL)
+    {
+        for (int i = 0; i < n_idxs; i++)
+        {
+            if (A->row_inv[indices[i]] >= 0)
+            {
+                new_row_perm[new_m0++] = i;
+            }
+        }
+
+        matrix *out = new_permuted_dense(n_idxs, A->base.n, new_m0, A->n0,
+                                         new_row_perm, A->col_perm, NULL);
+        sp_free(new_row_perm);
+        return out;
+    }
+
+    /* Compact source (row_inv == NULL): membership via binary search in the sorted
+       row_perm. Record each hit's source dense row so index_pd_fill_values needs no
+       inverse array either — indices are owned by the atom and fixed
+       between alloc and fill, so the mapping stays valid. */
+    int *src_rows = (int *) sp_malloc(n_idxs * sizeof(int));
     for (int i = 0; i < n_idxs; i++)
     {
-        if (A->row_inv[indices[i]] >= 0)
+        int old_ii = sorted_pos(A->row_perm, A->m0, indices[i]);
+        if (old_ii >= 0)
         {
+            src_rows[new_m0] = old_ii;
             new_row_perm[new_m0++] = i;
         }
     }
 
-    matrix *out = new_permuted_dense(n_idxs, A->base.n, new_m0, A->n0, new_row_perm,
-                                     A->col_perm, NULL);
+    matrix *out = new_permuted_dense_compact(n_idxs, A->base.n, new_m0, A->n0,
+                                             new_row_perm, A->col_perm, NULL);
+    permuted_dense *C = (permuted_dense *) out;
+    C->kernel_iwork_size = (size_t) new_m0;
+    C->kernel_iwork = (int *) sp_malloc(new_m0 * sizeof(int));
+    memcpy(C->kernel_iwork, src_rows, new_m0 * sizeof(int));
+    sp_free(src_rows);
     sp_free(new_row_perm);
     return out;
 }
@@ -132,11 +160,22 @@ void index_pd_fill_values(const permuted_dense *A, const int *indices, int n_idx
 {
     (void) n_idxs;
     int n0 = A->n0;
+    if (A->row_inv != NULL)
+    {
+        for (int k = 0; k < C->m0; k++)
+        {
+            int i = C->row_perm[k];
+            int old_ii = A->row_inv[indices[i]];
+            memcpy(C->X + k * n0, A->X + old_ii * n0, n0 * sizeof(double));
+        }
+        return;
+    }
+
+    /* Compact source (row_inv == NULL): C->kernel_iwork[k] holds the source dense
+       row for output dense row k, precomputed by index_pd_alloc. */
     for (int k = 0; k < C->m0; k++)
     {
-        int i = C->row_perm[k];
-        int old_ii = A->row_inv[indices[i]];
-        memcpy(C->X + k * n0, A->X + old_ii * n0, n0 * sizeof(double));
+        memcpy(C->X + k * n0, A->X + C->kernel_iwork[k] * n0, n0 * sizeof(double));
     }
 }
 
@@ -566,8 +605,9 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
 }
 
-matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
-                           const int *col_perm, const double *X_data)
+static matrix *new_permuted_dense_impl(int m, int n, int m0, int n0,
+                                       const int *row_perm, const int *col_perm,
+                                       const double *X_data, bool with_inv)
 {
     /* Validate sorted invariants. */
     for (int ii = 1; ii < m0; ii++)
@@ -602,8 +642,6 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->X = (double *) sp_malloc(sz * sizeof(double));
     pd->base.x = pd->X;
     pd->owns_X = true;
-    pd->col_inv = (int *) sp_malloc(n * sizeof(int));
-    pd->row_inv = (int *) sp_malloc(m * sizeof(int));
 
     if (m0 > 0)
     {
@@ -614,22 +652,10 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
         memcpy(pd->col_perm, col_perm, n0 * sizeof(int));
     }
 
-    for (int j = 0; j < n; j++)
+    if (with_inv)
     {
-        pd->col_inv[j] = -1;
-    }
-    for (int jj = 0; jj < n0; jj++)
-    {
-        pd->col_inv[col_perm[jj]] = jj;
-    }
-
-    for (int i = 0; i < m; i++)
-    {
-        pd->row_inv[i] = -1;
-    }
-    for (int ii = 0; ii < m0; ii++)
-    {
-        pd->row_inv[row_perm[ii]] = ii;
+        permuted_dense_ensure_col_inv(pd);
+        permuted_dense_ensure_row_inv(pd);
     }
 
     if (X_data != NULL && sz > 0)
@@ -638,6 +664,52 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     }
 
     return &pd->base;
+}
+
+matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
+                           const int *col_perm, const double *X_data)
+{
+    return new_permuted_dense_impl(m, n, m0, n0, row_perm, col_perm, X_data, true);
+}
+
+matrix *new_permuted_dense_compact(int m, int n, int m0, int n0, const int *row_perm,
+                                   const int *col_perm, const double *X_data)
+{
+    return new_permuted_dense_impl(m, n, m0, n0, row_perm, col_perm, X_data, false);
+}
+
+void permuted_dense_ensure_col_inv(const permuted_dense *A)
+{
+    /* const-cast: lazily populating a cache slot, same convention as
+       permuted_dense_ensure_kernel_dwork. */
+    permuted_dense *pd = (permuted_dense *) A;
+    if (pd->col_inv != NULL) return;
+    int n = pd->base.n;
+    pd->col_inv = (int *) sp_malloc(n * sizeof(int));
+    for (int j = 0; j < n; j++)
+    {
+        pd->col_inv[j] = -1;
+    }
+    for (int jj = 0; jj < pd->n0; jj++)
+    {
+        pd->col_inv[pd->col_perm[jj]] = jj;
+    }
+}
+
+void permuted_dense_ensure_row_inv(const permuted_dense *A)
+{
+    permuted_dense *pd = (permuted_dense *) A;
+    if (pd->row_inv != NULL) return;
+    int m = pd->base.m;
+    pd->row_inv = (int *) sp_malloc(m * sizeof(int));
+    for (int i = 0; i < m; i++)
+    {
+        pd->row_inv[i] = -1;
+    }
+    for (int ii = 0; ii < pd->m0; ii++)
+    {
+        pd->row_inv[pd->row_perm[ii]] = ii;
+    }
 }
 
 matrix *new_permuted_dense_full(int m, int n, const double *data)

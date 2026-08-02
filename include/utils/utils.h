@@ -60,6 +60,16 @@ int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
 void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
                              iVec *out);
 
+/* Position of value g in the sorted, strictly-increasing array 'perm' of
+   length n0 (binary search), or -1 if absent. The scan replacement for a
+   dense inverse-permutation lookup inv[g]. */
+int sorted_pos(const int *perm, int n0, int g);
+
+/* Return true if any of the 'len' integers in 'idxs' (arbitrary order) is a
+   member of the sorted, strictly-increasing array 'perm' of length n0. The
+   scan replacement for idxs_hits_set when no dense inverse array exists. */
+bool sorted_hits(const int *idxs, int len, const int *perm, int n0);
+
 /* in-place cumulative sum */
 void cumsum(int *p, int n);
 
