@@ -64,13 +64,14 @@ const char *test_jacobian_elementwise_mult_3(void)
          0 0 1 1 3 0 0 0 0 0
          0 0 1 -1 1 0 0 0 0 0]
     */
-    CSR_matrix *A = new_CSR_matrix(3, 10, 9);
-    double Ax_vals[9] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
-    int Ai[9] = {2, 3, 2, 3, 4, 2, 3, 4};
+    CSR_matrix *A = new_CSR_matrix(3, 10, 8);
+    double Ax_vals[8] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
+    int Ai[8] = {2, 3, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 5, 8};
-    memcpy(A->x, Ax_vals, 9 * sizeof(double));
-    memcpy(A->i, Ai, 9 * sizeof(int));
+    memcpy(A->x, Ax_vals, 8 * sizeof(double));
+    memcpy(A->i, Ai, 8 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
+    mu_assert("A fixture invalid", csr_is_valid(A));
 
     /*
     B = [0 0 0 0 0 0 0 1 3 0
@@ -78,13 +79,14 @@ const char *test_jacobian_elementwise_mult_3(void)
          0 0 0 0 0 0 0 1 -2 1]
 
     */
-    CSR_matrix *B = new_CSR_matrix(3, 10, 9);
-    double Bx_vals[9] = {1.0, 3.0, 1.0, 1.0, 4.0, 1.0, -2.0, 1.0};
-    int Bi[9] = {7, 8, 7, 8, 9, 7, 8, 9};
+    CSR_matrix *B = new_CSR_matrix(3, 10, 8);
+    double Bx_vals[8] = {1.0, 3.0, 1.0, 1.0, 4.0, 1.0, -2.0, 1.0};
+    int Bi[8] = {7, 8, 7, 8, 9, 7, 8, 9};
     int Bp[4] = {0, 2, 5, 8};
-    memcpy(B->x, Bx_vals, 9 * sizeof(double));
-    memcpy(B->i, Bi, 9 * sizeof(int));
+    memcpy(B->x, Bx_vals, 8 * sizeof(double));
+    memcpy(B->i, Bi, 8 * sizeof(int));
     memcpy(B->p, Bp, 4 * sizeof(int));
+    mu_assert("B fixture invalid", csr_is_valid(B));
 
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
@@ -160,13 +162,14 @@ const char *test_jacobian_elementwise_mult_4(void)
          0 0 1 1 3 0 0 0 0 0
          0 0 1 -1 1 0 0 0 0 0]
     */
-    CSR_matrix *A = new_CSR_matrix(3, 10, 9);
-    double Ax_vals[9] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
-    int Ai[9] = {2, 3, 2, 3, 4, 2, 3, 4};
+    CSR_matrix *A = new_CSR_matrix(3, 10, 8);
+    double Ax_vals[8] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
+    int Ai[8] = {2, 3, 2, 3, 4, 2, 3, 4};
     int Ap[4] = {0, 2, 5, 8};
-    memcpy(A->x, Ax_vals, 9 * sizeof(double));
-    memcpy(A->i, Ai, 9 * sizeof(int));
+    memcpy(A->x, Ax_vals, 8 * sizeof(double));
+    memcpy(A->i, Ai, 8 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
+    mu_assert("A fixture invalid", csr_is_valid(A));
 
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
