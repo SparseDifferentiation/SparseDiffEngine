@@ -244,6 +244,7 @@ static void jacobian_init_chain_rule(expr *node)
     max_nnz = MIN(max_nnz, sat_mul_int(node->size, node->n_vars));
     CSR_matrix *jac = new_CSR_matrix(node->size, node->n_vars, max_nnz);
     sum_csr_alloc(mnode->term1_CSR, mnode->term2_CSR, jac);
+    CSR_trim(jac);
     node->jacobian = new_sparse_matrix(jac);
 }
 

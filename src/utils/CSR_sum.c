@@ -432,6 +432,7 @@ CSR_matrix *sum_4_csr_alloc(const CSR_matrix *A, const CSR_matrix *B,
 
     out->p[m] = nnz;
     out->nnz = nnz;
+    CSR_trim(out);
     return out;
 }
 

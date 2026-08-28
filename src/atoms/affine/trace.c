@@ -82,6 +82,7 @@ static void jacobian_init_impl(expr *node)
     tnode->idx_map = sp_malloc(A->nnz * sizeof(int));
     sum_spaced_rows_into_row_csr_alloc(A, jac, row_spacing, node->work->iwork,
                                        tnode->idx_map);
+    CSR_trim(jac);
     node->jacobian = new_sparse_matrix(jac);
 }
 

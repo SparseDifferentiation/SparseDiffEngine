@@ -44,6 +44,10 @@ matrix *new_sparse_matrix(CSR_matrix *A);
    Sparsity pattern and values are uninitialized. */
 matrix *new_sparse_matrix_alloc(int m, int n, int nnz);
 
+/* Trim a wrapped capacity-built CSR to its true size (CSR_trim) and re-sync
+   the base's cached x pointer and nnz, since realloc may move the buffer. */
+void sparse_matrix_trim(matrix *M);
+
 /* Transpose helper */
 matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork);
 
