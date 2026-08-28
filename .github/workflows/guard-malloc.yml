@@ -1,0 +1,28 @@
+name: Guard Malloc
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+jobs:
+  guard-malloc:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --config Debug
+
+      # MallocScribble poisons freed memory (0x55), MallocGuardEdges adds
+      # guard pages around large allocations, and leaks --atExit reports
+      # memory still leaked at exit and fails the step if any is found.
+      - name: Run tests under guard-malloc + leaks
+        run: >
+          MallocScribble=1 MallocGuardEdges=1
+          leaks --atExit -- ./build/all_tests
