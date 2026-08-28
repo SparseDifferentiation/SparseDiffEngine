@@ -531,6 +531,7 @@ void problem_jacobian(problem *prob)
         nnz_offset += c->jacobian->nnz;
     }
 
+    assert(nnz_offset == J->nnz);
     prob->jacobian_called = true;
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);
