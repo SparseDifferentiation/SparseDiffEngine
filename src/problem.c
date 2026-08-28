@@ -531,9 +531,6 @@ void problem_jacobian(problem *prob)
         nnz_offset += c->jacobian->nnz;
     }
 
-    /* update actual nnz (may be less than allocated) */
-    J->nnz = nnz_offset;
-
     prob->jacobian_called = true;
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);

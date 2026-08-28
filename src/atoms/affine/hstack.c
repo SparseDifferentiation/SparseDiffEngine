@@ -63,7 +63,7 @@ static void jacobian_init_impl(expr *node)
 
     /* precompute sparsity pattern of this node's jacobian */
     int row_offset = 0;
-    A->nnz = 0;
+    int cursor = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
@@ -71,25 +71,26 @@ static void jacobian_init_impl(expr *node)
         CSR_matrix *B = child->jacobian->to_csr(child->jacobian);
 
         /* copy columns */
-        memcpy(A->i + A->nnz, B->i, B->nnz * sizeof(int));
+        memcpy(A->i + cursor, B->i, B->nnz * sizeof(int));
 
         /* set row pointers */
         for (int r = 0; r < child->size; r++)
         {
-            A->p[row_offset + r] = A->nnz + B->p[r];
+            A->p[row_offset + r] = cursor + B->p[r];
         }
 
-        A->nnz += B->nnz;
+        cursor += B->nnz;
         row_offset += child->size;
     }
-    A->p[node->size] = A->nnz;
+    A->p[node->size] = cursor;
+    assert(cursor == A->nnz);
     node->jacobian = new_sparse_matrix(A);
 }
 
 static void eval_jacobian(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    node->jacobian->nnz = 0;
+    int cursor = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
@@ -97,9 +98,9 @@ static void eval_jacobian(expr *node)
         child->eval_jacobian(child);
         /* to_csr needed for stacked_pd */
         CSR_matrix *child_csr = child->jacobian->to_csr(child->jacobian);
-        memcpy(node->jacobian->x + node->jacobian->nnz, child_csr->x,
+        memcpy(node->jacobian->x + cursor, child_csr->x,
                child_csr->nnz * sizeof(double));
-        node->jacobian->nnz += child_csr->nnz;
+        cursor += child_csr->nnz;
     }
 }
 
@@ -121,7 +122,6 @@ static void wsum_hess_init_impl(expr *node)
     hnode->CSR_work = new_CSR_matrix(node->n_vars, node->n_vars, nnz_ub);
 
     /* fill sparsity pattern */
-    H->nnz = 0;
     for (int i = 0; i < hnode->n_args; i++)
     {
         matrix *child_hess = hnode->args[i]->wsum_hess;
