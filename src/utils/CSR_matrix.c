@@ -54,6 +54,15 @@ CSR_matrix *new_csr_copy_sparsity(const CSR_matrix *A)
     return copy;
 }
 
+void CSR_trim(CSR_matrix *A)
+{
+    int nnz = A->p[A->m];
+    A->nnz = nnz;
+    if (nnz == 0) return; /* realloc(ptr, 0) frees and returns NULL on MSVC */
+    A->i = (int *) sp_realloc(A->i, nnz * sizeof(int));
+    A->x = (double *) sp_realloc(A->x, nnz * sizeof(double));
+}
+
 void free_CSR_matrix(CSR_matrix *matrix)
 {
     if (matrix)

@@ -365,6 +365,7 @@ static matrix *sparse_sum_row_partition_alloc(matrix *self, int axis, int d1,
     }
 
     sp_free(iwork);
+    CSR_trim(out);
     return new_sparse_matrix(out);
 }
 
@@ -408,6 +409,14 @@ matrix *new_sparse_matrix(CSR_matrix *A)
 matrix *new_sparse_matrix_alloc(int m, int n, int nnz)
 {
     return new_sparse_matrix(new_CSR_matrix(m, n, nnz));
+}
+
+void sparse_matrix_trim(matrix *M)
+{
+    CSR_matrix *csr = ((sparse_matrix *) M)->csr;
+    CSR_trim(csr);
+    M->x = csr->x;
+    M->nnz = csr->nnz;
 }
 
 matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork)

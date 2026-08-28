@@ -465,6 +465,7 @@ static matrix *stacked_pd_vtable_sum_row_partition_alloc(matrix *self, int axis,
        order so eval_jacobian reads child->jacobian->x directly. */
     compose_csr_idx_map_for_spd(spd, A, idx_map);
 
+    CSR_trim(out);
     return new_sparse_matrix(out);
 }
 

@@ -128,6 +128,13 @@ static void wsum_hess_init_impl(expr *node)
         copy_CSR_matrix(H, hnode->CSR_work);
         sum_csr_alloc(hnode->CSR_work, child_hess->to_csr(child_hess), H);
     }
+
+    /* trim both buffers to the final pattern size; CSR_work must be re-synced
+       from H first, since its row pointers still describe an older, smaller
+       pattern */
+    CSR_trim(H);
+    copy_CSR_matrix(H, hnode->CSR_work);
+    CSR_trim(hnode->CSR_work);
     node->wsum_hess = new_sparse_matrix(H);
 }
 
