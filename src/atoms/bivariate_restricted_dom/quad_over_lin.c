@@ -94,24 +94,25 @@ static void jacobian_init_impl(expr *node)
         CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */
-        jac->nnz = 0;
+        int cursor = 0;
         for (int j = 0; j < node->n_vars; j++)
         {
             if (col_nz[j])
             {
-                jac->i[jac->nnz] = j;
-                jac->nnz++;
+                jac->i[cursor] = j;
+                cursor++;
             }
         }
-        assert(nonzero_cols == jac->nnz);
+        assert(nonzero_cols == cursor);
 
         sp_free(col_nz);
 
         /* insert y variable index at correct position */
-        insert_idx(y->var_id, jac->i, jac->nnz);
-        jac->nnz += 1;
+        insert_idx(y->var_id, jac->i, cursor);
+        cursor += 1;
+        assert(cursor == jac->nnz);
         jac->p[0] = 0;
-        jac->p[1] = jac->nnz;
+        jac->p[1] = cursor;
 
         /* find position where y should be inserted */
         node->work->iwork = (int *) sp_malloc(sizeof(int));

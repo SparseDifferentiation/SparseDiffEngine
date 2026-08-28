@@ -29,7 +29,7 @@ void sum_csr_alloc(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C)
     /* A and B must be different from C */
     assert(A != C && B != C);
 
-    C->nnz = 0;
+    int cursor = 0;
 
     for (int row = 0; row < A->m; row++)
     {
@@ -37,48 +37,49 @@ void sum_csr_alloc(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C)
         int a_end = A->p[row + 1];
         int b_ptr = B->p[row];
         int b_end = B->p[row + 1];
-        C->p[row] = C->nnz;
+        C->p[row] = cursor;
 
         /* Merge while both have elements (only column indices) */
         while (a_ptr < a_end && b_ptr < b_end)
         {
             if (A->i[a_ptr] < B->i[b_ptr])
             {
-                C->i[C->nnz] = A->i[a_ptr];
+                C->i[cursor] = A->i[a_ptr];
                 a_ptr++;
             }
             else if (B->i[b_ptr] < A->i[a_ptr])
             {
-                C->i[C->nnz] = B->i[b_ptr];
+                C->i[cursor] = B->i[b_ptr];
                 b_ptr++;
             }
             else
             {
-                C->i[C->nnz] = A->i[a_ptr];
+                C->i[cursor] = A->i[a_ptr];
                 a_ptr++;
                 b_ptr++;
             }
-            C->nnz++;
+            cursor++;
         }
 
         /* Copy remaining elements from A */
         if (a_ptr < a_end)
         {
             int a_remaining = a_end - a_ptr;
-            memcpy(C->i + C->nnz, A->i + a_ptr, a_remaining * sizeof(int));
-            C->nnz += a_remaining;
+            memcpy(C->i + cursor, A->i + a_ptr, a_remaining * sizeof(int));
+            cursor += a_remaining;
         }
 
         /* Copy remaining elements from B */
         if (b_ptr < b_end)
         {
             int b_remaining = b_end - b_ptr;
-            memcpy(C->i + C->nnz, B->i + b_ptr, b_remaining * sizeof(int));
-            C->nnz += b_remaining;
+            memcpy(C->i + cursor, B->i + b_ptr, b_remaining * sizeof(int));
+            cursor += b_remaining;
         }
     }
 
-    C->p[A->m] = C->nnz;
+    C->p[A->m] = cursor;
+    C->nnz = cursor;
 }
 
 void sum_csr_fill_values(const CSR_matrix *A, const CSR_matrix *B, CSR_matrix *C)
@@ -157,7 +158,7 @@ void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
 
     C->n = A->n;
     C->p[0] = 0;
-    C->nnz = 0;
+    int cursor = 0;
 
     int *cols = iwork;
     int *col_to_pos = iwork;
@@ -171,7 +172,7 @@ void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
         // Build sparsity pattern of the row resulting from summing
         // the block of rows from A
         // -----------------------------------------------------------------
-        C->p[block] = C->nnz;
+        C->p[block] = cursor;
         int count = 0;
         for (int row = start_row; row < end_row; row++)
         {
@@ -191,14 +192,14 @@ void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
             int col = cols[t];
             if (t == 0 || col != prev_col)
             {
-                C->i[C->nnz + unique_nnz] = col;
+                C->i[cursor + unique_nnz] = col;
                 prev_col = col;
                 unique_nnz++;
             }
         }
 
-        C->nnz += unique_nnz;
-        C->p[block + 1] = C->nnz;
+        cursor += unique_nnz;
+        C->p[block + 1] = cursor;
 
         // -----------------------------------------------------------------
         //         Build idx_map for all entries in this block
@@ -217,6 +218,8 @@ void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
             }
         }
     }
+
+    C->nnz = cursor;
 }
 
 /* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
@@ -226,7 +229,7 @@ void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
     assert(C->m == row_spacing);
     C->n = A->n;
     C->p[0] = 0;
-    C->nnz = 0;
+    int cursor = 0;
 
     int *cols = iwork;
     int *col_to_pos = iwork;
@@ -237,7 +240,7 @@ void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
         // Build sparsity pattern of the row resulting from summing
         // evenly spaced rows from A
         // -----------------------------------------------------------------
-        C->p[C_row] = C->nnz;
+        C->p[C_row] = cursor;
         int count = 0;
         for (int row = C_row; row < A->m; row += row_spacing)
         {
@@ -257,14 +260,14 @@ void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
             int col = cols[t];
             if (t == 0 || col != prev_col)
             {
-                C->i[C->nnz + unique_nnz] = col;
+                C->i[cursor + unique_nnz] = col;
                 prev_col = col;
                 unique_nnz++;
             }
         }
 
-        C->nnz += unique_nnz;
-        C->p[C_row + 1] = C->nnz;
+        cursor += unique_nnz;
+        C->p[C_row + 1] = cursor;
 
         // -----------------------------------------------------------------
         //         Build idx_map for all entries in evenly spaced rows
@@ -283,6 +286,8 @@ void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
             }
         }
     }
+
+    C->nnz = cursor;
 }
 
 void accumulator(const double *vals, int nnz, const int *idx_map, double *out)
