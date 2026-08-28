@@ -74,8 +74,8 @@ const char *profile_hessian_exp_AX(void)
     Timer t1f;
     clock_gettime(CLOCK_MONOTONIC, &t1f.start);
     node->forward(node, X_vals);
-    node->eval_jacobian(node);
-    node->eval_wsum_hess(node, w);
+    eval_jacobian(node);
+    eval_wsum_hess(node, w);
     clock_gettime(CLOCK_MONOTONIC, &t1f.end);
 
     matrix *H1 = node->wsum_hess;

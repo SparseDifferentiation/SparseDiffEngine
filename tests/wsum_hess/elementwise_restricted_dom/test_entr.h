@@ -20,7 +20,7 @@ const char *test_wsum_hess_entr(void)
     entr_node->forward(entr_node, u_vals);
     jacobian_init(entr_node);
     wsum_hess_init(entr_node);
-    entr_node->eval_wsum_hess(entr_node, w);
+    eval_wsum_hess(entr_node, w);
 
     /* Expected values on the diagonal: -w_i/x_i */
     double expected_x[3] = {-1.0, -1.0, -1.0};

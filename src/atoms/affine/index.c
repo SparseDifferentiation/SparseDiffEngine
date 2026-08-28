@@ -70,11 +70,11 @@ static void jacobian_init_impl(expr *node)
         x->jacobian->index_alloc(x->jacobian, idx->indices, idx->n_idxs);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     index_expr *idx = (index_expr *) node;
-    x->eval_jacobian(x);
+    eval_jacobian(x);
 
     /* copy values of the selected rows into the preallocated output */
     x->jacobian->index_fill_values(x->jacobian, idx->indices, idx->n_idxs,
@@ -100,7 +100,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
     index_expr *idx = (index_expr *) node;
@@ -124,7 +124,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 
     /* evalute hessian of child */
-    x->eval_wsum_hess(x, node->work->dwork);
+    eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -152,8 +152,8 @@ expr *new_index(expr *child, int d1, int d2, const int *indices, int n_idxs)
     expr *node = &idx->base;
 
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
 
     node->left = child;
     expr_retain(child);

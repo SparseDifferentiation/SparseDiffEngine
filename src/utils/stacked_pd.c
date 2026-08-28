@@ -69,6 +69,7 @@ static void stacked_pd_vtable_DA_fill_values(const double *d, const matrix *self
                                              matrix *out)
 {
     DA_spd_fill_values(d, (const stacked_pd *) self, (stacked_pd *) out);
+    matrix_values_changed(out);
 }
 
 static matrix *stacked_pd_vtable_ATA_alloc(matrix *self)
@@ -80,6 +81,7 @@ static void stacked_pd_vtable_ATDA_fill_values(const matrix *self, const double 
                                                matrix *out)
 {
     ATDA_spd_fill_values((const stacked_pd *) self, d, (stacked_pd *) out);
+    matrix_values_changed(out);
 }
 
 static matrix *stacked_pd_vtable_transpose_alloc(const matrix *self)
@@ -90,6 +92,7 @@ static matrix *stacked_pd_vtable_transpose_alloc(const matrix *self)
 static void stacked_pd_vtable_transpose_fill_values(const matrix *self, matrix *out)
 {
     transpose_spd_fill_values((const stacked_pd *) self, (stacked_pd *) out);
+    matrix_values_changed(out);
 }
 
 static void stacked_pd_vtable_refresh_csc_values(matrix *self)
@@ -134,9 +137,17 @@ static CSR_matrix *stacked_pd_to_csr(matrix *self)
     if (spd->csr_cache == NULL)
     {
         spd->csr_cache = stacked_pd_to_csr_alloc(spd);
+
+        /* Deliberately stale: force the first call to copy the values. */
+        spd->csr_seen = spd->base.values_version - 1;
     }
 
-    /* refresh values every call (block X buffers may have changed). */
+    /* refresh values iff the block X buffers changed since the last call */
+    if (spd->csr_seen == spd->base.values_version)
+    {
+        return spd->csr_cache;
+    }
+    spd->csr_seen = spd->base.values_version;
     int *p_arr = spd->csr_cache->p;
     for (int k = 0; k < spd->n_blocks; k++)
     {

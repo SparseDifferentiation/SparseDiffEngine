@@ -86,13 +86,13 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_sparse_matrix(jac);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     trace_expr *tnode = (trace_expr *) node;
 
     /* evaluate child's jacobian */
-    x->eval_jacobian(x);
+    eval_jacobian(x);
 
     /* local jacobian */
     memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
@@ -117,7 +117,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
 
@@ -127,7 +127,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         node->work->dwork[i] = w[0];
     }
 
-    x->eval_wsum_hess(x, node->work->dwork);
+    eval_wsum_hess(x, node->work->dwork);
 
     memcpy(node->wsum_hess->x, x->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
@@ -151,8 +151,9 @@ expr *new_trace(expr *child)
 {
     trace_expr *tnode = (trace_expr *) sp_calloc(1, sizeof(trace_expr));
     expr *node = &tnode->base;
-    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 

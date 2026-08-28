@@ -18,7 +18,7 @@ const char *test_wsum_hess_rel_entr_vector_scalar(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[5] = {0, 2, 4, 6, 10};
     int expected_i[10] = {0, 3, 1, 3, 2, 3, 0, 1, 2, 3};

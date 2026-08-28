@@ -91,12 +91,12 @@ static void jacobian_init_impl(expr *node)
         new_sparse_matrix(csr_csc_matmul_alloc(cnode->T, cnode->Jchild_CSC));
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
     convolve_expr *cnode = (convolve_expr *) node;
 
-    child->eval_jacobian(child);
+    eval_jacobian(child);
 
     /* J = T @ J_child */
     csr_to_csc_fill_values(child->jacobian->to_csr(child->jacobian),
@@ -115,7 +115,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) sp_malloc(cnode->n * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *child = node->left;
     convolve_expr *cnode = (convolve_expr *) node;
@@ -133,7 +133,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         w_prime[j] = sum;
     }
 
-    child->eval_wsum_hess(child, w_prime);
+    eval_wsum_hess(child, w_prime);
     memcpy(node->wsum_hess->x, child->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -181,8 +181,8 @@ expr *new_convolve(expr *param_node, expr *child)
     convolve_expr *cnode = (convolve_expr *) sp_calloc(1, sizeof(convolve_expr));
     expr *node = &cnode->base;
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 

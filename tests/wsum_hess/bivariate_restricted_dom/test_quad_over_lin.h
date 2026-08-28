@@ -19,7 +19,7 @@ const char *test_wsum_hess_quad_over_lin_xy(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, &w);
+    eval_wsum_hess(node, &w);
 
     int expected_p[10] = {0, 0, 0, 2, 4, 6, 6, 6, 10, 10};
     int expected_i[10] = {2, 7, 3, 7, 4, 7, 2, 3, 4, 7};
@@ -49,7 +49,7 @@ const char *test_wsum_hess_quad_over_lin_yx(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, &w);
+    eval_wsum_hess(node, &w);
 
     int expected_p[10] = {0, 0, 0, 4, 4, 4, 6, 8, 10, 10};
     int expected_i[10] = {2, 5, 6, 7, 2, 5, 2, 6, 2, 7};

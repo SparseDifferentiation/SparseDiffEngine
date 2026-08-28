@@ -32,7 +32,7 @@ const char *test_jacobian_hstack_vectors(void)
 
     stack->forward(stack, u);
     jacobian_init(stack);
-    stack->eval_jacobian(stack);
+    eval_jacobian(stack);
 
     /* Expected jacobian: 9x3 with 9 nonzeros (diagonal blocks) */
     double expected_Ax[9] = {1.0,      0.5,      1.0 / 3.0, /* d(log)/dx */
@@ -74,7 +74,7 @@ const char *test_jacobian_hstack_matrix(void)
 
     stack->forward(stack, u);
     jacobian_init(stack);
-    stack->eval_jacobian(stack);
+    eval_jacobian(stack);
 
     /* Expected jacobian: 18x6 with 18 nonzeros (diagonal) */
     double expected_Ax[18] = {

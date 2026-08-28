@@ -56,6 +56,7 @@
 #include "jacobian_tests/other/test_prod_axis_one.h"
 #include "jacobian_tests/other/test_prod_axis_zero.h"
 #include "jacobian_tests/other/test_quad_form.h"
+#include "jacobian_tests/test_values_version.h"
 #include "numerical_diff/test_numerical_diff.h"
 #include "old-code/test_old_permuted_dense.h"
 #include "problem/test_param_broadcast.h"
@@ -209,6 +210,12 @@ int main(void)
     mu_run_test(test_quad_over_lin4, tests_run);
     mu_run_test(test_quad_over_lin5, tests_run);
     mu_run_test(test_quad_form, tests_run);
+    mu_run_test(test_values_version_non_affine, tests_run);
+    mu_run_test(test_values_version_affine, tests_run);
+    mu_run_test(test_values_version_csc_mirror_dedup, tests_run);
+    mu_run_test(test_values_version_stacked_pd_to_csr, tests_run);
+    mu_run_test(test_values_version_param_under_hstack, tests_run);
+    mu_run_test(test_values_version_spd_hess_terms, tests_run);
     /* commented out - see test_quad_form.h */
     // mu_run_test(test_quad_form2, tests_run);
     mu_run_test(test_jacobian_prod_no_zero, tests_run);

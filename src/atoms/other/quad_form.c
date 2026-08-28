@@ -113,7 +113,7 @@ static void jacobian_init_impl(expr *node)
     }
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
@@ -129,18 +129,8 @@ static void eval_jacobian(expr *node)
     else
     {
         /* jacobian = 2 * (Q @ f(x))^T @ J_f */
-        x->eval_jacobian(x);
-
-        if (!x->work->jacobian_csc_filled)
-        {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian),
-                                   x->work->jacobian_csc, x->work->csc_work);
-
-            if (x->is_affine(x))
-            {
-                x->work->jacobian_csc_filled = true;
-            }
-        }
+        eval_jacobian(x);
+        expr_refresh_jacobian_csc(x);
 
         /* The jacobian has same values as the gradient, which is
            J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
@@ -225,18 +215,11 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
     }
     else
     {
-        /* fill the CSC_matrix representation of the Jacobian of the child */
+        /* refresh the CSC_matrix mirror of the child's Jacobian (version-guarded:
+           no-ops when the jacobian pass already refreshed it this eval, or when
+           an affine child's values are unchanged) */
         CSC_matrix *Jf = x->work->jacobian_csc;
-        if (!x->work->jacobian_csc_filled)
-        {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jf,
-                                   x->work->csc_work);
-
-            if (x->is_affine(x))
-            {
-                x->work->jacobian_csc_filled = true;
-            }
-        }
+        expr_refresh_jacobian_csc(x);
 
         CSC_matrix *QJf = qnode->QJf;
         CSR_matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
@@ -246,7 +229,7 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */
-        x->eval_wsum_hess(x, node->work->dwork);
+        eval_wsum_hess(x, node->work->dwork);
         memcpy(node->work->hess_term2->x, x->wsum_hess->x,
                x->wsum_hess->nnz * sizeof(double));
 
@@ -255,6 +238,7 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
                     1);
         cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
                     1);
+        matrix_values_changed(node->work->hess_term2);
 
         /* sum the two terms */
         sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
@@ -347,11 +331,12 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
                                   node->work->hess_term1);
 
         /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
-        x->eval_wsum_hess(x, node->work->dwork);
+        eval_wsum_hess(x, node->work->dwork);
         memcpy(node->work->hess_term2->x, x->wsum_hess->x,
                x->wsum_hess->nnz * sizeof(double));
         cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
                     1);
+        matrix_values_changed(node->work->hess_term2);
 
         sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
                                  node->wsum_hess);
@@ -395,9 +380,9 @@ expr *new_quad_form_sparse(expr *left, CSR_matrix *Q)
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_sparse, eval_wsum_hess_sparse,
-              free_type_data);
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_sparse,
+              eval_wsum_hess_sparse, free_type_data);
     node->left = left;
     expr_retain(left);
 
@@ -419,8 +404,9 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_dense, eval_wsum_hess_dense, free_type_data);
+    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_dense,
+              eval_wsum_hess_dense, free_type_data);
     node->left = child;
     expr_retain(child);
 

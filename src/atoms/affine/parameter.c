@@ -36,7 +36,7 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_sparse_matrix_alloc(node->size, node->n_vars, 0);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     (void) node;
 }
@@ -47,7 +47,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = new_sparse_matrix_alloc(node->n_vars, node->n_vars, 0);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     (void) node;
     (void) w;
@@ -63,8 +63,8 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
 {
     parameter_expr *pnode = (parameter_expr *) sp_calloc(1, sizeof(parameter_expr));
     expr *node = &pnode->base;
-    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian_impl,
+              is_affine, wsum_hess_init_impl, eval_wsum_hess_impl, NULL);
 
     // TODO we should assert that the values array has the correct size.
     pnode->param_id = param_id;

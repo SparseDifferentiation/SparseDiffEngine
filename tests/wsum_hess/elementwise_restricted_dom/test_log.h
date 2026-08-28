@@ -32,7 +32,7 @@ const char *test_wsum_hess_log(void)
     log_node->forward(log_node, u_vals);
     jacobian_init(log_node);
     wsum_hess_init(log_node);
-    log_node->eval_wsum_hess(log_node, w);
+    eval_wsum_hess(log_node, w);
 
     /* Expected values on the diagonal: -w_i/x_i^2 */
     double expected_x[3] = {-1.0, -0.5, -1.0 / 3.0};

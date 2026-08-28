@@ -61,13 +61,13 @@ static void jacobian_init_impl(expr *node)
     sum_matrices_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
 
-    x->eval_jacobian(x);
-    y->eval_jacobian(y);
+    eval_jacobian(x);
+    eval_jacobian(y);
 
     /* chain rule: the jacobian of h(x) = f(g1(x), g2(x))) is Jh = J_{f, 1} J_{g1} +
      * J_{f, 2} J_{g2} */
@@ -216,7 +216,7 @@ static void wsum_hess_init_impl(expr *node)
     }
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -235,31 +235,18 @@ static void eval_wsum_hess(expr *node, const double *w)
         // ----------------------------------------------------------------------
         //  Refresh each operand's CSC_matrix cache as needed for the (Sparse,
         //  Sparse) dispatch path. For PD operands, refresh_csc_values is a no-op.
-        //  The jacobian_csc_filled flag preserves the affine optimization: we only
-        //  refresh on the first eval for affine children.
+        //  The refresh is version-guarded, so an affine child's cache is only
+        //  filled once per parameter epoch.
         // ----------------------------------------------------------------------
-        if (!x->work->jacobian_csc_filled)
-        {
-            x->jacobian->refresh_csc_values(x->jacobian);
-            if (is_x_affine)
-            {
-                x->work->jacobian_csc_filled = true;
-            }
-        }
-        if (!y->work->jacobian_csc_filled)
-        {
-            y->jacobian->refresh_csc_values(y->jacobian);
-            if (is_y_affine)
-            {
-                y->work->jacobian_csc_filled = true;
-            }
-        }
+        x->jacobian->refresh_csc_values(x->jacobian);
+        y->jacobian->refresh_csc_values(y->jacobian);
 
         // ---------------------------------------------------------------
         //                    compute C and CT
         // ---------------------------------------------------------------
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         BTDA_matrices_fill_values(x->jacobian, w, y->jacobian, mul_node->C);
+        matrix_values_changed(mul_node->C);
         mul_node->C->transpose_fill_values(mul_node->C, mul_node->CT);
 
         // ---------------------------------------------------------------
@@ -271,7 +258,7 @@ static void eval_wsum_hess(expr *node, const double *w)
             {
                 node->work->dwork[i] = w[i] * y->value[i];
             }
-            x->eval_wsum_hess(x, node->work->dwork);
+            eval_wsum_hess(x, node->work->dwork);
         }
 
         if (!is_y_affine)
@@ -280,7 +267,7 @@ static void eval_wsum_hess(expr *node, const double *w)
             {
                 node->work->dwork[i] = w[i] * x->value[i];
             }
-            y->eval_wsum_hess(y, node->work->dwork);
+            eval_wsum_hess(y, node->work->dwork);
         }
 
         // ---------------------------------------------------------------
@@ -322,8 +309,8 @@ expr *new_elementwise_mult(expr *left, expr *right)
     expr *node = &mul_node->base;
 
     init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = left;
     node->right = right;
     expr_retain(left);

@@ -21,6 +21,7 @@
 #include "CSC_matrix.h"
 #include "CSR_matrix.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 /* Broadcast shape used by the broadcast atom and its vtable methods. */
 typedef enum
@@ -77,7 +78,8 @@ typedef void (*matrix_transpose_fill_values_fn)(const matrix *A, matrix *AT);
 typedef CSR_matrix *(*matrix_to_csr_fn)(matrix *A);
 
 /* Refresh any internal caches (e.g. a CSC_matrix mirror) so subsequent ATA /
-   ATDA calls reflect the current values. */
+   ATDA calls reflect the current values. Version-guarded: a no-op when the
+   cache already matches values_version, so it is cheap to call when fresh. */
 typedef void (*matrix_refresh_csc_values_fn)(matrix *A);
 
 /* Allocate C = A[indices, :] */
@@ -128,6 +130,14 @@ struct matrix
     bool is_permuted_dense;
     bool is_stacked_pd;
 
+    /* Monotone counter bumped whenever the matrix's values change. Consumers
+       that mirror the values into a cache (CSC mirror, CSR view, ...) record
+       the version they last saw and refresh iff it differs. Code that writes
+       x directly must call matrix_values_changed on the OWNER of the buffer —
+       aliased children (spd blocks, cache views) have no version of their
+       own. */
+    uint64_t values_version;
+
     /* Operator ops */
     matrix_block_left_mult_vec_fn block_left_mult_vec;
     matrix_block_left_mult_sparsity_fn block_left_mult_sparsity;
@@ -159,6 +169,12 @@ struct matrix
     /* Lifecycle */
     matrix_free_fn free_fn;
 };
+
+/* Notify the library after writing A->x directly. */
+static inline void matrix_values_changed(matrix *A)
+{
+    A->values_version++;
+}
 
 /* Free helper */
 static inline void free_matrix(matrix *m)

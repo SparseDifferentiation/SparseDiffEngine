@@ -24,7 +24,7 @@ const char *test_wsum_hess_kron(void)
     Z->forward(Z, u);
     jacobian_init(Z);
     wsum_hess_init(Z);
-    Z->eval_wsum_hess(Z, w);
+    eval_wsum_hess(Z, w);
 
     mu_assert("kron wsum_hess square", Z->wsum_hess->m == 4 && Z->wsum_hess->n == 4);
     mu_assert("kron wsum_hess zero for linear arg", Z->wsum_hess->nnz == 0);

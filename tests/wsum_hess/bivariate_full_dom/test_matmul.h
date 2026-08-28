@@ -46,7 +46,7 @@ const char *test_wsum_hess_matmul(void)
     Z->forward(Z, u_vals);
     jacobian_init(Z);
     wsum_hess_init(Z);
-    Z->eval_wsum_hess(Z, w);
+    eval_wsum_hess(Z, w);
 
     /* Verify Hessian dimensions and sparsity */
     mu_assert("Hessian should be 18 cols", Z->wsum_hess->n == n_vars);
@@ -140,7 +140,7 @@ const char *test_wsum_hess_matmul_yx(void)
     Z->forward(Z, u_vals);
     jacobian_init(Z);
     wsum_hess_init(Z);
-    Z->eval_wsum_hess(Z, w);
+    eval_wsum_hess(Z, w);
 
     /* Verify Hessian dimensions and sparsity */
     mu_assert("Hessian should be 18 cols", Z->wsum_hess->n == n_vars);

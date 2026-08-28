@@ -19,7 +19,7 @@ const char *test_jacobian_prod_no_zero(void)
 
     p->forward(p, u_vals);
     jacobian_init(p);
-    p->eval_jacobian(p);
+    eval_jacobian(p);
 
     double expected_Ax[4] = {24.0, 12.0, 8.0, 6.0};
     int expected_Ap[2] = {0, 4};
@@ -44,7 +44,7 @@ const char *test_jacobian_prod_one_zero(void)
 
     p->forward(p, u_vals);
     jacobian_init(p);
-    p->eval_jacobian(p);
+    eval_jacobian(p);
 
     double expected_Ax[4] = {0.0, 12.0, 0.0, 0.0};
     int expected_Ap[2] = {0, 4};
@@ -67,7 +67,7 @@ const char *test_jacobian_prod_two_zeros(void)
 
     p->forward(p, u_vals);
     jacobian_init(p);
-    p->eval_jacobian(p);
+    eval_jacobian(p);
 
     double expected_Ax[4] = {0.0, 0.0, 0.0, 0.0};
     int expected_Ap[2] = {0, 4};

@@ -31,7 +31,7 @@ const char *test_jacobian_right_matmul_log(void)
 
     log_x_A->forward(log_x_A, x_vals);
     jacobian_init(log_x_A);
-    log_x_A->eval_jacobian(log_x_A);
+    eval_jacobian(log_x_A);
 
     /* Expected jacobian values */
     double expected_Ax[8] = {
@@ -80,7 +80,7 @@ const char *test_jacobian_right_matmul_log_vector(void)
 
     log_x_A->forward(log_x_A, x_vals);
     jacobian_init(log_x_A);
-    log_x_A->eval_jacobian(log_x_A);
+    eval_jacobian(log_x_A);
 
     /* Expected jacobian values: A^T @ diag(1/x) */
     double expected_Ax[4] = {

@@ -23,6 +23,7 @@
 #include "utils/matrix.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #define JAC_IDXS_NOT_SET -1
@@ -39,6 +40,7 @@ typedef void (*local_jacobian_fn)(struct expr *node, double *out);
 typedef void (*local_wsum_hess_fn)(struct expr *node, double *out, const double *w);
 typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
+typedef void (*set_needs_refresh_children_fn)(struct expr *node);
 
 /* Workspace for derivative computation */
 typedef struct
@@ -48,10 +50,19 @@ typedef struct
     CSC_matrix *jacobian_csc;
     int *csc_work; /* for CSR_matrix-CSC_matrix conversion */
 
-    /* jacobian_csc_filled is only used for affine functions to avoid redundant
-       conversions. Could become relevant for non-affine functions if we start
-       supporting common subexpressions on the Python side. */
-    bool jacobian_csc_filled;
+    /* jacobian->values_version that the jacobian_csc mirror reflects;
+       expr_refresh_jacobian_csc refills iff it differs. */
+    uint64_t jacobian_csc_seen;
+
+    /* node->is_affine(node), computed once by jacobian_init (affinity is
+       structural, and the recursive is_affine is too costly per eval). */
+    bool is_affine_cached;
+
+    /* True once eval_jacobian has run this parameter epoch; cleared by
+       expr_set_needs_refresh. Only consulted for affine nodes, where it
+       lets the eval_jacobian wrapper skip the values_version bump (same
+       role the old jacobian_csc_filled latch played). */
+    bool jacobian_evaluated;
     double *local_jac_diag; /* cached f'(g(x)) diagonal */
     matrix *hess_term1;     /* Jg^T D Jg workspace */
     matrix *hess_term2;     /* child wsum_hess workspace */
@@ -76,8 +87,8 @@ typedef struct expr
     forward_fn forward;
     jacobian_init_fn jacobian_init_impl;
     wsum_hess_init_fn wsum_hess_init_impl;
-    eval_jacobian_fn eval_jacobian;
-    wsum_hess_fn eval_wsum_hess;
+    eval_jacobian_fn eval_jacobian_impl;
+    wsum_hess_fn eval_wsum_hess_impl;
 
     // ------------------------------------------------------------------------
     //                      other things
@@ -86,7 +97,11 @@ typedef struct expr
     local_jacobian_fn local_jacobian;   /* used by elementwise univariate atoms*/
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
-    Expr_Work *work;                    /* derivative workspace */
+    /* Recursion hook for expr_set_needs_refresh: atoms holding children
+       outside left/right (hstack's args[]) set this so the parameter-refresh
+       walk reaches them. NULL for binary/unary atoms. */
+    set_needs_refresh_children_fn set_needs_refresh_children;
+    Expr_Work *work; /* derivative workspace */
     /* Set to true on all nodes by problem_update_params() via
        expr_set_needs_refresh(). Atoms that cache parameter data
        (e.g. left_matmul_dense) check this flag before their forward
@@ -110,6 +125,15 @@ void free_expr(expr *node);
  * where a node may be visited through multiple parents). */
 void jacobian_init(expr *node);
 void wsum_hess_init(expr *node);
+
+/* Eval wrappers: run the atom's eval_*_impl and bump the output matrix's
+ * values_version so version-guarded caches (CSC mirrors, spd CSR views)
+ * refresh. Always call these instead of the impl slots. */
+void eval_jacobian(expr *node);
+void eval_wsum_hess(expr *node, const double *w);
+
+/* Refresh work->jacobian_csc from node->jacobian iff its values changed. */
+void expr_refresh_jacobian_csc(expr *node);
 
 /* Initialize CSC_matrix form of the Jacobian from the CSR_matrix Jacobian.
  * Must be called after jacobian_init. */

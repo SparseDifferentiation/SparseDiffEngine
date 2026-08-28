@@ -24,7 +24,7 @@ const char *test_wsum_hess_multiply_1(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[13] = {0, 0, 0, 0, 1, 2, 3, 3, 3, 4, 5, 6, 6};
     int expected_i[6] = {8, 9, 10, 3, 4, 5};
@@ -83,7 +83,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     jacobian_init(mult_node);
     wsum_hess_init(mult_node);
     double w[5] = {0.50646339, 0.44756224, 0.67295241, 0.16424956, 0.03031469};
-    mult_node->eval_wsum_hess(mult_node, w);
+    eval_wsum_hess(mult_node, w);
 
     /* Expected Hessian in CSR_matrix format (10x10) */
     int expected_p[11] = {0, 6, 9, 13, 18, 19, 20, 20, 22, 25, 29};
@@ -164,7 +164,7 @@ const char *test_wsum_hess_multiply_linear_ops(void)
 
     /* Evaluate Hessian with weights */
     double w[4] = {1.0, 2.0, 3.0, 4.0};
-    mult_node->eval_wsum_hess(mult_node, w);
+    eval_wsum_hess(mult_node, w);
 
     /* Check sparsity pattern and values */
     /* Expected CSR_matrix format:
@@ -206,9 +206,9 @@ const char *test_wsum_hess_multiply_duplicate_gathers(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[9] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
     int expected_i[8] = {4, 5, 6, 7, 0, 1, 2, 3};
@@ -241,7 +241,7 @@ const char *test_wsum_hess_multiply_2(void)
     jacobian_init(node);
     wsum_hess_init(node);
     node->forward(node, u_vals);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[13] = {0, 0, 0, 0, 1, 2, 3, 3, 3, 4, 5, 6, 6};
     int expected_i[6] = {8, 9, 10, 3, 4, 5};

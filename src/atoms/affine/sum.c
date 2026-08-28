@@ -94,12 +94,12 @@ static void jacobian_init_impl(expr *node)
                                                           x->d1, snode->idx_map);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
 
     /* evaluate child's jacobian */
-    child->eval_jacobian(child);
+    eval_jacobian(child);
 
     /* we have precomputed an idx map between the nonzeros of the child's jacobian
        and this node's jacobian, so we just accumulate accordingly */
@@ -119,7 +119,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = sp_malloc(child->size * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *child = node->left;
     sum_expr *snode = (sum_expr *) node;
@@ -138,7 +138,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         tile_double(node->work->dwork, w, child->d1, child->d2);
     }
 
-    child->eval_wsum_hess(child, node->work->dwork);
+    eval_wsum_hess(child, node->work->dwork);
 
     memcpy(node->wsum_hess->x, child->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
@@ -181,8 +181,9 @@ expr *new_sum(expr *child, int axis)
 
     /* to be consistent with CVXPY and NumPy we treat the result from
        sum with an axis argument as a row vector */
-    init_expr(node, 1, d2, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    init_expr(node, 1, d2, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 

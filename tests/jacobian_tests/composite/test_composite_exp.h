@@ -24,7 +24,7 @@ const char *test_jacobian_composite_exp(void)
     expr *exp_node = new_exp(Au);
     jacobian_init(exp_node);
     exp_node->forward(exp_node, u_vals);
-    exp_node->eval_jacobian(exp_node);
+    eval_jacobian(exp_node);
 
     /* A*u = [10, 7], so exp(A*u) = [exp(10), exp(7)]
      * J = diag(exp(A*u)) * A */

@@ -38,7 +38,7 @@ const char *test_wsum_hess_hstack(void)
     hstack_node->forward(hstack_node, u_vals);
     jacobian_init(hstack_node);
     wsum_hess_init(hstack_node);
-    hstack_node->eval_wsum_hess(hstack_node, w);
+    eval_wsum_hess(hstack_node, w);
 
     /* Expected Hessian:
      * log(x): d²/dx² = -1/x²
@@ -134,7 +134,7 @@ const char *test_wsum_hess_hstack_matrix(void)
     hstack_node->forward(hstack_node, u_vals);
     jacobian_init(hstack_node);
     wsum_hess_init(hstack_node);
-    hstack_node->eval_wsum_hess(hstack_node, w);
+    eval_wsum_hess(hstack_node, w);
 
     /* Expected Hessian (diagonal):
      * log(x): w[0:5] * (-1/x[0:5]²) at indices 0-5
