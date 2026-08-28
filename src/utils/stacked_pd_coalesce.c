@@ -342,7 +342,10 @@ static inline void coalesce_spd_scatter(const stacked_pd *src, stacked_pd *out,
             /* for each row in src_k */
             for (int i = 0; i < src_k->m0; i++)
             {
-                int out_i = out_k->row_inv[src_k->row_perm[i]];
+                int out_i =
+                    out_k->row_inv != NULL
+                        ? out_k->row_inv[src_k->row_perm[i]]
+                        : sorted_pos(out_k->row_perm, out_k->m0, src_k->row_perm[i]);
                 if (out_i < 0)
                 {
                     /* this row in src_k does not contribute to out_k */
@@ -355,7 +358,10 @@ static inline void coalesce_spd_scatter(const stacked_pd *src, stacked_pd *out,
                 /* place each col in src_row at its correct position in out_row */
                 for (int j = 0; j < src_k->n0; j++)
                 {
-                    int out_j = out_k->col_inv[src_k->col_perm[j]];
+                    int out_j = out_k->col_inv != NULL
+                                    ? out_k->col_inv[src_k->col_perm[j]]
+                                    : sorted_pos(out_k->col_perm, out_k->n0,
+                                                 src_k->col_perm[j]);
                     assert(out_j >= 0);
                     if (accumulate)
                     {

@@ -341,6 +341,104 @@ const char *test_permuted_dense_col_inv(void)
     return 0;
 }
 
+/* Compact construction: inv arrays start NULL, the ensure helpers materialize
+   them with the same contents the full constructor would have produced,
+   and structural copies of a compact PD are compact themselves. */
+const char *test_permuted_dense_compact_inv(void)
+{
+    int row_perm[2] = {1, 4};
+    int col_perm[2] = {0, 3};
+    double X[4] = {1.0, 2.0, 3.0, 4.0};
+
+    matrix *M = new_permuted_dense_compact(5, 6, 2, 2, row_perm, col_perm, X);
+    permuted_dense *pd = (permuted_dense *) M;
+
+    mu_assert("compact col_inv NULL", pd->col_inv == NULL);
+    mu_assert("compact row_inv NULL", pd->row_inv == NULL);
+
+    /* Compactness propagates through copy_sparsity / transpose / index. */
+    matrix *copy = copy_sparsity_pd_alloc(pd);
+    matrix *trans = transpose_pd_alloc(pd);
+    int indices[3] = {4, 0, 1};
+    matrix *indexed = index_pd_alloc(pd, indices, 3);
+    mu_assert("copy is compact", ((permuted_dense *) copy)->col_inv == NULL);
+    mu_assert("transpose is compact", ((permuted_dense *) trans)->row_inv == NULL);
+    mu_assert("indexed is compact", ((permuted_dense *) indexed)->col_inv == NULL);
+
+    /* index of a compact PD: rows {4, 0, 1} of M hit source rows {1, -, 0}. */
+    permuted_dense *idx_pd = (permuted_dense *) indexed;
+    int idx_row_perm_expected[2] = {0, 2};
+    mu_assert("indexed m0", idx_pd->m0 == 2);
+    mu_assert("indexed row_perm",
+              cmp_int_array(idx_pd->row_perm, idx_row_perm_expected, 2));
+    index_pd_fill_values(pd, indices, 3, idx_pd);
+    double idx_X_expected[4] = {3.0, 4.0, 1.0, 2.0};
+    mu_assert("indexed values", cmp_double_array(idx_pd->X, idx_X_expected, 4));
+
+    /* Ensure materializes the same arrays new_permuted_dense builds. */
+    permuted_dense_ensure_col_inv(pd);
+    permuted_dense_ensure_row_inv(pd);
+    int col_inv_expected[6] = {0, -1, -1, 1, -1, -1};
+    int row_inv_expected[5] = {-1, 0, -1, -1, 1};
+    mu_assert("ensured col_inv", cmp_int_array(pd->col_inv, col_inv_expected, 6));
+    mu_assert("ensured row_inv", cmp_int_array(pd->row_inv, row_inv_expected, 5));
+
+    /* Copies of a now-ensured PD carry prebuilt inv arrays again. */
+    matrix *copy2 = copy_sparsity_pd_alloc(pd);
+    mu_assert("copy of ensured PD has col_inv",
+              ((permuted_dense *) copy2)->col_inv != NULL);
+
+    free_matrix(copy2);
+    free_matrix(indexed);
+    free_matrix(trans);
+    free_matrix(copy);
+    free_matrix(M);
+    return 0;
+}
+
+/* BA_pd_csc_alloc builds its output compact: same sparsity and values as
+   before, but no inverse arrays on the result. The left operand (with prebuilt inv
+   arrays) keeps working as the fill kernel's inv provider. */
+const char *test_permuted_dense_times_csc_compact_output(void)
+{
+    /* B: 3x4 PD, dense block rows {0, 2} x cols {1, 3}. */
+    int row_perm[2] = {0, 2};
+    int col_perm[2] = {1, 3};
+    double BX[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *B = new_permuted_dense(3, 4, 2, 2, row_perm, col_perm, BX);
+    permuted_dense *B_pd = (permuted_dense *) B;
+
+    /* A: 4x3 CSC. Column 0 hits row 1 (in B's col_perm), column 1 hits
+       row 2 (not in col_perm), column 2 hits rows 1 and 3. */
+    CSC_matrix *A = new_CSC_matrix(4, 3, 4);
+    int Ap[4] = {0, 1, 2, 4};
+    int Ai[4] = {1, 2, 1, 3};
+    double Ax[4] = {10.0, 5.0, 2.0, 3.0};
+    memcpy(A->p, Ap, 4 * sizeof(int));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->x, Ax, 4 * sizeof(double));
+
+    matrix *C = BA_pd_csc_alloc(B_pd, A);
+    permuted_dense *C_pd = (permuted_dense *) C;
+
+    mu_assert("C col_inv NULL", C_pd->col_inv == NULL);
+    mu_assert("C row_inv NULL", C_pd->row_inv == NULL);
+    int C_col_perm_expected[2] = {0, 2};
+    mu_assert("C n0", C_pd->n0 == 2);
+    mu_assert("C col_perm", cmp_int_array(C_pd->col_perm, C_col_perm_expected, 2));
+    mu_assert("C row_perm", cmp_int_array(C_pd->row_perm, row_perm, 2));
+
+    BA_pd_csc_fill_values(B_pd->X, B_pd->n0, B_pd->col_inv, A, C_pd);
+    /* C[:, 0] = 10 * B[:, 1]; C[:, 1] = 2 * B[:, 1] + 3 * B[:, 3]. */
+    double CX_expected[4] = {10.0, 8.0, 30.0, 18.0};
+    mu_assert("C values", cmp_double_array(C_pd->X, CX_expected, 4));
+
+    free_matrix(C);
+    free_matrix(B);
+    free_CSC_matrix(A);
+    return 0;
+}
+
 /* PD index_alloc / index_fill_values: select rows from a PD; output must be
    another PD with row_perm equal to the output positions where indices[i]
    hit the source row_perm. */
