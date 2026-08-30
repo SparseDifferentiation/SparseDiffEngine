@@ -65,13 +65,13 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = x->jacobian->copy_sparsity(x->jacobian);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     const double *a = ((vector_mult_expr *) node)->param_source->value;
 
     /* evaluate jacobian of child */
-    x->eval_jacobian(x);
+    eval_jacobian(x);
 
     /* row-wise scale child's jacobian: diag(a) @ Jx */
     x->jacobian->DA_fill_values(a, x->jacobian, node->jacobian);
@@ -91,7 +91,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
     const double *a = ((vector_mult_expr *) node)->param_source->value;
@@ -102,7 +102,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         node->work->dwork[i] = a[i] * w[i];
     }
 
-    x->eval_wsum_hess(x, node->work->dwork);
+    eval_wsum_hess(x, node->work->dwork);
 
     /* copy values from child to this node */
     memcpy(node->wsum_hess->x, x->wsum_hess->x,
@@ -131,8 +131,8 @@ expr *new_vector_mult(expr *param_node, expr *child)
     expr *node = &vnode->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 

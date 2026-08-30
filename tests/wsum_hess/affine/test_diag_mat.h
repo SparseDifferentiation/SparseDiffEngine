@@ -30,7 +30,7 @@ const char *test_wsum_hess_diag_mat_log(void)
     dm->forward(dm, u);
     jacobian_init(dm);
     wsum_hess_init(dm);
-    dm->eval_wsum_hess(dm, w);
+    eval_wsum_hess(dm, w);
 
     double expected_x[4] = {-1.0, 0.0, 0.0, -0.0625};
     int expected_p[5] = {0, 1, 2, 3, 4};

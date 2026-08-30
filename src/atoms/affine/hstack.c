@@ -87,7 +87,7 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_sparse_matrix(A);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
     int cursor = 0;
@@ -95,7 +95,7 @@ static void eval_jacobian(expr *node)
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
-        child->eval_jacobian(child);
+        eval_jacobian(child);
         /* to_csr needed for stacked_pd */
         CSR_matrix *child_csr = child->jacobian->to_csr(child->jacobian);
         memcpy(node->jacobian->x + cursor, child_csr->x,
@@ -148,7 +148,7 @@ static void wsum_hess_eval(expr *node, const double *w)
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
-        child->eval_wsum_hess(child, w + row_offset);
+        eval_wsum_hess(child, w + row_offset);
         copy_CSR_matrix(H, hnode->CSR_work);
         sum_csr_fill_values(hnode->CSR_work,
                             child->wsum_hess->to_csr(child->wsum_hess), H);
@@ -168,6 +168,17 @@ static bool is_affine(const expr *node)
         }
     }
     return true;
+}
+
+/* Children live in args[], not left/right, so the parameter-refresh walk
+   needs this hook to reach them. */
+static void set_needs_refresh_children(expr *node)
+{
+    hstack_expr *hnode = (hstack_expr *) node;
+    for (int i = 0; i < hnode->n_args; i++)
+    {
+        expr_set_needs_refresh(hnode->args[i]);
+    }
 }
 
 static void free_type_data(expr *node)
@@ -199,8 +210,10 @@ expr *new_hstack(expr **args, int n_args, int n_vars)
     hstack_expr *hnode = (hstack_expr *) sp_calloc(1, sizeof(hstack_expr));
     expr *node = &hnode->base;
     init_expr(node, args[0]->d1, d2, n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, wsum_hess_eval,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl, wsum_hess_eval,
               free_type_data);
+
+    node->set_needs_refresh_children = set_needs_refresh_children;
 
     /* Set type-specific fields (deep copy args array) */
     hnode->args = (expr **) sp_calloc(n_args, sizeof(expr *));

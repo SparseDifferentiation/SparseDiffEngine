@@ -30,7 +30,7 @@ const char *test_broadcast_row_jacobian(void)
     expr *bcast = new_broadcast(var, 2, 3);
     bcast->forward(bcast, u);
     jacobian_init(bcast);
-    bcast->eval_jacobian(bcast);
+    eval_jacobian(bcast);
 
     /* Each variable affects 2 elements (m times) */
     double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
@@ -72,7 +72,7 @@ const char *test_broadcast_col_jacobian(void)
     expr *bcast = new_broadcast(var, 3, 2);
     bcast->forward(bcast, u);
     jacobian_init(bcast);
-    bcast->eval_jacobian(bcast);
+    eval_jacobian(bcast);
 
     /* Each variable affects 2 elements (n times) */
     double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
@@ -110,7 +110,7 @@ const char *test_broadcast_scalar_to_matrix_jacobian(void)
     expr *bcast = new_broadcast(var, 2, 3);
     bcast->forward(bcast, u);
     jacobian_init(bcast);
-    bcast->eval_jacobian(bcast);
+    eval_jacobian(bcast);
 
     /* All 6 elements depend on the single input variable */
     double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
@@ -139,7 +139,7 @@ const char *test_double_broadcast(void)
 
     sum->forward(sum, x_vals);
     jacobian_init(sum);
-    sum->eval_jacobian(sum);
+    eval_jacobian(sum);
 
     /* TODO: what is this test? */
 

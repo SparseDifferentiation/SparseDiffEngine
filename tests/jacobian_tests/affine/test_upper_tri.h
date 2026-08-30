@@ -21,7 +21,7 @@ const char *test_upper_tri_jacobian_variable(void)
 
     ut->forward(ut, u);
     jacobian_init(ut);
-    ut->eval_jacobian(ut);
+    eval_jacobian(ut);
 
     double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
     int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
@@ -53,7 +53,7 @@ const char *test_upper_tri_jacobian_of_log(void)
 
     ut->forward(ut, u);
     jacobian_init(ut);
-    ut->eval_jacobian(ut);
+    eval_jacobian(ut);
 
     double expected_x[6] = {0.2, 1.0 / 9.0, 1.0 / 13.0, 0.1, 1.0 / 14.0, 1.0 / 15.0};
     int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};

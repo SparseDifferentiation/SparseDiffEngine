@@ -27,7 +27,7 @@ const char *test_jacobian_transpose(void)
     double u[4] = {1, 3, 2, 4};
     transpose_AX->forward(transpose_AX, u);
     jacobian_init(transpose_AX);
-    transpose_AX->eval_jacobian(transpose_AX);
+    eval_jacobian(transpose_AX);
 
     // Jacobian of transpose_AX
     double expected_x[8] = {1, 2, 1, 2, 3, 4, 3, 4};
@@ -63,7 +63,7 @@ const char *test_jacobian_transpose_pd_preserved(void)
     double u_vals[2] = {0.5, -1.5};
     T->forward(T, u_vals);
     jacobian_init(T);
-    T->eval_jacobian(T);
+    eval_jacobian(T);
 
     /* Structural: output Jacobian must be a PD. */
     mu_assert("transpose Jacobian should be PD", T->jacobian->is_permuted_dense);

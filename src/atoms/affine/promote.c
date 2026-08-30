@@ -45,9 +45,9 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = x->jacobian->promote_alloc(x->jacobian, node->size);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
-    node->left->eval_jacobian(node->left);
+    eval_jacobian(node->left);
 
     /* tile the child's single row into the preallocated output. */
     node->left->jacobian->promote_fill_values(node->left->jacobian, node->jacobian);
@@ -59,7 +59,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = node->left->wsum_hess->copy_sparsity(node->left->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     /* Sum all weights (they all correspond to the same scalar child) */
     double sum_w = 0.0;
@@ -69,7 +69,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 
     /* evaluate child's wsum_hess with summed weight */
-    node->left->eval_wsum_hess(node->left, &sum_w);
+    eval_wsum_hess(node->left, &sum_w);
 
     /* copy values */
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
@@ -86,7 +86,8 @@ expr *new_promote(expr *child, int d1, int d2)
     assert(child->size == 1);
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = child;
     expr_retain(child);
 

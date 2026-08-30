@@ -32,7 +32,7 @@ const char *test_wsum_hess_prod_axis_one_no_zeros(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     double expected_x[12] = {/* Var 1 (row 0, col 0): [5, 3] (excludes col 0) */
                              5.0, 3.0,
@@ -100,7 +100,7 @@ const char *test_wsum_hess_prod_axis_one_one_zero(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     double expected_x[18];
     memset(expected_x, 0, sizeof(expected_x));
@@ -204,7 +204,7 @@ const char *test_wsum_hess_prod_axis_one_mixed_zeros(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     double expected_x[30];
     memset(expected_x, 0, sizeof(expected_x));
@@ -355,7 +355,7 @@ const char *test_wsum_hess_prod_axis_one_2x2(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     /* Expected sparse structure (nnz = 4, each row has 1 nnz) */
     double expected_x[4] = {1.0,  /* Var 0 (excludes col 0) */

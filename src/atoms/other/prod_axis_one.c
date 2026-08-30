@@ -110,7 +110,7 @@ static void jacobian_init_impl(expr *node)
     }
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
@@ -344,7 +344,7 @@ static inline void wsum_hess_row_many_zeros(expr *node, int row, int d2)
     }
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
     prod_axis *pnode = (prod_axis *) node;
@@ -403,8 +403,8 @@ expr *new_prod_axis_one(expr *child)
 
     /* output is always a row vector 1 x d1 (one product per row) */
     init_expr(node, 1, child->d1, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
 
     /* allocate arrays to store per-row statistics */
     pnode->num_of_zeros = (int *) sp_calloc(child->d1, sizeof(int));

@@ -139,7 +139,7 @@ static void eval_jacobian_dense(expr *node)
     /* evaluate jacobian of child */
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     expr *x = node->left;
-    x->eval_jacobian(x);
+    eval_jacobian(x);
 
     /* must refresh CSC cache if x->jacobian is sparse_matrix */
     x->jacobian->refresh_csc_values(x->jacobian);
@@ -180,7 +180,7 @@ static void eval_jacobian_sparse(expr *node)
     /* evaluate jacobian of child */
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     expr *x = node->left;
-    x->eval_jacobian(x);
+    eval_jacobian(x);
 
     /* evaluate this node's jacobian */
     CSC_matrix *Jchild_CSC = lnode->Jchild_CSC;
@@ -207,7 +207,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) sp_malloc(dim * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
 
@@ -216,7 +216,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     int n_blocks = lnode->n_blocks;
     AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
 
-    node->left->eval_wsum_hess(node->left, node->work->dwork);
+    eval_wsum_hess(node->left, node->work->dwork);
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -270,8 +270,8 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     expr *node = &lnode->base;
     /* Sparse A — always the general CSC-mirror path. */
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_sparse,
-              eval_jacobian_sparse, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_sparse, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
 
@@ -310,8 +310,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
         (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_dense,
-              eval_jacobian_dense, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_dense, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
 

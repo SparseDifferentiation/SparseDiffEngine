@@ -495,7 +495,7 @@ void problem_gradient(problem *prob)
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
 
     /* evaluate jacobian of objective */
-    prob->objective->eval_jacobian(prob->objective);
+    eval_jacobian(prob->objective);
 
     /* copy sparse jacobian to dense gradient */
     memset(prob->gradient_values, 0, prob->n_vars * sizeof(double));
@@ -528,7 +528,7 @@ void problem_jacobian(problem *prob)
             continue;
         }
 
-        c->eval_jacobian(c);
+        eval_jacobian(c);
         memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
         nnz_offset += c->jacobian->nnz;
     }
@@ -548,7 +548,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     //             evaluate hessian of objective and constraints
     // ------------------------------------------------------------------------
     expr *obj = prob->objective;
-    obj->eval_wsum_hess(obj, &obj_w);
+    eval_wsum_hess(obj, &obj_w);
 
     int offset = 0;
     expr **constrs = prob->constraints;
@@ -560,7 +560,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
             offset += constrs[i]->size;
             continue;
         }
-        constrs[i]->eval_wsum_hess(constrs[i], w + offset);
+        eval_wsum_hess(constrs[i], w + offset);
         offset += constrs[i]->size;
     }
 

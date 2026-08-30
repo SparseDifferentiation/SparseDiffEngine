@@ -17,7 +17,7 @@ const char *test_jacobian_log(void)
     expr *log_node = new_log(u);
     log_node->forward(log_node, u_vals);
     jacobian_init(log_node);
-    log_node->eval_jacobian(log_node);
+    eval_jacobian(log_node);
     mu_assert("vals fail", cmp_values(log_node->jacobian, expected_Ax, 3));
     mu_assert("sparsity fail",
               cmp_sparsity(log_node->jacobian, expected_Ap, expected_Ai, 3, 3));
@@ -35,7 +35,7 @@ const char *test_jacobian_log_matrix(void)
     expr *log_node = new_log(u);
     log_node->forward(log_node, u_vals);
     jacobian_init(log_node);
-    log_node->eval_jacobian(log_node);
+    eval_jacobian(log_node);
     mu_assert("vals fail", cmp_values(log_node->jacobian, expected_Ax, 4));
     mu_assert("sparsity fail",
               cmp_sparsity(log_node->jacobian, expected_Ap, expected_Ai, 4, 4));

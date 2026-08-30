@@ -27,7 +27,7 @@ const char *test_wsum_hess_sinh(void)
     sinh_node->forward(sinh_node, u_vals);
     jacobian_init(sinh_node);
     wsum_hess_init(sinh_node);
-    sinh_node->eval_wsum_hess(sinh_node, w);
+    eval_wsum_hess(sinh_node, w);
 
     /* Expected values on the diagonal: w_i * sinh(x_i) */
     double expected_x[3] = {1.0 * sinh(1.0), 2.0 * sinh(2.0), 3.0 * sinh(3.0)};
@@ -60,7 +60,7 @@ const char *test_wsum_hess_tanh(void)
     tanh_node->forward(tanh_node, u_vals);
     jacobian_init(tanh_node);
     wsum_hess_init(tanh_node);
-    tanh_node->eval_wsum_hess(tanh_node, w);
+    eval_wsum_hess(tanh_node, w);
 
     /* Expected values on the diagonal: w_i * (-2*tanh(x_i)/cosh^2(x_i)) */
     double expected_x[3] = {1.0 * (-2.0 * tanh(1.0) / pow(cosh(1.0), 2)),
@@ -95,7 +95,7 @@ const char *test_wsum_hess_asinh(void)
     asinh_node->forward(asinh_node, u_vals);
     jacobian_init(asinh_node);
     wsum_hess_init(asinh_node);
-    asinh_node->eval_wsum_hess(asinh_node, w);
+    eval_wsum_hess(asinh_node, w);
 
     /* Expected values on the diagonal: w_i * (-x_i/(1+x_i^2)^(3/2)) */
     double expected_x[3] = {1.0 * (-1.0 / pow(1.0 + 1.0 * 1.0, 1.5)),
@@ -131,7 +131,7 @@ const char *test_wsum_hess_atanh(void)
     atanh_node->forward(atanh_node, u_vals);
     jacobian_init(atanh_node);
     wsum_hess_init(atanh_node);
-    atanh_node->eval_wsum_hess(atanh_node, w);
+    eval_wsum_hess(atanh_node, w);
 
     /* Expected values on the diagonal: w_i * (2*x_i/(1-x_i^2)^2) */
     double expected_x[3] = {1.0 * (2.0 * 0.1 / pow(1.0 - 0.1 * 0.1, 2)),

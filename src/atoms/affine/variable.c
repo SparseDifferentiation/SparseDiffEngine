@@ -39,7 +39,7 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_sparse_matrix(jac);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     /* Variable jacobian never changes - nothing to evaluate */
     (void) node;
@@ -67,7 +67,7 @@ static bool is_affine(const expr *node)
 expr *new_variable(int d1, int d2, int var_id, int n_vars)
 {
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
-    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian,
+    init_expr(node, d1, d2, n_vars, forward, jacobian_init_impl, eval_jacobian_impl,
               is_affine, wsum_hess_init_impl, wsum_hess_eval, NULL);
     node->var_id = var_id;
 

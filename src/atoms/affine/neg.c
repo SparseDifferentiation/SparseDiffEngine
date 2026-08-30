@@ -43,10 +43,10 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = x->jacobian->copy_sparsity(x->jacobian);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     /* evaluate child's jacobian */
-    node->left->eval_jacobian(node->left);
+    eval_jacobian(node->left);
 
     /* negate values only (sparsity pattern set in jacobian_init_impl) */
     for (int k = 0; k < node->left->jacobian->nnz; k++)
@@ -66,10 +66,10 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     /* For f(x) = -g(x): d²f/dx² = -d²g/dx² */
-    node->left->eval_wsum_hess(node->left, w);
+    eval_wsum_hess(node->left, w);
 
     /* negate values (sparsity pattern set in wsum_hess_init_impl) */
     for (int k = 0; k < node->left->wsum_hess->nnz; k++)
@@ -87,7 +87,8 @@ expr *new_neg(expr *child)
 {
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = child;
     expr_retain(child);
 

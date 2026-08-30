@@ -62,14 +62,19 @@ static void sparse_free(matrix *self)
 /* Forward decl: ctor is referenced by copy_sparsity below. */
 matrix *new_sparse_matrix(CSR_matrix *A);
 
-/* Build the CSC_matrix cache structure if absent. Values are NOT filled here; caller
-   must call refresh_csc_values before consuming. ATA_alloc only needs structure,
-   so it's safe to call without a subsequent refresh. */
+/* Build the CSC_matrix cache structure if absent. Values are NOT filled here; call
+   refresh_csc_values before consuming (it no-ops when the cache is already
+   fresh). ATA_alloc only needs structure, so it's safe to call without a
+   subsequent refresh. */
 void sparse_matrix_ensure_csc_cache(sparse_matrix *sm)
 {
     if (sm->csc_cache != NULL) return;
     sm->csc_iwork = (int *) sp_malloc(sm->csr->n * sizeof(int));
     sm->csc_cache = csr_to_csc_alloc(sm->csr, sm->csc_iwork);
+
+    /* Deliberately stale: the structure is built during the symbolic phase,
+       before values are meaningful, so the first refresh must fill. */
+    sm->csc_seen = sm->base.values_version - 1;
 }
 
 static matrix *sparse_copy_sparsity(const matrix *self)
@@ -92,7 +97,8 @@ static matrix *sparse_ATA_alloc(matrix *self)
     return new_sparse_matrix(ATA_alloc(sm->csc_cache));
 }
 
-/* Caller must have called refresh_csc_values since the last change to csr->x. */
+/* Call refresh_csc_values before consuming; it no-ops when the cache is
+   already fresh. */
 static void sparse_ATDA_fill_values(const matrix *self, const double *d, matrix *out)
 {
     const sparse_matrix *sm = (const sparse_matrix *) self;
@@ -321,13 +327,15 @@ static void sparse_diag_vec_fill_values(matrix *self, matrix *out)
     }
 }
 
-/* Build CSC_matrix structure on first call; refill values from csr->x on every call.
- */
+/* Build CSC_matrix structure on first call; refill values from csr->x iff they
+   changed since the last refresh (tracked via base.values_version). */
 static void sparse_refresh_csc_values(matrix *self)
 {
     sparse_matrix *sm = (sparse_matrix *) self;
     sparse_matrix_ensure_csc_cache(sm);
+    if (sm->csc_seen == sm->base.values_version) return;
     csr_to_csc_fill_values(sm->csr, sm->csc_cache, sm->csc_iwork);
+    sm->csc_seen = sm->base.values_version;
 }
 
 static matrix *sparse_sum_row_partition_alloc(matrix *self, int axis, int d1,

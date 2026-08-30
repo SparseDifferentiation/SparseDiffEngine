@@ -28,9 +28,9 @@ const char *test_wsum_hess_quad_form_dense(void)
 
     jacobian_init(node);
     node->forward(node, u_vals);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, &w);
+    eval_wsum_hess(node, &w);
 
     /* forward value */
     mu_assert("dense quad_form value fail", fabs(node->value[0] - 57.0) < 1e-9);
@@ -120,8 +120,8 @@ const char *test_wsum_hess_quad_form_dense_param(void)
     jacobian_init(node);
     wsum_hess_init(node);
     node->forward(node, u_vals);
-    node->eval_jacobian(node);
-    node->eval_wsum_hess(node, &w);
+    eval_jacobian(node);
+    eval_wsum_hess(node, &w);
 
     /* parameter P1: check values and sparsity */
     int expected_jp[2] = {0, 3};
@@ -144,8 +144,8 @@ const char *test_wsum_hess_quad_form_dense_param(void)
     memcpy(param_P->value, P2, 9 * sizeof(double));
     expr_set_needs_refresh(node);
     node->forward(node, u_vals);
-    node->eval_jacobian(node);
-    node->eval_wsum_hess(node, &w);
+    eval_jacobian(node);
+    eval_wsum_hess(node, &w);
 
     /* parameter P2: only the values change, sparsity is unchanged */
     double grad2[3] = {8.0, 18.0, 30.0};

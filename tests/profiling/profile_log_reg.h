@@ -56,10 +56,10 @@ const char *profile_log_reg(void)
     Timer t_a_jac, t_a_hess;
     double w_one = 1.0;
     clock_gettime(CLOCK_MONOTONIC, &t_a_jac.start);
-    obj->eval_jacobian(obj);
+    eval_jacobian(obj);
     clock_gettime(CLOCK_MONOTONIC, &t_a_jac.end);
     clock_gettime(CLOCK_MONOTONIC, &t_a_hess.start);
-    obj->eval_wsum_hess(obj, &w_one);
+    eval_wsum_hess(obj, &w_one);
     clock_gettime(CLOCK_MONOTONIC, &t_a_hess.end);
     double sec_a_jac = GET_ELAPSED_SECONDS(t_a_jac);
     double sec_a_hess = GET_ELAPSED_SECONDS(t_a_hess);

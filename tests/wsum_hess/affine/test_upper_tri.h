@@ -40,7 +40,7 @@ const char *test_wsum_hess_upper_tri_log(void)
     ut->forward(ut, u);
     jacobian_init(ut);
     wsum_hess_init(ut);
-    ut->eval_wsum_hess(ut, w);
+    eval_wsum_hess(ut, w);
 
     double expected_x[16] = {0.0,          0.0,          0.0,          0.0,
                              -1.0 / 25.0,  0.0,          0.0,          0.0,

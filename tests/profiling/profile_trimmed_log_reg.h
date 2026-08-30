@@ -67,14 +67,14 @@ const char *profile_trimmed_log_reg(void)
     double w_one = 1.0;
     Timer t_jac, t_hess;
     clock_gettime(CLOCK_MONOTONIC, &t_jac.start);
-    obj->eval_jacobian(obj);
+    eval_jacobian(obj);
     clock_gettime(CLOCK_MONOTONIC, &t_jac.end);
 
-    obj->eval_wsum_hess(obj, &w_one); /* warm-up */
+    eval_wsum_hess(obj, &w_one); /* warm-up */
     clock_gettime(CLOCK_MONOTONIC, &t_hess.start);
     for (int it = 0; it < N_HESS_ITERS; it++)
     {
-        obj->eval_wsum_hess(obj, &w_one);
+        eval_wsum_hess(obj, &w_one);
     }
     clock_gettime(CLOCK_MONOTONIC, &t_hess.end);
 

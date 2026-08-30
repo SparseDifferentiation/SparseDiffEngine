@@ -29,7 +29,7 @@ const char *test_jacobian_prod_axis_zero(void)
 
     p->forward(p, u_vals);
     jacobian_init(p);
-    p->eval_jacobian(p);
+    eval_jacobian(p);
 
     /* CSR_matrix format for 3x8 Jacobian with block diagonal structure */
     double expected_Ax[6] = {2.0, 1.0, 4.0, 3.0, 6.0, 5.0};

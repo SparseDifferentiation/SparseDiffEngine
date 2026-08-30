@@ -17,7 +17,7 @@ const char *test_jacobian_elementwise_mult_1(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double vals[6] = {y->value[0], x->value[0], y->value[1],
                       x->value[1], y->value[2], x->value[2]};
@@ -41,7 +41,7 @@ const char *test_jacobian_elementwise_mult_2(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double vals[6] = {x->value[0], y->value[0], x->value[1],
                       y->value[1], x->value[2], y->value[2]};
@@ -97,7 +97,7 @@ const char *test_jacobian_elementwise_mult_3(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     /* Correct answer:
       0 0 19 38 0  0 0 5  15  0
@@ -136,7 +136,7 @@ const char *test_jacobian_elementwise_mult_duplicate_gathers(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double fwd[6] = {5.0, 5.0, 12.0, 21.0, 21.0, 32.0};
     mu_assert("forward fail", cmp_double_array(node->value, fwd, 6));
@@ -178,7 +178,7 @@ const char *test_jacobian_elementwise_mult_4(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     /* Correct answer: 0 0 10 20 0  0 0 0 0 0
                        0 0 24 24 72 0 0 0 0 0

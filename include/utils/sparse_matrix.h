@@ -28,6 +28,7 @@ typedef struct sparse_matrix
     matrix base;
     CSR_matrix *csr;
     CSC_matrix *csc_cache;
+    uint64_t csc_seen; /* base.values_version the csc_cache values reflect */
     int *csc_iwork;
     int *transpose_iwork; /* sized csr->n; allocated by sparse_transpose_alloc
                              on the output sm and reused by

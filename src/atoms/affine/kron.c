@@ -107,12 +107,12 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_sparse_matrix(Jk);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
     kron_expr *knode = (kron_expr *) node;
 
-    child->eval_jacobian(child);
+    eval_jacobian(child);
 
     /* Sparsity is fixed after jacobian_init, so the row offsets still align;
        refill active rows as scale * child-row-values. */
@@ -146,7 +146,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) sp_malloc(child->size * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *child = node->left;
     kron_expr *knode = (kron_expr *) node;
@@ -166,7 +166,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         }
     }
 
-    child->eval_wsum_hess(child, w_prime);
+    eval_wsum_hess(child, w_prime);
     memcpy(node->wsum_hess->x, child->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -198,8 +198,8 @@ static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q, i
     kron_expr *knode = (kron_expr *) sp_calloc(1, sizeof(kron_expr));
     expr *node = &knode->base;
     init_expr(node, p * r, q * s, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 

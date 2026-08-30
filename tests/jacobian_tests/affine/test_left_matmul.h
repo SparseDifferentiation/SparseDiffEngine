@@ -47,7 +47,7 @@ const char *test_jacobian_left_matmul_log(void)
 
     A_log_x->forward(A_log_x, x_vals);
     jacobian_init(A_log_x);
-    A_log_x->eval_jacobian(A_log_x);
+    eval_jacobian(A_log_x);
 
     /* Expected jacobian values: A @ diag(1/x) */
     double expected_Ax[7] = {
@@ -91,7 +91,7 @@ const char *test_jacobian_left_matmul_log_matrix(void)
 
     A_log_x->forward(A_log_x, x_vals);
     jacobian_init(A_log_x);
-    A_log_x->eval_jacobian(A_log_x);
+    eval_jacobian(A_log_x);
 
     /* Expected Jacobian: block-diagonal repeat of A scaled by diag(1./x) */
     double expected_Ax[14] = {/* first column block (x = [1, 2, 3]) */
@@ -169,7 +169,7 @@ const char *test_jacobian_left_matmul_pd_from_composite_child(void)
     double x_vals[2] = {0.5, -1.5};
     A2_A1_x->forward(A2_A1_x, x_vals);
     jacobian_init(A2_A1_x);
-    A2_A1_x->eval_jacobian(A2_A1_x);
+    eval_jacobian(A2_A1_x);
 
     /* Structural: outer's Jacobian must be PD (produced by the
        jacobian_init_pd path via BA_pd_matrices_alloc). */
@@ -220,7 +220,7 @@ const char *test_jacobian_left_matmul_pd_param(void)
     double x_vals[2] = {0.5, -1.5};
     A_x->forward(A_x, x_vals);
     jacobian_init(A_x);
-    A_x->eval_jacobian(A_x);
+    eval_jacobian(A_x);
 
     /* Structural: Jacobian must be PD. */
     mu_assert("Jacobian should be PD", A_x->jacobian->is_permuted_dense);
@@ -248,7 +248,7 @@ const char *test_jacobian_left_matmul_pd_param(void)
     expr_set_needs_refresh(A_x);
 
     A_x->forward(A_x, x_vals);
-    A_x->eval_jacobian(A_x);
+    eval_jacobian(A_x);
 
     mu_assert("Jacobian still PD after refresh", A_x->jacobian->is_permuted_dense);
     double expected_X2[6] = {7.0, 8.0, 9.0, 10.0, 11.0, 12.0};

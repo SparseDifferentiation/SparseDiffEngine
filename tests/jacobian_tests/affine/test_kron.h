@@ -22,7 +22,7 @@ const char *test_jacobian_kron_const_left(void)
     double u[4] = {5.0, 7.0, 6.0, 8.0};
     Z->forward(Z, u);
     jacobian_init(Z);
-    Z->eval_jacobian(Z);
+    eval_jacobian(Z);
 
     mu_assert("kron J rows", Z->jacobian->m == 16);
     mu_assert("kron J cols", Z->jacobian->n == 4);
@@ -52,7 +52,7 @@ const char *test_jacobian_kron_const_right(void)
     double u[4] = {5.0, 7.0, 6.0, 8.0};
     Z->forward(Z, u);
     jacobian_init(Z);
-    Z->eval_jacobian(Z);
+    eval_jacobian(Z);
 
     mu_assert("kron J rows", Z->jacobian->m == 16);
     mu_assert("kron J nnz", Z->jacobian->nnz == 16);
@@ -83,7 +83,7 @@ const char *test_jacobian_kron_sparse(void)
     double u[4] = {1.0, 3.0, 2.0, 4.0};
     Z->forward(Z, u);
     jacobian_init(Z);
-    Z->eval_jacobian(Z);
+    eval_jacobian(Z);
 
     mu_assert("kron sparse J rows", Z->jacobian->m == 36);
     mu_assert("kron sparse J pruned to 12 nnz", Z->jacobian->nnz == 12);

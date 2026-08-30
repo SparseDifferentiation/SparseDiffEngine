@@ -89,7 +89,7 @@ static void jacobian_init_impl(expr *node)
     }
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     prod_expr *pnode = (prod_expr *) node;
@@ -167,7 +167,7 @@ static void wsum_hess_init_impl(expr *node)
     }
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
     int num_of_zeros = ((prod_expr *) node)->num_of_zeros;
@@ -219,8 +219,9 @@ expr *new_prod(expr *child)
     /* Output is scalar: 1 x 1 */
     prod_expr *pnode = (prod_expr *) sp_calloc(1, sizeof(prod_expr));
     expr *node = &pnode->base;
-    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
     return node;

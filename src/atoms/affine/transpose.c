@@ -56,10 +56,10 @@ static void jacobian_init_impl(expr *node)
     node->work->iwork = indices;
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
-    child->eval_jacobian(child);
+    eval_jacobian(child);
     child->jacobian->index_fill_values(child->jacobian, node->work->iwork,
                                        node->size, node->jacobian);
 }
@@ -76,7 +76,7 @@ static void wsum_hess_init_impl(expr *node)
     /* for computing Kw where K is the commutation matrix */
     node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
 }
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     int d2 = node->d2;
     int d1 = node->d1;
@@ -90,7 +90,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         }
     }
 
-    node->left->eval_wsum_hess(node->left, node->work->dwork);
+    eval_wsum_hess(node->left, node->work->dwork);
 
     /* copy to this node's hessian */
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
@@ -106,7 +106,8 @@ expr *new_transpose(expr *child)
 {
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, child->d2, child->d1, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = child;
     expr_retain(child);
 
