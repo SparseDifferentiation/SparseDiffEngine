@@ -60,6 +60,51 @@ const char *test_values_version_affine(void)
     return 0;
 }
 
+/* Affine node: once evaluated this parameter epoch, eval_jacobian skips the
+ * impl entirely — proven by poisoning the jacobian values and observing that
+ * a re-eval does not rewrite them. expr_set_needs_refresh re-arms the eval,
+ * which then restores the true values. */
+const char *test_impl_skip_affine(void)
+{
+    double u[3] = {0.1, 0.2, 0.3};
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *m = new_neg(x);
+
+    jacobian_init(m);
+    m->forward(m, u);
+    eval_jacobian(m);
+
+    uint64_t v1 = m->jacobian->values_version;
+    int nnz = m->jacobian->nnz;
+    mu_assert("neg jacobian must have entries", nnz == 3);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("neg jacobian value must be -1", m->jacobian->x[ii] == -1.0);
+        m->jacobian->x[ii] = 42.0; /* poison */
+    }
+
+    eval_jacobian(m);
+    mu_assert("re-eval of affine node must not bump",
+              m->jacobian->values_version == v1);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("impl must not have run (poison must survive)",
+                  m->jacobian->x[ii] == 42.0);
+    }
+
+    expr_set_needs_refresh(m);
+    eval_jacobian(m);
+    mu_assert("eval after refresh must bump", m->jacobian->values_version == v1 + 1);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("eval after refresh must restore true values",
+                  m->jacobian->x[ii] == -1.0);
+    }
+
+    free_expr(m);
+    return 0;
+}
+
 /* sparse_matrix CSC mirror: refresh_csc_values fills once per write and
  * dedupes repeated calls with no write in between. */
 const char *test_values_version_csc_mirror_dedup(void)
