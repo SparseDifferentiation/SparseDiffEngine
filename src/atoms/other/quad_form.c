@@ -45,6 +45,7 @@ static void refresh_param_values_qf(quad_form_expr *qnode)
     qnode->base.needs_parameter_refresh = false;
     memcpy(qnode->Q->x, qnode->param_source->value,
            (size_t) qnode->n * qnode->n * sizeof(double));
+    matrix_values_changed(qnode->Q);
 }
 
 static void forward(expr *node, const double *u)

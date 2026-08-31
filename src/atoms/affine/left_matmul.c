@@ -231,6 +231,8 @@ static void refresh_dense_left(left_matmul_expr *lnode)
        actually corresponds to the transpose of A, and we transpose AT to get A. */
     memcpy(lnode->AT->x, lnode->param_source->value, m * n * sizeof(double));
     A_transpose(lnode->A->x, lnode->AT->x, n, m);
+    matrix_values_changed(lnode->AT);
+    matrix_values_changed(lnode->A);
 }
 
 /* We expect u->d1 == A->n. However, numpy's broadcasting rules allow users to

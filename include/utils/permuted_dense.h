@@ -67,8 +67,11 @@ typedef struct permuted_dense
     size_t kernel_iwork_size;
 
     /* Cached transpose of this PD as another permuted_dense, allocated lazily
-       on first call to permuted_dense_ensure_transpose_cache. */
+       on first call to permuted_dense_ensure_transpose_cache. On the cache PD
+       itself, transpose_seen records the source's base.values_version whose
+       values the cache holds; consumers refill iff it is stale. */
     struct permuted_dense *transpose_cache;
+    uint64_t transpose_seen;
 } permuted_dense;
 
 /* Constructor. row_perm and col_perm must be strictly increasing in their
