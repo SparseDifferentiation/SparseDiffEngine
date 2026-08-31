@@ -130,16 +130,15 @@ void wsum_hess_init(expr *node)
 
 /* Runs the atom's eval and bumps the Jacobian's values_version — except
    for an affine node already evaluated this parameter epoch: its values
-   are constant, so consumers correctly see "unchanged". (The impl still
-   runs; skipping it entirely is a planned follow-up.) */
+   are constant, so the impl (and with it the whole subtree walk) is
+   skipped and consumers correctly see "unchanged". expr_set_needs_refresh
+   re-arms the eval. */
 void eval_jacobian(expr *node)
 {
     if (node == NULL) return;
+    if (node->work->is_affine_cached && node->work->jacobian_evaluated) return;
     node->eval_jacobian_impl(node);
-    if (!(node->work->is_affine_cached && node->work->jacobian_evaluated))
-    {
-        matrix_values_changed(node->jacobian);
-    }
+    matrix_values_changed(node->jacobian);
     node->work->jacobian_evaluated = true;
 }
 
