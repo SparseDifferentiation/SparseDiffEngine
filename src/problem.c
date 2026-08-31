@@ -43,7 +43,6 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->objective = objective;
     expr_retain(objective);
     prob->n_vars = objective->n_vars;
-    prob->jacobian_called = false;
 
     /* constraints array */
     prob->total_constraint_size = 0;
@@ -192,11 +191,18 @@ void problem_init_jacobian(problem *prob)
     //                           Jacobian structure
     // -------------------------------------------------------------------------------
     jacobian_init(prob->objective);
+    if (prob->n_constraints > 0)
+    {
+        prob->constraint_jac_seen =
+            (uint64_t *) sp_malloc(prob->n_constraints * sizeof(uint64_t));
+    }
     int nnz = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
         jacobian_init(c);
+        /* deliberately stale so the first problem_jacobian call copies */
+        prob->constraint_jac_seen[i] = c->jacobian->values_version - 1;
         CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
         nnz += Jc->nnz;
 
@@ -384,6 +390,7 @@ void free_problem(problem *prob)
     free_COO_matrix(prob->jacobian_coo);
     free_COO_matrix(prob->lagrange_hessian_coo);
     sp_free(prob->hess_idx_map);
+    sp_free(prob->constraint_jac_seen);
 
     /* Release expression references (decrements refcount) */
     free_expr(prob->objective);
@@ -450,9 +457,6 @@ void problem_update_params(problem *prob, const double *theta)
     {
         expr_set_needs_refresh(prob->constraints[i]);
     }
-
-    /* Force re-evaluation of affine Jacobians on next call */
-    prob->jacobian_called = false;
 }
 
 double problem_objective_forward(problem *prob, const double *u)
@@ -513,28 +517,27 @@ void problem_jacobian(problem *prob)
 {
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    bool first_call = !prob->jacobian_called;
-
     CSR_matrix *J = prob->jacobian;
     int nnz_offset = 0;
 
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-        if (!first_call && c->is_affine(c))
-        {
-            /* skip evaluation for affine constraints after first call */
-            nnz_offset += c->jacobian->nnz;
-            continue;
-        }
-
         eval_jacobian(c);
-        memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
+
+        /* copy only when the constraint's jacobian values actually changed
+           (an affine constraint's eval is a no-op after its first call and
+           leaves the version untouched until the next parameter update) */
+        if (prob->constraint_jac_seen[i] != c->jacobian->values_version)
+        {
+            memcpy(J->x + nnz_offset, c->jacobian->x,
+                   c->jacobian->nnz * sizeof(double));
+            prob->constraint_jac_seen[i] = c->jacobian->values_version;
+        }
         nnz_offset += c->jacobian->nnz;
     }
 
     assert(nnz_offset == J->nnz);
-    prob->jacobian_called = true;
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);
 }
