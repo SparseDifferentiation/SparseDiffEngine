@@ -325,25 +325,16 @@ static void BTA_pd_spd_core(const permuted_dense *B, const double *d,
 
         /* Ag = (diag(d)A)[idx_A, :] where idx_A contains the overlapping row
            indices */
-        if (d == NULL)
+        for (int p = 0; p < s; p++)
         {
-            for (int p = 0; p < s; p++)
-            {
-                memcpy(Ag + p * Ak->n0, Ak->X + idx_A[p] * Ak->n0,
-                       Ak->n0 * sizeof(double));
-            }
+            memcpy(Ag + p * Ak->n0, Ak->X + idx_A[p] * Ak->n0,
+                   Ak->n0 * sizeof(double));
         }
-        else
+        if (d != NULL)
         {
             for (int p = 0; p < s; p++)
             {
-                double dk = d[Ak->row_perm[idx_A[p]]];
-                const double *src = Ak->X + idx_A[p] * Ak->n0;
-                double *dst = Ag + p * Ak->n0;
-                for (int j = 0; j < Ak->n0; j++)
-                {
-                    dst[j] = dk * src[j];
-                }
+                cblas_dscal(Ak->n0, d[Ak->row_perm[idx_A[p]]], Ag + p * Ak->n0, 1);
             }
         }
 

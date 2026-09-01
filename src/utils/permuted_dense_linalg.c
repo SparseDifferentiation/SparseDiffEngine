@@ -165,15 +165,11 @@ static void BTA_pd_pd_core(const permuted_dense *B, const double *d,
         {
             /* A->kernel_dwork = diag(d) X_A. Pre-sized by BTA_pd_pd_alloc to
                MIN(A->m0, B->m0) * A->n0 = A->m0 * A->n0 on this path. */
+            memcpy(A->kernel_dwork, A->X, (size_t) A->m0 * A->n0 * sizeof(double));
             for (int ii = 0; ii < A->m0; ii++)
             {
-                double dk = d[A->row_perm[ii]];
-                const double *src = A->X + ii * A->n0;
-                double *dst = A->kernel_dwork + ii * A->n0;
-                for (int jj = 0; jj < A->n0; jj++)
-                {
-                    dst[jj] = dk * src[jj];
-                }
+                cblas_dscal(A->n0, d[A->row_perm[ii]], A->kernel_dwork + ii * A->n0,
+                            1);
             }
             A_rows = A->kernel_dwork;
         }
@@ -202,28 +198,17 @@ static void BTA_pd_pd_core(const permuted_dense *B, const double *d,
     // ------------------------------------------------------------------------
     for (int k = 0; k < s; k++)
     {
+        memcpy(A->kernel_dwork + k * A->n0, A->X + idx_A[k] * A->n0,
+               A->n0 * sizeof(double));
         memcpy(B->kernel_dwork + k * B->n0, B->X + idx_B[k] * B->n0,
                B->n0 * sizeof(double));
     }
-    if (d == NULL)
+    if (d != NULL)
     {
         for (int k = 0; k < s; k++)
         {
-            memcpy(A->kernel_dwork + k * A->n0, A->X + idx_A[k] * A->n0,
-                   A->n0 * sizeof(double));
-        }
-    }
-    else
-    {
-        for (int k = 0; k < s; k++)
-        {
-            double dk = d[A->row_perm[idx_A[k]]];
-            const double *src = A->X + idx_A[k] * A->n0;
-            double *dst = A->kernel_dwork + k * A->n0;
-            for (int jj = 0; jj < A->n0; jj++)
-            {
-                dst[jj] = dk * src[jj];
-            }
+            cblas_dscal(A->n0, d[A->row_perm[idx_A[k]]], A->kernel_dwork + k * A->n0,
+                        1);
         }
     }
 
