@@ -101,6 +101,59 @@ const char *test_wsum_hess_quad_form_dense_exp(void)
     return 0;
 }
 
+/* Parametric dense quad_form over a nonlinear composition x = exp(u): exercises
+ * the full term1 dispatcher chain (BA fill of Q J_f, plain-BTA fill, 2w scaling)
+ * with Q values that change between evaluations. The refreshed Hessian must
+ * match a freshly built engine holding the updated parameter, and both
+ * parameter states are anchored against numerical differentiation. */
+const char *test_wsum_hess_quad_form_dense_param_exp(void)
+{
+    double u_vals[3] = {0.5, 1.0, 1.5};
+    double w = 2.0;
+
+    double P1[9] = {1.0, 2.0, 0.0, 2.0, 3.0, 0.0, 0.0, 0.0, 4.0};
+    double P2[9] = {2.0, 1.0, 0.0, 1.0, 4.0, 0.0, 0.0, 0.0, 5.0};
+
+    /* engine 1: parameter starts at P1 */
+    expr *param_P = new_parameter(3, 3, 0, 3, P1);
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *exp_x = new_exp(x);
+    expr *node = new_quad_form_dense(exp_x, 3, NULL, param_P);
+
+    mu_assert("param+exp quad_form P1 wsum_hess failed",
+              check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    /* update the parameter to P2 and re-evaluate through the refresh path */
+    memcpy(param_P->value, P2, 9 * sizeof(double));
+    expr_set_needs_refresh(node);
+    node->forward(node, u_vals);
+    eval_jacobian(node);
+    eval_wsum_hess(node, &w);
+
+    /* engine 2: fresh build with the parameter already at P2, numerically
+       verified, as the oracle for the refreshed Hessian */
+    expr *param_P2 = new_parameter(3, 3, 0, 3, P2);
+    expr *x2 = new_variable(3, 1, 0, 3);
+    expr *exp_x2 = new_exp(x2);
+    expr *node2 = new_quad_form_dense(exp_x2, 3, NULL, param_P2);
+    mu_assert("param+exp quad_form P2 wsum_hess failed",
+              check_wsum_hess(node2, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
+
+    CSR_matrix *H_refreshed = node->wsum_hess->to_csr(node->wsum_hess);
+    CSR_matrix *H_fresh = node2->wsum_hess->to_csr(node2->wsum_hess);
+    mu_assert("refreshed hessian nnz fail", H_refreshed->nnz == H_fresh->nnz);
+    mu_assert("refreshed hessian p fail",
+              cmp_int_array(H_refreshed->p, H_fresh->p, node->n_vars + 1));
+    mu_assert("refreshed hessian i fail",
+              cmp_int_array(H_refreshed->i, H_fresh->i, H_fresh->nnz));
+    mu_assert("refreshed hessian vals fail",
+              cmp_double_array(H_refreshed->x, H_fresh->x, H_fresh->nnz));
+
+    free_expr(node2);
+    free_expr(node);
+    return 0;
+}
+
 /* Parametric dense quad_form: P is supplied by a parameter and refreshed each
  * solve. Same setup as above; updating the parameter changes the values but not
  * the sparsity.
