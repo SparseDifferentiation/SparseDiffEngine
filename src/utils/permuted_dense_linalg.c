@@ -142,8 +142,14 @@ static int int_arrays_equal(const int *a, const int *b, int n)
     return 1;
 }
 
-void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
-                           permuted_dense *C)
+/* Shared core for C = B^T @ diag(d) @ A with d == NULL meaning identity.
+   diag(d) is folded into A's copy into kernel_dwork (d indexed by global row),
+   so no intermediate is ever allocated: all buffers are pre-sized by
+   BTA_pd_pd_alloc. Aliasing invariant: B == A implies identical row_perms and
+   therefore the single-matmul path (a dwork write vs an X read — safe); the
+   gather path must never run with B == A sharing one kernel_dwork. */
+static void BTA_pd_pd_core(const permuted_dense *B, const double *d,
+                           const permuted_dense *A, permuted_dense *C)
 {
     /* C may be empty if there is no overlap in row permutations */
     if (C->base.nnz == 0)
@@ -154,8 +160,25 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     /* if B and A have identical row_perms, one matmul suffices */
     if (A->m0 == B->m0 && int_arrays_equal(A->row_perm, B->row_perm, A->m0))
     {
+        const double *A_rows = A->X;
+        if (d != NULL)
+        {
+            /* A->kernel_dwork = diag(d) X_A. Pre-sized by BTA_pd_pd_alloc to
+               MIN(A->m0, B->m0) * A->n0 = A->m0 * A->n0 on this path. */
+            for (int ii = 0; ii < A->m0; ii++)
+            {
+                double dk = d[A->row_perm[ii]];
+                const double *src = A->X + ii * A->n0;
+                double *dst = A->kernel_dwork + ii * A->n0;
+                for (int jj = 0; jj < A->n0; jj++)
+                {
+                    dst[jj] = dk * src[jj];
+                }
+            }
+            A_rows = A->kernel_dwork;
+        }
         cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, B->n0, A->n0, A->m0,
-                    1.0, B->X, B->n0, A->X, A->n0, 0.0, C->X, A->n0);
+                    1.0, B->X, B->n0, A_rows, A->n0, 0.0, C->X, A->n0);
         return;
     }
 
@@ -172,16 +195,36 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
     assert(s > 0);
 
     // ------------------------------------------------------------------------
-    // Gather the matching rows into A->kernel_dwork and B->kernel_dwork. dwork is
-    // pre-sized by BTA_pd_pd_alloc (one ensure_dwork call per operand at alloc
-    // time).
+    // Gather the matching rows into A->kernel_dwork and B->kernel_dwork,
+    // scaling A's rows by diag(d) on the way when d is given. dwork is
+    // pre-sized by BTA_pd_pd_alloc (one ensure_dwork call per operand at
+    // alloc time).
     // ------------------------------------------------------------------------
     for (int k = 0; k < s; k++)
     {
-        memcpy(A->kernel_dwork + k * A->n0, A->X + idx_A[k] * A->n0,
-               A->n0 * sizeof(double));
         memcpy(B->kernel_dwork + k * B->n0, B->X + idx_B[k] * B->n0,
                B->n0 * sizeof(double));
+    }
+    if (d == NULL)
+    {
+        for (int k = 0; k < s; k++)
+        {
+            memcpy(A->kernel_dwork + k * A->n0, A->X + idx_A[k] * A->n0,
+                   A->n0 * sizeof(double));
+        }
+    }
+    else
+    {
+        for (int k = 0; k < s; k++)
+        {
+            double dk = d[A->row_perm[idx_A[k]]];
+            const double *src = A->X + idx_A[k] * A->n0;
+            double *dst = A->kernel_dwork + k * A->n0;
+            for (int jj = 0; jj < A->n0; jj++)
+            {
+                dst[jj] = dk * src[jj];
+            }
+        }
     }
 
     /* matmul on the gathered rows */
@@ -189,32 +232,16 @@ void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
                 B->kernel_dwork, B->n0, A->kernel_dwork, A->n0, 0.0, C->X, A->n0);
 }
 
+void BTA_pd_pd_fill_values(const permuted_dense *B, const permuted_dense *A,
+                           permuted_dense *C)
+{
+    BTA_pd_pd_core(B, NULL, A, C);
+}
+
 void BTDA_pd_pd_fill_values(const permuted_dense *B, const double *d,
                             const permuted_dense *A, permuted_dense *C)
 {
-    /* C may be empty if there is no overlap in row permutations of A and B */
-    if (C->base.nnz == 0)
-    {
-        return;
-    }
-
-    /* TODO: must remove this allocation. Very important. The DA
-       intermediate PD is allocated and freed on every Hessian iteration
-       — violates the no-alloc-in-fill policy. Fix is to fold diag(d)
-       directly into BTA_pd_pd_fill_values's gather/dgemm (either via a
-       shared internal helper that takes an optional d, or by rewriting
-       this kernel inline using pre-sized A->kernel_dwork). */
-    /* C = BT @ (DA) */
-    permuted_dense *DA = (permuted_dense *) A->base.copy_sparsity(&A->base);
-    DA_pd_fill_values(d, A, DA);
-    /* DA is freshly created via copy_sparsity (no kernel_dwork sized).
-       BTA_pd_pd_fill_values' slow path (non-identical row_perms) gathers
-       rows into DA->kernel_dwork — size it to match what
-       BTA_pd_pd_alloc would have done. */
-    int s_max = MIN(DA->m0, B->m0);
-    permuted_dense_ensure_kernel_dwork(DA, (size_t) s_max * DA->n0);
-    BTA_pd_pd_fill_values(B, DA, C);
-    free_matrix(&DA->base);
+    BTA_pd_pd_core(B, d, A, C);
 }
 
 /* The CSR-flavored kernels for (B=Sparse, A=PD) live in src/old-code; the

@@ -327,6 +327,7 @@ int main(void)
     mu_run_test(test_wsum_hess_vector_mult_log_vector, tests_run);
     mu_run_test(test_wsum_hess_vector_mult_log_matrix, tests_run);
     mu_run_test(test_wsum_hess_multiply_linear_ops, tests_run);
+    mu_run_test(test_wsum_hess_multiply_dense_ops, tests_run);
     mu_run_test(test_wsum_hess_multiply_sparse_random, tests_run);
     mu_run_test(test_wsum_hess_multiply_1, tests_run);
     mu_run_test(test_wsum_hess_multiply_2, tests_run);
@@ -444,6 +445,8 @@ int main(void)
     mu_run_test(test_permuted_dense_BTA_empty_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTA_partial_overlap, tests_run);
     mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
+    mu_run_test(test_permuted_dense_BTDA_matching_row_perm, tests_run);
+    mu_run_test(test_permuted_dense_BTDA_partial_overlap, tests_run);
     mu_run_test(test_permuted_dense_sum_all_rows, tests_run);
     mu_run_test(test_permuted_dense_sum_block_of_rows, tests_run);
     mu_run_test(test_permuted_dense_sum_evenly_spaced_rows, tests_run);
@@ -485,6 +488,7 @@ int main(void)
     mu_run_test(test_BTA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BTDA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BTDA_spd_pd_overlapping_cp, tests_run);
+    mu_run_test(test_BTDA_fill_no_transient_alloc, tests_run);
     mu_run_test(test_BTA_spd_pd_overlapping_cp, tests_run);
     mu_run_test(test_BTDA_spd_csc_overlapping_cp, tests_run);
     mu_run_test(test_BTA_spd_csc_overlapping, tests_run);

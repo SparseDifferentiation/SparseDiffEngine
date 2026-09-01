@@ -12,6 +12,7 @@
 #include "utils/sparse_matrix.h"
 #include "utils/stacked_pd.h"
 #include "utils/stacked_pd_linalg.h"
+#include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
@@ -2431,6 +2432,157 @@ const char *test_BA_pd_kron_spd_no_cache_staleness(void)
     free_matrix(C_spd);
     free_matrix(J_spd);
     free_matrix(A);
+    return 0;
+}
+
+/* No-alloc-in-fill contract for the BTDA kernels: after alloc and one warm-up
+   fill, a second fill must not touch the tracked allocator at all. Any
+   transient sp_malloc inside the fill raises g_peak_bytes above the baseline
+   even if freed before returning; a permanent one raises g_allocated_bytes.
+   Covers BTDA_pd_pd (both the matching-row_perm and gather paths),
+   BTDA_pd_spd, and the blockwise BTDA_spd_pd. */
+static int fill_is_alloc_free(void (*fill)(const void *ctx), const void *ctx)
+{
+    size_t base = g_allocated_bytes;
+    g_peak_bytes = base;
+    fill(ctx);
+    return g_allocated_bytes == base && g_peak_bytes == base;
+}
+
+typedef struct
+{
+    const permuted_dense *B;
+    const double *d;
+    const void *A;
+    matrix *C;
+} btda_fill_args;
+
+static void run_BTDA_pd_pd(const void *ctx)
+{
+    const btda_fill_args *a = (const btda_fill_args *) ctx;
+    BTDA_pd_pd_fill_values(a->B, a->d, (const permuted_dense *) a->A,
+                           (permuted_dense *) a->C);
+}
+
+static void run_BTDA_pd_spd(const void *ctx)
+{
+    const btda_fill_args *a = (const btda_fill_args *) ctx;
+    BTDA_pd_spd_fill_values(a->B, a->d, (const stacked_pd *) a->A,
+                            (permuted_dense *) a->C);
+}
+
+typedef struct
+{
+    const stacked_pd *B;
+    const double *d;
+    const permuted_dense *A;
+    stacked_pd *C;
+} btda_spd_fill_args;
+
+static void run_BTDA_spd_pd(const void *ctx)
+{
+    const btda_spd_fill_args *a = (const btda_spd_fill_args *) ctx;
+    BTDA_spd_pd_fill_values(a->B, a->d, a->A, a->C);
+}
+
+const char *test_BTDA_fill_no_transient_alloc(void)
+{
+    double d[8] = {2.0, -1.5, 0.5, 1.25, 3.0, -0.5, 1.0, 2.5};
+
+    /* --- pd_pd, matching row_perms (fast path) --- */
+    {
+        int row_perm[2] = {1, 3};
+        int cp_A[2] = {0, 2};
+        int cp_B[2] = {1, 3};
+        double XA[4] = {1.0, 2.0, 3.0, 4.0};
+        double XB[4] = {5.0, 6.0, 7.0, 8.0};
+        matrix *A = new_permuted_dense(4, 4, 2, 2, row_perm, cp_A, XA);
+        matrix *B = new_permuted_dense(4, 4, 2, 2, row_perm, cp_B, XB);
+        matrix *C = BTA_pd_pd_alloc((permuted_dense *) B, (permuted_dense *) A);
+        btda_fill_args args = {(permuted_dense *) B, d, A, C};
+        run_BTDA_pd_pd(&args); /* warm-up */
+        mu_assert("pd_pd fast path allocates in fill",
+                  fill_is_alloc_free(run_BTDA_pd_pd, &args));
+        free_matrix(C);
+        free_matrix(B);
+        free_matrix(A);
+    }
+
+    /* --- pd_pd, partial overlap (gather path) --- */
+    {
+        int rp_A[3] = {1, 3, 5};
+        int rp_B[3] = {3, 5, 7};
+        int cp_A[2] = {0, 2};
+        int cp_B[2] = {1, 3};
+        double XA[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+        double XB[6] = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
+        matrix *A = new_permuted_dense(8, 4, 3, 2, rp_A, cp_A, XA);
+        matrix *B = new_permuted_dense(8, 4, 3, 2, rp_B, cp_B, XB);
+        matrix *C = BTA_pd_pd_alloc((permuted_dense *) B, (permuted_dense *) A);
+        btda_fill_args args = {(permuted_dense *) B, d, A, C};
+        run_BTDA_pd_pd(&args);
+        mu_assert("pd_pd gather path allocates in fill",
+                  fill_is_alloc_free(run_BTDA_pd_pd, &args));
+        free_matrix(C);
+        free_matrix(B);
+        free_matrix(A);
+    }
+
+    /* --- pd_spd (two-block A, both kept) --- */
+    {
+        int A0_rp[2] = {0, 1};
+        int A0_cp[2] = {0, 2};
+        double A0X[4] = {1, 2, 3, 4};
+        matrix *blk0 = new_permuted_dense(4, 3, 2, 2, A0_rp, A0_cp, A0X);
+        int A1_rp[2] = {2, 3};
+        int A1_cp[2] = {1, 2};
+        double A1X[4] = {5, 6, 7, 8};
+        matrix *blk1 = new_permuted_dense(4, 3, 2, 2, A1_rp, A1_cp, A1X);
+        permuted_dense *A_blocks[2] = {(permuted_dense *) blk0,
+                                       (permuted_dense *) blk1};
+        matrix *A_spd = new_stacked_pd(4, 3, 2, A_blocks, NULL, NULL);
+        int B_rp[3] = {0, 1, 2};
+        int B_cp[3] = {1, 3, 4};
+        double BX[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+        matrix *B = new_permuted_dense(4, 5, 3, 3, B_rp, B_cp, BX);
+        matrix *C = BTA_pd_spd_alloc((permuted_dense *) B, (stacked_pd *) A_spd);
+        btda_fill_args args = {(permuted_dense *) B, d, A_spd, C};
+        run_BTDA_pd_spd(&args);
+        mu_assert("pd_spd allocates in fill",
+                  fill_is_alloc_free(run_BTDA_pd_spd, &args));
+        free_matrix(C);
+        free_matrix(B);
+        free_matrix(A_spd);
+    }
+
+    /* --- spd_pd (blockwise, overlapping col_perms) --- */
+    {
+        int B0_rp[2] = {0, 1};
+        int B0_cp[2] = {0, 2};
+        double B0X[4] = {1, 2, 3, 4};
+        matrix *blk0 = new_permuted_dense(4, 3, 2, 2, B0_rp, B0_cp, B0X);
+        int B1_rp[2] = {2, 3};
+        int B1_cp[2] = {1, 2};
+        double B1X[4] = {5, 6, 7, 8};
+        matrix *blk1 = new_permuted_dense(4, 3, 2, 2, B1_rp, B1_cp, B1X);
+        permuted_dense *B_blocks[2] = {(permuted_dense *) blk0,
+                                       (permuted_dense *) blk1};
+        matrix *B_spd = new_stacked_pd(4, 3, 2, B_blocks, NULL, NULL);
+        int A_rp[4] = {0, 1, 2, 3};
+        int A_cp[3] = {0, 1, 2};
+        double AX[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+        matrix *A = new_permuted_dense(4, 3, 4, 3, A_rp, A_cp, AX);
+        matrix *C = BTA_spd_pd_alloc((stacked_pd *) B_spd, (permuted_dense *) A);
+        btda_spd_fill_args args = {(stacked_pd *) B_spd, d, (permuted_dense *) A,
+                                   (stacked_pd *) C};
+        run_BTDA_spd_pd(&args);
+        mu_assert("spd_pd blockwise allocates in fill",
+                  fill_is_alloc_free(run_BTDA_spd_pd, &args));
+        free_matrix(C);
+        free_matrix(B_spd);
+        free_matrix(A);
+    }
+
     return 0;
 }
 

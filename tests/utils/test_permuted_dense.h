@@ -777,6 +777,83 @@ const char *test_permuted_dense_BTDA_decomposition(void)
     return 0;
 }
 
+/* Direct BTDA_pd_pd on the matching-row_perm (fast) path: A and B share
+   row_perm, so the kernel takes the single-dgemm route with diag(d) folded
+   in. Oracle is the decomposition tmp = diag(d) A; C_ref = B^T tmp. */
+const char *test_permuted_dense_BTDA_matching_row_perm(void)
+{
+    int row_perm[2] = {1, 3};
+    int col_perm_A[2] = {0, 2};
+    int col_perm_B[2] = {1, 3};
+    double XA[4] = {1.0, 2.0, 3.0, 4.0};
+    double XB[4] = {5.0, 6.0, 7.0, 8.0};
+    /* d indexed by global row; only d[1], d[3] are read. */
+    double d[4] = {-2.0, 0.5, 100.0, 3.0};
+    matrix *A_m = new_permuted_dense(4, 4, 2, 2, row_perm, col_perm_A, XA);
+    matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm, col_perm_B, XB);
+    permuted_dense *A = (permuted_dense *) A_m;
+    permuted_dense *B = (permuted_dense *) B_m;
+
+    matrix *C_m = BTA_pd_pd_alloc(B, A);
+    permuted_dense *C = (permuted_dense *) C_m;
+    BTDA_pd_pd_fill_values(B, d, A, C);
+
+    matrix *tmp_m = A_m->copy_sparsity(A_m);
+    permuted_dense *tmp = (permuted_dense *) tmp_m;
+    DA_pd_fill_values(d, A, tmp);
+    matrix *C_ref_m = BTA_pd_pd_alloc(B, tmp);
+    permuted_dense *C_ref = (permuted_dense *) C_ref_m;
+    BTA_pd_pd_fill_values(B, tmp, C_ref);
+
+    mu_assert("values", cmp_double_array(C->X, C_ref->X, 4));
+
+    free_matrix(C_ref_m);
+    free_matrix(tmp_m);
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Direct BTDA_pd_pd on the partial-overlap (gather) path: row_perm_A =
+   [1, 3, 5], row_perm_B = [3, 5, 7], intersection {3, 5}. Same
+   decomposition oracle as above. */
+const char *test_permuted_dense_BTDA_partial_overlap(void)
+{
+    int row_perm_A[3] = {1, 3, 5};
+    int row_perm_B[3] = {3, 5, 7};
+    int col_perm_A[2] = {0, 2};
+    int col_perm_B[2] = {1, 3};
+    double XA[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double XB[6] = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
+    /* d indexed by global row; only d[3], d[5] are read. */
+    double d[8] = {9.0, 9.0, 9.0, 2.0, 9.0, -1.5, 9.0, 9.0};
+    matrix *A_m = new_permuted_dense(8, 4, 3, 2, row_perm_A, col_perm_A, XA);
+    matrix *B_m = new_permuted_dense(8, 4, 3, 2, row_perm_B, col_perm_B, XB);
+    permuted_dense *A = (permuted_dense *) A_m;
+    permuted_dense *B = (permuted_dense *) B_m;
+
+    matrix *C_m = BTA_pd_pd_alloc(B, A);
+    permuted_dense *C = (permuted_dense *) C_m;
+    BTDA_pd_pd_fill_values(B, d, A, C);
+
+    matrix *tmp_m = A_m->copy_sparsity(A_m);
+    permuted_dense *tmp = (permuted_dense *) tmp_m;
+    DA_pd_fill_values(d, A, tmp);
+    matrix *C_ref_m = BTA_pd_pd_alloc(B, tmp);
+    permuted_dense *C_ref = (permuted_dense *) C_ref_m;
+    BTA_pd_pd_fill_values(B, tmp, C_ref);
+
+    mu_assert("values", cmp_double_array(C->X, C_ref->X, 4));
+
+    free_matrix(C_ref_m);
+    free_matrix(tmp_m);
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
 /* BTA(CSR_matrix A, PD B): basic correctness against a dense reference.
    A is (4, 5) CSR_matrix with mixed sparsity; B is (4, 4) PD with row_perm = [1, 3],
    col_perm = [0, 2], dense block (2, 2). */
