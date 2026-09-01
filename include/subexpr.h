@@ -65,8 +65,7 @@ typedef struct quad_form_expr
        Dense path: permuted_dense via the matrix dispatchers. */
     CSC_matrix *QJf;
     matrix *QJf_dense;
-    double *diag_w; /* length-n diagonal (= 2w) fed to BTDA on the dense path */
-    int n;          /* quadratic dimension = left->size */
+    int n; /* quadratic dimension = left->size */
 
     /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
     expr *param_source;

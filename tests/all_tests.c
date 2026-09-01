@@ -321,6 +321,7 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_form_dense_affine, tests_run);
     mu_run_test(test_wsum_hess_quad_form_dense_exp, tests_run);
     mu_run_test(test_wsum_hess_quad_form_dense_param, tests_run);
+    mu_run_test(test_wsum_hess_quad_form_dense_param_exp, tests_run);
     mu_run_test(test_wsum_hess_scalar_mult_log_vector, tests_run);
     mu_run_test(test_wsum_hess_scalar_mult_log_matrix, tests_run);
     mu_run_test(test_wsum_hess_vector_mult_log_vector, tests_run);

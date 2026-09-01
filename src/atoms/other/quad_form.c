@@ -236,6 +236,7 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
         /* scale both terms by 2w */
         cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
                     1);
+        matrix_values_changed(node->work->hess_term1);
         cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
                     1);
         matrix_values_changed(node->work->hess_term2);
@@ -282,7 +283,6 @@ static void wsum_hess_init_dense(expr *node)
         permuted_dense *Q_pd = (permuted_dense *) qnode->Q;
         qnode->QJf_dense = BA_pd_matrices_alloc(Q_pd, x->jacobian);
         node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf_dense);
-        qnode->diag_w = (double *) sp_malloc(n * sizeof(double));
 
         /* term2 = sum_i (Q f(x))_i nabla^2 f_i */
         wsum_hess_init(x);
@@ -317,18 +317,14 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
            dispatchers below read from it. */
         x->jacobian->refresh_csc_values(x->jacobian);
 
-        /* term1 = 2w J_f^T Q J_f. The dispatcher fill is B^T diag(d) A (no plain
-           B^T A form); a constant diagonal d = 2w carries the weight.
-           Potential TODO: Add back BTA_matrices_fill_values_kernel so we don't have
-           to form diag_w. */
-        for (int i = 0; i < qnode->n; i++)
-        {
-            qnode->diag_w[i] = two_w;
-        }
+        /* term1 = 2w J_f^T Q J_f = 2w (Q J_f)^T J_f */
         BA_pd_matrices_fill_values((permuted_dense *) qnode->Q, x->jacobian,
                                    (permuted_dense *) qnode->QJf_dense);
-        BTDA_matrices_fill_values(x->jacobian, qnode->diag_w, qnode->QJf_dense,
-                                  node->work->hess_term1);
+        BTA_matrices_fill_values(x->jacobian, qnode->QJf_dense,
+                                 node->work->hess_term1);
+        cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
+                    1);
+        matrix_values_changed(node->work->hess_term1);
 
         /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
         eval_wsum_hess(x, node->work->dwork);
@@ -357,11 +353,6 @@ static void free_type_data(expr *node)
     {
         free_matrix(qnode->QJf_dense);
         qnode->QJf_dense = NULL;
-    }
-    if (qnode->diag_w != NULL)
-    {
-        sp_free(qnode->diag_w);
-        qnode->diag_w = NULL;
     }
     free_expr(qnode->param_source);
     qnode->param_source = NULL;
