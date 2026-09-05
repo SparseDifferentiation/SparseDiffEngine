@@ -277,8 +277,12 @@ matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     return C;
 }
 
-void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
-                            permuted_dense *C)
+/* Shared core for C = B^T @ diag(d) @ A with d == NULL meaning identity.
+   diag(d) is folded into the per-block gather of A_k's rows (d indexed by
+   global row), so no intermediate is ever allocated: Bg | Ag | Cg live in
+   C->kernel_dwork, pre-sized by BTA_pd_spd_alloc. */
+static void BTA_pd_spd_core(const permuted_dense *B, const double *d,
+                            const stacked_pd *A, permuted_dense *C)
 {
     /* return if C is empty */
     if (C->base.nnz == 0)
@@ -319,11 +323,19 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
             memcpy(Bg + p * B->n0, B->X + idx_B[p] * B->n0, B->n0 * sizeof(double));
         }
 
-        /* Ag = A[idx_A, :] where idx_A contains the overlapping row indices */
+        /* Ag = (diag(d)A)[idx_A, :] where idx_A contains the overlapping row
+           indices */
         for (int p = 0; p < s; p++)
         {
             memcpy(Ag + p * Ak->n0, Ak->X + idx_A[p] * Ak->n0,
                    Ak->n0 * sizeof(double));
+        }
+        if (d != NULL)
+        {
+            for (int p = 0; p < s; p++)
+            {
+                cblas_dscal(Ak->n0, d[Ak->row_perm[idx_A[p]]], Ag + p * Ak->n0, 1);
+            }
         }
 
         /* Cg = Bg^T @ Ag. Bg is (s, B->n0) row-major (lda = B->n0); we want
@@ -350,6 +362,12 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     }
 }
 
+void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                            permuted_dense *C)
+{
+    BTA_pd_spd_core(B, NULL, A, C);
+}
+
 // ---------------------------------------------------------------------------------
 // BTDA_pd_spd: C = B^T @ diag(d) @ A. No separate alloc — output sparsity
 // is identical to BTA_pd_spd (D doesn't add/remove nonzeros), so callers
@@ -359,24 +377,7 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
 void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
                              const stacked_pd *A, permuted_dense *C)
 {
-    /* skip if C is empty (no contributing A-blocks) */
-    if (C->base.nnz == 0)
-    {
-        return;
-    }
-
-    /* TODO: must remove this allocation. Very important. The DA
-       intermediate spd is allocated and freed on every Hessian
-       iteration — violates the no-alloc-in-fill policy. Fix is to
-       fold diag(d) directly into BTA_pd_spd_fill_values (either via a
-       shared internal helper that takes an optional d, or by stashing
-       a persistent DA scratch on C via a new aux slot — mirror of the
-       transpose_cache pattern). */
-    /* C = BT @ (DA) */
-    stacked_pd *DA = (stacked_pd *) copy_sparsity_spd_alloc(A);
-    DA_spd_fill_values(d, A, DA);
-    BTA_pd_spd_fill_values(B, DA, C);
-    free_matrix(&DA->base);
+    BTA_pd_spd_core(B, d, A, C);
 }
 
 // ---------------------------------------------------------------------------------
@@ -388,12 +389,6 @@ void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
 //
 // B = B1 + B2 + B3 where each Bi is a global permuted dense. Then
 // C = B^T D A = C1 + C2 + C3 where Ci = Bi^T D A.
-//
-// TODO: each BTDA_pd_pd_fill_values call internally allocates a DA intermediate
-// (see permuted_dense_linalg.c BTDA_pd_pd_fill_values). That means the BTDA
-// variant here allocates n_blocks DA temps per fill, all on the hot Hessian
-// path. Must be fixed — same future remedy as the per-block BTDA: fold
-// diag(d) directly into BTA_pd_pd's gather step.
 // ---------------------------------------------------------------------------------
 static matrix *wrapper_BTA_pd_pd(const permuted_dense *Bk, const void *ctx)
 {
