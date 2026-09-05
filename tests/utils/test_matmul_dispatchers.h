@@ -2369,8 +2369,10 @@ const char *test_BTA_matrices_fill_csc_csc(void)
    its row_perm / col_perm in place. A prior implementation of
    BA_pd_spd_fill_values cached B's transpose on B->transpose_cache,
    which (a) was never populated for the fill-path scratch, and (b)
-   would have held stale perms even if populated. Now BA_pd_spd does
-   per-call transpose alloc/free so this scenario is correct. The
+   would have held stale perms even if populated. BA_pd_spd still uses
+   that cache, but the kron path stays correct because
+   BA_dense_kron_spd bypasses the wrapper and calls BTA_pd_spd_*
+   directly on its mutating scratch (see stacked_pd_linalg.c). The
    reference path runs the same dispatch with J flattened to
    sparse_matrix (which routes via BA_dense_kron_csc, no transpose-cache
    involvement); we compare via to_csr. */
@@ -2431,6 +2433,70 @@ const char *test_BA_pd_kron_spd_no_cache_staleness(void)
     free_matrix(C_spd);
     free_matrix(J_spd);
     free_matrix(A);
+    return 0;
+}
+
+/* BA_pd_spd transpose cache: the fill refreshes B's cached transpose iff
+   B's values_version moved since the last fill. Fill once, mutate B's
+   values + bump, refill, and compare against a fresh computation with the
+   mutated values. */
+const char *test_BA_pd_spd_transpose_cache_refresh(void)
+{
+    /* B: 3x4 pd with a non-square 2x3 block. */
+    int B_rp[2] = {0, 2};
+    int B_cp[3] = {0, 1, 3};
+    double BX[6] = {1, 2, 3, 4, 5, 6};
+    matrix *B_m = new_permuted_dense(3, 4, 2, 3, B_rp, B_cp, BX);
+    permuted_dense *B = (permuted_dense *) B_m;
+
+    /* A: 4x5 spd with two disjoint-row blocks. */
+    int A0_rp[2] = {0, 1};
+    int A0_cp[2] = {0, 2};
+    double A0X[4] = {1, 2, 3, 4};
+    matrix *Ablk0 = new_permuted_dense(4, 5, 2, 2, A0_rp, A0_cp, A0X);
+    int A1_rp[2] = {2, 3};
+    int A1_cp[2] = {1, 4};
+    double A1X[4] = {5, 6, 7, 8};
+    matrix *Ablk1 = new_permuted_dense(4, 5, 2, 2, A1_rp, A1_cp, A1X);
+    permuted_dense *A_blocks[2] = {(permuted_dense *) Ablk0,
+                                   (permuted_dense *) Ablk1};
+    matrix *A_spd = new_stacked_pd(4, 5, 2, A_blocks, NULL, NULL);
+    stacked_pd *A = (stacked_pd *) A_spd;
+
+    matrix *C = BA_pd_spd_alloc(B, A);
+    BA_pd_spd_fill_values(B, A, (permuted_dense *) C);
+    mu_assert("seen must match after fill",
+              B->transpose_cache->transpose_seen == B->base.values_version);
+
+    /* Mutate B's values and bump; the guarded refill must refresh the
+       cached transpose. */
+    double BX2[6] = {-1, 7, 0.5, 2, -3, 6};
+    memcpy(B->X, BX2, 6 * sizeof(double));
+    matrix_values_changed(B_m);
+    BA_pd_spd_fill_values(B, A, (permuted_dense *) C);
+    mu_assert("seen must catch up after bump + refill",
+              B->transpose_cache->transpose_seen == B->base.values_version);
+
+    /* Reference: fresh B with the mutated values, fresh cache. */
+    matrix *B2_m = new_permuted_dense(3, 4, 2, 3, B_rp, B_cp, BX2);
+    permuted_dense *B2 = (permuted_dense *) B2_m;
+    matrix *C_ref = BA_pd_spd_alloc(B2, A);
+    BA_pd_spd_fill_values(B2, A, (permuted_dense *) C_ref);
+
+    CSR_matrix *csr_ours = C->to_csr(C);
+    CSR_matrix *csr_ref = C_ref->to_csr(C_ref);
+    mu_assert("m", csr_ours->m == csr_ref->m);
+    mu_assert("n", csr_ours->n == csr_ref->n);
+    mu_assert("nnz", csr_ours->nnz == csr_ref->nnz);
+    mu_assert("p", cmp_int_array(csr_ours->p, csr_ref->p, csr_ours->m + 1));
+    mu_assert("i", cmp_int_array(csr_ours->i, csr_ref->i, csr_ours->nnz));
+    mu_assert("x", cmp_double_array(csr_ours->x, csr_ref->x, csr_ours->nnz));
+
+    free_matrix(C_ref);
+    free_matrix(B2_m);
+    free_matrix(C);
+    free_matrix(A_spd);
+    free_matrix(B_m);
     return 0;
 }
 

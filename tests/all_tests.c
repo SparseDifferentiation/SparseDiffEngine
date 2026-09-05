@@ -510,6 +510,7 @@ int main(void)
     mu_run_test(test_BTA_matrices_fill_csc_pd, tests_run);
     mu_run_test(test_BTA_matrices_fill_csc_csc, tests_run);
     mu_run_test(test_BA_pd_kron_spd_no_cache_staleness, tests_run);
+    mu_run_test(test_BA_pd_spd_transpose_cache_refresh, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
     mu_run_test(test_coalesce_three_signatures, tests_run);
