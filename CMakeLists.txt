@@ -49,6 +49,13 @@ file(GLOB_RECURSE SOURCES "src/*.c")
 # Create core library
 add_library(dnlp_diff ${SOURCES})
 
+# Optional peak-memory tracking via the sp_malloc/sp_free counters. OFF by default
+# so the library carries no mutable global state.
+option(SP_TRACK_MEMORY "Track peak memory usage via sp_malloc/sp_free counters" OFF)
+if(SP_TRACK_MEMORY)
+    target_compile_definitions(dnlp_diff PUBLIC SP_TRACK_MEMORY)
+endif()
+
 # Link math library (Unix/Linux only)
 if(NOT MSVC)
     target_link_libraries(dnlp_diff m)

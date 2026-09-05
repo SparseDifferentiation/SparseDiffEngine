@@ -561,10 +561,10 @@ void BTDA_csc_pd_fill_values(const CSC_matrix *B, const double *d,
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((unused))
 #endif
-static void
-BTDA_csc_pd_fill_values_via_transpose_dead(const CSC_matrix *B, const double *d,
-                                           const permuted_dense *A,
-                                           permuted_dense *C)
+static void BTDA_csc_pd_fill_values_via_transpose_dead(const CSC_matrix *B,
+                                                       const double *d,
+                                                       const permuted_dense *A,
+                                                       permuted_dense *C)
 {
     if (C->base.nnz == 0)
     {
