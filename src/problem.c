@@ -345,9 +345,6 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     char mem_buf[64];
     format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
     printf("  Peak memory:                            %s\n", mem_buf);
-#else
-    printf("  Peak memory:                            n/a "
-           "(build with -DSP_TRACK_MEMORY=ON)\n");
 #endif
 
     printf("\nTiming (seconds):\n");
