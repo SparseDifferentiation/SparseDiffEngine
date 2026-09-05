@@ -1118,12 +1118,15 @@ const char *test_BA_pd_spd_alloc_then_fill_values(void)
     BA_pd_spd_fill_values((permuted_dense *) B, (stacked_pd *) A,
                           (permuted_dense *) C_m);
 
-    /* Mutate B and A_0 values. */
+    /* Mutate B and A_0 values. B is an owner pd, so the write must be
+       announced (matrix.h contract) — BA_pd_spd_fill_values refreshes its
+       cached transpose of B iff B's values_version moved. */
     permuted_dense *B_pd = (permuted_dense *) B;
     B_pd->X[0] = 5;
     B_pd->X[1] = 6;
     B_pd->X[2] = 7;
     B_pd->X[3] = 8;
+    matrix_values_changed(B);
     permuted_dense *A0_pd = (permuted_dense *) A0;
     A0_pd->X[0] = 100;
     A0_pd->X[1] = 200;

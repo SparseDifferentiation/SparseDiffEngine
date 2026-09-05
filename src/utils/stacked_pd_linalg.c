@@ -573,14 +573,18 @@ void BTDA_csc_spd_fill_values(const CSC_matrix *B, const double *d,
 // BA_pd_spd: C = B @ A where B is permuted_dense and A is stacked_pd. Thin
 // wrapper over the canonical BTA_pd_spd_* kernel: use B's lazily-cached
 // transpose and call BTA. The cache is populated on first call (in alloc)
-// and reused across subsequent fills.
+// and reused across subsequent fills; its values are refreshed only when
+// B's values_version has moved since the last fill (transpose_seen).
 //
 // Contract: B's perms must be immutable between alloc and fill (the cache
 // records B's perms at alloc time and is not re-validated at fill). For
 // callers where B's perms change between calls — notably the kron-spd path
 // that reuses a mutating scratch — bypass this wrapper and call
 // BTA_pd_spd_* directly. BA_dense_kron_spd does exactly that
-// (stacked_pd_kron_linalg.c) and is the only such caller today.
+// (stacked_pd_kron_linalg.c). The values_version guard additionally
+// requires B to be the owner of its value buffer; BA_spd_spd_fill_values
+// passes spd blocks (no version of their own) and therefore also bypasses
+// the wrapper for its fills.
 // ---------------------------------------------------------------------------------
 matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 {
@@ -592,7 +596,11 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                            permuted_dense *C)
 {
     permuted_dense *BT = B->transpose_cache;
-    transpose_pd_fill_values(B, BT);
+    if (BT->transpose_seen != B->base.values_version)
+    {
+        transpose_pd_fill_values(B, BT);
+        BT->transpose_seen = B->base.values_version;
+    }
     BTA_pd_spd_fill_values(BT, A, C);
 }
 
@@ -667,6 +675,11 @@ void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd
     {
         int q = C->src_block_idx[C->src_block_idx_p[k]];
         const permuted_dense *Bq = B->blocks[q];
-        BA_pd_spd_fill_values(Bq, A, C->blocks[k]);
+        /* Bypass BA_pd_spd_fill_values' version guard: spd blocks have no
+           values_version of their own (writers bump the owning spd), so the
+           cached transpose must be refreshed unconditionally here. */
+        permuted_dense *BqT = Bq->transpose_cache;
+        transpose_pd_fill_values(Bq, BqT);
+        BTA_pd_spd_fill_values(BqT, A, C->blocks[k]);
     }
 }

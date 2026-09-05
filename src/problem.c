@@ -32,10 +32,12 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
+#ifdef SP_TRACK_MEMORY
     /* we don't reset g_peak_bytes or g_allocated_bytes since allocations
        using sp_malloc/sp_calloc might have happened before new_problem in eg.,
        left_matmul, and their frees will subtract from this counter. */
     g_peak_bytes = g_allocated_bytes;
+#endif
     problem *prob = (problem *) sp_calloc(1, sizeof(problem));
     if (!prob) return NULL;
 
@@ -305,6 +307,7 @@ void problem_init_derivatives(problem *prob)
     problem_init_hessian(prob);
 }
 
+#ifdef SP_TRACK_MEMORY
 static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
 {
     if (bytes < 1024)
@@ -320,6 +323,7 @@ static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
         snprintf(buf, buf_size, "%.2f MB", (double) bytes / (1024.0 * 1024.0));
     }
 }
+#endif
 
 static inline void print_end_message(const Diff_engine_stats *stats)
 {
@@ -337,9 +341,11 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
     printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
+#ifdef SP_TRACK_MEMORY
     char mem_buf[64];
     format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
     printf("  Peak memory:                            %s\n", mem_buf);
+#endif
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
@@ -367,7 +373,9 @@ void free_problem(problem *prob)
 {
     if (prob == NULL) return;
 
+#ifdef SP_TRACK_MEMORY
     prob->stats.memory_bytes = g_peak_bytes;
+#endif
     if (prob->verbose)
     {
         print_end_message(&prob->stats);

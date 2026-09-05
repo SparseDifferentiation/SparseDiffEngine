@@ -488,7 +488,9 @@ int main(void)
     mu_run_test(test_BTA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BTDA_pd_spd_two_blocks_both_kept, tests_run);
     mu_run_test(test_BTDA_spd_pd_overlapping_cp, tests_run);
+#ifdef SP_TRACK_MEMORY
     mu_run_test(test_BTDA_fill_no_transient_alloc, tests_run);
+#endif
     mu_run_test(test_BTA_spd_pd_overlapping_cp, tests_run);
     mu_run_test(test_BTDA_spd_csc_overlapping_cp, tests_run);
     mu_run_test(test_BTA_spd_csc_overlapping, tests_run);
@@ -514,6 +516,7 @@ int main(void)
     mu_run_test(test_BTA_matrices_fill_csc_pd, tests_run);
     mu_run_test(test_BTA_matrices_fill_csc_csc, tests_run);
     mu_run_test(test_BA_pd_kron_spd_no_cache_staleness, tests_run);
+    mu_run_test(test_BA_pd_spd_transpose_cache_refresh, tests_run);
     mu_run_test(test_stacked_pd_construct_and_free, tests_run);
     mu_run_test(test_coalesce_no_overlap, tests_run);
     mu_run_test(test_coalesce_three_signatures, tests_run);

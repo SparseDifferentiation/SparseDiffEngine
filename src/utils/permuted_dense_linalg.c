@@ -57,6 +57,8 @@ permuted_dense *permuted_dense_ensure_transpose_cache(const permuted_dense *B_co
     }
     permuted_dense *BT = (permuted_dense *) transpose_pd_alloc(B);
     B->transpose_cache = BT;
+    /* Deliberately stale so the first fill always refreshes the cache. */
+    BT->transpose_seen = B->base.values_version - 1;
     return BT;
 }
 
