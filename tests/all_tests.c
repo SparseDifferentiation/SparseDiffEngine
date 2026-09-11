@@ -74,6 +74,7 @@
 #include "utils/test_matmul_dispatchers.h"
 #include "utils/test_matrix.h"
 #include "utils/test_permuted_dense.h"
+#include "utils/test_row_gather.h"
 #include "utils/test_stacked_pd.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
@@ -268,6 +269,7 @@ int main(void)
     mu_run_test(test_jacobian_kron_composite, tests_run);
     mu_run_test(test_jacobian_transpose, tests_run);
     mu_run_test(test_jacobian_transpose_pd_preserved, tests_run);
+    mu_run_test(test_jacobian_transpose_spd_preserved, tests_run);
     mu_run_test(test_diag_mat_jacobian_variable, tests_run);
     mu_run_test(test_diag_mat_jacobian_of_log, tests_run);
     mu_run_test(test_upper_tri_jacobian_variable, tests_run);
@@ -380,7 +382,7 @@ int main(void)
 
     printf("\n--- Utility Tests ---\n");
     mu_run_test(test_sat_mul_int_clamps_on_overflow, tests_run);
-    mu_run_test(test_sparse_index_alloc_no_int_overflow, tests_run);
+    mu_run_test(test_row_gather_alloc_no_int_overflow, tests_run);
     mu_run_test(test_cblas_ddot, tests_run);
     mu_run_test(test_diag_csr_mult, tests_run);
     mu_run_test(test_csr_sum, tests_run);
@@ -435,7 +437,14 @@ int main(void)
     mu_run_test(test_permuted_dense_times_csc_no_active, tests_run);
     mu_run_test(test_permuted_dense_to_csr_lazy, tests_run);
     mu_run_test(test_permuted_dense_col_inv, tests_run);
-    mu_run_test(test_permuted_dense_index, tests_run);
+    mu_run_test(test_permuted_dense_row_gather, tests_run);
+    mu_run_test(test_row_gather_sparse, tests_run);
+    mu_run_test(test_row_gather_sparse_all_empty, tests_run);
+    mu_run_test(test_row_gather_pd_vs_sparse_twin, tests_run);
+    mu_run_test(test_row_gather_spd_vs_sparse_twin, tests_run);
+#ifdef SP_TRACK_MEMORY
+    mu_run_test(test_row_gather_spd_fill_no_transient_alloc, tests_run);
+#endif
     mu_run_test(test_permuted_dense_promote, tests_run);
     mu_run_test(test_permuted_dense_broadcast_scalar, tests_run);
     mu_run_test(test_permuted_dense_broadcast_row, tests_run);
@@ -550,7 +559,7 @@ int main(void)
     mu_run_test(test_spd_vtable_ATDA_fill_values, tests_run);
     mu_run_test(test_spd_vtable_transpose, tests_run);
     mu_run_test(test_spd_vtable_refresh_csc_values_noop, tests_run);
-    mu_run_test(test_spd_vtable_index, tests_run);
+    mu_run_test(test_spd_vtable_row_gather, tests_run);
     mu_run_test(test_spd_vtable_promote, tests_run);
     mu_run_test(test_spd_vtable_diag_vec, tests_run);
     mu_run_test(test_spd_vtable_broadcast_row, tests_run);

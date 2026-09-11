@@ -30,10 +30,12 @@ typedef struct sparse_matrix
     CSC_matrix *csc_cache;
     uint64_t csc_seen; /* base.values_version the csc_cache values reflect */
     int *csc_iwork;
-    int *transpose_iwork; /* sized csr->n; allocated by sparse_transpose_alloc
-                             on the output sm and reused by
-                             sparse_transpose_fill_values. NULL when this
-                             sm wasn't produced by transpose_alloc. */
+    /* Int state bound by the alloc that produced this matrix and read by the
+       matching fill: transpose_alloc stores csr->n scratch for
+       transpose_fill_values; row_gather_alloc stores the base.m-long row map
+       for row_gather_fill_values. NULL otherwise; never touched by any other
+       kernel. */
+    int *bound_iwork;
 } sparse_matrix;
 
 /* Constructor. Takes ownership of A; the caller must not free A separately

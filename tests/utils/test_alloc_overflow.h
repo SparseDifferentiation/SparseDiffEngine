@@ -40,12 +40,13 @@ const char *test_sat_mul_int_clamps_on_overflow(void)
     return 0;
 }
 
-/* sparse_index_alloc sized its allocation as MIN(Jx->nnz, n_idxs * self->n). For a
-   large jacobian the dense product n_idxs * self->n overflows int (e.g. a transpose
-   of a 250000-variable matrix), wrapping negative so MIN selected it -> calloc
-   overflow -> SIGSEGV. This builds an index op whose product overflows and checks
-   the result is a valid CSR with the true (subset) nnz. */
-const char *test_sparse_index_alloc_no_int_overflow(void)
+/* The sparse row gather (then sparse_index_alloc) once sized its allocation as
+   MIN(Jx->nnz, n_idxs * self->n). For a large jacobian the dense product
+   n_idxs * self->n overflows int (e.g. a transpose of a 250000-variable matrix),
+   wrapping negative so MIN selected it -> calloc overflow -> SIGSEGV. This builds
+   a gather whose product overflows and checks the result is a valid CSR with the
+   true (subset) nnz. */
+const char *test_row_gather_alloc_no_int_overflow(void)
 {
     /* n_idxs * self->n = 25000 * 100000 = 2.5e9 overflows int32. */
     const int n_idxs = 25000;
@@ -67,7 +68,7 @@ const char *test_sparse_index_alloc_no_int_overflow(void)
     for (int i = 0; i < n_idxs; i++) indices[i] = i;
 
     /* pre-fix: crashes here in new_CSR_matrix(... negative nnz) */
-    matrix *out = mat->index_alloc(mat, indices, n_idxs);
+    matrix *out = mat->row_gather_alloc(mat, indices, n_idxs);
     CSR_matrix *out_csr = out->to_csr(out);
 
     mu_assert("nnz must equal selected-row total", out_csr->nnz == n_idxs);

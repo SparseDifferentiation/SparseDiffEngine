@@ -23,6 +23,7 @@
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,6 +48,7 @@ static void permuted_dense_free(matrix *self)
     }
     sp_free(pd->kernel_dwork);
     sp_free(pd->kernel_iwork);
+    sp_free(pd->bound_iwork);
     free_matrix((matrix *) pd->transpose_cache);
     sp_free(pd);
 }
@@ -108,49 +110,58 @@ static void permuted_dense_vtable_transpose_fill_values(const matrix *self,
     transpose_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
 }
 
-matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs)
+matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out)
 {
-    /* Scan indices: which output positions i hit a row in A->row_perm? */
-    int *new_row_perm = (int *) sp_malloc(n_idxs * sizeof(int));
+    /* Output position i is dense iff map[i] hits a row in A->row_perm. The kept
+       positions form C's row_perm (strictly increasing by construction, repeats
+       in map included); src[k] is the dense row of A that C's row k copies. */
+    int *new_row_perm = (int *) sp_malloc(m_out * sizeof(int));
+    int *src = (int *) sp_malloc(m_out * sizeof(int));
     int new_m0 = 0;
-    for (int i = 0; i < n_idxs; i++)
+    for (int i = 0; i < m_out; i++)
     {
-        if (A->row_inv[indices[i]] >= 0)
+        int ii = map[i] < 0 ? -1 : A->row_inv[map[i]];
+        if (ii >= 0)
         {
-            new_row_perm[new_m0++] = i;
+            new_row_perm[new_m0] = i;
+            src[new_m0] = ii;
+            new_m0++;
         }
     }
 
-    matrix *out = new_permuted_dense(n_idxs, A->base.n, new_m0, A->n0, new_row_perm,
+    matrix *out = new_permuted_dense(m_out, A->base.n, new_m0, A->n0, new_row_perm,
                                      A->col_perm, NULL);
+    if (new_m0 > 0)
+    {
+        permuted_dense *C = (permuted_dense *) out;
+        C->bound_iwork = (int *) sp_malloc(new_m0 * sizeof(int));
+        memcpy(C->bound_iwork, src, new_m0 * sizeof(int));
+    }
     sp_free(new_row_perm);
+    sp_free(src);
     return out;
 }
 
-void index_pd_fill_values(const permuted_dense *A, const int *indices, int n_idxs,
-                          permuted_dense *C)
+void row_gather_pd_fill_values(const permuted_dense *A, permuted_dense *C)
 {
-    (void) n_idxs;
+    assert(A->base.n == C->base.n && (C->m0 == 0 || C->bound_iwork != NULL));
     int n0 = A->n0;
     for (int k = 0; k < C->m0; k++)
     {
-        int i = C->row_perm[k];
-        int old_ii = A->row_inv[indices[i]];
-        memcpy(C->X + k * n0, A->X + old_ii * n0, n0 * sizeof(double));
+        memcpy(C->X + k * n0, A->X + C->bound_iwork[k] * n0, n0 * sizeof(double));
     }
 }
 
-static matrix *permuted_dense_vtable_index_alloc(matrix *self, const int *indices,
-                                                 int n_idxs)
+static matrix *permuted_dense_vtable_row_gather_alloc(const matrix *self,
+                                                      const int *map, int m_out)
 {
-    return index_pd_alloc((const permuted_dense *) self, indices, n_idxs);
+    return row_gather_pd_alloc((const permuted_dense *) self, map, m_out);
 }
 
-static void permuted_dense_vtable_index_fill_values(matrix *self, const int *indices,
-                                                    int n_idxs, matrix *out)
+static void permuted_dense_vtable_row_gather_fill_values(const matrix *self,
+                                                         matrix *out)
 {
-    index_pd_fill_values((const permuted_dense *) self, indices, n_idxs,
-                         (permuted_dense *) out);
+    row_gather_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
 }
 
 matrix *promote_pd_alloc(const permuted_dense *A, int size)
@@ -554,8 +565,8 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.to_csr = permuted_dense_to_csr;
     pd->base.transpose_alloc = permuted_dense_vtable_transpose_alloc;
     pd->base.transpose_fill_values = permuted_dense_vtable_transpose_fill_values;
-    pd->base.index_alloc = permuted_dense_vtable_index_alloc;
-    pd->base.index_fill_values = permuted_dense_vtable_index_fill_values;
+    pd->base.row_gather_alloc = permuted_dense_vtable_row_gather_alloc;
+    pd->base.row_gather_fill_values = permuted_dense_vtable_row_gather_fill_values;
     pd->base.promote_alloc = permuted_dense_vtable_promote_alloc;
     pd->base.promote_fill_values = permuted_dense_vtable_promote_fill_values;
     pd->base.broadcast_alloc = permuted_dense_vtable_broadcast_alloc;
@@ -590,6 +601,12 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     permuted_dense *pd = (permuted_dense *) sp_calloc(1, sizeof(permuted_dense));
     pd->base.m = m;
     pd->base.n = n;
+    if (m0 > 0 && n0 > INT_MAX / m0)
+    {
+        fprintf(stderr, "Error in new_permuted_dense: dense block m0 * n0 "
+                        "exceeds INT_MAX.\n");
+        exit(1);
+    }
     pd->base.nnz = m0 * n0;
     wire_vtable(pd);
 

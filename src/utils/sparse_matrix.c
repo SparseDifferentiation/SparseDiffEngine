@@ -24,6 +24,7 @@
 #include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +56,7 @@ static void sparse_free(matrix *self)
     free_CSR_matrix(sm->csr);
     free_CSC_matrix(sm->csc_cache);
     sp_free(sm->csc_iwork);
-    sp_free(sm->transpose_iwork);
+    sp_free(sm->bound_iwork);
     sp_free(sm);
 }
 
@@ -117,7 +118,7 @@ static matrix *sparse_transpose_alloc(const matrix *self)
     int *iwork = (int *) sp_malloc(sm->csr->n * sizeof(int));
     CSR_matrix *AT = AT_alloc(sm->csr, iwork);
     sparse_matrix *out = (sparse_matrix *) new_sparse_matrix(AT);
-    out->transpose_iwork = iwork;
+    out->bound_iwork = iwork;
     return &out->base;
 }
 
@@ -125,52 +126,68 @@ static void sparse_transpose_fill_values(const matrix *self, matrix *out)
 {
     const sparse_matrix *sm_in = (const sparse_matrix *) self;
     sparse_matrix *sm_out = (sparse_matrix *) out;
-    AT_fill_values(sm_in->csr, sm_out->csr, sm_out->transpose_iwork);
+    AT_fill_values(sm_in->csr, sm_out->csr, sm_out->bound_iwork);
 }
 
-static matrix *sparse_index_alloc(matrix *self, const int *indices, int n_idxs)
+static matrix *sparse_row_gather_alloc(const matrix *self, const int *map, int m_out)
 {
-    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
+    const CSR_matrix *Jx = ((const sparse_matrix *) self)->csr;
 
     /* Exact output nnz: sum the selected rows' nnz. Jx->nnz is NOT an upper
-       bound — duplicated indices select the same source row more than once
-       (cvxpy#3442). Duplicated gathers of dense rows can push the true count
-       past INT_MAX, which a CSR cannot represent, so fail before wrapping. */
+       bound — repeated map entries select the same source row more than once
+       (cvxpy#3442). Repeated gathers of dense rows can push the true count
+       past INT_MAX, which a CSR cannot represent, so fail before wrapping.
+       map[i] == -1 selects nothing and must be branched before touching p. */
     int nnz = 0;
-    for (int i = 0; i < n_idxs; i++)
+    for (int i = 0; i < m_out; i++)
     {
-        int len = Jx->p[indices[i] + 1] - Jx->p[indices[i]];
+        int row = map[i];
+        int len = row < 0 ? 0 : Jx->p[row + 1] - Jx->p[row];
         if (len > INT_MAX - nnz)
         {
-            fprintf(stderr, "Error in sparse_index_alloc: gathered nnz "
+            fprintf(stderr, "Error in sparse_row_gather_alloc: gathered nnz "
                             "exceeds INT_MAX.\n");
             exit(1);
         }
         nnz += len;
     }
-    CSR_matrix *J = new_CSR_matrix(n_idxs, self->n, nnz);
+    CSR_matrix *J = new_CSR_matrix(m_out, self->n, nnz);
 
     J->p[0] = 0;
-    for (int i = 0; i < n_idxs; i++)
+    for (int i = 0; i < m_out; i++)
     {
-        int row = indices[i];
-        int len = Jx->p[row + 1] - Jx->p[row];
-        memcpy(J->i + J->p[i], Jx->i + Jx->p[row], len * sizeof(int));
+        int row = map[i];
+        int len = row < 0 ? 0 : Jx->p[row + 1] - Jx->p[row];
+        if (len > 0)
+        {
+            memcpy(J->i + J->p[i], Jx->i + Jx->p[row], len * sizeof(int));
+        }
         J->p[i + 1] = J->p[i] + len;
     }
-    J->nnz = J->p[n_idxs];
-    return new_sparse_matrix(J);
+    J->nnz = J->p[m_out];
+
+    sparse_matrix *out = (sparse_matrix *) new_sparse_matrix(J);
+    out->bound_iwork = (int *) sp_malloc(m_out * sizeof(int));
+    if (m_out > 0)
+    {
+        memcpy(out->bound_iwork, map, m_out * sizeof(int));
+    }
+    return &out->base;
 }
 
-static void sparse_index_fill_values(matrix *self, const int *indices, int n_idxs,
-                                     matrix *out)
+static void sparse_row_gather_fill_values(const matrix *self, matrix *out)
 {
-    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    CSR_matrix *J = ((sparse_matrix *) out)->csr;
-    for (int i = 0; i < n_idxs; i++)
+    const CSR_matrix *Jx = ((const sparse_matrix *) self)->csr;
+    sparse_matrix *sm_out = (sparse_matrix *) out;
+    CSR_matrix *J = sm_out->csr;
+    const int *map = sm_out->bound_iwork;
+    assert(map != NULL && self->n == out->n);
+    for (int i = 0; i < J->m; i++)
     {
+        int row = map[i];
+        if (row < 0) continue;
         int len = J->p[i + 1] - J->p[i];
-        memcpy(J->x + J->p[i], Jx->x + Jx->p[indices[i]], len * sizeof(double));
+        memcpy(J->x + J->p[i], Jx->x + Jx->p[row], len * sizeof(double));
     }
 }
 
@@ -389,8 +406,8 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.to_csr = sparse_to_csr;
     sm->base.transpose_alloc = sparse_transpose_alloc;
     sm->base.transpose_fill_values = sparse_transpose_fill_values;
-    sm->base.index_alloc = sparse_index_alloc;
-    sm->base.index_fill_values = sparse_index_fill_values;
+    sm->base.row_gather_alloc = sparse_row_gather_alloc;
+    sm->base.row_gather_fill_values = sparse_row_gather_fill_values;
     sm->base.promote_alloc = sparse_promote_alloc;
     sm->base.promote_fill_values = sparse_promote_fill_values;
     sm->base.broadcast_alloc = sparse_broadcast_alloc;

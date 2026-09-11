@@ -65,20 +65,19 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     /* allocate sparsity pattern for the matrix consisting of rows
-       'idx->indices' of the child's Jacobian */
+       'idx->indices' of the child's Jacobian; the gather map is bound to
+       node->jacobian, so eval only needs the two matrices */
     node->jacobian =
-        x->jacobian->index_alloc(x->jacobian, idx->indices, idx->n_idxs);
+        x->jacobian->row_gather_alloc(x->jacobian, idx->indices, idx->n_idxs);
 }
 
 static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
-    index_expr *idx = (index_expr *) node;
     eval_jacobian(x);
 
     /* copy values of the selected rows into the preallocated output */
-    x->jacobian->index_fill_values(x->jacobian, idx->indices, idx->n_idxs,
-                                   node->jacobian);
+    x->jacobian->row_gather_fill_values(x->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
