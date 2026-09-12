@@ -19,9 +19,7 @@
 #include "subexpr.h"
 #include "utils/mini_numpy.h"
 #include "utils/tracked_alloc.h"
-#include "utils/utils.h"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 
 static void forward(expr *node, const double *u)
