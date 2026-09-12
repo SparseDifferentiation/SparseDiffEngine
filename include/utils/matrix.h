@@ -82,7 +82,7 @@ typedef CSR_matrix *(*matrix_to_csr_fn)(matrix *A);
    cache already matches values_version, so it is cheap to call when fresh. */
 typedef void (*matrix_refresh_csc_values_fn)(matrix *A);
 
-/* Allocate C = A[map, :] */
+/* Allocate C = A[map, :]. C stores map internally, so the fill takes none. */
 typedef matrix *(*matrix_row_gather_alloc_fn)(const matrix *A, const int *map,
                                               int m_out);
 

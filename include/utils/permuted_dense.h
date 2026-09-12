@@ -102,13 +102,11 @@ matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
 void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
                               int d2, permuted_dense *C);
 
-/* Allocate C = A[map, :], where A and C are permuted dense. See
-   matrix_row_gather_alloc_fn for the map contract (repeats allowed). C's
-   row_perm is the set of output positions whose map entry hits A->row_perm;
-   C->bound_iwork holds the matching source dense rows. */
+/* Allocate C = A[map, :], where A and C are permuted dense. C stores map
+   internally, so the fill takes none. */
 matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);
 
-/* Fill values of C = A[map, :]; C must come from row_gather_pd_alloc(A, ...). */
+/* Fill values of C = A[map, :], where A and C are permuted dense. */
 void row_gather_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
 /* Allocate C = promote(A, size), where A and C are permuted dense. */
