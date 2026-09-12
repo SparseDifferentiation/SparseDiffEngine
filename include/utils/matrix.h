@@ -82,12 +82,12 @@ typedef CSR_matrix *(*matrix_to_csr_fn)(matrix *A);
    cache already matches values_version, so it is cheap to call when fresh. */
 typedef void (*matrix_refresh_csc_values_fn)(matrix *A);
 
-/* Allocate C = A[indices, :] */
-typedef matrix *(*matrix_index_alloc_fn)(matrix *A, const int *indices, int n_idxs);
+/* Allocate C = A[map, :]. C stores map internally, so the fill takes none. */
+typedef matrix *(*matrix_row_gather_alloc_fn)(const matrix *A, const int *map,
+                                              int m_out);
 
-/* Fill values of C = A[indices, :] */
-typedef void (*matrix_index_fill_values_fn)(matrix *A, const int *indices,
-                                            int n_idxs, matrix *C);
+/* Fill values of C = A[map, :] */
+typedef void (*matrix_row_gather_fill_values_fn)(const matrix *A, matrix *C);
 
 /* Row-tiling for the promote atom: A must be a 1-row matrix; returns
    a new matrix of shape (size, A->n) where every row is a copy of A's
@@ -156,8 +156,8 @@ struct matrix
     matrix_refresh_csc_values_fn refresh_csc_values;
 
     /* Atom-specific ops */
-    matrix_index_alloc_fn index_alloc;
-    matrix_index_fill_values_fn index_fill_values;
+    matrix_row_gather_alloc_fn row_gather_alloc;
+    matrix_row_gather_fill_values_fn row_gather_fill_values;
     matrix_promote_alloc_fn promote_alloc;
     matrix_promote_fill_values_fn promote_fill_values;
     matrix_broadcast_alloc_fn broadcast_alloc;

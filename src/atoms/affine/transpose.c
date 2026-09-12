@@ -50,18 +50,18 @@ static void jacobian_init_impl(expr *node)
         indices[r] = (r / d1) + (r % d1) * d2;
     }
 
-    node->jacobian = child->jacobian->index_alloc(child->jacobian, indices, n_out);
+    node->jacobian =
+        child->jacobian->row_gather_alloc(child->jacobian, indices, n_out);
 
-    /* save indices for eval_jacobian */
-    node->work->iwork = indices;
+    /* the gather map is bound to node->jacobian; nothing to keep */
+    sp_free(indices);
 }
 
 static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
     eval_jacobian(child);
-    child->jacobian->index_fill_values(child->jacobian, node->work->iwork,
-                                       node->size, node->jacobian);
+    child->jacobian->row_gather_fill_values(child->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)

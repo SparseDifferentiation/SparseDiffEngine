@@ -66,6 +66,12 @@ typedef struct permuted_dense
     int *kernel_iwork;
     size_t kernel_iwork_size;
 
+    /* Int state bound by the alloc that produced this PD and read by the
+       matching fill: row_gather_alloc stores, per dense row of this PD, the
+       dense row of the source it copies (length m0). NULL otherwise; never
+       touched by any other kernel (unlike kernel_iwork). */
+    int *bound_iwork;
+
     /* Cached transpose of this PD as another permuted_dense, allocated lazily
        on first call to permuted_dense_ensure_transpose_cache. On the cache PD
        itself, transpose_seen records the source's base.values_version whose
@@ -96,12 +102,12 @@ matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
 void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
                               int d2, permuted_dense *C);
 
-/* Allocate C = A[indices, :], where A and C are permuted dense. */
-matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs);
+/* Allocate C = A[map, :], where A and C are permuted dense. C stores map
+   internally, so the fill takes none. */
+matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);
 
-/* Fill values of C = A[indices, :]. */
-void index_pd_fill_values(const permuted_dense *A, const int *indices, int n_idxs,
-                          permuted_dense *C);
+/* Fill values of C = A[map, :], where A and C are permuted dense. */
+void row_gather_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
 /* Allocate C = promote(A, size), where A and C are permuted dense. */
 matrix *promote_pd_alloc(const permuted_dense *A, int size);

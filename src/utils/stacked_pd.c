@@ -231,37 +231,39 @@ void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
 }
 
 // -----------------------------------------------------------------------------
-//        index of stacked_pd: C = A[indices, :] where A is stacked_pd
+//        row gather of stacked_pd: C = A[map, :] where A is stacked_pd
 // -----------------------------------------------------------------------------
 typedef struct
 {
-    const int *indices;
-    int n_idxs;
-} pd_index_ctx;
+    const int *map;
+    int m_out;
+} pd_row_gather_ctx;
 
-static matrix *wrapper_pd_index(permuted_dense *Bk, const void *ctx)
+static matrix *wrapper_pd_row_gather(permuted_dense *Bk, const void *ctx)
 {
-    const pd_index_ctx *c = (const pd_index_ctx *) ctx;
-    return index_pd_alloc(Bk, c->indices, c->n_idxs);
+    const pd_row_gather_ctx *c = (const pd_row_gather_ctx *) ctx;
+    return row_gather_pd_alloc(Bk, c->map, c->m_out);
 }
 
-static matrix *stacked_pd_vtable_index_alloc(matrix *self, const int *indices,
-                                             int n_idxs)
+/* Every output row has exactly one source row, which lives in exactly one
+   block, so the per-block results stay row-disjoint even when map repeats. */
+static matrix *stacked_pd_vtable_row_gather_alloc(const matrix *self, const int *map,
+                                                  int m_out)
 {
-    stacked_pd *src = (stacked_pd *) self;
-    pd_index_ctx ctx = {indices, n_idxs};
-    return spd_map_filter_blocks(src, n_idxs, src->base.n, wrapper_pd_index, &ctx);
+    const stacked_pd *src = (const stacked_pd *) self;
+    pd_row_gather_ctx ctx = {map, m_out};
+    return spd_map_filter_blocks(src, m_out, src->base.n, wrapper_pd_row_gather,
+                                 &ctx);
 }
 
-static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices,
-                                                int n_idxs, matrix *out)
+static void stacked_pd_vtable_row_gather_fill_values(const matrix *self, matrix *out)
 {
-    stacked_pd *src = (stacked_pd *) self;
+    const stacked_pd *src = (const stacked_pd *) self;
     stacked_pd *out_spd = (stacked_pd *) out;
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
         int sk = out_spd->src_block_idx[k];
-        index_pd_fill_values(src->blocks[sk], indices, n_idxs, out_spd->blocks[k]);
+        row_gather_pd_fill_values(src->blocks[sk], out_spd->blocks[k]);
     }
 }
 
@@ -492,8 +494,8 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.transpose_fill_values = stacked_pd_vtable_transpose_fill_values;
     spd->base.refresh_csc_values = stacked_pd_vtable_refresh_csc_values;
     spd->base.to_csr = stacked_pd_to_csr;
-    spd->base.index_alloc = stacked_pd_vtable_index_alloc;
-    spd->base.index_fill_values = stacked_pd_vtable_index_fill_values;
+    spd->base.row_gather_alloc = stacked_pd_vtable_row_gather_alloc;
+    spd->base.row_gather_fill_values = stacked_pd_vtable_row_gather_fill_values;
     spd->base.promote_alloc = stacked_pd_vtable_promote_alloc;
     spd->base.promote_fill_values = stacked_pd_vtable_promote_fill_values;
     spd->base.diag_vec_alloc = stacked_pd_vtable_diag_vec_alloc;

@@ -2441,20 +2441,9 @@ const char *test_BA_pd_kron_spd_no_cache_staleness(void)
    allocator counters, which do not exist in a default build. */
 #ifdef SP_TRACK_MEMORY
 
-/* No-alloc-in-fill contract for the BTDA kernels: after alloc and one warm-up
-   fill, a second fill must not touch the tracked allocator at all. Any
-   transient sp_malloc inside the fill raises g_peak_bytes above the baseline
-   even if freed before returning; a permanent one raises g_allocated_bytes.
-   Covers BTDA_pd_pd (both the matching-row_perm and gather paths),
-   BTDA_pd_spd, and the blockwise BTDA_spd_pd. */
-static int fill_is_alloc_free(void (*fill)(const void *ctx), const void *ctx)
-{
-    size_t base = g_allocated_bytes;
-    g_peak_bytes = base;
-    fill(ctx);
-    return g_allocated_bytes == base && g_peak_bytes == base;
-}
-
+/* No-alloc-in-fill contract for the BTDA kernels via fill_is_alloc_free
+   (tests/test_helpers.h). Covers BTDA_pd_pd (both the matching-row_perm and
+   gather paths), BTDA_pd_spd, and the blockwise BTDA_spd_pd. */
 typedef struct
 {
     const permuted_dense *B;
