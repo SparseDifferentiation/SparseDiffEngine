@@ -470,4 +470,50 @@ const char *test_problem_jacobian_spd_constraint_interleaved(void)
     return 0;
 }
 
+/* A sum over axis 1 of a 2-block spd child is itself a stacked_pd; used as a
+   constraint it must reach the aggregated Jacobian in CSR row order. Output
+   row r of sum(A @ X, axis=1) is [A[r, :], A[r, :]]. */
+const char *test_problem_jacobian_spd_sum_constraint(void)
+{
+    double A[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+
+    expr *X_obj = new_variable(3, 2, 0, 6);
+    expr *objective = new_sum(X_obj, -1);
+
+    expr *X = new_variable(3, 2, 0, 6);
+    expr *L = new_left_matmul_dense(NULL, X, 2, 3, A);
+    expr *S = new_sum(L, 1);
+    expr *constraints[1] = {S};
+
+    problem *prob = new_problem(objective, constraints, 1, false);
+    problem_init_jacobian(prob);
+
+    double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    mu_assert("constraint Jacobian should be spd", S->jacobian->is_stacked_pd);
+
+    double expected[2][6] = {{1.0, 2.0, 3.0, 1.0, 2.0, 3.0},
+                             {4.0, 5.0, 6.0, 4.0, 5.0, 6.0}};
+    CSR_matrix *J = prob->jacobian;
+    mu_assert("shape", J->m == 2 && J->n == 6 && J->nnz == 12);
+    double dense[2][6] = {{0}};
+    for (int r = 0; r < 2; r++)
+    {
+        for (int jj = J->p[r]; jj < J->p[r + 1]; jj++)
+        {
+            dense[r][J->i[jj]] += J->x[jj];
+        }
+    }
+    for (int r = 0; r < 2; r++)
+    {
+        mu_assert("problem Jacobian row of sum constraint",
+                  cmp_double_array(dense[r], expected[r], 6));
+    }
+
+    free_problem(prob);
+    return 0;
+}
+
 #endif /* TEST_PROBLEM_H */

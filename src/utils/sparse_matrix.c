@@ -235,43 +235,106 @@ static void sparse_refresh_csc_values(matrix *self)
     sm->csc_seen = sm->base.values_version;
 }
 
-static matrix *sparse_sum_row_partition_alloc(matrix *self, int axis, int d1,
-                                              int *idx_map)
+static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
+                                       int m_out)
 {
-    CSR_matrix *A = ((sparse_matrix *) self)->csr;
-    int m;
-    if (axis == -1)
-    {
-        m = 1;
-    }
-    else if (axis == 0)
-    {
-        m = A->m / d1;
-    }
-    else
-    {
-        m = d1;
-    }
-    int max_nnz = MIN(A->nnz, sat_mul_int(m, A->n));
-    CSR_matrix *out = new_CSR_matrix(m, A->n, max_nnz);
-    int *iwork = (int *) sp_malloc(MAX(A->n, A->nnz) * sizeof(int));
+    const CSR_matrix *A = ((const sparse_matrix *) self)->csr;
+    int m = A->m;
+    int n = A->n;
 
-    if (axis == -1)
+    /* Inverse of group by counting sort: rows[start[j] .. start[j+1]) lists the
+       source rows of output row j. */
+    int *start = (int *) sp_calloc(m_out + 1, sizeof(int));
+    int *fill = (int *) sp_malloc(m_out * sizeof(int));
+    int *rows = (int *) sp_malloc(m * sizeof(int));
+    for (int i = 0; i < m; i++)
     {
-        sum_all_rows_csr_alloc(A, out, iwork, idx_map);
+        assert(group[i] >= 0 && group[i] < m_out);
+        start[group[i] + 1]++;
     }
-    else if (axis == 0)
+    for (int j = 0; j < m_out; j++)
     {
-        sum_block_of_rows_csr_alloc(A, out, d1, iwork, idx_map);
+        start[j + 1] += start[j];
+        fill[j] = start[j];
     }
-    else
+    for (int i = 0; i < m; i++)
     {
-        sum_evenly_spaced_rows_csr_alloc(A, out, m, iwork, idx_map);
+        rows[fill[group[i]]++] = i;
     }
 
-    sp_free(iwork);
-    CSR_trim(out);
-    return new_sparse_matrix(out);
+    /* Output row j is the sorted union of its source rows' columns. Summing can
+       only merge entries, so A->nnz bounds the output nnz. marker[c] == j marks
+       column c as already present in output row j. */
+    int cap = MIN(A->nnz, sat_mul_int(m_out, n));
+    CSR_matrix *J = new_CSR_matrix(m_out, n, cap);
+    int *map = (int *) sp_malloc(A->nnz * sizeof(int));
+    int *marker = (int *) sp_malloc(n * sizeof(int));
+    int *col_to_pos = (int *) sp_malloc(n * sizeof(int));
+    for (int c = 0; c < n; c++)
+    {
+        marker[c] = -1;
+    }
+
+    int nnz = 0;
+    J->p[0] = 0;
+    for (int j = 0; j < m_out; j++)
+    {
+        int row_start = nnz;
+        for (int r = start[j]; r < start[j + 1]; r++)
+        {
+            int i = rows[r];
+            for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
+            {
+                int c = A->i[jj];
+                if (marker[c] != j)
+                {
+                    marker[c] = j;
+                    J->i[nnz++] = c;
+                }
+            }
+        }
+        if (nnz > row_start)
+        {
+            sort_int_array(J->i + row_start, nnz - row_start);
+        }
+        J->p[j + 1] = nnz;
+
+        /* map every source entry of this output row to its output position */
+        for (int pos = row_start; pos < nnz; pos++)
+        {
+            col_to_pos[J->i[pos]] = pos;
+        }
+        for (int r = start[j]; r < start[j + 1]; r++)
+        {
+            int i = rows[r];
+            for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
+            {
+                map[jj] = col_to_pos[A->i[jj]];
+            }
+        }
+    }
+    J->nnz = nnz;
+    CSR_trim(J);
+
+    sp_free(col_to_pos);
+    sp_free(marker);
+    sp_free(rows);
+    sp_free(fill);
+    sp_free(start);
+
+    sparse_matrix *out = (sparse_matrix *) new_sparse_matrix(J);
+    out->bound_iwork = map;
+    return &out->base;
+}
+
+static void sparse_row_reduce_fill_values(const matrix *self, matrix *out)
+{
+    if (out->nnz == 0) return;
+    const CSR_matrix *A = ((const sparse_matrix *) self)->csr;
+    sparse_matrix *sm_out = (sparse_matrix *) out;
+    assert(sm_out->bound_iwork != NULL && self->n == out->n);
+    memset(out->x, 0, out->nnz * sizeof(double));
+    accumulator(A->x, A->nnz, sm_out->bound_iwork, out->x);
 }
 
 static void wire_vtable(sparse_matrix *sm)
@@ -290,7 +353,8 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.row_gather_fill_values = sparse_row_gather_fill_values;
     sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
     sm->base.diag_vec_fill_values = sparse_diag_vec_fill_values;
-    sm->base.sum_row_partition_alloc = sparse_sum_row_partition_alloc;
+    sm->base.row_reduce_alloc = sparse_row_reduce_alloc;
+    sm->base.row_reduce_fill_values = sparse_row_reduce_fill_values;
     sm->base.refresh_csc_values = sparse_refresh_csc_values;
     sm->base.free_fn = sparse_free;
 }

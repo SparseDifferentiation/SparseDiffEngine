@@ -155,6 +155,44 @@ static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *spd_iter,
 }
 
 // ------------------------------------------------------------------------------------
+// C = row-reduce of stacked_pd A: C[j, :] = sum of rows i with group[i] == j.
+// Each block is reduced on its own into a PD (rows of one block that share a
+// group are summed there); the partials may overlap in rows and cells across
+// blocks, so they go through the coalesce-accumulate skeleton above. The result
+// is always a stacked_pd.
+// ------------------------------------------------------------------------------------
+typedef struct
+{
+    const int *group;
+    int m_out;
+} row_reduce_ctx;
+
+static matrix *row_reduce_partial_alloc(const permuted_dense *blk, const void *ctx)
+{
+    const row_reduce_ctx *c = (const row_reduce_ctx *) ctx;
+    return row_reduce_pd_alloc(blk, c->group, c->m_out);
+}
+
+matrix *row_reduce_spd_alloc(const stacked_pd *A, const int *group, int m_out)
+{
+    row_reduce_ctx ctx = {group, m_out};
+    return spd_blockwise_alloc_coalesce(A, m_out, A->base.n,
+                                        row_reduce_partial_alloc, &ctx);
+}
+
+void row_reduce_spd_fill_values(const stacked_pd *A, stacked_pd *C)
+{
+    if (C->base.nnz == 0) return;
+    stacked_pd *raw = C->pre_coalesce;
+    for (int k = 0; k < A->n_blocks; k++)
+    {
+        row_reduce_pd_fill_values(A->blocks[k], raw->blocks[k]);
+    }
+    memset(C->base.x, 0, C->base.nnz * sizeof(double));
+    coalesce_spd_fill_values_accumulate(raw, C);
+}
+
+// ------------------------------------------------------------------------------------
 // C = ATDA for stacked_pd A. Let A = [A1; A2; A3] where Ai has n columns (the same
 // number as A). Then ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j
 // overlap if Ai and Aj have overlapping column entries. We therefore first compute
