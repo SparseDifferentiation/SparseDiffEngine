@@ -296,44 +296,6 @@ static void stacked_pd_vtable_diag_vec_fill_values(matrix *self, matrix *out)
     }
 }
 
-// -----------------------------------------------------------------------------
-//        broadcast: C = broadcast(A) where A is stacked_pd
-// -----------------------------------------------------------------------------
-typedef struct
-{
-    broadcast_type type;
-    int d1;
-    int d2;
-} pd_broadcast_ctx;
-
-static matrix *wrapper_pd_broadcast(permuted_dense *Bk, const void *ctx)
-{
-    const pd_broadcast_ctx *c = (const pd_broadcast_ctx *) ctx;
-    return broadcast_pd_alloc(Bk, c->type, c->d1, c->d2);
-}
-
-static matrix *stacked_pd_vtable_broadcast_alloc(matrix *self, broadcast_type type,
-                                                 int d1, int d2)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    pd_broadcast_ctx ctx = {type, d1, d2};
-    return spd_map_filter_blocks(src, d1 * d2, src->base.n, wrapper_pd_broadcast,
-                                 &ctx);
-}
-
-static void stacked_pd_vtable_broadcast_fill_values(matrix *self,
-                                                    broadcast_type type, int d1,
-                                                    int d2, matrix *out)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    stacked_pd *out_spd = (stacked_pd *) out;
-    for (int k = 0; k < out_spd->n_blocks; k++)
-    {
-        int sk = out_spd->src_block_idx[k];
-        broadcast_pd_fill_values(src->blocks[sk], type, d1, d2, out_spd->blocks[k]);
-    }
-}
-
 // --------------------------------------------------------------------------------
 //                          Constructor below
 // --------------------------------------------------------------------------------
@@ -473,8 +435,6 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.row_gather_fill_values = stacked_pd_vtable_row_gather_fill_values;
     spd->base.diag_vec_alloc = stacked_pd_vtable_diag_vec_alloc;
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
-    spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
-    spd->base.broadcast_fill_values = stacked_pd_vtable_broadcast_fill_values;
     spd->base.sum_row_partition_alloc = stacked_pd_vtable_sum_row_partition_alloc;
 }
 

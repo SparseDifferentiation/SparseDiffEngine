@@ -185,94 +185,6 @@ static void sparse_row_gather_fill_values(const matrix *self, matrix *out)
     }
 }
 
-static matrix *sparse_broadcast_alloc(matrix *self, broadcast_type type, int d1,
-                                      int d2)
-{
-    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    int out_m = d1 * d2;
-    int total_nnz;
-    if (type == BROADCAST_ROW)
-    {
-        total_nnz = Jx->nnz * d1;
-    }
-    else if (type == BROADCAST_COL)
-    {
-        total_nnz = Jx->nnz * d2;
-    }
-    else /* BROADCAST_SCALAR */
-    {
-        total_nnz = Jx->nnz * out_m;
-    }
-
-    CSR_matrix *J = new_CSR_matrix(out_m, self->n, total_nnz);
-
-    if (type == BROADCAST_ROW)
-    {
-        int acc = 0;
-        for (int i = 0; i < d2; i++)
-        {
-            int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
-            tile_int(J->i + acc, Jx->i + Jx->p[i], nnz_in_row, d1);
-            for (int rep = 0; rep < d1; rep++)
-            {
-                J->p[i * d1 + rep] = acc;
-                acc += nnz_in_row;
-            }
-        }
-        J->p[out_m] = total_nnz;
-    }
-    else if (type == BROADCAST_COL)
-    {
-        tile_int(J->i, Jx->i, Jx->nnz, d2);
-        int offset = 0;
-        for (int i = 0; i < d2; i++)
-        {
-            for (int j = 0; j < d1; j++)
-            {
-                int nnz_in_row = Jx->p[j + 1] - Jx->p[j];
-                J->p[i * d1 + j] = offset;
-                offset += nnz_in_row;
-            }
-        }
-        J->p[out_m] = total_nnz;
-    }
-    else /* BROADCAST_SCALAR */
-    {
-        tile_int(J->i, Jx->i, Jx->nnz, out_m);
-        int row_nnz = Jx->nnz;
-        for (int i = 0; i < out_m; i++)
-        {
-            J->p[i] = i * row_nnz;
-        }
-        J->p[out_m] = total_nnz;
-    }
-    return new_sparse_matrix(J);
-}
-
-static void sparse_broadcast_fill_values(matrix *self, broadcast_type type, int d1,
-                                         int d2, matrix *out)
-{
-    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    if (type == BROADCAST_ROW)
-    {
-        int acc = 0;
-        for (int i = 0; i < d2; i++)
-        {
-            int nnz_in_row = Jx->p[i + 1] - Jx->p[i];
-            tile_double(out->x + acc, Jx->x + Jx->p[i], nnz_in_row, d1);
-            acc += nnz_in_row * d1;
-        }
-    }
-    else if (type == BROADCAST_COL)
-    {
-        tile_double(out->x, Jx->x, Jx->nnz, d2);
-    }
-    else /* BROADCAST_SCALAR */
-    {
-        tile_double(out->x, Jx->x, Jx->nnz, d1 * d2);
-    }
-}
-
 static matrix *sparse_diag_vec_alloc(matrix *self)
 {
     CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
@@ -376,8 +288,6 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.transpose_fill_values = sparse_transpose_fill_values;
     sm->base.row_gather_alloc = sparse_row_gather_alloc;
     sm->base.row_gather_fill_values = sparse_row_gather_fill_values;
-    sm->base.broadcast_alloc = sparse_broadcast_alloc;
-    sm->base.broadcast_fill_values = sparse_broadcast_fill_values;
     sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
     sm->base.diag_vec_fill_values = sparse_diag_vec_fill_values;
     sm->base.sum_row_partition_alloc = sparse_sum_row_partition_alloc;

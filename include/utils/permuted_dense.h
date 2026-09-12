@@ -94,14 +94,6 @@ matrix *new_permuted_dense_full(int m, int n, const double *data);
    place; contents are NOT preserved. */
 void permuted_dense_ensure_kernel_dwork(const permuted_dense *A, size_t size);
 
-/* Allocate C = broadcast(A, type, d1, d2), where A and C are permuted dense. */
-matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
-                           int d2);
-
-/* Fill values of C = broadcast(A, type, d1, d2). */
-void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
-                              int d2, permuted_dense *C);
-
 /* Allocate C = A[map, :], where A and C are permuted dense. C stores map
    internally, so the fill takes none. */
 matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);

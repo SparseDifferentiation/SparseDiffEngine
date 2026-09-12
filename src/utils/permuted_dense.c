@@ -164,119 +164,6 @@ static void permuted_dense_vtable_row_gather_fill_values(const matrix *self,
     row_gather_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
 }
 
-matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
-                           int d2)
-{
-    int out_m = d1 * d2;
-
-    int new_m0;
-    if (type == BROADCAST_SCALAR)
-    {
-        new_m0 = (A->m0 == 0) ? 0 : out_m;
-    }
-    else if (type == BROADCAST_ROW)
-    {
-        new_m0 = d1 * A->m0;
-    }
-    else /* BROADCAST_COL */
-    {
-        new_m0 = d2 * A->m0;
-    }
-
-    if (new_m0 == 0)
-    {
-        return new_permuted_dense(out_m, A->base.n, 0, A->n0, NULL, A->col_perm,
-                                  NULL);
-    }
-
-    int *new_row_perm = (int *) sp_malloc(new_m0 * sizeof(int));
-    int k = 0;
-    if (type == BROADCAST_SCALAR)
-    {
-        for (int i = 0; i < out_m; i++)
-        {
-            new_row_perm[k++] = i;
-        }
-    }
-    else if (type == BROADCAST_ROW)
-    {
-        for (int j_ii = 0; j_ii < A->m0; j_ii++)
-        {
-            int j_old = A->row_perm[j_ii];
-            for (int i = 0; i < d1; i++)
-            {
-                new_row_perm[k++] = j_old * d1 + i;
-            }
-        }
-    }
-    else /* BROADCAST_COL */
-    {
-        for (int j = 0; j < d2; j++)
-        {
-            for (int ii_old = 0; ii_old < A->m0; ii_old++)
-            {
-                new_row_perm[k++] = j * d1 + A->row_perm[ii_old];
-            }
-        }
-    }
-
-    matrix *out = new_permuted_dense(out_m, A->base.n, new_m0, A->n0, new_row_perm,
-                                     A->col_perm, NULL);
-    sp_free(new_row_perm);
-    return out;
-}
-
-void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
-                              int d2, permuted_dense *C)
-{
-    if (A->m0 == 0)
-    {
-        return;
-    }
-    int n0 = A->n0;
-
-    if (type == BROADCAST_SCALAR)
-    {
-        for (int k = 0; k < C->m0; k++)
-        {
-            memcpy(C->X + k * n0, A->X, n0 * sizeof(double));
-        }
-    }
-    else if (type == BROADCAST_ROW)
-    {
-        /* output row k corresponds to child dense row (k / d1). */
-        (void) d2;
-        for (int k = 0; k < C->m0; k++)
-        {
-            memcpy(C->X + k * n0, A->X + (k / d1) * n0, n0 * sizeof(double));
-        }
-    }
-    else /* BROADCAST_COL */
-    {
-        (void) d1;
-        size_t child_block = A->m0 * n0;
-        for (int j = 0; j < d2; j++)
-        {
-            memcpy(C->X + j * child_block, A->X, child_block * sizeof(double));
-        }
-    }
-}
-
-static matrix *permuted_dense_vtable_broadcast_alloc(matrix *self,
-                                                     broadcast_type type, int d1,
-                                                     int d2)
-{
-    return broadcast_pd_alloc((const permuted_dense *) self, type, d1, d2);
-}
-
-static void permuted_dense_vtable_broadcast_fill_values(matrix *self,
-                                                        broadcast_type type, int d1,
-                                                        int d2, matrix *out)
-{
-    broadcast_pd_fill_values((const permuted_dense *) self, type, d1, d2,
-                             (permuted_dense *) out);
-}
-
 matrix *diag_vec_pd_alloc(const permuted_dense *A)
 {
     int n = A->base.m;
@@ -525,8 +412,6 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.transpose_fill_values = permuted_dense_vtable_transpose_fill_values;
     pd->base.row_gather_alloc = permuted_dense_vtable_row_gather_alloc;
     pd->base.row_gather_fill_values = permuted_dense_vtable_row_gather_fill_values;
-    pd->base.broadcast_alloc = permuted_dense_vtable_broadcast_alloc;
-    pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
     pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
     pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
     pd->base.sum_row_partition_alloc = permuted_dense_vtable_sum_row_partition_alloc;

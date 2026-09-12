@@ -23,14 +23,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Broadcast shape used by the broadcast atom and its vtable methods. */
-typedef enum
-{
-    BROADCAST_ROW,   /* (1, n) -> (m, n) */
-    BROADCAST_COL,   /* (m, 1) -> (m, n) */
-    BROADCAST_SCALAR /* (1, 1) -> (m, n) */
-} broadcast_type;
-
 /* Polymorphic matrix base. Concrete types embed `matrix` as their first
    member and implement the vtable slots below. Currently implemented:
        1. sparse_matrix  — generic CSR_matrix-backed matrix.
@@ -89,13 +81,6 @@ typedef matrix *(*matrix_row_gather_alloc_fn)(const matrix *A, const int *map,
 /* Fill values of C = A[map, :] */
 typedef void (*matrix_row_gather_fill_values_fn)(const matrix *A, matrix *C);
 
-/* Broadcast: lift the child Jacobian of a broadcast atom into the output
-   Jacobian. `type` is the broadcast variant; (d1, d2) is the output shape. */
-typedef matrix *(*matrix_broadcast_alloc_fn)(matrix *A, broadcast_type type, int d1,
-                                             int d2);
-typedef void (*matrix_broadcast_fill_values_fn)(matrix *A, broadcast_type type,
-                                                int d1, int d2, matrix *out);
-
 /* diag_vec: A is an (n, A->n) Jacobian for a length-n vector; output is
    (n*n, A->n) where row i lands at output row i*(n+1) (column-major
    diagonal positions). Other output rows are structurally zero. */
@@ -152,8 +137,6 @@ struct matrix
     /* Atom-specific ops */
     matrix_row_gather_alloc_fn row_gather_alloc;
     matrix_row_gather_fill_values_fn row_gather_fill_values;
-    matrix_broadcast_alloc_fn broadcast_alloc;
-    matrix_broadcast_fill_values_fn broadcast_fill_values;
     matrix_diag_vec_alloc_fn diag_vec_alloc;
     matrix_diag_vec_fill_values_fn diag_vec_fill_values;
     matrix_sum_row_partition_alloc_fn sum_row_partition_alloc;
