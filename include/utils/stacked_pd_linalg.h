@@ -32,6 +32,14 @@ matrix *transpose_spd_alloc(const stacked_pd *A);
 /* Fill values of C = transpose(A). */
 void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C);
 
+/* Allocate C = row-reduce of A (C[j, :] = sum of rows i with group[i] == j,
+   group[i] in [0, m_out)); C is a stacked_pd. C stores the reduction map
+   internally, so the fill takes none. */
+matrix *row_reduce_spd_alloc(const stacked_pd *A, const int *group, int m_out);
+
+/* Fill values of C = row-reduce of A. */
+void row_reduce_spd_fill_values(const stacked_pd *A, stacked_pd *C);
+
 /* Fill values of C = diag(d) @ A, where 'd' is 'global' with length A->m. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
 

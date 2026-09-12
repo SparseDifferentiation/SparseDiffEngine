@@ -76,7 +76,6 @@ typedef struct sum_expr
 {
     expr base;
     int axis;
-    int *idx_map; /* maps child nnz to summed-row positions */
 } sum_expr;
 
 /* trace */

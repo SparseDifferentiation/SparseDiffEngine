@@ -87,18 +87,14 @@ typedef void (*matrix_row_gather_fill_values_fn)(const matrix *A, matrix *C);
 typedef matrix *(*matrix_diag_vec_alloc_fn)(matrix *A);
 typedef void (*matrix_diag_vec_fill_values_fn)(matrix *A, matrix *out);
 
-/* Allocate C as a row-wise reduction of A. The reduction pattern is chosen by
-   axis:
-     - axis = -1: sum all rows of A. C has shape (1, A->n).
-     - axis = 0:  block-sum rows in consecutive groups of d1. C has shape (A->m
-                  / d1, A->n). C[j, :] = sum_{i in [j*d1, (j+1)*d1)} A[i, :].
-     - axis = 1:  stride-sum rows at spacing d1. C has shape (d1, A->n). C[j, :]
-                  = sum_{i : i % d1 == j} A[i, :].
+/* Allocate C = row-reduce of A: C[j, :] = sum of rows i with group[i] == j,
+   group[i] in [0, m_out). C stores the reduction map internally, so the fill
+   takes none. */
+typedef matrix *(*matrix_row_reduce_alloc_fn)(const matrix *A, const int *group,
+                                              int m_out);
 
-   Caller pre-allocates idx_map of size A->nnz that can be used to compute the
-   numerical result of the operation using via accumulation. */
-typedef matrix *(*matrix_sum_row_partition_alloc_fn)(matrix *A, int axis, int d1,
-                                                     int *idx_map);
+/* Fill values of C = row-reduce of A. */
+typedef void (*matrix_row_reduce_fill_values_fn)(const matrix *A, matrix *C);
 
 typedef void (*matrix_free_fn)(matrix *self);
 
@@ -139,7 +135,8 @@ struct matrix
     matrix_row_gather_fill_values_fn row_gather_fill_values;
     matrix_diag_vec_alloc_fn diag_vec_alloc;
     matrix_diag_vec_fill_values_fn diag_vec_fill_values;
-    matrix_sum_row_partition_alloc_fn sum_row_partition_alloc;
+    matrix_row_reduce_alloc_fn row_reduce_alloc;
+    matrix_row_reduce_fill_values_fn row_reduce_fill_values;
 
     /* Lifecycle */
     matrix_free_fn free_fn;
