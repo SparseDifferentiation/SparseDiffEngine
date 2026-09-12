@@ -535,11 +535,15 @@ void problem_jacobian(problem *prob)
 
         /* copy only when the constraint's jacobian values actually changed
            (an affine constraint's eval is a no-op after its first call and
-           leaves the version untouched until the next parameter update) */
+           leaves the version untouched until the next parameter update).
+           Copy through the CSR view: J's rows were laid out from to_csr in
+           problem_init_jacobian, and a stacked_pd's own value buffer is
+           block-major, which is not row order when its blocks interleave
+           rows. For sparse and permuted_dense the view aliases the buffer. */
         if (prob->constraint_jac_seen[i] != c->jacobian->values_version)
         {
-            memcpy(J->x + nnz_offset, c->jacobian->x,
-                   c->jacobian->nnz * sizeof(double));
+            const CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
+            memcpy(J->x + nnz_offset, Jc->x, Jc->nnz * sizeof(double));
             prob->constraint_jac_seen[i] = c->jacobian->values_version;
         }
         nnz_offset += c->jacobian->nnz;
