@@ -1450,64 +1450,6 @@ const char *test_spd_vtable_diag_vec(void)
     return 0;
 }
 
-/* broadcast_* on spd (BROADCAST_ROW): input Jac for a (1, 4) matrix has
-   m=4; broadcasting to (2, 4) gives output Jac with m=8. Per-block PD
-   rescales row_perm entries r -> {r*d1, r*d1+1, ..., r*d1+d1-1}. */
-const char *test_spd_vtable_broadcast_row(void)
-{
-    /* Input: 4x4 spd (Jac of a (1, 4) matrix-valued node), two blocks.
-       Block 0: rows {0, 1}, cols {0, 1}, X = [[1, 2], [3, 4]]
-       Block 1: rows {2, 3}, cols {2, 3}, X = [[5, 6], [7, 8]]              */
-    int row_perm_0[2] = {0, 1};
-    int col_perm_0[2] = {0, 1};
-    double X0[4] = {1.0, 2.0, 3.0, 4.0};
-    matrix *blk0 = new_permuted_dense(4, 4, 2, 2, row_perm_0, col_perm_0, X0);
-
-    int row_perm_1[2] = {2, 3};
-    int col_perm_1[2] = {2, 3};
-    double X1[4] = {5.0, 6.0, 7.0, 8.0};
-    matrix *blk1 = new_permuted_dense(4, 4, 2, 2, row_perm_1, col_perm_1, X1);
-
-    permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
-    matrix *M = new_stacked_pd(4, 4, 2, blocks, NULL, NULL);
-
-    /* d1=2, d2=4 -> output Jac is 8x4 (matrix value (2, 4) vectorized). */
-    matrix *C_m = M->broadcast_alloc(M, BROADCAST_ROW, 2, 4);
-    M->broadcast_fill_values(M, BROADCAST_ROW, 2, 4, C_m);
-    stacked_pd *C = (stacked_pd *) C_m;
-
-    mu_assert("n_blocks", C->n_blocks == 2);
-    mu_assert("base.m", C_m->m == 8);
-    mu_assert("base.n", C_m->n == 4);
-
-    /* Block 0: row_perm = {0*2, 0*2+1, 1*2, 1*2+1} = {0, 1, 2, 3}.
-       col_perm unchanged. X: each input row replicated d1=2 times.        */
-    permuted_dense *out0 = C->blocks[0];
-    int expected_row_perm_0[4] = {0, 1, 2, 3};
-    double expected_X0[8] = {1.0, 2.0, 1.0, 2.0, 3.0, 4.0, 3.0, 4.0};
-    mu_assert("out0 m0", out0->m0 == 4);
-    mu_assert("out0 n0", out0->n0 == 2);
-    mu_assert("out0 row_perm",
-              cmp_int_array(out0->row_perm, expected_row_perm_0, 4));
-    mu_assert("out0 col_perm", cmp_int_array(out0->col_perm, col_perm_0, 2));
-    mu_assert("out0 X", cmp_double_array(out0->X, expected_X0, 8));
-
-    /* Block 1: row_perm = {2*2, 2*2+1, 3*2, 3*2+1} = {4, 5, 6, 7}.        */
-    permuted_dense *out1 = C->blocks[1];
-    int expected_row_perm_1[4] = {4, 5, 6, 7};
-    double expected_X1[8] = {5.0, 6.0, 5.0, 6.0, 7.0, 8.0, 7.0, 8.0};
-    mu_assert("out1 m0", out1->m0 == 4);
-    mu_assert("out1 n0", out1->n0 == 2);
-    mu_assert("out1 row_perm",
-              cmp_int_array(out1->row_perm, expected_row_perm_1, 4));
-    mu_assert("out1 col_perm", cmp_int_array(out1->col_perm, col_perm_1, 2));
-    mu_assert("out1 X", cmp_double_array(out1->X, expected_X1, 8));
-
-    free_matrix(C_m);
-    free_matrix(M);
-    return 0;
-}
-
 /* ---------------------------------------------------------------- */
 /* BA_spd_* primitive tests: C = B @ A where B is stacked_pd and A is */
 /* CSC / PD / spd. Kept as siblings of the BTA_spd_* family in the    */

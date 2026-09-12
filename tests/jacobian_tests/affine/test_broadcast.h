@@ -6,6 +6,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"
+#include "utils/permuted_dense.h"
 
 const char *test_broadcast_row_jacobian(void)
 {
@@ -155,5 +156,68 @@ const char *test_double_broadcast(void)
     // cmp_int_array(bcast->jacobian->to_csr(bcast->jacobian)->i, // expected_i, 6));
 
     free_expr(sum);
+    return 0;
+}
+
+/* ROW broadcast of a pd child stays pd. AU = A @ u (A 3x2 dense, u 2x1) is a
+   (3, 1) pd Jacobian; reshape to (1, 3) keeps it pd; broadcast to (2, 3) puts
+   child row j at output rows i + 2j, i.e. output row r copies A row r / 2. */
+const char *test_broadcast_row_jacobian_pd_preserved(void)
+{
+    double A[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    expr *u = new_variable(2, 1, 0, 2);
+    expr *AU = new_left_matmul_dense(NULL, u, 3, 2, A);
+    expr *R = new_reshape(AU, 1, 3);
+    expr *B = new_broadcast(R, 2, 3);
+
+    double u_vals[2] = {0.5, -1.5};
+    jacobian_init(B);
+    B->forward(B, u_vals);
+    eval_jacobian(B);
+
+    mu_assert("broadcast row Jacobian should be PD", B->jacobian->is_permuted_dense);
+    permuted_dense *pd = (permuted_dense *) B->jacobian;
+    mu_assert("shape", B->jacobian->m == 6 && B->jacobian->n == 2);
+    mu_assert("m0", pd->m0 == 6);
+    mu_assert("n0", pd->n0 == 2);
+    int expected_row_perm[6] = {0, 1, 2, 3, 4, 5};
+    mu_assert("row_perm", cmp_int_array(pd->row_perm, expected_row_perm, 6));
+    for (int r = 0; r < 6; r++)
+    {
+        mu_assert("X row must be A row r / 2",
+                  cmp_double_array(pd->X + 2 * r, A + 2 * (r / 2), 2));
+    }
+
+    free_expr(B);
+    return 0;
+}
+
+/* COL broadcast of a pd child stays pd. AU = A @ u (A 2x2 dense, u 2x1) is a
+   (2, 1) pd Jacobian; broadcast to (2, 3) puts child row i at output rows
+   i + 2j, i.e. output row r copies A row r % 2. */
+const char *test_broadcast_col_jacobian_pd_preserved(void)
+{
+    double A[4] = {1.0, 2.0, 3.0, 4.0};
+    expr *u = new_variable(2, 1, 0, 2);
+    expr *AU = new_left_matmul_dense(NULL, u, 2, 2, A);
+    expr *B = new_broadcast(AU, 2, 3);
+
+    double u_vals[2] = {0.5, -1.5};
+    jacobian_init(B);
+    B->forward(B, u_vals);
+    eval_jacobian(B);
+
+    mu_assert("broadcast col Jacobian should be PD", B->jacobian->is_permuted_dense);
+    permuted_dense *pd = (permuted_dense *) B->jacobian;
+    mu_assert("shape", B->jacobian->m == 6 && B->jacobian->n == 2);
+    mu_assert("m0", pd->m0 == 6);
+    mu_assert("n0", pd->n0 == 2);
+    for (int r = 0; r < 6; r++)
+    {
+        mu_assert("X row must be A row r % 2",
+                  cmp_double_array(pd->X + 2 * r, A + 2 * (r % 2), 2));
+    }
+
+    free_expr(B);
     return 0;
 }

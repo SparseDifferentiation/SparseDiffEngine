@@ -216,6 +216,14 @@ typedef struct index_expr
     bool has_duplicates; /* True if indices have duplicates (affects Hessian path) */
 } index_expr;
 
+/* Broadcast shape used by the broadcast atom. */
+typedef enum
+{
+    BROADCAST_ROW,   /* (1, n) -> (m, n) */
+    BROADCAST_COL,   /* (m, 1) -> (m, n) */
+    BROADCAST_SCALAR /* (1, 1) -> (m, n) */
+} broadcast_type;
+
 typedef struct broadcast_expr
 {
     expr base;

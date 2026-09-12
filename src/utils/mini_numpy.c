@@ -38,14 +38,6 @@ void tile_double(double *result, const double *a, int len, int tiles)
     }
 }
 
-void tile_int(int *result, const int *a, int len, int tiles)
-{
-    for (int i = 0; i < tiles; i++)
-    {
-        memcpy(result + i * len, a, len * sizeof(int));
-    }
-}
-
 void scaled_ones(double *result, int size, double value)
 {
     for (int i = 0; i < size; i++)
