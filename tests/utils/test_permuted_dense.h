@@ -387,40 +387,6 @@ const char *test_permuted_dense_row_gather(void)
     return 0;
 }
 
-/* PD promote_alloc / promote_fill_values: tile a 1-row PD into a
-   `size`-row PD where every row is a copy of the source row. */
-const char *test_permuted_dense_promote(void)
-{
-    /* Source PD, shape (1, 5), single dense row at row 0, cols {1, 3}. */
-    int row_perm[1] = {0};
-    int col_perm[2] = {1, 3};
-    double X[2] = {7.0, 9.0};
-    matrix *M = new_permuted_dense(1, 5, 1, 2, row_perm, col_perm, X);
-
-    matrix *out = M->promote_alloc(M, 4);
-    permuted_dense *out_pd = (permuted_dense *) out;
-
-    mu_assert("out m", out->m == 4);
-    mu_assert("out n", out->n == 5);
-    mu_assert("out nnz", out->nnz == 8); /* m0=4 * n0=2 */
-    mu_assert("m0", out_pd->m0 == 4);
-    mu_assert("n0", out_pd->n0 == 2);
-
-    int expected_row_perm[4] = {0, 1, 2, 3};
-    mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_row_perm, 4));
-    int expected_col_perm[2] = {1, 3};
-    mu_assert("col_perm", cmp_int_array(out_pd->col_perm, expected_col_perm, 2));
-
-    M->promote_fill_values(M, out);
-
-    double expected_X[8] = {7.0, 9.0, 7.0, 9.0, 7.0, 9.0, 7.0, 9.0};
-    mu_assert("values", cmp_double_array(out_pd->X, expected_X, 8));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
 /* PD broadcast_alloc / broadcast_fill_values, SCALAR variant.
    (1, 5) PD with single dense row -> (d1*d2, 5) PD with that row tiled. */
 const char *test_permuted_dense_broadcast_scalar(void)

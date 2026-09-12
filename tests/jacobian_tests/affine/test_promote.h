@@ -6,6 +6,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "test_helpers.h"
+#include "utils/permuted_dense.h"
 
 const char *test_promote_scalar_jacobian(void)
 {
@@ -56,5 +57,35 @@ const char *test_promote_scalar_to_matrix_jacobian(void)
               cmp_sparsity(promote_node->jacobian, expected_p, expected_i, 6, 6));
 
     free_expr(promote_node);
+    return 0;
+}
+
+/* A pd child Jacobian stays pd through promote: AU = A @ u with A a 1x2 dense
+   constant and u a 2x1 variable has a (1, 2) pd Jacobian with m0 = 1;
+   promote(AU, 3, 2) gathers that single row six times. */
+const char *test_promote_jacobian_pd_preserved(void)
+{
+    double A[2] = {1.5, -2.0};
+    expr *u = new_variable(2, 1, 0, 2);
+    expr *AU = new_left_matmul_dense(NULL, u, 1, 2, A);
+    expr *P = new_promote(AU, 3, 2);
+
+    double u_vals[2] = {0.5, -1.5};
+    jacobian_init(P);
+    P->forward(P, u_vals);
+    eval_jacobian(P);
+
+    mu_assert("promote Jacobian should be PD", P->jacobian->is_permuted_dense);
+    permuted_dense *pd = (permuted_dense *) P->jacobian;
+    mu_assert("shape", P->jacobian->m == 6 && P->jacobian->n == 2);
+    mu_assert("m0", pd->m0 == 6);
+    mu_assert("n0", pd->n0 == 2);
+    int expected_row_perm[6] = {0, 1, 2, 3, 4, 5};
+    mu_assert("row_perm", cmp_int_array(pd->row_perm, expected_row_perm, 6));
+    double expected_X[12] = {1.5, -2.0, 1.5, -2.0, 1.5, -2.0,
+                             1.5, -2.0, 1.5, -2.0, 1.5, -2.0};
+    mu_assert("X values", cmp_double_array(pd->X, expected_X, 12));
+
+    free_expr(P);
     return 0;
 }

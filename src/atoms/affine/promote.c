@@ -40,9 +40,11 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
     jacobian_init(x);
 
-    /* allocate sparsity for an (node->size, n_vars) matrix whose rows are all
-       copies of the child's single row; output type matches child's type. */
-    node->jacobian = x->jacobian->promote_alloc(x->jacobian, node->size);
+    /* every output row is the child's single row (row 0): a row gather with an
+       all-zero map. The map is bound to node->jacobian, so it is not kept. */
+    int *map = (int *) sp_calloc(node->size, sizeof(int));
+    node->jacobian = x->jacobian->row_gather_alloc(x->jacobian, map, node->size);
+    sp_free(map);
 }
 
 static void eval_jacobian_impl(expr *node)
@@ -50,7 +52,8 @@ static void eval_jacobian_impl(expr *node)
     eval_jacobian(node->left);
 
     /* tile the child's single row into the preallocated output. */
-    node->left->jacobian->promote_fill_values(node->left->jacobian, node->jacobian);
+    node->left->jacobian->row_gather_fill_values(node->left->jacobian,
+                                                 node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)

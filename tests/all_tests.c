@@ -245,6 +245,7 @@ int main(void)
     mu_run_test(test_sum_of_index, tests_run);
     mu_run_test(test_promote_scalar_jacobian, tests_run);
     mu_run_test(test_promote_scalar_to_matrix_jacobian, tests_run);
+    mu_run_test(test_promote_jacobian_pd_preserved, tests_run);
     mu_run_test(test_broadcast_row_jacobian, tests_run);
     mu_run_test(test_broadcast_col_jacobian, tests_run);
     mu_run_test(test_broadcast_scalar_to_matrix_jacobian, tests_run);
@@ -444,7 +445,6 @@ int main(void)
 #ifdef SP_TRACK_MEMORY
     mu_run_test(test_row_gather_spd_fill_no_transient_alloc, tests_run);
 #endif
-    mu_run_test(test_permuted_dense_promote, tests_run);
     mu_run_test(test_permuted_dense_broadcast_scalar, tests_run);
     mu_run_test(test_permuted_dense_broadcast_row, tests_run);
     mu_run_test(test_permuted_dense_broadcast_col, tests_run);
@@ -559,7 +559,6 @@ int main(void)
     mu_run_test(test_spd_vtable_transpose, tests_run);
     mu_run_test(test_spd_vtable_refresh_csc_values_noop, tests_run);
     mu_run_test(test_spd_vtable_row_gather, tests_run);
-    mu_run_test(test_spd_vtable_promote, tests_run);
     mu_run_test(test_spd_vtable_diag_vec, tests_run);
     mu_run_test(test_spd_vtable_broadcast_row, tests_run);
     mu_run_test(test_YT_kron_I, tests_run);

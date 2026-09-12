@@ -89,12 +89,6 @@ typedef matrix *(*matrix_row_gather_alloc_fn)(const matrix *A, const int *map,
 /* Fill values of C = A[map, :] */
 typedef void (*matrix_row_gather_fill_values_fn)(const matrix *A, matrix *C);
 
-/* Row-tiling for the promote atom: A must be a 1-row matrix; returns
-   a new matrix of shape (size, A->n) where every row is a copy of A's
-   single row. */
-typedef matrix *(*matrix_promote_alloc_fn)(matrix *A, int size);
-typedef void (*matrix_promote_fill_values_fn)(matrix *A, matrix *out);
-
 /* Broadcast: lift the child Jacobian of a broadcast atom into the output
    Jacobian. `type` is the broadcast variant; (d1, d2) is the output shape. */
 typedef matrix *(*matrix_broadcast_alloc_fn)(matrix *A, broadcast_type type, int d1,
@@ -158,8 +152,6 @@ struct matrix
     /* Atom-specific ops */
     matrix_row_gather_alloc_fn row_gather_alloc;
     matrix_row_gather_fill_values_fn row_gather_fill_values;
-    matrix_promote_alloc_fn promote_alloc;
-    matrix_promote_fill_values_fn promote_fill_values;
     matrix_broadcast_alloc_fn broadcast_alloc;
     matrix_broadcast_fill_values_fn broadcast_fill_values;
     matrix_diag_vec_alloc_fn diag_vec_alloc;

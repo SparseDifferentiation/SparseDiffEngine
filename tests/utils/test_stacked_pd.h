@@ -1395,43 +1395,6 @@ const char *test_spd_vtable_row_gather(void)
     return 0;
 }
 
-/* promote_* on spd: replicate the single row across `size` rows; per-block
-   delegation drops empty blocks so output has at most one block. */
-const char *test_spd_vtable_promote(void)
-{
-    /* 1x4 spd, single block carries row 0 at cols {0, 2} with values
-       [9, 11]. Promote to size=3.                                         */
-    int row_perm[1] = {0};
-    int col_perm[2] = {0, 2};
-    double X[2] = {9.0, 11.0};
-    matrix *blk = new_permuted_dense(1, 4, 1, 2, row_perm, col_perm, X);
-
-    permuted_dense *blocks[1] = {(permuted_dense *) blk};
-    matrix *M = new_stacked_pd(1, 4, 1, blocks, NULL, NULL);
-
-    matrix *C_m = M->promote_alloc(M, 3);
-    M->promote_fill_values(M, C_m);
-    stacked_pd *C = (stacked_pd *) C_m;
-
-    mu_assert("n_blocks", C->n_blocks == 1);
-    mu_assert("base.m", C_m->m == 3);
-    mu_assert("base.n", C_m->n == 4);
-
-    permuted_dense *out0 = C->blocks[0];
-    int expected_row_perm[3] = {0, 1, 2};
-    int expected_col_perm[2] = {0, 2};
-    double expected_X[6] = {9.0, 11.0, 9.0, 11.0, 9.0, 11.0};
-    mu_assert("out0 m0", out0->m0 == 3);
-    mu_assert("out0 n0", out0->n0 == 2);
-    mu_assert("out0 row_perm", cmp_int_array(out0->row_perm, expected_row_perm, 3));
-    mu_assert("out0 col_perm", cmp_int_array(out0->col_perm, expected_col_perm, 2));
-    mu_assert("out0 X", cmp_double_array(out0->X, expected_X, 6));
-
-    free_matrix(C_m);
-    free_matrix(M);
-    return 0;
-}
-
 /* diag_vec_* on spd: per-block row_perm entries are rescaled r -> r*(n+1);
    X buffers are unchanged; structure is preserved (same n_blocks). */
 const char *test_spd_vtable_diag_vec(void)

@@ -185,32 +185,6 @@ static void sparse_row_gather_fill_values(const matrix *self, matrix *out)
     }
 }
 
-static matrix *sparse_promote_alloc(matrix *self, int size)
-{
-    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    int row_nnz = Jx->nnz;
-    CSR_matrix *J = new_CSR_matrix(size, self->n, size * row_nnz);
-
-    for (int row = 0; row < size; row++)
-    {
-        J->p[row] = row * row_nnz;
-        memcpy(J->i + row * row_nnz, Jx->i, row_nnz * sizeof(int));
-    }
-    J->p[size] = size * row_nnz;
-    J->nnz = size * row_nnz;
-    return new_sparse_matrix(J);
-}
-
-static void sparse_promote_fill_values(matrix *self, matrix *out)
-{
-    CSR_matrix *Jx = ((sparse_matrix *) self)->csr;
-    int row_nnz = Jx->nnz;
-    for (int row = 0; row < out->m; row++)
-    {
-        memcpy(out->x + row * row_nnz, Jx->x, row_nnz * sizeof(double));
-    }
-}
-
 static matrix *sparse_broadcast_alloc(matrix *self, broadcast_type type, int d1,
                                       int d2)
 {
@@ -402,8 +376,6 @@ static void wire_vtable(sparse_matrix *sm)
     sm->base.transpose_fill_values = sparse_transpose_fill_values;
     sm->base.row_gather_alloc = sparse_row_gather_alloc;
     sm->base.row_gather_fill_values = sparse_row_gather_fill_values;
-    sm->base.promote_alloc = sparse_promote_alloc;
-    sm->base.promote_fill_values = sparse_promote_fill_values;
     sm->base.broadcast_alloc = sparse_broadcast_alloc;
     sm->base.broadcast_fill_values = sparse_broadcast_fill_values;
     sm->base.diag_vec_alloc = sparse_diag_vec_alloc;
