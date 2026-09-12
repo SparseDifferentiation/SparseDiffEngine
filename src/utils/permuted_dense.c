@@ -120,7 +120,7 @@ matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out)
     int new_m0 = 0;
     for (int i = 0; i < m_out; i++)
     {
-        int ii = map[i] < 0 ? -1 : A->row_inv[map[i]];
+        int ii = A->row_inv[map[i]];
         if (ii >= 0)
         {
             new_row_perm[new_m0] = i;

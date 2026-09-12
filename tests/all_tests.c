@@ -439,7 +439,6 @@ int main(void)
     mu_run_test(test_permuted_dense_col_inv, tests_run);
     mu_run_test(test_permuted_dense_row_gather, tests_run);
     mu_run_test(test_row_gather_sparse, tests_run);
-    mu_run_test(test_row_gather_sparse_all_empty, tests_run);
     mu_run_test(test_row_gather_pd_vs_sparse_twin, tests_run);
     mu_run_test(test_row_gather_spd_vs_sparse_twin, tests_run);
 #ifdef SP_TRACK_MEMORY

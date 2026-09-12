@@ -13,9 +13,8 @@
 
 /* row_gather_alloc / row_gather_fill_values across the three matrix kinds.
    The map contract under test: map[i] in [0, A->m) copies source row map[i],
-   map[i] == -1 leaves output row i structurally empty, repeats are allowed,
-   and the map is bound to the result at alloc time (the caller's copy is
-   dead afterwards). */
+   repeats are allowed, and the map is bound to the result at alloc time (the
+   caller's copy is dead afterwards). */
 
 /* Shared 4x5 CSR source with an empty row 2:
      row 0: (0: 1.0) (3: 2.0)
@@ -82,21 +81,21 @@ static int row_gather_same_csr(matrix *X, matrix *Y)
            cmp_int_array(a->i, b->i, a->nnz) && cmp_double_array(a->x, b->x, a->nnz);
 }
 
-/* map = [3, -1, 0, 3, 2, 1]: a permutation, a repeat (row 3 twice), a -1, and
-   the empty source row 2. Output is 6x5 with nnz 3+0+2+3+0+2 = 10. */
+/* map = [3, 0, 3, 2, 1]: a permutation, a repeat (row 3 twice), and the empty
+   source row 2. Output is 5x5 with nnz 3+2+3+0+2 = 10. */
 const char *test_row_gather_sparse(void)
 {
     matrix *A = row_gather_sparse_fixture();
-    int map[6] = {3, -1, 0, 3, 2, 1};
-    matrix *C = A->row_gather_alloc(A, map, 6);
+    int map[5] = {3, 0, 3, 2, 1};
+    matrix *C = A->row_gather_alloc(A, map, 5);
 
-    int exp_p[7] = {0, 3, 3, 5, 8, 8, 10};
+    int exp_p[6] = {0, 3, 5, 8, 8, 10};
     int exp_i[10] = {0, 2, 4, 0, 3, 0, 2, 4, 1, 4};
-    mu_assert("shape", C->m == 6 && C->n == 5);
-    mu_assert("sparsity", cmp_sparsity(C, exp_p, exp_i, 6, 10));
+    mu_assert("shape", C->m == 5 && C->n == 5);
+    mu_assert("sparsity", cmp_sparsity(C, exp_p, exp_i, 5, 10));
 
     /* the map is bound at alloc time: clobbering the caller's copy is fine */
-    for (int k = 0; k < 6; k++) map[k] = -7;
+    for (int k = 0; k < 5; k++) map[k] = -7;
 
     row_gather_poison(C);
     A->row_gather_fill_values(A, C);
@@ -114,22 +113,9 @@ const char *test_row_gather_sparse(void)
     return 0;
 }
 
-const char *test_row_gather_sparse_all_empty(void)
-{
-    matrix *A = row_gather_sparse_fixture();
-    int map[3] = {-1, -1, -1};
-    matrix *C = A->row_gather_alloc(A, map, 3);
-    int exp_p[4] = {0, 0, 0, 0};
-    mu_assert("empty structure", cmp_sparsity(C, exp_p, NULL, 3, 0));
-    A->row_gather_fill_values(A, C); /* nothing to write; must not touch A */
-    free_matrix(C);
-    free_matrix(A);
-    return 0;
-}
-
-/* pd 6x5 with rows {1, 3, 4} x cols {0, 2}. The map hits a row outside
-   row_perm (0 and 5), repeats row 3, and contains a -1. Result must stay a pd
-   and agree entrywise with the same gather on a sparse twin. */
+/* pd 6x5 with rows {1, 3, 4} x cols {0, 2}. The map hits rows outside
+   row_perm (0 and 5) and repeats row 3. Result must stay a pd and agree
+   entrywise with the same gather on a sparse twin. */
 const char *test_row_gather_pd_vs_sparse_twin(void)
 {
     int row_perm[3] = {1, 3, 4};
@@ -138,9 +124,9 @@ const char *test_row_gather_pd_vs_sparse_twin(void)
     matrix *A = new_permuted_dense(6, 5, 3, 2, row_perm, col_perm, X);
     matrix *A_tw = row_gather_sparse_twin(A);
 
-    int map[7] = {0, 3, -1, 1, 3, 5, 4};
-    matrix *C = A->row_gather_alloc(A, map, 7);
-    matrix *C_tw = A_tw->row_gather_alloc(A_tw, map, 7);
+    int map[6] = {0, 3, 1, 3, 5, 4};
+    matrix *C = A->row_gather_alloc(A, map, 6);
+    matrix *C_tw = A_tw->row_gather_alloc(A_tw, map, 6);
     mu_assert("kind preserved", C->is_permuted_dense);
     mu_assert("m0", ((permuted_dense *) C)->m0 == 4);
     mu_assert("nnz", C->nnz == 8);
@@ -168,29 +154,28 @@ const char *test_row_gather_pd_vs_sparse_twin(void)
     return 0;
 }
 
-/* spd fixture above; map = [4, 2, -1, 4, 0, 3, 1, 2]:
-     pos 0, 3   -> row 4 (block 0, twice)
-     pos 4      -> row 0 (block 0)
-     pos 1, 7   -> row 2 (block 1, twice)
-     pos 5      -> row 3 (block 1)
-     pos 2      -> -1
-     pos 6      -> row 1 (no block)
+/* spd fixture above; map = [4, 2, 4, 0, 3, 1, 2]:
+     pos 0, 2   -> row 4 (block 0, twice)
+     pos 3      -> row 0 (block 0)
+     pos 1, 6   -> row 2 (block 1, twice)
+     pos 4      -> row 3 (block 1)
+     pos 5      -> row 1 (no block)
    Block 2 gets no hits and must be dropped; output blocks stay row-disjoint. */
 const char *test_row_gather_spd_vs_sparse_twin(void)
 {
     matrix *A = row_gather_spd_fixture();
     matrix *A_tw = row_gather_sparse_twin(A);
 
-    int map[8] = {4, 2, -1, 4, 0, 3, 1, 2};
-    matrix *C = A->row_gather_alloc(A, map, 8);
-    matrix *C_tw = A_tw->row_gather_alloc(A_tw, map, 8);
+    int map[7] = {4, 2, 4, 0, 3, 1, 2};
+    matrix *C = A->row_gather_alloc(A, map, 7);
+    matrix *C_tw = A_tw->row_gather_alloc(A_tw, map, 7);
     mu_assert("kind preserved", C->is_stacked_pd);
     stacked_pd *C_spd = (stacked_pd *) C;
     mu_assert("empty block dropped", C_spd->n_blocks == 2);
     mu_assert("src_block_idx",
               C_spd->src_block_idx[0] == 0 && C_spd->src_block_idx[1] == 1);
-    int exp_rp0[3] = {0, 3, 4};
-    int exp_rp1[3] = {1, 5, 7};
+    int exp_rp0[3] = {0, 2, 3};
+    int exp_rp1[3] = {1, 4, 6};
     mu_assert("block 0 row_perm",
               C_spd->blocks[0]->m0 == 3 &&
                   cmp_int_array(C_spd->blocks[0]->row_perm, exp_rp0, 3));
@@ -238,8 +223,8 @@ static void run_row_gather_fill(const void *ctx)
 const char *test_row_gather_spd_fill_no_transient_alloc(void)
 {
     matrix *A = row_gather_spd_fixture();
-    int map[8] = {4, 2, -1, 4, 0, 3, 1, 2};
-    matrix *C = A->row_gather_alloc(A, map, 8);
+    int map[7] = {4, 2, 4, 0, 3, 1, 2};
+    matrix *C = A->row_gather_alloc(A, map, 7);
     row_gather_fill_args args = {A, C};
     run_row_gather_fill(&args); /* warm-up */
     mu_assert("spd row_gather fill must not allocate",

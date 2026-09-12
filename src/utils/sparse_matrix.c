@@ -136,13 +136,12 @@ static matrix *sparse_row_gather_alloc(const matrix *self, const int *map, int m
     /* Exact output nnz: sum the selected rows' nnz. Jx->nnz is NOT an upper
        bound — repeated map entries select the same source row more than once
        (cvxpy#3442). Repeated gathers of dense rows can push the true count
-       past INT_MAX, which a CSR cannot represent, so fail before wrapping.
-       map[i] == -1 selects nothing and must be branched before touching p. */
+       past INT_MAX, which a CSR cannot represent, so fail before wrapping. */
     int nnz = 0;
     for (int i = 0; i < m_out; i++)
     {
         int row = map[i];
-        int len = row < 0 ? 0 : Jx->p[row + 1] - Jx->p[row];
+        int len = Jx->p[row + 1] - Jx->p[row];
         if (len > INT_MAX - nnz)
         {
             fprintf(stderr, "Error in sparse_row_gather_alloc: gathered nnz "
@@ -157,11 +156,8 @@ static matrix *sparse_row_gather_alloc(const matrix *self, const int *map, int m
     for (int i = 0; i < m_out; i++)
     {
         int row = map[i];
-        int len = row < 0 ? 0 : Jx->p[row + 1] - Jx->p[row];
-        if (len > 0)
-        {
-            memcpy(J->i + J->p[i], Jx->i + Jx->p[row], len * sizeof(int));
-        }
+        int len = Jx->p[row + 1] - Jx->p[row];
+        memcpy(J->i + J->p[i], Jx->i + Jx->p[row], len * sizeof(int));
         J->p[i + 1] = J->p[i] + len;
     }
     J->nnz = J->p[m_out];
@@ -184,10 +180,8 @@ static void sparse_row_gather_fill_values(const matrix *self, matrix *out)
     assert(map != NULL && self->n == out->n);
     for (int i = 0; i < J->m; i++)
     {
-        int row = map[i];
-        if (row < 0) continue;
         int len = J->p[i + 1] - J->p[i];
-        memcpy(J->x + J->p[i], Jx->x + Jx->p[row], len * sizeof(double));
+        memcpy(J->x + J->p[i], Jx->x + Jx->p[map[i]], len * sizeof(double));
     }
 }
 

@@ -1323,7 +1323,7 @@ const char *test_spd_vtable_refresh_csc_values_noop(void)
 
 /* row_gather on spd: each output row is routed to the source block (if any)
    that carries its source row; per-block row_gather_pd_* is reused; empty
-   result blocks are dropped; repeats and -1 entries are allowed. */
+   result blocks are dropped; repeats are allowed. */
 const char *test_spd_vtable_row_gather(void)
 {
     /* 6x4 spd:
@@ -1342,20 +1342,20 @@ const char *test_spd_vtable_row_gather(void)
     permuted_dense *blocks[2] = {(permuted_dense *) blk0, (permuted_dense *) blk1};
     matrix *M = new_stacked_pd(6, 4, 2, blocks, NULL, NULL);
 
-    /* map = [3, 0, 5, 1, -1, 3]: row 3 -> blk1 (twice, positions 0 and 5),
-       rows 0/1 -> blk0 (positions 1 and 3), row 5 -> none, position 4 = -1.
-       Expected output (6 rows, positions 2 and 4 empty):
+    /* map = [3, 0, 5, 1, 3]: row 3 -> blk1 (twice, positions 0 and 4),
+       rows 0/1 -> blk0 (positions 1 and 3), row 5 -> none.
+       Expected output (5 rows, position 2 empty):
          output row 0 = src row 3 = blk1 row [7, 8] in cols {1,3}
          output row 1 = src row 0 = blk0 row [1, 2] in cols {0,2}
          output row 3 = src row 1 = blk0 row [3, 4] in cols {0,2}
-         output row 5 = src row 3 = blk1 row [7, 8] in cols {1,3}        */
-    int map[6] = {3, 0, 5, 1, -1, 3};
-    matrix *C_m = M->row_gather_alloc(M, map, 6);
+         output row 4 = src row 3 = blk1 row [7, 8] in cols {1,3}        */
+    int map[5] = {3, 0, 5, 1, 3};
+    matrix *C_m = M->row_gather_alloc(M, map, 5);
     M->row_gather_fill_values(M, C_m);
     stacked_pd *C = (stacked_pd *) C_m;
 
     mu_assert("n_blocks", C->n_blocks == 2);
-    mu_assert("base.m", C_m->m == 6);
+    mu_assert("base.m", C_m->m == 5);
     mu_assert("base.n", C_m->n == 4);
 
     /* blk0 is hit at positions 1 and 3: output block 0 carries
@@ -1372,10 +1372,10 @@ const char *test_spd_vtable_row_gather(void)
               cmp_int_array(out0->col_perm, expected_col_perm_0, 2));
     mu_assert("out0 X", cmp_double_array(out0->X, expected_X0, 4));
 
-    /* blk1 is hit at positions 0 and 5, both from its row 1: output block 1
-       carries row_perm={0,5}, col_perm={1,3}, X=[7,8,7,8]. */
+    /* blk1 is hit at positions 0 and 4, both from its row 1: output block 1
+       carries row_perm={0,4}, col_perm={1,3}, X=[7,8,7,8]. */
     permuted_dense *out1 = C->blocks[1];
-    int expected_row_perm_1[2] = {0, 5};
+    int expected_row_perm_1[2] = {0, 4};
     int expected_col_perm_1[2] = {1, 3};
     double expected_X1[4] = {7.0, 8.0, 7.0, 8.0};
     mu_assert("out1 m0", out1->m0 == 2);

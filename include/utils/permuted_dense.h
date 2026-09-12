@@ -103,9 +103,9 @@ void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int 
                               int d2, permuted_dense *C);
 
 /* Allocate C = A[map, :], where A and C are permuted dense. See
-   matrix_row_gather_alloc_fn for the map contract (-1 = empty row, repeats
-   allowed). C's row_perm is the set of output positions whose map entry hits
-   A->row_perm; C->bound_iwork holds the matching source dense rows. */
+   matrix_row_gather_alloc_fn for the map contract (repeats allowed). C's
+   row_perm is the set of output positions whose map entry hits A->row_perm;
+   C->bound_iwork holds the matching source dense rows. */
 matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);
 
 /* Fill values of C = A[map, :]; C must come from row_gather_pd_alloc(A, ...). */

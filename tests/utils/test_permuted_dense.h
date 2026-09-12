@@ -343,7 +343,7 @@ const char *test_permuted_dense_col_inv(void)
 
 /* PD row_gather_alloc / row_gather_fill_values: output must be another PD whose
    row_perm is the set of output positions where map[i] hits the source
-   row_perm, with repeats and -1 entries handled. */
+   row_perm, with repeats handled. */
 const char *test_permuted_dense_row_gather(void)
 {
     /* Source PD, shape (6, 4), dense block at rows {1, 3, 4} x cols {0, 2}. */
@@ -352,25 +352,24 @@ const char *test_permuted_dense_row_gather(void)
     double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
 
-    /* map = [0, 3, 1, -1, 4, 3, 5]:
+    /* map = [0, 3, 1, 4, 3, 5]:
        - position 0 -> source row 0 (not in row_perm, zero)
        - position 1 -> source row 3 (ii=1, dense)
        - position 2 -> source row 1 (ii=0, dense)
-       - position 3 -> -1 (structurally empty)
-       - position 4 -> source row 4 (ii=2, dense)
-       - position 5 -> source row 3 again (ii=1, dense)
-       - position 6 -> source row 5 (not in row_perm, zero) */
-    int map[7] = {0, 3, 1, -1, 4, 3, 5};
-    matrix *out = M->row_gather_alloc(M, map, 7);
+       - position 3 -> source row 4 (ii=2, dense)
+       - position 4 -> source row 3 again (ii=1, dense)
+       - position 5 -> source row 5 (not in row_perm, zero) */
+    int map[6] = {0, 3, 1, 4, 3, 5};
+    matrix *out = M->row_gather_alloc(M, map, 6);
     permuted_dense *out_pd = (permuted_dense *) out;
 
-    mu_assert("out m", out->m == 7);
+    mu_assert("out m", out->m == 6);
     mu_assert("out n", out->n == 4);
     mu_assert("out nnz", out->nnz == 8); /* m0=4 * n0=2 */
     mu_assert("m0", out_pd->m0 == 4);
     mu_assert("n0", out_pd->n0 == 2);
 
-    int expected_row_perm[4] = {1, 2, 4, 5};
+    int expected_row_perm[4] = {1, 2, 3, 4};
     mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_row_perm, 4));
     int expected_col_perm[2] = {0, 2};
     mu_assert("col_perm", cmp_int_array(out_pd->col_perm, expected_col_perm, 2));
