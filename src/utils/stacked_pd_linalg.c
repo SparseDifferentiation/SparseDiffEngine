@@ -154,13 +154,13 @@ static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *spd_iter,
     coalesce_spd_fill_values_accumulate(raw, C);
 }
 
-// ------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 // C = row-reduce of stacked_pd A: C[j, :] = sum of rows i with group[i] == j.
 // Each block is reduced on its own into a PD (rows of one block that share a
 // group are summed there); the partials may overlap in rows and cells across
 // blocks, so they go through the coalesce-accumulate skeleton above. The result
 // is always a stacked_pd.
-// ------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------
 typedef struct
 {
     const int *group;

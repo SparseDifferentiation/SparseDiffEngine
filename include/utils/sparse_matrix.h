@@ -33,8 +33,9 @@ typedef struct sparse_matrix
     /* Int state bound by the alloc that produced this matrix and read by the
        matching fill: transpose_alloc stores csr->n scratch for
        transpose_fill_values; row_gather_alloc stores the base.m-long row map
-       for row_gather_fill_values. NULL otherwise; never touched by any other
-       kernel. */
+       for row_gather_fill_values; row_reduce_alloc stores the source-nnz-long
+       position map for row_reduce_fill_values. NULL otherwise; never touched
+       by any other kernel. */
     int *bound_iwork;
 } sparse_matrix;
 

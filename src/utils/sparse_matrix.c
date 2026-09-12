@@ -280,9 +280,9 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
     for (int j = 0; j < m_out; j++)
     {
         int row_start = nnz;
-        for (int r = start[j]; r < start[j + 1]; r++)
+        for (int ii = start[j]; ii < start[j + 1]; ii++)
         {
-            int i = rows[r];
+            int i = rows[ii];
             for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
             {
                 int c = A->i[jj];
@@ -304,9 +304,9 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
         {
             col_to_pos[J->i[pos]] = pos;
         }
-        for (int r = start[j]; r < start[j + 1]; r++)
+        for (int ii = start[j]; ii < start[j + 1]; ii++)
         {
-            int i = rows[r];
+            int i = rows[ii];
             for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
             {
                 map[jj] = col_to_pos[A->i[jj]];
