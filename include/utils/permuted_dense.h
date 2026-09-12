@@ -68,8 +68,10 @@ typedef struct permuted_dense
 
     /* Int state bound by the alloc that produced this PD and read by the
        matching fill: row_gather_alloc stores, per dense row of this PD, the
-       dense row of the source it copies (length m0). NULL otherwise; never
-       touched by any other kernel (unlike kernel_iwork). */
+       dense row of the source it copies (length m0); row_reduce_alloc stores,
+       per dense row of the source, the dense row of this PD it adds into
+       (length source m0). NULL otherwise; never touched by any other kernel
+       (unlike kernel_iwork). */
     int *bound_iwork;
 
     /* Cached transpose of this PD as another permuted_dense, allocated lazily
@@ -100,6 +102,14 @@ matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);
 
 /* Fill values of C = A[map, :], where A and C are permuted dense. */
 void row_gather_pd_fill_values(const permuted_dense *A, permuted_dense *C);
+
+/* Allocate C = row-reduce of A (C[j, :] = sum of rows i with group[i] == j,
+   group[i] in [0, m_out)), where A and C are permuted dense. C stores the
+   reduction map internally, so the fill takes none. */
+matrix *row_reduce_pd_alloc(const permuted_dense *A, const int *group, int m_out);
+
+/* Fill values of C = row-reduce of A, where A and C are permuted dense. */
+void row_reduce_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
 /* Allocate C = diag_vec(A), where A and C are permuted dense. */
 matrix *diag_vec_pd_alloc(const permuted_dense *A);
