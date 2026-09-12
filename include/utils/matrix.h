@@ -82,16 +82,11 @@ typedef CSR_matrix *(*matrix_to_csr_fn)(matrix *A);
    cache already matches values_version, so it is cheap to call when fresh. */
 typedef void (*matrix_refresh_csc_values_fn)(matrix *A);
 
-/* Row gather: allocate C of shape (m_out, A->n) with C[i, :] = A[map[i], :]
-   for map[i] in [0, A->m). Repeated entries are allowed, so C->nnz may exceed
-   A->nnz. Whatever the fill needs from map is copied onto C here; the caller
-   may free map afterwards. */
+/* Allocate C = A[map, :] */
 typedef matrix *(*matrix_row_gather_alloc_fn)(const matrix *A, const int *map,
                                               int m_out);
 
-/* Fill values of C = A[map, :]. C must be the matrix returned by
-   row_gather_alloc(A, map, m_out): the gather state is bound to it at alloc
-   time, and copy_sparsity copies carry none. */
+/* Fill values of C = A[map, :] */
 typedef void (*matrix_row_gather_fill_values_fn)(const matrix *A, matrix *C);
 
 /* Row-tiling for the promote atom: A must be a 1-row matrix; returns
