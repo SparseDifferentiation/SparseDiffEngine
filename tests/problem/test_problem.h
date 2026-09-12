@@ -416,4 +416,58 @@ const char *test_problem_hessian_sum_exp_left_matmul_dense_transpose(void)
     return 0;
 }
 
+/* Regression: problem_jacobian must copy constraint values in CSR row order,
+   not in the constraint Jacobian's native buffer order. A stacked_pd stores
+   values block-major, which only coincides with row order when its blocks
+   cover contiguous row ranges. Constraint T = transpose(A @ X) with A 2x3 and
+   X a 3x2 variable: A @ X has a 2-block spd Jacobian (one block per column of
+   X, rows {0,1} and {2,3}); the transpose gathers rows {0,2} into block 0 and
+   {1,3} into block 1, so block-major order swaps rows 1 and 2. */
+const char *test_problem_jacobian_spd_constraint_interleaved(void)
+{
+    double A[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+
+    expr *X_obj = new_variable(3, 2, 0, 6);
+    expr *objective = new_sum(X_obj, -1);
+
+    expr *X = new_variable(3, 2, 0, 6);
+    expr *L = new_left_matmul_dense(NULL, X, 2, 3, A);
+    expr *T = new_transpose(L);
+    expr *constraints[1] = {T};
+
+    problem *prob = new_problem(objective, constraints, 1, false);
+    problem_init_jacobian(prob);
+
+    double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    mu_assert("constraint Jacobian should be spd", T->jacobian->is_stacked_pd);
+
+    /* T[r] = L[k(r)] with k = {0, 2, 1, 3}; L's Jacobian row (i, j) carries
+       A[i, :] in the columns of X's j-th column (vars 3j .. 3j+2). */
+    double expected[4][6] = {{1.0, 2.0, 3.0, 0.0, 0.0, 0.0},
+                             {0.0, 0.0, 0.0, 1.0, 2.0, 3.0},
+                             {4.0, 5.0, 6.0, 0.0, 0.0, 0.0},
+                             {0.0, 0.0, 0.0, 4.0, 5.0, 6.0}};
+    CSR_matrix *J = prob->jacobian;
+    mu_assert("shape", J->m == 4 && J->n == 6 && J->nnz == 12);
+    double dense[4][6] = {{0}};
+    for (int r = 0; r < 4; r++)
+    {
+        for (int jj = J->p[r]; jj < J->p[r + 1]; jj++)
+        {
+            dense[r][J->i[jj]] += J->x[jj];
+        }
+    }
+    for (int r = 0; r < 4; r++)
+    {
+        mu_assert("problem Jacobian row must match CSR row order",
+                  cmp_double_array(dense[r], expected[r], 6));
+    }
+
+    free_problem(prob);
+    return 0;
+}
+
 #endif /* TEST_PROBLEM_H */
