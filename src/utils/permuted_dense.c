@@ -164,48 +164,6 @@ static void permuted_dense_vtable_row_gather_fill_values(const matrix *self,
     row_gather_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
 }
 
-matrix *promote_pd_alloc(const permuted_dense *A, int size)
-{
-    assert(A->m0 <= 1);
-
-    if (A->m0 == 0)
-    {
-        /* source row is all-zero; output is also structurally all-zero. */
-        return new_permuted_dense(size, A->base.n, 0, A->n0, NULL, A->col_perm,
-                                  NULL);
-    }
-
-    int *new_row_perm = (int *) sp_malloc(size * sizeof(int));
-    for (int i = 0; i < size; i++)
-    {
-        new_row_perm[i] = i;
-    }
-    matrix *out = new_permuted_dense(size, A->base.n, size, A->n0, new_row_perm,
-                                     A->col_perm, NULL);
-    sp_free(new_row_perm);
-    return out;
-}
-
-void promote_pd_fill_values(const permuted_dense *A, permuted_dense *C)
-{
-    if (A->m0 == 0) return;
-    int n0 = A->n0;
-    for (int k = 0; k < C->m0; k++)
-    {
-        memcpy(C->X + k * n0, A->X, n0 * sizeof(double));
-    }
-}
-
-static matrix *permuted_dense_vtable_promote_alloc(matrix *self, int size)
-{
-    return promote_pd_alloc((const permuted_dense *) self, size);
-}
-
-static void permuted_dense_vtable_promote_fill_values(matrix *self, matrix *out)
-{
-    promote_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
-}
-
 matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
                            int d2)
 {
@@ -567,8 +525,6 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.transpose_fill_values = permuted_dense_vtable_transpose_fill_values;
     pd->base.row_gather_alloc = permuted_dense_vtable_row_gather_alloc;
     pd->base.row_gather_fill_values = permuted_dense_vtable_row_gather_fill_values;
-    pd->base.promote_alloc = permuted_dense_vtable_promote_alloc;
-    pd->base.promote_fill_values = permuted_dense_vtable_promote_fill_values;
     pd->base.broadcast_alloc = permuted_dense_vtable_broadcast_alloc;
     pd->base.broadcast_fill_values = permuted_dense_vtable_broadcast_fill_values;
     pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;

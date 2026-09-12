@@ -109,12 +109,6 @@ matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);
 /* Fill values of C = A[map, :], where A and C are permuted dense. */
 void row_gather_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
-/* Allocate C = promote(A, size), where A and C are permuted dense. */
-matrix *promote_pd_alloc(const permuted_dense *A, int size);
-
-/* Fill values of C = promote(A, size). */
-void promote_pd_fill_values(const permuted_dense *A, permuted_dense *C);
-
 /* Allocate C = diag_vec(A), where A and C are permuted dense. */
 matrix *diag_vec_pd_alloc(const permuted_dense *A);
 

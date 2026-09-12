@@ -268,31 +268,6 @@ static void stacked_pd_vtable_row_gather_fill_values(const matrix *self, matrix 
 }
 
 // -----------------------------------------------------------------------------
-//        promote: C = promote(A) where A is stacked_pd
-// -----------------------------------------------------------------------------
-static matrix *wrapper_pd_promote(permuted_dense *Bk, const void *ctx)
-{
-    return promote_pd_alloc(Bk, *(const int *) ctx);
-}
-
-static matrix *stacked_pd_vtable_promote_alloc(matrix *self, int size)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    return spd_map_filter_blocks(src, size, src->base.n, wrapper_pd_promote, &size);
-}
-
-static void stacked_pd_vtable_promote_fill_values(matrix *self, matrix *out)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    stacked_pd *out_spd = (stacked_pd *) out;
-    for (int k = 0; k < out_spd->n_blocks; k++)
-    {
-        int sk = out_spd->src_block_idx[k];
-        promote_pd_fill_values(src->blocks[sk], out_spd->blocks[k]);
-    }
-}
-
-// -----------------------------------------------------------------------------
 //        diag_vec: C = diag(vec(A)) where A is stacked_pd
 // -----------------------------------------------------------------------------
 static matrix *stacked_pd_vtable_diag_vec_alloc(matrix *self)
@@ -496,8 +471,6 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.to_csr = stacked_pd_to_csr;
     spd->base.row_gather_alloc = stacked_pd_vtable_row_gather_alloc;
     spd->base.row_gather_fill_values = stacked_pd_vtable_row_gather_fill_values;
-    spd->base.promote_alloc = stacked_pd_vtable_promote_alloc;
-    spd->base.promote_fill_values = stacked_pd_vtable_promote_fill_values;
     spd->base.diag_vec_alloc = stacked_pd_vtable_diag_vec_alloc;
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
     spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
