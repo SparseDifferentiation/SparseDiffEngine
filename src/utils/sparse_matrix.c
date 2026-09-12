@@ -263,16 +263,17 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
     }
 
     /* Output row j is the sorted union of its source rows' columns. Summing can
-       only merge entries, so A->nnz bounds the output nnz. marker[c] == j marks
-       column c as already present in output row j. */
+       only merge entries, so A->nnz bounds the output nnz. pos_of[c] is the
+       position in J of column c within the output row being built; anything
+       below row_start is left over from an earlier row and means "not yet in
+       this row". */
     int cap = MIN(A->nnz, sat_mul_int(m_out, n));
     CSR_matrix *J = new_CSR_matrix(m_out, n, cap);
     int *map = (int *) sp_malloc(A->nnz * sizeof(int));
-    int *marker = (int *) sp_malloc(n * sizeof(int));
-    int *col_to_pos = (int *) sp_malloc(n * sizeof(int));
+    int *pos_of = (int *) sp_malloc(n * sizeof(int));
     for (int c = 0; c < n; c++)
     {
-        marker[c] = -1;
+        pos_of[c] = -1;
     }
 
     int nnz = 0;
@@ -286,9 +287,9 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
             for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
             {
                 int c = A->i[jj];
-                if (marker[c] != j)
+                if (pos_of[c] < row_start)
                 {
-                    marker[c] = j;
+                    pos_of[c] = nnz;
                     J->i[nnz++] = c;
                 }
             }
@@ -299,25 +300,25 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
         }
         J->p[j + 1] = nnz;
 
-        /* map every source entry of this output row to its output position */
+        /* sorting moved the columns: record final positions, then map every
+           source entry of this output row to its output position */
         for (int pos = row_start; pos < nnz; pos++)
         {
-            col_to_pos[J->i[pos]] = pos;
+            pos_of[J->i[pos]] = pos;
         }
         for (int ii = start[j]; ii < start[j + 1]; ii++)
         {
             int i = rows[ii];
             for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
             {
-                map[jj] = col_to_pos[A->i[jj]];
+                map[jj] = pos_of[A->i[jj]];
             }
         }
     }
     J->nnz = nnz;
     CSR_trim(J);
 
-    sp_free(col_to_pos);
-    sp_free(marker);
+    sp_free(pos_of);
     sp_free(rows);
     sp_free(fill);
     sp_free(start);
