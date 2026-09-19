@@ -218,7 +218,7 @@ const char *test_composite_source_nested_gates(void)
     mu_assert("stale jacobian values after update",
               cmp_double_array(prob->jacobian->x, Ax, 4));
 
-    /* p back to 2. The refresh walk memoizes parameter-dependence on its
+    /* p back to 1. The refresh walk memoizes parameter-dependence on its
        first pass, so a coefficient subtree the walk fails to reach is only
        pruned -- and only serves stale values -- from the SECOND update on.
        One update cannot see it; this round is what pins the hook. */
