@@ -40,7 +40,7 @@ typedef void (*local_jacobian_fn)(struct expr *node, double *out);
 typedef void (*local_wsum_hess_fn)(struct expr *node, double *out, const double *w);
 typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
-typedef void (*set_needs_refresh_children_fn)(struct expr *node);
+typedef bool (*set_needs_refresh_children_fn)(struct expr *node);
 
 /* Workspace for derivative computation */
 typedef struct
@@ -102,6 +102,10 @@ typedef struct expr
        walk reaches them. NULL for binary/unary atoms. */
     set_needs_refresh_children_fn set_needs_refresh_children;
     Expr_Work *work; /* derivative workspace */
+    /* Does this subtree contain an updatable parameter? Starts true so
+       nothing is pruned before the first walk; expr_set_needs_refresh
+       refines and memoizes it. */
+    bool has_params;
     /* Set to true on all nodes by problem_update_params() via
        expr_set_needs_refresh(). Atoms that cache parameter data
        (e.g. left_matmul_dense) check this flag before their forward
@@ -139,8 +143,11 @@ void expr_refresh_jacobian_csc(expr *node);
  * Must be called after jacobian_init. */
 void jacobian_csc_init(expr *node);
 
-/* Recursively set needs_parameter_refresh on node and all children */
-void expr_set_needs_refresh(expr *node);
+/* Mark the subtree dirty and report whether it contains an updatable
+ * parameter. A subtree known to be parameter-free is skipped entirely: its
+ * values and derivatives cannot have changed, so re-arming it would only
+ * force a recompute of a result we already hold. */
+bool expr_set_needs_refresh(expr *node);
 
 /* Reference counting helpers */
 void expr_retain(expr *node);

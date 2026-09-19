@@ -84,6 +84,21 @@ const char *test_composite_source_left_matmul(void)
     mu_assert("stale jacobian values after update",
               cmp_double_array(prob->jacobian->x, Ax, 4));
 
+    /* p back to 2. The refresh walk memoizes parameter-dependence on its
+       first pass, so a coefficient subtree the walk fails to reach is only
+       pruned -- and only serves stale values -- from the SECOND update on.
+       One update cannot see it; this round is what pins the hook. */
+    theta[0] = 2.0;
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    double constrs_2nd[2] = {10.0, 22.0};
+    double Ax_2nd[4] = {2.0, 4.0, 6.0, 8.0};
+    mu_assert("stale constraint values on the second update",
+              cmp_double_array(prob->constraint_values, constrs_2nd, 2));
+    mu_assert("stale jacobian values on the second update",
+              cmp_double_array(prob->jacobian->x, Ax_2nd, 4));
+
     free_problem(prob);
 
     return 0;
@@ -129,6 +144,19 @@ const char *test_composite_source_quad_form(void)
     grad[1] = 60.0;
     mu_assert("stale objective after update", fabs(obj_val - 70.0) < 1e-10);
     mu_assert("stale gradient after update",
+              cmp_double_array(prob->gradient_values, grad, 2));
+
+    /* g back to 1. Parameter-dependence is memoized on the first walk, so a
+       source the walk fails to reach only goes stale from the SECOND update
+       on -- this round is what pins the hook. */
+    theta[0] = 1.0;
+    problem_update_params(prob, theta);
+    obj_val = problem_objective_forward(prob, x_vals);
+    problem_gradient(prob);
+    grad[0] = 4.0;
+    grad[1] = 12.0;
+    mu_assert("stale objective on the second update", fabs(obj_val - 14.0) < 1e-10);
+    mu_assert("stale gradient on the second update",
               cmp_double_array(prob->gradient_values, grad, 2));
 
     free_problem(prob);
@@ -190,6 +218,21 @@ const char *test_composite_source_nested_gates(void)
     mu_assert("stale jacobian values after update",
               cmp_double_array(prob->jacobian->x, Ax, 4));
 
+    /* p back to 2. The refresh walk memoizes parameter-dependence on its
+       first pass, so a coefficient subtree the walk fails to reach is only
+       pruned -- and only serves stale values -- from the SECOND update on.
+       One update cannot see it; this round is what pins the hook. */
+    theta[0] = 1.0;
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    double constrs_2nd[2] = {10.0, 22.0};
+    double Ax_2nd[4] = {2.0, 4.0, 6.0, 8.0};
+    mu_assert("stale constraint values on the second update",
+              cmp_double_array(prob->constraint_values, constrs_2nd, 2));
+    mu_assert("stale jacobian values on the second update",
+              cmp_double_array(prob->jacobian->x, Ax_2nd, 4));
+
     free_problem(prob);
 
     return 0;
@@ -237,6 +280,18 @@ const char *test_composite_source_kron(void)
     grad[0] = grad[1] = grad[2] = grad[3] = 100.0;
     mu_assert("stale objective after update", fabs(obj_val - 400.0) < 1e-10);
     mu_assert("stale gradient after update",
+              cmp_double_array(prob->gradient_values, grad, 4));
+
+    /* p back to 2. Parameter-dependence is memoized on the first walk, so an
+       operand the walk fails to reach only goes stale from the SECOND update
+       on -- this round is what pins the hook. */
+    theta[0] = 2.0;
+    problem_update_params(prob, theta);
+    obj_val = problem_objective_forward(prob, x_vals);
+    problem_gradient(prob);
+    grad[0] = grad[1] = grad[2] = grad[3] = 20.0;
+    mu_assert("stale objective on the second update", fabs(obj_val - 80.0) < 1e-10);
+    mu_assert("stale gradient on the second update",
               cmp_double_array(prob->gradient_values, grad, 4));
 
     free_problem(prob);

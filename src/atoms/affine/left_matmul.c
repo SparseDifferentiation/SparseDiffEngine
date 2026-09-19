@@ -94,6 +94,13 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((left_matmul_expr *) node)->param_source);
+}
+
 static void free_type_data(expr *node)
 {
     left_matmul_expr *lnode = (left_matmul_expr *) node;
@@ -336,6 +343,7 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
         lnode->A = new_permuted_dense_full(m, n, NULL);
         lnode->AT = new_permuted_dense_full(n, m, NULL);
         node->needs_parameter_refresh = true;
+        node->set_needs_refresh_children = set_needs_refresh_param_source;
     }
     /* constant matrix case */
     else

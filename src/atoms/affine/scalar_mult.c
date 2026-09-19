@@ -108,6 +108,13 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((scalar_mult_expr *) node)->param_source);
+}
+
 static void free_type_data(expr *node)
 {
     scalar_mult_expr *snode = (scalar_mult_expr *) node;
@@ -135,6 +142,7 @@ expr *new_scalar_mult(expr *param_node, expr *child)
 
     /* special case for handling broadcasting of constants correctly */
     mult_node->base.needs_parameter_refresh = true;
+    mult_node->base.set_needs_refresh_children = set_needs_refresh_param_source;
 
     return node;
 }

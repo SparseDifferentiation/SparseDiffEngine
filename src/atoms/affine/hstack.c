@@ -172,13 +172,15 @@ static bool is_affine(const expr *node)
 
 /* Children live in args[], not left/right, so the parameter-refresh walk
    needs this hook to reach them. */
-static void set_needs_refresh_children(expr *node)
+static bool set_needs_refresh_children(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
+    bool child_has_params = false;
     for (int i = 0; i < hnode->n_args; i++)
     {
-        expr_set_needs_refresh(hnode->args[i]);
+        child_has_params |= expr_set_needs_refresh(hnode->args[i]);
     }
+    return child_has_params;
 }
 
 static void free_type_data(expr *node)

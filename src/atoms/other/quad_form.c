@@ -340,6 +340,13 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
     }
 }
 
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((quad_form_expr *) node)->param_source);
+}
+
 static void free_type_data(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -421,6 +428,7 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
         /* Q is filled from the parameter on the first forward pass. */
         qnode->Q = new_permuted_dense_full(n, n, NULL);
         node->needs_parameter_refresh = true;
+        node->set_needs_refresh_children = set_needs_refresh_param_source;
     }
     else
     {

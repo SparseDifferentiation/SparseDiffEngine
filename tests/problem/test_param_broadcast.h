@@ -395,6 +395,19 @@ const char *test_param_scalar_mult_convolve(void)
     mu_assert("check_jacobian failed",
               check_jacobian_num(constraint, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
+    /* test 3: s back to 1. The refresh walk memoizes parameter-dependence on
+       its first pass, so a kernel source the walk fails to reach is only
+       pruned -- and only serves a stale convolution matrix T -- from the
+       SECOND update on. One update cannot see it; this round pins the hook. */
+    theta[0] = 1.0;
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, x_vals);
+    problem_jacobian(prob);
+    mu_assert("stale constraint values on the second update",
+              cmp_double_array(prob->constraint_values, constrs, 6));
+    mu_assert("stale jacobian values on the second update",
+              cmp_double_array(prob->jacobian->x, Ax, 12));
+
     free_problem(prob);
     return 0;
 }
