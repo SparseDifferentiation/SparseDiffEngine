@@ -17,15 +17,9 @@
  */
 #include "atoms/affine.h"
 #include "subexpr.h"
-#include "utils/CSR_sum.h"
-#include "utils/int_double_pair.h"
 #include "utils/mini_numpy.h"
-#include "utils/sparse_matrix.h"
-#include "utils/stacked_pd.h"
 #include "utils/tracked_alloc.h"
-#include "utils/utils.h"
 #include <assert.h>
-#include <stdlib.h>
 #include <string.h>
 
 static void forward(expr *node, const double *u)
@@ -86,26 +80,46 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
     sum_expr *snode = (sum_expr *) node;
     jacobian_init(x);
+    assert(x->jacobian->m == x->size);
 
-    /* sum_row_partition_alloc fills idx_map so eval_jacobian can accumulate from
-       child->jacobian->x. */
-    snode->idx_map = sp_malloc(x->jacobian->nnz * sizeof(int));
-    node->jacobian = x->jacobian->sum_row_partition_alloc(x->jacobian, snode->axis,
-                                                          x->d1, snode->idx_map);
+    /* Child rows are column-major: row i = r + c * x->d1. Row i of the child
+       Jacobian is summed into output row 0 (axis -1), c (axis 0) or r (axis 1).
+       The reduction map is bound to node->jacobian, so group is not kept. */
+    int d1 = x->d1;
+    int m_out;
+    int *group;
+    if (snode->axis == -1)
+    {
+        m_out = 1;
+        group = (int *) sp_calloc(x->size, sizeof(int));
+    }
+    else if (snode->axis == 0)
+    {
+        m_out = x->d2;
+        group = (int *) sp_malloc(x->size * sizeof(int));
+        for (int i = 0; i < x->size; i++)
+        {
+            group[i] = i / d1;
+        }
+    }
+    else
+    {
+        m_out = d1;
+        group = (int *) sp_malloc(x->size * sizeof(int));
+        for (int i = 0; i < x->size; i++)
+        {
+            group[i] = i % d1;
+        }
+    }
+    node->jacobian = x->jacobian->row_reduce_alloc(x->jacobian, group, m_out);
+    sp_free(group);
 }
 
 static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
-
-    /* evaluate child's jacobian */
     eval_jacobian(child);
-
-    /* we have precomputed an idx map between the nonzeros of the child's jacobian
-       and this node's jacobian, so we just accumulate accordingly */
-    memset(node->jacobian->x, 0, node->jacobian->nnz * sizeof(double));
-    accumulator(child->jacobian->x, child->jacobian->nnz,
-                ((sum_expr *) node)->idx_map, node->jacobian->x);
+    child->jacobian->row_reduce_fill_values(child->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -149,12 +163,6 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
-static void free_type_data(expr *node)
-{
-    sum_expr *snode = (sum_expr *) node;
-    sp_free(snode->idx_map);
-}
-
 expr *new_sum(expr *child, int axis)
 {
     int d2 = 0;
@@ -183,7 +191,7 @@ expr *new_sum(expr *child, int axis)
        sum with an axis argument as a row vector */
     init_expr(node, 1, d2, child->n_vars, forward, jacobian_init_impl,
               eval_jacobian_impl, is_affine, wsum_hess_init_impl,
-              eval_wsum_hess_impl, free_type_data);
+              eval_wsum_hess_impl, NULL);
     node->left = child;
     expr_retain(child);
 

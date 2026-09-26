@@ -10,7 +10,6 @@
 #include "atoms/elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "utils/CSR_sum.h"
 #include "utils/Timer.h"
 #include "utils/permuted_dense.h"
 #include "utils/permuted_dense_linalg.h"
@@ -80,13 +79,11 @@ const char *profile_log_reg(void)
     free(full_rows);
     free(full_cols);
 
-    /* CSR_matrix scaffolding for the row-sum step (PD owns the cached CSR_matrix
-     * view). */
-    CSR_matrix *Jlog_csr = Jlog_M->to_csr(Jlog_M);
-    CSR_matrix *Jobj_csr = new_CSR_matrix(1, n, n);
-    int *iwork = (int *) malloc((size_t) m * n * sizeof(int));
-    int *idx_map = (int *) malloc((size_t) m * n * sizeof(int));
-    sum_all_rows_csr_alloc(Jlog_csr, Jobj_csr, iwork, idx_map);
+    /* Row-sum step through the row_reduce primitive on the PD: every row into
+       output row 0, so Jobj is a 1-row PD. */
+    int *group = (int *) calloc((size_t) m, sizeof(int));
+    matrix *Jobj = Jlog_M->row_reduce_alloc(Jlog_M, group, 1);
+    free(group);
 
     double *d2 = (double *) malloc(m * sizeof(double));
     double *w_ones = (double *) malloc(m * sizeof(double));
@@ -100,8 +97,7 @@ const char *profile_log_reg(void)
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.start);
     log_obj->local_jacobian(log_obj, log_obj->work->dwork);
     DA_pd_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
-    memset(Jobj_csr->x, 0, Jobj_csr->nnz * sizeof(double));
-    accumulator(Jlog_csr->x, Jlog_csr->nnz, idx_map, Jobj_csr->x);
+    Jlog_M->row_reduce_fill_values(Jlog_M, Jobj);
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.end);
     clock_gettime(CLOCK_MONOTONIC, &t_b_hess.start);
     log_obj->local_wsum_hess(log_obj, d2, w_ones);
@@ -122,12 +118,13 @@ const char *profile_log_reg(void)
 
     /* ---- Compare Jacobian (1 x n, both have full sparsity) ---- */
     CSR_matrix *J_a = obj->jacobian->to_csr(obj->jacobian);
-    mu_assert("J n mismatch", J_a->n == Jobj_csr->n);
-    mu_assert("J nnz mismatch", J_a->nnz == Jobj_csr->nnz);
+    CSR_matrix *J_b = Jobj->to_csr(Jobj);
+    mu_assert("J n mismatch", J_a->n == J_b->n);
+    mu_assert("J nnz mismatch", J_a->nnz == J_b->nnz);
     double max_J_diff = 0.0;
     for (int j = 0; j < J_a->nnz; j++)
     {
-        double diff = fabs(J_a->x[j] - Jobj_csr->x[j]);
+        double diff = fabs(J_a->x[j] - J_b->x[j]);
         if (diff > max_J_diff) max_J_diff = diff;
     }
     printf("  Jacobian max abs diff:   %10.3e\n", max_J_diff);
@@ -161,10 +158,7 @@ const char *profile_log_reg(void)
     free(H_a_dense);
     free(d2);
     free(w_ones);
-    free(iwork);
-    free(idx_map);
-    free_CSR_matrix(Jobj_csr);
-    /* Jlog_csr is owned by Jlog_M's cache; released by free_matrix below. */
+    free_matrix(Jobj);
     free_matrix(H_pd_M);
     free_matrix(Jlog_M);
     free_matrix(A_pd_M);

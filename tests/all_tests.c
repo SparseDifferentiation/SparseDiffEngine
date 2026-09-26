@@ -75,6 +75,7 @@
 #include "utils/test_matrix.h"
 #include "utils/test_permuted_dense.h"
 #include "utils/test_row_gather.h"
+#include "utils/test_row_reduce.h"
 #include "utils/test_stacked_pd.h"
 #include "wsum_hess/affine/test_broadcast.h"
 #include "wsum_hess/affine/test_convolve.h"
@@ -232,6 +233,9 @@ int main(void)
     mu_run_test(test_jacobian_sum_add_log_axis_0, tests_run);
     mu_run_test(test_jacobian_sum_log_axis_1, tests_run);
     mu_run_test(test_jacobian_sum_axis_minus_one_pd_child, tests_run);
+    mu_run_test(test_jacobian_sum_spd_child_axis_minus_one, tests_run);
+    mu_run_test(test_jacobian_sum_spd_child_axis_0, tests_run);
+    mu_run_test(test_jacobian_sum_spd_child_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
     mu_run_test(test_jacobian_vstack_vectors, tests_run);
@@ -447,6 +451,14 @@ int main(void)
 #ifdef SP_TRACK_MEMORY
     mu_run_test(test_row_gather_spd_fill_no_transient_alloc, tests_run);
 #endif
+    mu_run_test(test_row_reduce_sparse, tests_run);
+    mu_run_test(test_row_reduce_pd, tests_run);
+    mu_run_test(test_row_reduce_spd_cross_block_accumulate, tests_run);
+    mu_run_test(test_row_reduce_spd_within_block, tests_run);
+    mu_run_test(test_row_reduce_spd_all_to_one, tests_run);
+#ifdef SP_TRACK_MEMORY
+    mu_run_test(test_row_reduce_spd_fill_no_transient_alloc, tests_run);
+#endif
     mu_run_test(test_permuted_dense_diag_vec, tests_run);
     mu_run_test(test_permuted_dense_BTA_matching_row_perm, tests_run);
     mu_run_test(test_permuted_dense_BTA_empty_overlap, tests_run);
@@ -454,9 +466,6 @@ int main(void)
     mu_run_test(test_permuted_dense_BTDA_decomposition, tests_run);
     mu_run_test(test_permuted_dense_BTDA_matching_row_perm, tests_run);
     mu_run_test(test_permuted_dense_BTDA_partial_overlap, tests_run);
-    mu_run_test(test_permuted_dense_sum_all_rows, tests_run);
-    mu_run_test(test_permuted_dense_sum_block_of_rows, tests_run);
-    mu_run_test(test_permuted_dense_sum_evenly_spaced_rows, tests_run);
     mu_run_test(test_BTA_pd_csc_matches_csr, tests_run);
     mu_run_test(test_BA_pd_matrices_pd_pd_full_block_B, tests_run);
     mu_run_test(test_BA_pd_matrices_pd_pd_general_B, tests_run);
@@ -575,6 +584,7 @@ int main(void)
     mu_run_test(test_problem_jacobian, tests_run);
     mu_run_test(test_problem_jacobian_multi, tests_run);
     mu_run_test(test_problem_jacobian_spd_constraint_interleaved, tests_run);
+    mu_run_test(test_problem_jacobian_spd_sum_constraint, tests_run);
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
     mu_run_test(test_problem_hessian_sum_exp_left_matmul_dense_transpose, tests_run);

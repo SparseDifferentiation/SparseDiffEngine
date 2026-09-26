@@ -253,146 +253,75 @@ static void permuted_dense_vtable_block_left_mult_values(const matrix *A,
     I_kron_A_fill_values(A, J, C, pd->kernel_dwork);
 }
 
-/* C = sum-all-rows of A. */
-static matrix *sum_all_rows_pd_alloc(matrix *A, int *idx_map)
+matrix *row_reduce_pd_alloc(const permuted_dense *A, const int *group, int m_out)
 {
-    permuted_dense *pd = (permuted_dense *) A;
-
-    /* allocate C */
-    int zero = 0;
-    matrix *C = new_permuted_dense(1, A->n, 1, pd->n0, &zero, pd->col_perm, NULL);
-
-    /* fill idx_map */
-    for (int i = 0; i < pd->m0; i++)
+    /* C's dense rows are the groups hit by A's dense rows, in increasing order.
+       bound_iwork[ii] is the dense row of C that source dense row ii adds into. */
+    int *group_to_out = (int *) sp_malloc(m_out * sizeof(int));
+    for (int g = 0; g < m_out; g++)
     {
-        int *idx_base = idx_map + i * pd->n0;
-        for (int j = 0; j < pd->n0; j++)
-        {
-            idx_base[j] = j;
-        }
+        group_to_out[g] = -1;
     }
-    return C;
-}
-
-/* C = block-sum of A's rows in consecutive groups of d1. */
-static matrix *sum_block_of_rows_pd_alloc(matrix *A_matrix, int d1, int *idx_map)
-{
-    permuted_dense *A = (permuted_dense *) A_matrix;
-    int C_m0 = 0;
-    int last_bucket = -1;
-    int *C_row_perm = (int *) sp_malloc(A->m0 * sizeof(int));
-
-    /* per input dense row ii, the index of its bucket within C_row_perm */
-    int *row_to_out = (int *) sp_malloc(A->m0 * sizeof(int));
-
-    // ---------------------------------------------------------------------------
-    //                          determine C's row_perm
-    // ---------------------------------------------------------------------------
-
-    /* for every row in the dense block */
     for (int ii = 0; ii < A->m0; ii++)
     {
-        /* find the bucket to which this row belongs */
-        int bucket = A->row_perm[ii] / d1;
-
-        /* add the bucket to C if it's new */
-        if (bucket != last_bucket)
-        {
-            C_row_perm[C_m0++] = bucket;
-            last_bucket = bucket;
-        }
-
-        /* map the input row of A to its row in C */
-        row_to_out[ii] = C_m0 - 1;
+        int g = group[A->row_perm[ii]];
+        assert(g >= 0 && g < m_out);
+        group_to_out[g] = 0; /* hit; compacted index assigned below */
     }
-
-    matrix *C = new_permuted_dense(A_matrix->m / d1, A_matrix->n, C_m0, A->n0,
-                                   C_row_perm, A->col_perm, NULL);
-
-    // ---------------------------------------------------------------------------
-    //                          fill idx_map
-    // ---------------------------------------------------------------------------
-    for (int ii = 0; ii < A->m0; ii++)
+    int *C_row_perm = (int *) sp_malloc(m_out * sizeof(int));
+    int new_m0 = 0;
+    for (int g = 0; g < m_out; g++)
     {
-        int offset = row_to_out[ii] * A->n0;
-        int *idx_base = idx_map + ii * A->n0;
-        for (int jj = 0; jj < A->n0; jj++)
+        if (group_to_out[g] >= 0)
         {
-            idx_base[jj] = offset + jj;
+            group_to_out[g] = new_m0;
+            C_row_perm[new_m0++] = g;
         }
     }
 
-    sp_free(row_to_out);
+    matrix *out = new_permuted_dense(m_out, A->base.n, new_m0, A->n0, C_row_perm,
+                                     A->col_perm, NULL);
+    if (A->m0 > 0)
+    {
+        permuted_dense *C = (permuted_dense *) out;
+        C->bound_iwork = (int *) sp_malloc(A->m0 * sizeof(int));
+        for (int ii = 0; ii < A->m0; ii++)
+        {
+            C->bound_iwork[ii] = group_to_out[group[A->row_perm[ii]]];
+        }
+    }
+    sp_free(group_to_out);
     sp_free(C_row_perm);
-    return C;
+    return out;
 }
 
-/* C = stride-sum of A's rows at modular spacing d1. C has shape (d1, A->n);
-   C[j, :] = sum_{i : i % d1 == j} A[i, :]. */
-static matrix *sum_evenly_spaced_rows_pd_alloc(matrix *self, int d1, int *idx_map)
+void row_reduce_pd_fill_values(const permuted_dense *A, permuted_dense *C)
 {
-    permuted_dense *A = (permuted_dense *) self;
-
-    // ---------------------------------------------------------------------------
-    //          which buckets of [0, d1) are hit by A->row_perm?
-    // ---------------------------------------------------------------------------
-    bool *seen = (bool *) sp_calloc(d1, sizeof(bool));
+    if (C->base.nnz == 0) return;
+    assert(A->base.n == C->base.n && C->bound_iwork != NULL);
+    int n0 = A->n0;
+    memset(C->X, 0, (size_t) C->m0 * n0 * sizeof(double));
     for (int ii = 0; ii < A->m0; ii++)
     {
-        seen[A->row_perm[ii] % d1] = true;
-    }
-
-    // ---------------------------------------------------------------------------
-    //              determine C's row_perm (guarantees sorted order)
-    // ---------------------------------------------------------------------------
-    int *C_row_perm = (int *) sp_malloc(A->m0 * sizeof(int));
-    int *bucket_to_out_idx = (int *) sp_malloc(d1 * sizeof(int));
-    int C_m0 = 0;
-    for (int ii = 0; ii < d1; ii++)
-    {
-        if (seen[ii])
+        const double *src = A->X + ii * n0;
+        double *dst = C->X + C->bound_iwork[ii] * n0;
+        for (int jj = 0; jj < n0; jj++)
         {
-            bucket_to_out_idx[ii] = C_m0;
-            C_row_perm[C_m0++] = ii;
+            dst[jj] += src[jj];
         }
     }
-    sp_free(seen);
-
-    matrix *C =
-        new_permuted_dense(d1, self->n, C_m0, A->n0, C_row_perm, A->col_perm, NULL);
-
-    // ---------------------------------------------------------------------------
-    //                          fill idx_map
-    // ---------------------------------------------------------------------------
-    for (int ii = 0; ii < A->m0; ii++)
-    {
-        int base = bucket_to_out_idx[A->row_perm[ii] % d1] * A->n0;
-        int *idx_base = idx_map + ii * A->n0;
-        for (int jj = 0; jj < A->n0; jj++)
-        {
-            idx_base[jj] = base + jj;
-        }
-    }
-
-    sp_free(bucket_to_out_idx);
-    sp_free(C_row_perm);
-    return C;
 }
 
-static matrix *permuted_dense_vtable_sum_row_partition_alloc(matrix *self, int axis,
-                                                             int d1, int *idx_map)
+static matrix *permuted_dense_vtable_row_reduce_alloc(const matrix *self,
+                                                      const int *group, int m_out)
 {
-    if (axis == -1)
-    {
-        return sum_all_rows_pd_alloc(self, idx_map);
-    }
+    return row_reduce_pd_alloc((const permuted_dense *) self, group, m_out);
+}
 
-    if (axis == 0)
-    {
-        return sum_block_of_rows_pd_alloc(self, d1, idx_map);
-    }
-
-    return sum_evenly_spaced_rows_pd_alloc(self, d1, idx_map); /* axis == 1 */
+static void permuted_dense_vtable_row_reduce_fill_values(const matrix *self,
+                                                         matrix *out)
+{
+    row_reduce_pd_fill_values((const permuted_dense *) self, (permuted_dense *) out);
 }
 
 static void wire_vtable(permuted_dense *pd)
@@ -414,7 +343,8 @@ static void wire_vtable(permuted_dense *pd)
     pd->base.row_gather_fill_values = permuted_dense_vtable_row_gather_fill_values;
     pd->base.diag_vec_alloc = permuted_dense_vtable_diag_vec_alloc;
     pd->base.diag_vec_fill_values = permuted_dense_vtable_diag_vec_fill_values;
-    pd->base.sum_row_partition_alloc = permuted_dense_vtable_sum_row_partition_alloc;
+    pd->base.row_reduce_alloc = permuted_dense_vtable_row_reduce_alloc;
+    pd->base.row_reduce_fill_values = permuted_dense_vtable_row_reduce_fill_values;
     pd->base.refresh_csc_values = permuted_dense_refresh_csc_values;
 }
 
