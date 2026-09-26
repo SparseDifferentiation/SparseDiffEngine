@@ -257,19 +257,22 @@ matrix *row_reduce_pd_alloc(const permuted_dense *A, const int *group, int m_out
 {
     /* C's dense rows are the groups hit by A's dense rows, in increasing order.
        bound_iwork[ii] is the dense row of C that source dense row ii adds into. */
-    bool *seen = (bool *) sp_calloc(m_out, sizeof(bool));
+    int *group_to_out = (int *) sp_malloc(m_out * sizeof(int));
+    for (int g = 0; g < m_out; g++)
+    {
+        group_to_out[g] = -1;
+    }
     for (int ii = 0; ii < A->m0; ii++)
     {
         int g = group[A->row_perm[ii]];
         assert(g >= 0 && g < m_out);
-        seen[g] = true;
+        group_to_out[g] = 0; /* hit; compacted index assigned below */
     }
     int *C_row_perm = (int *) sp_malloc(m_out * sizeof(int));
-    int *group_to_out = (int *) sp_malloc(m_out * sizeof(int));
     int new_m0 = 0;
     for (int g = 0; g < m_out; g++)
     {
-        if (seen[g])
+        if (group_to_out[g] >= 0)
         {
             group_to_out[g] = new_m0;
             C_row_perm[new_m0++] = g;
@@ -289,7 +292,6 @@ matrix *row_reduce_pd_alloc(const permuted_dense *A, const int *group, int m_out
     }
     sp_free(group_to_out);
     sp_free(C_row_perm);
-    sp_free(seen);
     return out;
 }
 

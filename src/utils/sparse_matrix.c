@@ -242,8 +242,8 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
     int m = A->m;
     int n = A->n;
 
-    /* Inverse of group by counting sort: rows[start[j] .. start[j+1]) lists the
-       source rows of output row j. */
+    /* Inverse of group by counting sort: rows[start[k] .. start[k+1]) lists the
+       source rows of output row k. */
     int *start = (int *) sp_calloc(m_out + 1, sizeof(int));
     int *fill = (int *) sp_malloc(m_out * sizeof(int));
     int *rows = (int *) sp_malloc(m * sizeof(int));
@@ -252,45 +252,45 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
         assert(group[i] >= 0 && group[i] < m_out);
         start[group[i] + 1]++;
     }
-    for (int j = 0; j < m_out; j++)
+    for (int k = 0; k < m_out; k++)
     {
-        start[j + 1] += start[j];
-        fill[j] = start[j];
+        start[k + 1] += start[k];
     }
+    memcpy(fill, start, m_out * sizeof(int));
     for (int i = 0; i < m; i++)
     {
         rows[fill[group[i]]++] = i;
     }
 
-    /* Output row j is the sorted union of its source rows' columns. Summing can
-       only merge entries, so A->nnz bounds the output nnz. pos_of[c] is the
-       position in J of column c within the output row being built; anything
+    /* Output row k is the sorted union of its source rows' columns. Summing can
+       only merge entries, so A->nnz bounds the output nnz. pos_of[j] is the
+       position in J of column j within the output row being built; anything
        below row_start is left over from an earlier row and means "not yet in
        this row". */
     int cap = MIN(A->nnz, sat_mul_int(m_out, n));
     CSR_matrix *J = new_CSR_matrix(m_out, n, cap);
     int *map = (int *) sp_malloc(A->nnz * sizeof(int));
     int *pos_of = (int *) sp_malloc(n * sizeof(int));
-    for (int c = 0; c < n; c++)
+    for (int j = 0; j < n; j++)
     {
-        pos_of[c] = -1;
+        pos_of[j] = -1;
     }
 
     int nnz = 0;
     J->p[0] = 0;
-    for (int j = 0; j < m_out; j++)
+    for (int k = 0; k < m_out; k++)
     {
         int row_start = nnz;
-        for (int ii = start[j]; ii < start[j + 1]; ii++)
+        for (int ii = start[k]; ii < start[k + 1]; ii++)
         {
             int i = rows[ii];
             for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)
             {
-                int c = A->i[jj];
-                if (pos_of[c] < row_start)
+                int j = A->i[jj];
+                if (pos_of[j] < row_start)
                 {
-                    pos_of[c] = nnz;
-                    J->i[nnz++] = c;
+                    pos_of[j] = nnz;
+                    J->i[nnz++] = j;
                 }
             }
         }
@@ -298,15 +298,15 @@ static matrix *sparse_row_reduce_alloc(const matrix *self, const int *group,
         {
             sort_int_array(J->i + row_start, nnz - row_start);
         }
-        J->p[j + 1] = nnz;
+        J->p[k + 1] = nnz;
 
         /* sorting moved the columns: record final positions, then map every
            source entry of this output row to its output position */
-        for (int pos = row_start; pos < nnz; pos++)
+        for (int jj = row_start; jj < nnz; jj++)
         {
-            pos_of[J->i[pos]] = pos;
+            pos_of[J->i[jj]] = jj;
         }
-        for (int ii = start[j]; ii < start[j + 1]; ii++)
+        for (int ii = start[k]; ii < start[k + 1]; ii++)
         {
             int i = rows[ii];
             for (int jj = A->p[i]; jj < A->p[i + 1]; jj++)

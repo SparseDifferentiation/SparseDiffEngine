@@ -86,16 +86,30 @@ static void jacobian_init_impl(expr *node)
        Jacobian is summed into output row 0 (axis -1), c (axis 0) or r (axis 1).
        The reduction map is bound to node->jacobian, so group is not kept. */
     int d1 = x->d1;
-    int m_out = 1;
-    if (snode->axis == 0) m_out = x->d2;
-    if (snode->axis == 1) m_out = d1;
-    int *group = (int *) sp_malloc(x->size * sizeof(int));
-    for (int i = 0; i < x->size; i++)
+    int m_out;
+    int *group;
+    if (snode->axis == -1)
     {
-        int g = 0;
-        if (snode->axis == 0) g = i / d1;
-        if (snode->axis == 1) g = i % d1;
-        group[i] = g;
+        m_out = 1;
+        group = (int *) sp_calloc(x->size, sizeof(int));
+    }
+    else if (snode->axis == 0)
+    {
+        m_out = x->d2;
+        group = (int *) sp_malloc(x->size * sizeof(int));
+        for (int i = 0; i < x->size; i++)
+        {
+            group[i] = i / d1;
+        }
+    }
+    else
+    {
+        m_out = d1;
+        group = (int *) sp_malloc(x->size * sizeof(int));
+        for (int i = 0; i < x->size; i++)
+        {
+            group[i] = i % d1;
+        }
     }
     node->jacobian = x->jacobian->row_reduce_alloc(x->jacobian, group, m_out);
     sp_free(group);
