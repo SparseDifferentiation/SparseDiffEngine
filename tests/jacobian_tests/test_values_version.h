@@ -231,6 +231,27 @@ const char *test_values_version_param_under_hstack(void)
     mu_assert("hstack jacobian must pick up the new parameter value",
               cmp_double_array(h->jacobian->x, expected, nnz1));
 
+    /* Second update. The hook must REPORT its args' parameter-dependence, not
+       merely visit them: a hook that walks args[] but returns false marks
+       everything correctly on the first walk and then memoizes the hstack
+       parameter-free, pruning it from the second update on. One walk cannot
+       see that, so this round is what pins the return value.
+       p = 3.0 -> 7.0 */
+    double p2 = 7.0;
+    memcpy(p->value, &p2, sizeof(double));
+    mu_assert("hstack must report itself parameter-dependent",
+              expr_set_needs_refresh(h) == true);
+
+    h->forward(h, u);
+    eval_jacobian(h);
+
+    for (int k = 0; k < nnz1; k++)
+    {
+        expected[k] *= p2 / p1;
+    }
+    mu_assert("hstack jacobian must track the parameter on the second update",
+              cmp_double_array(h->jacobian->x, expected, nnz1));
+
     free(expected);
     free_expr(h);
     return 0;
@@ -270,5 +291,185 @@ const char *test_values_version_spd_hess_terms(void)
               check_wsum_hess(outer, u2, w2, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(outer);
+    return 0;
+}
+
+/* Parameter-free subtree: expr_set_needs_refresh resolves the dependency on
+ * its first walk and prunes every walk after that, so an affine node that no
+ * parameter can reach keeps its bump-skip armed for the life of the problem.
+ * Proven by poisoning the values and observing they survive a refresh+eval. */
+const char *test_refresh_prunes_param_free(void)
+{
+    double u[3] = {0.1, 0.2, 0.3};
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *m = new_neg(x);
+
+    jacobian_init(m);
+    m->forward(m, u);
+    eval_jacobian(m);
+
+    /* First walk still re-arms (it is the walk that discovers the subtree is
+       parameter-free), so this eval runs and restores the true values. */
+    mu_assert("must start assumed-dirty", m->has_params == true);
+    mu_assert("first walk must report parameter-free",
+              expr_set_needs_refresh(m) == false);
+    mu_assert("first walk must memoize parameter-free", m->has_params == false);
+    eval_jacobian(m);
+
+    uint64_t v1 = m->jacobian->values_version;
+    int nnz = m->jacobian->nnz;
+    mu_assert("neg jacobian must have entries", nnz == 3);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        m->jacobian->x[ii] = 42.0; /* poison */
+    }
+
+    /* Every later walk prunes: the latch is never cleared, so the impl does
+       not run and the poison survives. */
+    mu_assert("later walk must still report parameter-free",
+              expr_set_needs_refresh(m) == false);
+    mu_assert("pruned node must keep its eval latch armed",
+              m->work->jacobian_evaluated == true);
+    eval_jacobian(m);
+    mu_assert("pruned re-eval must not bump", m->jacobian->values_version == v1);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("impl must not have run (poison must survive)",
+                  m->jacobian->x[ii] == 42.0);
+    }
+
+    free_expr(m);
+    return 0;
+}
+
+/* A subtree a parameter can reach is re-armed by every walk, not just the
+ * first one -- the prune must not swallow real invalidation. */
+const char *test_refresh_rearms_param_dependent(void)
+{
+    int n_vars = 3;
+    double u[3] = {1.0, 2.0, 3.0};
+    double p0[1] = {2.0};
+
+    expr *x = new_variable(3, 1, 0, n_vars);
+    expr *p = new_parameter(1, 1, 0, n_vars, p0);
+    expr *m = new_scalar_mult(p, x); /* p * x: affine, parameter-dependent */
+
+    jacobian_init(m);
+    m->forward(m, u);
+    eval_jacobian(m);
+
+    int nnz = m->jacobian->nnz;
+    mu_assert("scalar_mult jacobian must have entries", nnz == 3);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("jacobian must be p", m->jacobian->x[ii] == 2.0);
+    }
+
+    for (int round = 0; round < 3; round++)
+    {
+        uint64_t v = m->jacobian->values_version;
+        mu_assert("walk must report parameter-dependent",
+                  expr_set_needs_refresh(m) == true);
+        mu_assert("parameter-dependent node must be re-armed",
+                  m->work->jacobian_evaluated == false);
+        eval_jacobian(m);
+        mu_assert("re-armed eval must bump", m->jacobian->values_version == v + 1);
+    }
+
+    /* and a real parameter change must show through */
+    p->value[0] = -5.0;
+    expr_set_needs_refresh(m);
+    m->forward(m, u);
+    eval_jacobian(m);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("jacobian must track the new parameter",
+                  m->jacobian->x[ii] == -5.0);
+    }
+
+    free_expr(m);
+    return 0;
+}
+
+/* A PARAM_FIXED constant is not an updatable parameter. add(x, c) contains a
+ * parameter NODE but nothing theta can move, so the walk must still memoize
+ * it parameter-free and prune it. Guards the parameter leaf's
+ * set_needs_refresh_children against reporting every parameter_expr as
+ * parametric regardless of param_id. */
+const char *test_refresh_prunes_fixed_constant(void)
+{
+    double u[3] = {0.1, 0.2, 0.3};
+    double c_vals[3] = {1.0, 2.0, 3.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *c = new_parameter(3, 1, PARAM_FIXED, 3, c_vals);
+    expr *m = new_add(x, c);
+
+    jacobian_init(m);
+    m->forward(m, u);
+    eval_jacobian(m);
+
+    mu_assert("first walk must report a fixed constant as parameter-free",
+              expr_set_needs_refresh(m) == false);
+    mu_assert("constant subtree must memoize parameter-free",
+              m->has_params == false);
+    eval_jacobian(m);
+
+    uint64_t v1 = m->jacobian->values_version;
+    int nnz = m->jacobian->nnz;
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        m->jacobian->x[ii] = 42.0; /* poison */
+    }
+
+    mu_assert("later walk must still report parameter-free",
+              expr_set_needs_refresh(m) == false);
+    eval_jacobian(m);
+    mu_assert("pruned re-eval must not bump", m->jacobian->values_version == v1);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("impl must not have run (poison must survive)",
+                  m->jacobian->x[ii] == 42.0);
+    }
+
+    free_expr(m);
+    return 0;
+}
+
+/* The same shape with an UPDATABLE parameter must behave the opposite way --
+ * every walk re-arms it and the poison is overwritten. Together with
+ * test_refresh_prunes_fixed_constant this pins the param_id >= 0 test itself:
+ * a hook that ignores param_id passes one of these two and fails the other. */
+const char *test_refresh_rearms_updatable_constant(void)
+{
+    double u[3] = {0.1, 0.2, 0.3};
+    double p_vals[3] = {1.0, 2.0, 3.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *p = new_parameter(3, 1, 0, 3, p_vals);
+    expr *m = new_add(x, p);
+
+    jacobian_init(m);
+    m->forward(m, u);
+    eval_jacobian(m);
+
+    mu_assert("walk must report an updatable parameter as parametric",
+              expr_set_needs_refresh(m) == true);
+    mu_assert("parametric subtree must memoize parametric", m->has_params == true);
+
+    int nnz = m->jacobian->nnz;
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        m->jacobian->x[ii] = 42.0; /* poison */
+    }
+
+    eval_jacobian(m);
+    for (int ii = 0; ii < nnz; ii++)
+    {
+        mu_assert("re-armed eval must overwrite the poison",
+                  m->jacobian->x[ii] != 42.0);
+    }
+
+    free_expr(m);
     return 0;
 }

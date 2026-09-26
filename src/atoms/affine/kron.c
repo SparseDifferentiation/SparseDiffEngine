@@ -44,9 +44,6 @@ static void refresh_param_values(kron_expr *knode)
         return;
     }
 
-    /* Composite sources hold gated nodes of their own (promote, nested
-       mults): mark the whole side subtree before re-evaluating it. */
-    expr_set_needs_refresh(knode->param_source);
     knode->param_source->forward(knode->param_source, NULL);
     knode->base.needs_parameter_refresh = false;
 }
@@ -176,6 +173,13 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((kron_expr *) node)->param_source);
+}
+
 static void free_type_data(expr *node)
 {
     kron_expr *knode = (kron_expr *) node;
@@ -214,6 +218,7 @@ static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q, i
     }
 
     knode->base.needs_parameter_refresh = true;
+    knode->base.set_needs_refresh_children = set_needs_refresh_param_source;
     return knode;
 }
 

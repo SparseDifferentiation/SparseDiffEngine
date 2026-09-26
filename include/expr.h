@@ -40,7 +40,7 @@ typedef void (*local_jacobian_fn)(struct expr *node, double *out);
 typedef void (*local_wsum_hess_fn)(struct expr *node, double *out, const double *w);
 typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
-typedef void (*set_needs_refresh_children_fn)(struct expr *node);
+typedef bool (*set_needs_refresh_children_fn)(struct expr *node);
 
 /* Workspace for derivative computation */
 typedef struct
@@ -97,13 +97,27 @@ typedef struct expr
     local_jacobian_fn local_jacobian;   /* used by elementwise univariate atoms*/
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
-    /* Recursion hook for expr_set_needs_refresh: atoms holding children
-       outside left/right (hstack's args[]) set this so the parameter-refresh
-       walk reaches them. NULL for binary/unary atoms. */
+    /* Recursion hook for expr_set_needs_refresh, which on its own only
+       descends left/right. Nodes that hold parameter-bearing subtrees
+       elsewhere install this so the walk reaches them: the parameter leaf
+       (reports itself), hstack (args[]) and the coefficient atoms
+       scalar_mult, vector_mult, kron, convolve, left_matmul and quad_form
+       (param_source). NULL everywhere else.
+
+       Contract: the hook MUST return whether the nodes it reaches contain
+       an updatable parameter (param_id >= 0). The walk ORs the result into
+       has_params; a hook that returns false lets the subtree be memoized
+       parameter-free and pruned from the second update on. */
     set_needs_refresh_children_fn set_needs_refresh_children;
     Expr_Work *work; /* derivative workspace */
-    /* Set to true on all nodes by problem_update_params() via
-       expr_set_needs_refresh(). Atoms that cache parameter data
+    /* Does this subtree contain an updatable parameter? Starts true so
+       nothing is pruned before the first walk; expr_set_needs_refresh
+       refines and memoizes it from the left/right walk and the
+       set_needs_refresh_children hook. */
+    bool has_params;
+    /* Set to true by problem_update_params() via expr_set_needs_refresh()
+       on every node whose subtree contains an updatable parameter;
+       parameter-free subtrees are skipped. Atoms that cache parameter data
        (e.g. left_matmul_dense) check this flag before their forward
        pass: if true, they refresh their cached matrices from
        param_source->value and clear the flag to false. */
@@ -139,8 +153,11 @@ void expr_refresh_jacobian_csc(expr *node);
  * Must be called after jacobian_init. */
 void jacobian_csc_init(expr *node);
 
-/* Recursively set needs_parameter_refresh on node and all children */
-void expr_set_needs_refresh(expr *node);
+/* Mark the subtree dirty and report whether it contains an updatable
+ * parameter. A subtree known to be parameter-free is skipped entirely: its
+ * values and derivatives cannot have changed, so re-arming it would only
+ * force a recompute of a result we already hold. */
+bool expr_set_needs_refresh(expr *node);
 
 /* Reference counting helpers */
 void expr_retain(expr *node);

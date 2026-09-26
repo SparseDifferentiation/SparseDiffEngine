@@ -39,9 +39,6 @@ static void forward(expr *node, const double *u)
 
     if (cnode->base.needs_parameter_refresh)
     {
-        /* Composite sources hold gated nodes of their own (promote, nested
-           mults): mark the whole side subtree before re-evaluating it. */
-        expr_set_needs_refresh(cnode->param_source);
         cnode->param_source->forward(cnode->param_source, NULL);
         /* refresh the convolution matrix values if it exists (necessary to check
            for null in case someone calls forward before initializing the jacobian,
@@ -143,6 +140,13 @@ static bool is_affine(const expr *node)
     return node->left->is_affine(node->left);
 }
 
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((convolve_expr *) node)->param_source);
+}
+
 static void free_type_data(expr *node)
 {
     convolve_expr *cnode = (convolve_expr *) node;
@@ -197,6 +201,7 @@ expr *new_convolve(expr *param_node, expr *child)
     /* Ensure first forward() pulls current param values through any
        broadcast/promote wrappers and reflects them in T (once T is built). */
     cnode->base.needs_parameter_refresh = true;
+    cnode->base.set_needs_refresh_children = set_needs_refresh_param_source;
 
     return node;
 }

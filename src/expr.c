@@ -42,6 +42,7 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->eval_wsum_hess_impl = eval_wsum_hess;
     node->free_type_data = free_type_data;
     node->work = (Expr_Work *) sp_calloc(1, sizeof(Expr_Work));
+    node->has_params = true; /* assume dirty until the first walk refines it */
 }
 
 void jacobian_csc_init(expr *node)
@@ -151,20 +152,32 @@ void eval_wsum_hess(expr *node, const double *w)
     matrix_values_changed(node->wsum_hess);
 }
 
-void expr_set_needs_refresh(expr *node)
+bool expr_set_needs_refresh(expr *node)
 {
-    if (node == NULL) return;
+    if (node == NULL) return false;
+
+    /* Known parameter-free: nothing below can have changed, so leave the
+       node's jacobian_evaluated latch set and skip the whole subtree. */
+    if (!node->has_params) return false;
+
     node->needs_parameter_refresh = true;
 
     /* Re-arm the eval_jacobian wrapper's values_version bump: the next eval
        after a parameter update may change even an affine node's values. */
     node->work->jacobian_evaluated = false;
-    expr_set_needs_refresh(node->left);
-    expr_set_needs_refresh(node->right);
+
+    bool child_has_params = expr_set_needs_refresh(node->left);
+    child_has_params |= expr_set_needs_refresh(node->right);
     if (node->set_needs_refresh_children != NULL)
     {
-        node->set_needs_refresh_children(node);
+        child_has_params |= node->set_needs_refresh_children(node);
     }
+
+    /* The hook reports nodes the left/right walk cannot see: a parameter
+       leaf reports itself, hstack its args[], the coefficient atoms their
+       param_source. So this assignment is the whole answer. */
+    node->has_params = child_has_params;
+    return node->has_params;
 }
 
 void expr_retain(expr *node)
