@@ -117,6 +117,7 @@
 #ifdef PROFILE_ONLY
 #include "profiling/profile_BTA_pd_csr_vs_csc.h"
 #include "profiling/profile_hessian_exp_AX.h"
+#include "profiling/profile_lasso.h"
 #include "profiling/profile_left_matmul.h"
 #include "profiling/profile_log_reg.h"
 #include "profiling/profile_memory.h"
@@ -218,6 +219,10 @@ int main(void)
     mu_run_test(test_values_version_csc_mirror_dedup, tests_run);
     mu_run_test(test_values_version_stacked_pd_to_csr, tests_run);
     mu_run_test(test_values_version_param_under_hstack, tests_run);
+    mu_run_test(test_refresh_prunes_param_free, tests_run);
+    mu_run_test(test_refresh_rearms_param_dependent, tests_run);
+    mu_run_test(test_refresh_prunes_fixed_constant, tests_run);
+    mu_run_test(test_refresh_rearms_updatable_constant, tests_run);
     mu_run_test(test_values_version_spd_hess_terms, tests_run);
     /* commented out - see test_quad_form.h */
     // mu_run_test(test_quad_form2, tests_run);
@@ -622,6 +627,7 @@ int main(void)
 
 #ifdef PROFILE_ONLY
     printf("\n--- Profiling Tests ---\n");
+    mu_run_test(profile_lasso, tests_run);
     mu_run_test(profile_left_matmul, tests_run);
     mu_run_test(profile_log_reg, tests_run);
     mu_run_test(profile_trimmed_log_reg, tests_run);

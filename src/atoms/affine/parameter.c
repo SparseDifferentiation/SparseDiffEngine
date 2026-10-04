@@ -53,6 +53,12 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     (void) w;
 }
 
+/* A leaf has no children, so it reports its own parameter-ness here. */
+static bool set_needs_refresh_children(expr *node)
+{
+    return ((parameter_expr *) node)->param_id >= 0;
+}
+
 static bool is_affine(const expr *node)
 {
     (void) node;
@@ -68,6 +74,7 @@ expr *new_parameter(int d1, int d2, int param_id, int n_vars, const double *valu
 
     // TODO we should assert that the values array has the correct size.
     pnode->param_id = param_id;
+    node->set_needs_refresh_children = set_needs_refresh_children;
 
     if (values == NULL)
     {

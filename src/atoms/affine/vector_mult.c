@@ -35,9 +35,6 @@ static void forward(expr *node, const double *u)
        its values) */
     if (vnode->base.needs_parameter_refresh)
     {
-        /* Composite sources hold gated nodes of their own (promote, nested
-           mults): mark the whole side subtree before re-evaluating it. */
-        expr_set_needs_refresh(vnode->param_source);
         vnode->param_source->forward(vnode->param_source, NULL);
         vnode->base.needs_parameter_refresh = false;
     }
@@ -109,6 +106,13 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
            node->wsum_hess->nnz * sizeof(double));
 }
 
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((vector_mult_expr *) node)->param_source);
+}
+
 static void free_type_data(expr *node)
 {
     vector_mult_expr *vnode = (vector_mult_expr *) node;
@@ -141,6 +145,7 @@ expr *new_vector_mult(expr *param_node, expr *child)
 
     /* special case for handling broadcasting of constants correctly */
     vnode->base.needs_parameter_refresh = true;
+    vnode->base.set_needs_refresh_children = set_needs_refresh_param_source;
 
     return node;
 }
