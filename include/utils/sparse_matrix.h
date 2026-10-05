@@ -37,6 +37,8 @@ typedef struct sparse_matrix
        position map for row_reduce_fill_values. NULL otherwise; never touched
        by any other kernel. */
     int *bound_iwork;
+    /* Accumulator (csr->m doubles) of block_left_mult_values; lazily allocated. */
+    double *bl_acc;
 } sparse_matrix;
 
 /* Constructor. Takes ownership of A; the caller must not free A separately

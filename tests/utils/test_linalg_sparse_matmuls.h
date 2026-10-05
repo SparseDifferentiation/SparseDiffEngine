@@ -647,3 +647,88 @@ const char *test_block_left_multiply_vec_three_blocks(void)
     free_CSR_matrix(A);
     return NULL;
 }
+
+/* Reference values: the original merge-based kernel (one sparse dot of a whole
+ * row of A per entry of C). The Gustavson rewrite must reproduce it bit for
+ * bit, since both add a row's terms in increasing column order of A. */
+static void block_left_multiply_fill_values_ref(const CSR_matrix *A,
+                                                const CSC_matrix *J, CSC_matrix *C)
+{
+    int m = A->m;
+    int n = A->n;
+    for (int j = 0; j < J->n; j++)
+    {
+        for (int i = C->p[j]; i < C->p[j + 1]; i++)
+        {
+            int row_a = C->i[i] % m;
+            int block_start = (C->i[i] / m) * n;
+            double sum = 0.0;
+            int a = A->p[row_a], a_end = A->p[row_a + 1];
+            int b = J->p[j], b_end = J->p[j + 1];
+            while (b < b_end && J->i[b] < block_start) b++;
+            while (a < a_end && b < b_end && J->i[b] < block_start + n)
+            {
+                int col_b = J->i[b] - block_start;
+                if (A->i[a] == col_b)
+                {
+                    sum += A->x[a] * J->x[b];
+                    a++;
+                    b++;
+                }
+                else if (A->i[a] < col_b)
+                {
+                    a++;
+                }
+                else
+                {
+                    b++;
+                }
+            }
+            C->x[i] = sum;
+        }
+    }
+}
+
+/* block_left_multiply_fill_values (Gustavson scatter/gather through A's CSC
+ * mirror) against the merge-based reference: exact equality on random shapes,
+ * densities and block counts, including the dense-row case (c @ x) that made
+ * the merge kernel quadratic. */
+const char *test_block_left_multiply_values_match_reference_random(void)
+{
+    srand(7);
+    /* m, n, p, k, density of A, density of J */
+    const double cases[][6] = {
+        {20, 15, 3, 8, 0.2, 0.15}, {1, 40, 1, 40, 1.0, 0.05},
+        {1, 40, 3, 25, 1.0, 0.1},  {7, 9, 4, 12, 0.6, 0.3},
+        {30, 5, 2, 6, 0.05, 0.5},  {5, 30, 2, 50, 0.9, 0.02},
+    };
+    for (int c = 0; c < (int) (sizeof(cases) / sizeof(cases[0])); c++)
+    {
+        int m = (int) cases[c][0], n = (int) cases[c][1], p = (int) cases[c][2],
+            k = (int) cases[c][3];
+        for (int trial = 0; trial < 5; trial++)
+        {
+            CSR_matrix *A = new_csr_random(m, n, cases[c][4]);
+            CSR_matrix *G = new_csr_random(n * p, k, cases[c][5]);
+            int *iwork = (int *) sp_malloc(G->n * sizeof(int));
+            CSC_matrix *J = csr_to_csc_alloc(G, iwork);
+            sp_free(iwork);
+
+            CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, p);
+            CSC_matrix *C_ref = block_left_multiply_fill_sparsity(A, J, p);
+            block_left_multiply_fill_values(A, J, C);
+            block_left_multiply_fill_values_ref(A, J, C_ref);
+
+            mu_assert("block values differ from merge reference",
+                      C->nnz == C_ref->nnz &&
+                          memcmp(C->x, C_ref->x, C->nnz * sizeof(double)) == 0);
+
+            free_CSC_matrix(C);
+            free_CSC_matrix(C_ref);
+            free_CSC_matrix(J);
+            free_CSR_matrix(G);
+            free_CSR_matrix(A);
+        }
+    }
+    return NULL;
+}
