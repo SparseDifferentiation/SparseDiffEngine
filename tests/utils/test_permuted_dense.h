@@ -323,83 +323,59 @@ const char *test_permuted_dense_to_csr_lazy(void)
     return 0;
 }
 
-/* Sanity check: col_inv is built correctly. col_perm = {0, 3} on n = 6
-   should give col_inv = {0, -1, -1, 1, -1, -1}. */
-const char *test_permuted_dense_col_inv(void)
-{
-    int row_perm[1] = {0};
-    int col_perm[2] = {0, 3};
-    double X[2] = {0.0, 0.0};
-
-    matrix *M = new_permuted_dense(1, 6, 1, 2, row_perm, col_perm, X);
-    permuted_dense *pd = (permuted_dense *) M;
-
-    int expected[6] = {0, -1, -1, 1, -1, -1};
-    mu_assert("col_inv", cmp_int_array(pd->col_inv, expected, 6));
-
-    free_matrix(M);
-    return 0;
-}
-
-/* Compact construction: inv arrays start NULL, the ensure helpers materialize
-   them with the same contents the full constructor would have produced,
-   and structural copies of a compact PD are compact themselves. */
-const char *test_permuted_dense_compact_inv(void)
+/* Inverse arrays are lazy: a fresh PD and its structural copies carry
+   none, row_gather answers membership without building row_inv, and the
+   ensure helpers build the expected contents exactly once. */
+const char *test_permuted_dense_lazy_inv(void)
 {
     int row_perm[2] = {1, 4};
     int col_perm[2] = {0, 3};
     double X[4] = {1.0, 2.0, 3.0, 4.0};
 
-    matrix *M = new_permuted_dense_compact(5, 6, 2, 2, row_perm, col_perm, X);
+    matrix *M = new_permuted_dense(5, 6, 2, 2, row_perm, col_perm, X);
     permuted_dense *pd = (permuted_dense *) M;
+    mu_assert("fresh col_inv NULL", pd->col_inv == NULL);
+    mu_assert("fresh row_inv NULL", pd->row_inv == NULL);
 
-    mu_assert("compact col_inv NULL", pd->col_inv == NULL);
-    mu_assert("compact row_inv NULL", pd->row_inv == NULL);
-
-    /* Compactness propagates through copy_sparsity / transpose / row_gather. */
     matrix *copy = copy_sparsity_pd_alloc(pd);
     matrix *trans = transpose_pd_alloc(pd);
+    mu_assert("copy col_inv NULL", ((permuted_dense *) copy)->col_inv == NULL);
+    mu_assert("transpose row_inv NULL", ((permuted_dense *) trans)->row_inv == NULL);
+
+    /* rows {4, 0, 1} of M hit source rows {1, -, 0}. */
     int map[3] = {4, 0, 1};
-    matrix *indexed = row_gather_pd_alloc(pd, map, 3);
-    mu_assert("copy is compact", ((permuted_dense *) copy)->col_inv == NULL);
-    mu_assert("transpose is compact", ((permuted_dense *) trans)->row_inv == NULL);
-    mu_assert("indexed is compact", ((permuted_dense *) indexed)->col_inv == NULL);
+    matrix *gathered = row_gather_pd_alloc(pd, map, 3);
+    permuted_dense *g_pd = (permuted_dense *) gathered;
+    mu_assert("row_gather leaves source row_inv NULL", pd->row_inv == NULL);
+    int g_row_perm_expected[2] = {0, 2};
+    mu_assert("gathered m0", g_pd->m0 == 2);
+    mu_assert("gathered row_perm",
+              cmp_int_array(g_pd->row_perm, g_row_perm_expected, 2));
+    row_gather_pd_fill_values(pd, g_pd);
+    double g_X_expected[4] = {3.0, 4.0, 1.0, 2.0};
+    mu_assert("gathered values", cmp_double_array(g_pd->X, g_X_expected, 4));
 
-    /* row_gather of a compact PD: rows {4, 0, 1} of M hit source rows {1, -, 0}. */
-    permuted_dense *idx_pd = (permuted_dense *) indexed;
-    int idx_row_perm_expected[2] = {0, 2};
-    mu_assert("indexed m0", idx_pd->m0 == 2);
-    mu_assert("indexed row_perm",
-              cmp_int_array(idx_pd->row_perm, idx_row_perm_expected, 2));
-    row_gather_pd_fill_values(pd, idx_pd);
-    double idx_X_expected[4] = {3.0, 4.0, 1.0, 2.0};
-    mu_assert("indexed values", cmp_double_array(idx_pd->X, idx_X_expected, 4));
-
-    /* Ensure materializes the same arrays new_permuted_dense builds. */
     permuted_dense_ensure_col_inv(pd);
     permuted_dense_ensure_row_inv(pd);
     int col_inv_expected[6] = {0, -1, -1, 1, -1, -1};
     int row_inv_expected[5] = {-1, 0, -1, -1, 1};
-    mu_assert("ensured col_inv", cmp_int_array(pd->col_inv, col_inv_expected, 6));
-    mu_assert("ensured row_inv", cmp_int_array(pd->row_inv, row_inv_expected, 5));
+    mu_assert("col_inv", cmp_int_array(pd->col_inv, col_inv_expected, 6));
+    mu_assert("row_inv", cmp_int_array(pd->row_inv, row_inv_expected, 5));
 
-    /* Copies of a now-ensured PD carry prebuilt inv arrays again. */
-    matrix *copy2 = copy_sparsity_pd_alloc(pd);
-    mu_assert("copy of ensured PD has col_inv",
-              ((permuted_dense *) copy2)->col_inv != NULL);
+    int *col_inv_before = pd->col_inv;
+    permuted_dense_ensure_col_inv(pd);
+    mu_assert("ensure is idempotent", pd->col_inv == col_inv_before);
 
-    free_matrix(copy2);
-    free_matrix(indexed);
+    free_matrix(gathered);
     free_matrix(trans);
     free_matrix(copy);
     free_matrix(M);
     return 0;
 }
 
-/* BA_pd_csc_alloc builds its output compact: same sparsity and values as
-   before, but no inverse arrays on the result. The left operand (with prebuilt inv
-   arrays) keeps working as the fill kernel's inv provider. */
-const char *test_permuted_dense_times_csc_compact_output(void)
+/* BA_pd_csc_alloc builds col_inv on its left operand (the fill reads it)
+   but none on its output. */
+const char *test_permuted_dense_times_csc_lazy_inv(void)
 {
     /* B: 3x4 PD, dense block rows {0, 2} x cols {1, 3}. */
     int row_perm[2] = {0, 2};
@@ -421,6 +397,7 @@ const char *test_permuted_dense_times_csc_compact_output(void)
     matrix *C = BA_pd_csc_alloc(B_pd, A);
     permuted_dense *C_pd = (permuted_dense *) C;
 
+    mu_assert("B col_inv built", B_pd->col_inv != NULL);
     mu_assert("C col_inv NULL", C_pd->col_inv == NULL);
     mu_assert("C row_inv NULL", C_pd->row_inv == NULL);
     int C_col_perm_expected[2] = {0, 2};

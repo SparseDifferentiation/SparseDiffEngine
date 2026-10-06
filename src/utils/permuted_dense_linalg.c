@@ -27,23 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Compactness propagates through structural copies: a compact PD (no
-   inverse arrays — the kron-path blocks) produces compact copies and
-   transposes, so the global-dimension inv arrays never materialize anywhere
-   along its transpose/reshape/copy_sparsity chain. Sources with prebuilt
-   inv arrays produce full copies. */
-static bool pd_is_compact(const permuted_dense *A)
-{
-    return A->col_inv == NULL || A->row_inv == NULL;
-}
-
 matrix *copy_sparsity_pd_alloc(const permuted_dense *A)
 {
-    if (pd_is_compact(A))
-    {
-        return new_permuted_dense_compact(A->base.m, A->base.n, A->m0, A->n0,
-                                          A->row_perm, A->col_perm, NULL);
-    }
     return new_permuted_dense(A->base.m, A->base.n, A->m0, A->n0, A->row_perm,
                               A->col_perm, NULL);
 }
@@ -51,11 +36,6 @@ matrix *copy_sparsity_pd_alloc(const permuted_dense *A)
 matrix *transpose_pd_alloc(const permuted_dense *A)
 {
     /* swap (m, n), (m0, n0), and (row_perm, col_perm) */
-    if (pd_is_compact(A))
-    {
-        return new_permuted_dense_compact(A->base.n, A->base.m, A->n0, A->m0,
-                                          A->col_perm, A->row_perm, NULL);
-    }
     return new_permuted_dense(A->base.n, A->base.m, A->n0, A->m0, A->col_perm,
                               A->row_perm, NULL);
 }
@@ -294,34 +274,20 @@ matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     the columns of A. For each column of A, we check if it has any nonzeros in
     rows that are in B's col_perm. If yes, column j of C will have a nonzero
     block corresponding to the rows of B */
+    permuted_dense_ensure_col_inv(B);
     iVec *col_perm_C = iVec_new(10);
     for (int j = 0; j < A->n; j++)
     {
         int start = A->p[j];
         int len = A->p[j + 1] - start;
-        bool hit = B->col_inv != NULL
-                       ? idxs_hits_set(A->i + start, len, B->col_inv)
-                       : sorted_hits(A->i + start, len, B->col_perm, B->n0);
-        if (hit)
+        if (idxs_hits_set(A->i + start, len, B->col_inv))
         {
             iVec_append(col_perm_C, j);
         }
     }
 
-    /* The output is built compact: its inverse arrays would be sized by the
-       GLOBAL dims (m = B's global rows, n = A's full column count) and are
-       the dominant memory cost on the kron path, where this allocator runs
-       once per kron block. Every consumer of C either scans its sorted perms
-       or ensures the arrays on demand. */
-    matrix *C = new_permuted_dense_compact(B->base.m, A->n, B->m0, col_perm_C->len,
-                                           B->row_perm, col_perm_C->data, NULL);
-
-    /* BA_pd_csc_fill_values reads B->col_inv whenever C is non-empty (a
-       no-op when B already carries it, e.g. the kron scratch). */
-    if (col_perm_C->len > 0)
-    {
-        permuted_dense_ensure_col_inv(B);
-    }
+    matrix *C = new_permuted_dense(B->base.m, A->n, B->m0, col_perm_C->len,
+                                   B->row_perm, col_perm_C->data, NULL);
     iVec_free(col_perm_C);
     return C;
 }
@@ -332,9 +298,8 @@ void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
     /* C[i, j] = bi^T @ ajj, where bi is the ith row of B_X (length n0_B,
        row stride n0_B) and ajj is the jjth column of A's sparse block
        (column jj = C->col_perm[j]). inv maps A's row indices to positions
-       in B_X (entries with inv[r] == -1 are skipped). inv may be NULL only
-       for an empty C (the alloc twin ensures it whenever C is non-empty). */
-    assert(inv != NULL || C->n0 == 0);
+       in B_X (entries with inv[r] == -1 are skipped). */
+    assert(inv != NULL);
 
     /* row i of C */
     for (int i = 0; i < C->m0; i++)
@@ -445,15 +410,13 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     through the columns of A. For each column of A, we check if it has any
     nonzeros in rows that are in B's row_perm. If yes, column j of C will
     have a nonzero block corresponding to the columns of B */
+    permuted_dense_ensure_row_inv(B);
     iVec *col_active = iVec_new(8);
     for (int j = 0; j < A->n; j++)
     {
         int start = A->p[j];
         int len = A->p[j + 1] - start;
-        bool hit = B->row_inv != NULL
-                       ? idxs_hits_set(A->i + start, len, B->row_inv)
-                       : sorted_hits(A->i + start, len, B->row_perm, B->m0);
-        if (hit)
+        if (idxs_hits_set(A->i + start, len, B->row_inv))
         {
             iVec_append(col_active, j);
         }
@@ -461,13 +424,6 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
 
     matrix *C = new_permuted_dense(B->base.n, A->n, B->n0, col_active->len,
                                    B->col_perm, col_active->data, NULL);
-
-    /* BTDA_pd_csc_fill_values reads B->row_inv whenever C is non-empty; a
-       disjoint (empty) product never materializes it. */
-    if (col_active->len > 0)
-    {
-        permuted_dense_ensure_row_inv(B);
-    }
     iVec_free(col_active);
 
     /* Pre-size B's dwork for the BTDA fill (holds (diag(d) B)^T). */
@@ -523,16 +479,13 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
        columns of B. For each column of B, we check if it has any nonzeros in rows
        that are in A->row_perm. If yes, column i of C will have a nonzero block
        corresponding to the columns of A */
-
+    permuted_dense_ensure_row_inv(A);
     iVec *row_active = iVec_new(10);
     for (int i = 0; i < B->n; i++)
     {
         int start = B->p[i];
         int len = B->p[i + 1] - start;
-        bool hit = A->row_inv != NULL
-                       ? idxs_hits_set(B->i + start, len, A->row_inv)
-                       : sorted_hits(B->i + start, len, A->row_perm, A->m0);
-        if (hit)
+        if (idxs_hits_set(B->i + start, len, A->row_inv))
         {
             iVec_append(row_active, i);
         }
@@ -540,13 +493,6 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
 
     matrix *C = new_permuted_dense(B->n, A->base.n, row_active->len, A->n0,
                                    row_active->data, A->col_perm, NULL);
-
-    /* BTDA_csc_pd_fill_values reads A->row_inv whenever C is non-empty; a
-       disjoint (empty) product never materializes it. */
-    if (row_active->len > 0)
-    {
-        permuted_dense_ensure_row_inv(A);
-    }
     iVec_free(row_active);
 
     /* Pre-size A's dwork for the BTDA fill (holds (diag(d_perm) X_A)^T). */
@@ -563,6 +509,7 @@ static void BTA_csc_denseT_fill_values(const CSC_matrix *B, const double *A_T,
                                        int m0_A, const int *inv, permuted_dense *C)
 {
     /* C[i_C, j_C] = dot(col C->row_perm[i_C] of B, row j_C of A_T). */
+    assert(inv != NULL);
     for (int i_C = 0; i_C < C->m0; i_C++)
     {
         int B_col = C->row_perm[i_C];

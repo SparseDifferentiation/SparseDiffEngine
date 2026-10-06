@@ -278,6 +278,7 @@ matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     // -------------------------------------------------------------------------------
     matrix *C = new_permuted_dense(B->base.n, A->base.n, B->n0, col_union->len,
                                    B->col_perm, col_union->data, NULL);
+    permuted_dense_ensure_col_inv((permuted_dense *) C);
 
     iVec_free(col_union);
     sp_free(col_perms);
@@ -382,21 +383,9 @@ static void BTA_pd_spd_core(const permuted_dense *B, const double *d,
                     Bg, B->n0, Ag, Ak->n0, 0.0, Cg, Ak->n0);
 
         /* precompute scatter positions once per block */
-        if (C->col_inv != NULL)
+        for (int j = 0; j < Ak->n0; j++)
         {
-            for (int j = 0; j < Ak->n0; j++)
-            {
-                out_cols[j] = C->col_inv[Ak->col_perm[j]];
-            }
-        }
-        else
-        {
-            /* compact C (col_inv == NULL): Ak's columns are a subset of C's, both
-             * sorted */
-            for (int j = 0; j < Ak->n0; j++)
-            {
-                out_cols[j] = sorted_pos(C->col_perm, C->n0, Ak->col_perm[j]);
-            }
+            out_cols[j] = C->col_inv[Ak->col_perm[j]];
         }
 
         /* C += Cg  (scatter + add into C) */

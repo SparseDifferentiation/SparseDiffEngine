@@ -58,6 +58,7 @@ matrix *BTA_pd_csr_alloc(const permuted_dense *B, const CSR_matrix *A)
 
     matrix *C =
         new_permuted_dense(B->base.n, p, B->n0, s_A, B->col_perm, col_active, NULL);
+    permuted_dense_ensure_col_inv((permuted_dense *) C);
     sp_free(col_active);
     sp_free(seen);
 
@@ -89,7 +90,7 @@ void BTA_pd_csr_fill_values(const permuted_dense *B, const CSR_matrix *A_csr,
         return;
     }
 
-    /* Use C->col_inv (pre-built by new_permuted_dense) as col_inv_out and
+    /* Use C->col_inv (built at alloc) as col_inv_out and
        C->kernel_dwork as A_sub_dense; both are owned by C. dwork is sized at alloc
        time to cover m0 * s_A; only that prefix is touched. */
     double *A_sub_dense = C->kernel_dwork;
@@ -191,6 +192,7 @@ matrix *BTA_csr_pd_alloc(const CSR_matrix *B_csr, const permuted_dense *A)
 
     matrix *C =
         new_permuted_dense(q, A->base.n, r_B, A->n0, row_active, A->col_perm, NULL);
+    permuted_dense_ensure_row_inv((permuted_dense *) C);
     sp_free(row_active);
     sp_free(seen);
 
@@ -222,7 +224,7 @@ void BTA_csr_pd_fill_values(const CSR_matrix *B_csr, const permuted_dense *A,
         return;
     }
 
-    /* Use C->row_inv (pre-built by new_permuted_dense) as row_inv_out and
+    /* Use C->row_inv (built at alloc) as row_inv_out and
        C->kernel_dwork as B_sub_dense; both are owned by C. dwork is sized at alloc
        time to cover m0 * r_B; only that prefix is touched. */
     double *B_sub_dense = C->kernel_dwork;

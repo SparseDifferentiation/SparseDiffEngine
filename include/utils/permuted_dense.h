@@ -41,9 +41,11 @@ typedef struct permuted_dense
 
     /* Dense inverse permutations, sized by the GLOBAL dims (n and m):
        col_inv[col_perm[jj]] = jj and row_inv[row_perm[ii]] = ii, -1
-       elsewhere. PDs built by new_permuted_dense_compact leave both NULL;
-       consumers either fall back to sorted scans of the perms or call
-       permuted_dense_ensure_col_inv / _row_inv to materialize on demand. */
+       elsewhere. NULL until built by permuted_dense_ensure_col_inv /
+       _row_inv: a kernel whose fill reads one ensures it on its operand in
+       the paired alloc. Built lazily because many PDs never need them and
+       their size is global, not per-block (e.g. the p blocks of a kron
+       Jacobian each have the full variable space as columns). */
     int *col_inv;
     int *row_inv;
 
@@ -98,17 +100,8 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
    col_perm = [0..n-1], dense block fills the full (m, n) shape. */
 matrix *new_permuted_dense_full(int m, int n, const double *data);
 
-/* Compact constructor: like new_permuted_dense, but leaves col_inv and
-   row_inv NULL instead of allocating the two global-dimension inverse
-   arrays — storage stays proportional to the block, not the global shape.
-   Used where those arrays dominate memory (the kron-path blocks, whose
-   global dims are the full variable space); consumers materialize them on
-   demand via the ensure helpers below, or scan the sorted perms instead. */
-matrix *new_permuted_dense_compact(int m, int n, int m0, int n0, const int *row_perm,
-                                   const int *col_perm, const double *X_data);
-
-/* Materialize A->col_inv / A->row_inv if NULL. Same const-cast on-demand
-   slot convention as permuted_dense_ensure_kernel_dwork. */
+/* Build A->col_inv / A->row_inv if NULL. Same const-cast on-demand slot
+   convention as permuted_dense_ensure_kernel_dwork. */
 void permuted_dense_ensure_col_inv(const permuted_dense *A);
 void permuted_dense_ensure_row_inv(const permuted_dense *A);
 

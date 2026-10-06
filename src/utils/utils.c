@@ -147,15 +147,3 @@ int sorted_pos(const int *perm, int n0, int g)
     }
     return -1;
 }
-
-bool sorted_hits(const int *idxs, int len, const int *perm, int n0)
-{
-    for (int ii = 0; ii < len; ii++)
-    {
-        if (sorted_pos(perm, n0, idxs[ii]) >= 0)
-        {
-            return true;
-        }
-    }
-    return false;
-}

@@ -9,16 +9,15 @@
 #include "problem.h"
 #include "utils/tracked_alloc.h"
 
-/* Peak-memory regression for the kron-path Jacobians (compact blocks, no
-   inverse-permutation arrays).
+/* Peak-memory regression for the kron-path Jacobians (lazy inverse arrays).
 
    Row-sum + col-sum constraints on a matrix variable X (a x b) both take the
    dense left_matmul kron path: each Jacobian is a stacked_pd of p blocks
    (p = b and p = a) whose global column space is all of n_vars = a * b.
-   Before the kron blocks were compact, every block eagerly carried col_inv
-   (n_vars ints) plus row_inv, so init peaked at O((a + b) * a * b) ints of
-   pure index metadata against O(a * b) true nnz: measured 1324 bytes/var
-   (21.7 MB) at a = b = 128. With compact blocks the same init peaks at 292
+   When every PD eagerly built col_inv (n_vars ints) plus row_inv, init
+   peaked at O((a + b) * a * b) ints of pure index metadata against O(a * b)
+   true nnz: measured 1324 bytes/var (21.7 MB) at a = b = 128. With the
+   arrays built only where a fill reads them, the same init peaks at 292
    bytes/var (4.8 MB), dominated by inherent O(n_vars) structure (the
    children's identity Jacobians and their CSC caches). The 400 bytes/var
    bound sits between the two with wide margins on both sides. */
