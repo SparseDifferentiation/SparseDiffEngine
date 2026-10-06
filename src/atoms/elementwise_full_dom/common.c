@@ -64,7 +64,7 @@ void eval_jacobian_elementwise(expr *node)
     else
     {
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
-        child->eval_jacobian(child);
+        eval_jacobian(child);
         node->local_jacobian(node, node->work->local_jac_diag);
         memcpy(node->work->dwork, node->work->local_jac_diag,
                node->size * sizeof(double));
@@ -139,13 +139,9 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
     {
         if (child->is_affine(child))
         {
-            /* Refresh the child Jacobian's CSC_matrix mirror once; subsequent calls
-               skip since the affine child's values don't change. */
-            if (!child->work->jacobian_csc_filled)
-            {
-                child->jacobian->refresh_csc_values(child->jacobian);
-                child->work->jacobian_csc_filled = true;
-            }
+            /* Version-guarded: fills the affine child's CSC_matrix mirror on the
+               first call, no-ops after. */
+            child->jacobian->refresh_csc_values(child->jacobian);
 
             node->local_wsum_hess(node, node->work->dwork, w);
             child->jacobian->ATDA_fill_values(child->jacobian, node->work->dwork,
@@ -169,9 +165,10 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
                 node->work->dwork[k] *= w[k];
             }
 
-            child->eval_wsum_hess(child, node->work->dwork);
+            eval_wsum_hess(child, node->work->dwork);
             memcpy(node->work->hess_term2->x, child->wsum_hess->x,
                    child->wsum_hess->nnz * sizeof(double));
+            matrix_values_changed(node->work->hess_term2);
 
             /* wsum_hess = term1 + term2 */
             sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,

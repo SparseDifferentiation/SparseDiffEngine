@@ -33,7 +33,7 @@ const char *test_jacobian_trace_variable(void)
 
     trace_node->forward(trace_node, u_vals);
     jacobian_init(trace_node);
-    trace_node->eval_jacobian(trace_node);
+    eval_jacobian(trace_node);
 
     double expected_Ax[3] = {1.0, 1.0, 1.0};
     int expected_Ap[2] = {0, 3};
@@ -78,7 +78,7 @@ const char *test_jacobian_trace_composite(void)
 
     jacobian_init(trace_node);
     trace_node->forward(trace_node, u_vals);
-    trace_node->eval_jacobian(trace_node);
+    eval_jacobian(trace_node);
 
     /* Expected values: d(log(x_ii) + exp(x_ii))/dx_ii = 1/x_ii + exp(x_ii)
      * At x_00 = 1: 1/1 + exp(1) = 1 + 2.718281828...

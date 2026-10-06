@@ -66,7 +66,7 @@ static void jacobian_init_impl(expr *node)
     (void) node;
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     /* Linear operator jacobian never changes - nothing to evaluate */
     (void) node;
@@ -79,7 +79,7 @@ static void wsum_hess_init_impl(expr *node)
         new_sparse_matrix(new_CSR_matrix(node->n_vars, node->n_vars, 0));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     /* Linear operator Hessian is always zero - nothing to evaluate */
     (void) node;
@@ -93,8 +93,9 @@ expr *new_linear(expr *u, const CSR_matrix *A, const double *b)
     linear_op_expr *lin_node =
         (linear_op_expr *) sp_calloc(1, sizeof(linear_op_expr));
     expr *node = &lin_node->base;
-    init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, free_type_data);
+    init_expr(node, A->m, 1, u->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
 

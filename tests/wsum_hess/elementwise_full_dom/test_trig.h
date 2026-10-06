@@ -20,7 +20,7 @@ const char *test_wsum_hess_sin(void)
     sin_node->forward(sin_node, u_vals);
     jacobian_init(sin_node);
     wsum_hess_init(sin_node);
-    sin_node->eval_wsum_hess(sin_node, w);
+    eval_wsum_hess(sin_node, w);
 
     /* Expected values on the diagonal: -w_i * sin(x_i) */
     double expected_x[3] = {-1.0 * sin(1.0), -2.0 * sin(2.0), -3.0 * sin(3.0)};
@@ -46,7 +46,7 @@ const char *test_wsum_hess_cos(void)
     cos_node->forward(cos_node, u_vals);
     jacobian_init(cos_node);
     wsum_hess_init(cos_node);
-    cos_node->eval_wsum_hess(cos_node, w);
+    eval_wsum_hess(cos_node, w);
 
     /* Expected values on the diagonal: -w_i * cos(x_i) */
     double expected_x[3] = {-1.0 * cos(1.0), -2.0 * cos(2.0), -3.0 * cos(3.0)};
@@ -72,7 +72,7 @@ const char *test_wsum_hess_tan(void)
     tan_node->forward(tan_node, u_vals);
     jacobian_init(tan_node);
     wsum_hess_init(tan_node);
-    tan_node->eval_wsum_hess(tan_node, w);
+    eval_wsum_hess(tan_node, w);
 
     /* Expected values on the diagonal: w_i * 2 * sin(x_i) / cos^3(x_i) */
     double expected_x[3] = {1.0 * 2.0 * sin(1.0) / pow(cos(1.0), 3),

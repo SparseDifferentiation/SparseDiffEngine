@@ -71,20 +71,34 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
     jacobian_init(x);
 
-    /* allocate sparsity for the broadcast output; output type matches child's. */
+    /* Every output row (i, j) at column-major index i + j*d1 is a copy of one
+       child row: j for ROW ((1, d2) child), i for COL ((d1, 1) child), 0 for
+       SCALAR. A row gather with that map; the map is bound to node->jacobian
+       and not kept. */
     broadcast_expr *bcast = (broadcast_expr *) node;
-    node->jacobian =
-        x->jacobian->broadcast_alloc(x->jacobian, bcast->type, node->d1, node->d2);
+    int d1 = node->d1;
+    int *map = (int *) sp_malloc(node->size * sizeof(int));
+    for (int j = 0; j < node->d2; j++)
+    {
+        for (int i = 0; i < d1; i++)
+        {
+            int src = 0;
+            if (bcast->type == BROADCAST_ROW) src = j;
+            if (bcast->type == BROADCAST_COL) src = i;
+            map[i + j * d1] = src;
+        }
+    }
+    node->jacobian = x->jacobian->row_gather_alloc(x->jacobian, map, node->size);
+    sp_free(map);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
-    node->left->eval_jacobian(node->left);
+    eval_jacobian(node->left);
 
     /* fill values into the preallocated output. */
-    broadcast_expr *bcast = (broadcast_expr *) node;
-    node->left->jacobian->broadcast_fill_values(node->left->jacobian, bcast->type,
-                                                node->d1, node->d2, node->jacobian);
+    node->left->jacobian->row_gather_fill_values(node->left->jacobian,
+                                                 node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -99,7 +113,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = sp_malloc(node->size * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     broadcast_expr *bcast = (broadcast_expr *) node;
     expr *x = node->left;
@@ -139,7 +153,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         }
     }
 
-    x->eval_wsum_hess(x, node->work->dwork);
+    eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -183,7 +197,8 @@ expr *new_broadcast(expr *child, int d1, int d2)
     //                  initialize the rest of the expression
     // --------------------------------------------------------------------------
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = child;
     expr_retain(child);
     bcast->type = type;

@@ -19,7 +19,7 @@ const char *test_quad_over_lin1(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double expected_Ax[4] = {2.0 / 4.0, 4.0 / 4.0, 6.0 / 4.0, -14.0 / 16.0};
     int expected_Ap[2] = {0, 4};
@@ -43,7 +43,7 @@ const char *test_quad_over_lin2(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double expected_Ax[4] = {-14.0 / 16.0, 2.0 / 4.0, 4.0 / 4.0, 6.0 / 4.0};
     int expected_Ap[2] = {0, 4};
@@ -80,7 +80,7 @@ const char *test_quad_over_lin3(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double expected_vals[4] = {71.0, 94.0, 117.0, -76.25};
     int expected_Ap[2] = {0, 4};
@@ -120,7 +120,7 @@ const char *test_quad_over_lin4(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double expected_vals[4] = {-76.25, 71.0, 94.0, 117.0};
     int expected_Ap[2] = {0, 4};
@@ -160,7 +160,7 @@ const char *test_quad_over_lin5(void)
 
     node->forward(node, u_vals);
     jacobian_init(node);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double expected_vals[7] = {12, 36, -117, 36, 84, 114, 144};
     int expected_Ap[2] = {0, 7};

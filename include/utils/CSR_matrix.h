@@ -46,6 +46,11 @@ CSR_matrix *new_csr_copy_sparsity(const CSR_matrix *A);
 void free_CSR_matrix(CSR_matrix *matrix);
 void copy_CSR_matrix(const CSR_matrix *A, CSR_matrix *C);
 
+/* Shrink a capacity-built CSR to its true size: realloc i and x down to
+   p[m] and set nnz. Call once, after the pattern is complete and before
+   the matrix is published to any consumer. */
+void CSR_trim(CSR_matrix *A);
+
 /* transpose functionality (iwork must be of size A->n) */
 CSR_matrix *transpose(const CSR_matrix *A, int *iwork);
 CSR_matrix *AT_alloc(const CSR_matrix *A, int *iwork);

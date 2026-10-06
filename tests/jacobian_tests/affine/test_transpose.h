@@ -27,7 +27,7 @@ const char *test_jacobian_transpose(void)
     double u[4] = {1, 3, 2, 4};
     transpose_AX->forward(transpose_AX, u);
     jacobian_init(transpose_AX);
-    transpose_AX->eval_jacobian(transpose_AX);
+    eval_jacobian(transpose_AX);
 
     // Jacobian of transpose_AX
     double expected_x[8] = {1, 2, 1, 2, 3, 4, 3, 4};
@@ -63,7 +63,7 @@ const char *test_jacobian_transpose_pd_preserved(void)
     double u_vals[2] = {0.5, -1.5};
     T->forward(T, u_vals);
     jacobian_init(T);
-    T->eval_jacobian(T);
+    eval_jacobian(T);
 
     /* Structural: output Jacobian must be a PD. */
     mu_assert("transpose Jacobian should be PD", T->jacobian->is_permuted_dense);
@@ -85,6 +85,59 @@ const char *test_jacobian_transpose_pd_preserved(void)
                              5.0,  6.0,   /* row 4 from A row 2 */
                              11.0, 12.0}; /* row 5 from A row 5 */
     mu_assert("X values", cmp_double_array(pd_T->X, expected_X, 12));
+
+    free_expr(T);
+    return 0;
+}
+
+/* When the child Jacobian is a stacked_pd (left_matmul_dense with a multi-column
+   variable), the transpose must stay stacked_pd and equal the row-permuted child
+   Jacobian. X is 3x2, A is 2x3, L = A @ X is 2x2, so d1 = d2 = 2 and
+   k(r) = (r/2) + (r%2)*2 = [0, 2, 1, 3]. */
+const char *test_jacobian_transpose_spd_preserved(void)
+{
+    double A[6] = {1.0, -0.5, 2.0, 0.5, 1.5, -1.0};
+    expr *X = new_variable(3, 2, 0, 6);
+    expr *L = new_left_matmul_dense(NULL, X, 2, 3, A);
+    expr *T = new_transpose(L);
+
+    double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
+    jacobian_init(T);
+    T->forward(T, u);
+    eval_jacobian(T);
+    mu_assert("child Jacobian should be spd", L->jacobian->is_stacked_pd);
+    mu_assert("transpose Jacobian should be spd", T->jacobian->is_stacked_pd);
+
+    /* Dense child Jacobian: output entry (i, j) (col-major row i + 2j) carries
+       A[i, :] in the columns of X's j-th column (vars 3j .. 3j+2). */
+    double JL[4][6] = {{0}};
+    for (int j = 0; j < 2; j++)
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            for (int c = 0; c < 3; c++)
+            {
+                JL[i + 2 * j][3 * j + c] = A[3 * i + c];
+            }
+        }
+    }
+    int k[4] = {0, 2, 1, 3};
+
+    CSR_matrix *JT = T->jacobian->to_csr(T->jacobian);
+    mu_assert("nnz", JT->nnz == 12);
+    double dense[4][6] = {{0}};
+    for (int r = 0; r < 4; r++)
+    {
+        for (int jj = JT->p[r]; jj < JT->p[r + 1]; jj++)
+        {
+            dense[r][JT->i[jj]] += JT->x[jj];
+        }
+    }
+    for (int r = 0; r < 4; r++)
+    {
+        mu_assert("transpose rows must be permuted child rows",
+                  cmp_double_array(dense[r], JL[k[r]], 6));
+    }
 
     free_expr(T);
     return 0;

@@ -45,6 +45,7 @@ static void refresh_param_values_qf(quad_form_expr *qnode)
     qnode->base.needs_parameter_refresh = false;
     memcpy(qnode->Q->x, qnode->param_source->value,
            (size_t) qnode->n * qnode->n * sizeof(double));
+    matrix_values_changed(qnode->Q);
 }
 
 static void forward(expr *node, const double *u)
@@ -55,9 +56,6 @@ static void forward(expr *node, const double *u)
     /* refresh Q from the parameter if needed (no-op on the constant/sparse path) */
     if (qnode->param_source != NULL && node->needs_parameter_refresh)
     {
-        /* Composite sources hold gated nodes of their own (promote, nested
-           mults): mark the whole side subtree before re-evaluating it. */
-        expr_set_needs_refresh(qnode->param_source);
         qnode->param_source->forward(qnode->param_source, NULL);
     }
     refresh_param_values_qf(qnode);
@@ -113,7 +111,7 @@ static void jacobian_init_impl(expr *node)
     }
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
@@ -129,18 +127,8 @@ static void eval_jacobian(expr *node)
     else
     {
         /* jacobian = 2 * (Q @ f(x))^T @ J_f */
-        x->eval_jacobian(x);
-
-        if (!x->work->jacobian_csc_filled)
-        {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian),
-                                   x->work->jacobian_csc, x->work->csc_work);
-
-            if (x->is_affine(x))
-            {
-                x->work->jacobian_csc_filled = true;
-            }
-        }
+        eval_jacobian(x);
+        expr_refresh_jacobian_csc(x);
 
         /* The jacobian has same values as the gradient, which is
            J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
@@ -225,18 +213,11 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
     }
     else
     {
-        /* fill the CSC_matrix representation of the Jacobian of the child */
+        /* refresh the CSC_matrix mirror of the child's Jacobian (version-guarded:
+           no-ops when the jacobian pass already refreshed it this eval, or when
+           an affine child's values are unchanged) */
         CSC_matrix *Jf = x->work->jacobian_csc;
-        if (!x->work->jacobian_csc_filled)
-        {
-            csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jf,
-                                   x->work->csc_work);
-
-            if (x->is_affine(x))
-            {
-                x->work->jacobian_csc_filled = true;
-            }
-        }
+        expr_refresh_jacobian_csc(x);
 
         CSC_matrix *QJf = qnode->QJf;
         CSR_matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
@@ -246,15 +227,17 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
         BTDA_fill_values(Jf, QJf, NULL, term1);
 
         /* term2 */
-        x->eval_wsum_hess(x, node->work->dwork);
+        eval_wsum_hess(x, node->work->dwork);
         memcpy(node->work->hess_term2->x, x->wsum_hess->x,
                x->wsum_hess->nnz * sizeof(double));
 
         /* scale both terms by 2w */
         cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
                     1);
+        matrix_values_changed(node->work->hess_term1);
         cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
                     1);
+        matrix_values_changed(node->work->hess_term2);
 
         /* sum the two terms */
         sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
@@ -298,7 +281,6 @@ static void wsum_hess_init_dense(expr *node)
         permuted_dense *Q_pd = (permuted_dense *) qnode->Q;
         qnode->QJf_dense = BA_pd_matrices_alloc(Q_pd, x->jacobian);
         node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf_dense);
-        qnode->diag_w = (double *) sp_malloc(n * sizeof(double));
 
         /* term2 = sum_i (Q f(x))_i nabla^2 f_i */
         wsum_hess_init(x);
@@ -333,29 +315,33 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
            dispatchers below read from it. */
         x->jacobian->refresh_csc_values(x->jacobian);
 
-        /* term1 = 2w J_f^T Q J_f. The dispatcher fill is B^T diag(d) A (no plain
-           B^T A form); a constant diagonal d = 2w carries the weight.
-           Potential TODO: Add back BTA_matrices_fill_values_kernel so we don't have
-           to form diag_w. */
-        for (int i = 0; i < qnode->n; i++)
-        {
-            qnode->diag_w[i] = two_w;
-        }
+        /* term1 = 2w J_f^T Q J_f = 2w (Q J_f)^T J_f */
         BA_pd_matrices_fill_values((permuted_dense *) qnode->Q, x->jacobian,
                                    (permuted_dense *) qnode->QJf_dense);
-        BTDA_matrices_fill_values(x->jacobian, qnode->diag_w, qnode->QJf_dense,
-                                  node->work->hess_term1);
+        BTA_matrices_fill_values(x->jacobian, qnode->QJf_dense,
+                                 node->work->hess_term1);
+        cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
+                    1);
+        matrix_values_changed(node->work->hess_term1);
 
         /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
-        x->eval_wsum_hess(x, node->work->dwork);
+        eval_wsum_hess(x, node->work->dwork);
         memcpy(node->work->hess_term2->x, x->wsum_hess->x,
                x->wsum_hess->nnz * sizeof(double));
         cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x,
                     1);
+        matrix_values_changed(node->work->hess_term2);
 
         sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
                                  node->wsum_hess);
     }
+}
+
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((quad_form_expr *) node)->param_source);
 }
 
 static void free_type_data(expr *node)
@@ -372,11 +358,6 @@ static void free_type_data(expr *node)
     {
         free_matrix(qnode->QJf_dense);
         qnode->QJf_dense = NULL;
-    }
-    if (qnode->diag_w != NULL)
-    {
-        sp_free(qnode->diag_w);
-        qnode->diag_w = NULL;
     }
     free_expr(qnode->param_source);
     qnode->param_source = NULL;
@@ -395,9 +376,9 @@ expr *new_quad_form_sparse(expr *left, CSR_matrix *Q)
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_sparse, eval_wsum_hess_sparse,
-              free_type_data);
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_sparse,
+              eval_wsum_hess_sparse, free_type_data);
     node->left = left;
     expr_retain(left);
 
@@ -419,8 +400,9 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
     quad_form_expr *qnode = (quad_form_expr *) sp_calloc(1, sizeof(quad_form_expr));
     expr *node = &qnode->base;
 
-    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_dense, eval_wsum_hess_dense, free_type_data);
+    init_expr(node, 1, 1, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_dense,
+              eval_wsum_hess_dense, free_type_data);
     node->left = child;
     expr_retain(child);
 
@@ -443,6 +425,7 @@ expr *new_quad_form_dense(expr *child, int n, const double *P_data,
         /* Q is filled from the parameter on the first forward pass. */
         qnode->Q = new_permuted_dense_full(n, n, NULL);
         node->needs_parameter_refresh = true;
+        node->set_needs_refresh_children = set_needs_refresh_param_source;
     }
     else
     {

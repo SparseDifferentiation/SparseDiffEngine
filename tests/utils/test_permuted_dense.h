@@ -356,22 +356,22 @@ const char *test_permuted_dense_compact_inv(void)
     mu_assert("compact col_inv NULL", pd->col_inv == NULL);
     mu_assert("compact row_inv NULL", pd->row_inv == NULL);
 
-    /* Compactness propagates through copy_sparsity / transpose / index. */
+    /* Compactness propagates through copy_sparsity / transpose / row_gather. */
     matrix *copy = copy_sparsity_pd_alloc(pd);
     matrix *trans = transpose_pd_alloc(pd);
-    int indices[3] = {4, 0, 1};
-    matrix *indexed = index_pd_alloc(pd, indices, 3);
+    int map[3] = {4, 0, 1};
+    matrix *indexed = row_gather_pd_alloc(pd, map, 3);
     mu_assert("copy is compact", ((permuted_dense *) copy)->col_inv == NULL);
     mu_assert("transpose is compact", ((permuted_dense *) trans)->row_inv == NULL);
     mu_assert("indexed is compact", ((permuted_dense *) indexed)->col_inv == NULL);
 
-    /* index of a compact PD: rows {4, 0, 1} of M hit source rows {1, -, 0}. */
+    /* row_gather of a compact PD: rows {4, 0, 1} of M hit source rows {1, -, 0}. */
     permuted_dense *idx_pd = (permuted_dense *) indexed;
     int idx_row_perm_expected[2] = {0, 2};
     mu_assert("indexed m0", idx_pd->m0 == 2);
     mu_assert("indexed row_perm",
               cmp_int_array(idx_pd->row_perm, idx_row_perm_expected, 2));
-    index_pd_fill_values(pd, indices, 3, idx_pd);
+    row_gather_pd_fill_values(pd, idx_pd);
     double idx_X_expected[4] = {3.0, 4.0, 1.0, 2.0};
     mu_assert("indexed values", cmp_double_array(idx_pd->X, idx_X_expected, 4));
 
@@ -439,10 +439,10 @@ const char *test_permuted_dense_times_csc_compact_output(void)
     return 0;
 }
 
-/* PD index_alloc / index_fill_values: select rows from a PD; output must be
-   another PD with row_perm equal to the output positions where indices[i]
-   hit the source row_perm. */
-const char *test_permuted_dense_index(void)
+/* PD row_gather_alloc / row_gather_fill_values: output must be another PD whose
+   row_perm is the set of output positions where map[i] hits the source
+   row_perm, with repeats handled. */
+const char *test_permuted_dense_row_gather(void)
 {
     /* Source PD, shape (6, 4), dense block at rows {1, 3, 4} x cols {0, 2}. */
     int row_perm[3] = {1, 3, 4};
@@ -450,163 +450,34 @@ const char *test_permuted_dense_index(void)
     double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
 
-    /* Index by [0, 3, 1, 5, 4]:
+    /* map = [0, 3, 1, 4, 3, 5]:
        - position 0 -> source row 0 (not in row_perm, zero)
-       - position 1 -> source row 3 (in row_perm at ii=1, dense)
-       - position 2 -> source row 1 (in row_perm at ii=0, dense)
-       - position 3 -> source row 5 (not in row_perm, zero)
-       - position 4 -> source row 4 (in row_perm at ii=2, dense) */
-    int indices[5] = {0, 3, 1, 5, 4};
-    matrix *out = M->index_alloc(M, indices, 5);
+       - position 1 -> source row 3 (ii=1, dense)
+       - position 2 -> source row 1 (ii=0, dense)
+       - position 3 -> source row 4 (ii=2, dense)
+       - position 4 -> source row 3 again (ii=1, dense)
+       - position 5 -> source row 5 (not in row_perm, zero) */
+    int map[6] = {0, 3, 1, 4, 3, 5};
+    matrix *out = M->row_gather_alloc(M, map, 6);
     permuted_dense *out_pd = (permuted_dense *) out;
 
-    mu_assert("out m", out->m == 5);
+    mu_assert("out m", out->m == 6);
     mu_assert("out n", out->n == 4);
-    mu_assert("out nnz", out->nnz == 6); /* m0=3 * n0=2 */
-    mu_assert("m0", out_pd->m0 == 3);
-    mu_assert("n0", out_pd->n0 == 2);
-
-    int expected_row_perm[3] = {1, 2, 4};
-    mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_row_perm, 3));
-    int expected_col_perm[2] = {0, 2};
-    mu_assert("col_perm", cmp_int_array(out_pd->col_perm, expected_col_perm, 2));
-
-    M->index_fill_values(M, indices, 5, out);
-
-    /* Row 0 of out (i=1) = source row 3 = X[1, :] = {3, 4}.
-       Row 1 of out (i=2) = source row 1 = X[0, :] = {1, 2}.
-       Row 2 of out (i=4) = source row 4 = X[2, :] = {5, 6}. */
-    double expected_X[6] = {3.0, 4.0, 1.0, 2.0, 5.0, 6.0};
-    mu_assert("values", cmp_double_array(out_pd->X, expected_X, 6));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
-/* PD promote_alloc / promote_fill_values: tile a 1-row PD into a
-   `size`-row PD where every row is a copy of the source row. */
-const char *test_permuted_dense_promote(void)
-{
-    /* Source PD, shape (1, 5), single dense row at row 0, cols {1, 3}. */
-    int row_perm[1] = {0};
-    int col_perm[2] = {1, 3};
-    double X[2] = {7.0, 9.0};
-    matrix *M = new_permuted_dense(1, 5, 1, 2, row_perm, col_perm, X);
-
-    matrix *out = M->promote_alloc(M, 4);
-    permuted_dense *out_pd = (permuted_dense *) out;
-
-    mu_assert("out m", out->m == 4);
-    mu_assert("out n", out->n == 5);
     mu_assert("out nnz", out->nnz == 8); /* m0=4 * n0=2 */
     mu_assert("m0", out_pd->m0 == 4);
     mu_assert("n0", out_pd->n0 == 2);
 
-    int expected_row_perm[4] = {0, 1, 2, 3};
+    int expected_row_perm[4] = {1, 2, 3, 4};
     mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_row_perm, 4));
-    int expected_col_perm[2] = {1, 3};
+    int expected_col_perm[2] = {0, 2};
     mu_assert("col_perm", cmp_int_array(out_pd->col_perm, expected_col_perm, 2));
+    int expected_src[4] = {1, 0, 2, 1};
+    mu_assert("bound_iwork", cmp_int_array(out_pd->bound_iwork, expected_src, 4));
 
-    M->promote_fill_values(M, out);
+    M->row_gather_fill_values(M, out);
 
-    double expected_X[8] = {7.0, 9.0, 7.0, 9.0, 7.0, 9.0, 7.0, 9.0};
-    mu_assert("values", cmp_double_array(out_pd->X, expected_X, 8));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
-/* PD broadcast_alloc / broadcast_fill_values, SCALAR variant.
-   (1, 5) PD with single dense row -> (d1*d2, 5) PD with that row tiled. */
-const char *test_permuted_dense_broadcast_scalar(void)
-{
-    int row_perm[1] = {0};
-    int col_perm[2] = {1, 3};
-    double X[2] = {7.0, 9.0};
-    matrix *M = new_permuted_dense(1, 5, 1, 2, row_perm, col_perm, X);
-
-    int d1 = 2, d2 = 3; /* out shape (2, 3), m = 6 */
-    matrix *out = M->broadcast_alloc(M, BROADCAST_SCALAR, d1, d2);
-    permuted_dense *out_pd = (permuted_dense *) out;
-
-    mu_assert("out m", out->m == 6);
-    mu_assert("out n", out->n == 5);
-    mu_assert("m0", out_pd->m0 == 6);
-    mu_assert("n0", out_pd->n0 == 2);
-    int expected_rp[6] = {0, 1, 2, 3, 4, 5};
-    mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_rp, 6));
-
-    M->broadcast_fill_values(M, BROADCAST_SCALAR, d1, d2, out);
-    double expected_X[12] = {7, 9, 7, 9, 7, 9, 7, 9, 7, 9, 7, 9};
-    mu_assert("values", cmp_double_array(out_pd->X, expected_X, 12));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
-/* PD broadcast_alloc / broadcast_fill_values, ROW variant.
-   (1, d2) input has Jacobian of shape (d2, n_vars). Source PD: m=d2=3,
-   row_perm={0, 2} (rows 0 and 2 dense), col_perm={1, 4}, single dense row
-   per m0. Output (d1, d2) = (2, 3): each child row replicated d1=2
-   times. */
-const char *test_permuted_dense_broadcast_row(void)
-{
-    int row_perm[2] = {0, 2};
-    int col_perm[2] = {1, 4};
-    double X[4] = {1.0, 2.0,  /* row corresponding to child row 0 */
-                   3.0, 4.0}; /* row corresponding to child row 2 */
-    matrix *M = new_permuted_dense(3, 6, 2, 2, row_perm, col_perm, X);
-
-    int d1 = 2, d2 = 3; /* output (2, 3), out m = 6 */
-    matrix *out = M->broadcast_alloc(M, BROADCAST_ROW, d1, d2);
-    permuted_dense *out_pd = (permuted_dense *) out;
-
-    mu_assert("out m", out->m == 6);
-    mu_assert("m0", out_pd->m0 == 4); /* d1 * 2 */
-    mu_assert("n0", out_pd->n0 == 2);
-    /* row_perm = {child_row_perm[0]*d1, +1, child_row_perm[1]*d1, +1}
-                = {0, 1, 4, 5} */
-    int expected_rp[4] = {0, 1, 4, 5};
-    mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_rp, 4));
-
-    M->broadcast_fill_values(M, BROADCAST_ROW, d1, d2, out);
-    /* each child row replicated d1 times */
-    double expected_X[8] = {1.0, 2.0, 1.0, 2.0, 3.0, 4.0, 3.0, 4.0};
-    mu_assert("values", cmp_double_array(out_pd->X, expected_X, 8));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
-/* PD broadcast_alloc / broadcast_fill_values, COL variant.
-   (d1, 1) input has Jacobian of shape (d1, n_vars). Source PD: m=d1=3,
-   row_perm={0, 2}, col_perm={1, 4}, two dense rows. Output (d1, d2) = (3, 2),
-   out m = 6: each child row appears d2 times, shifted by j*d1. */
-const char *test_permuted_dense_broadcast_col(void)
-{
-    int row_perm[2] = {0, 2};
-    int col_perm[2] = {1, 4};
-    double X[4] = {1.0, 2.0, 3.0, 4.0};
-    matrix *M = new_permuted_dense(3, 6, 2, 2, row_perm, col_perm, X);
-
-    int d1 = 3, d2 = 2;
-    matrix *out = M->broadcast_alloc(M, BROADCAST_COL, d1, d2);
-    permuted_dense *out_pd = (permuted_dense *) out;
-
-    mu_assert("out m", out->m == 6);
-    mu_assert("m0", out_pd->m0 == 4); /* d2 * 2 */
-    mu_assert("n0", out_pd->n0 == 2);
-    /* row_perm = {0+0, 0+2, 3+0, 3+2} = {0, 2, 3, 5} */
-    int expected_rp[4] = {0, 2, 3, 5};
-    mu_assert("row_perm", cmp_int_array(out_pd->row_perm, expected_rp, 4));
-
-    M->broadcast_fill_values(M, BROADCAST_COL, d1, d2, out);
-    /* X = d2 copies of full source X block */
-    double expected_X[8] = {1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 4.0};
+    /* dense rows of out = X[1, :], X[0, :], X[2, :], X[1, :] */
+    double expected_X[8] = {3.0, 4.0, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0};
     mu_assert("values", cmp_double_array(out_pd->X, expected_X, 8));
 
     free_matrix(out);
@@ -870,6 +741,83 @@ const char *test_permuted_dense_BTDA_decomposition(void)
     free(B_d);
     free_matrix(C_m);
     free_matrix(tmp_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Direct BTDA_pd_pd on the matching-row_perm (fast) path: A and B share
+   row_perm, so the kernel takes the single-dgemm route with diag(d) folded
+   in. Oracle is the decomposition tmp = diag(d) A; C_ref = B^T tmp. */
+const char *test_permuted_dense_BTDA_matching_row_perm(void)
+{
+    int row_perm[2] = {1, 3};
+    int col_perm_A[2] = {0, 2};
+    int col_perm_B[2] = {1, 3};
+    double XA[4] = {1.0, 2.0, 3.0, 4.0};
+    double XB[4] = {5.0, 6.0, 7.0, 8.0};
+    /* d indexed by global row; only d[1], d[3] are read. */
+    double d[4] = {-2.0, 0.5, 100.0, 3.0};
+    matrix *A_m = new_permuted_dense(4, 4, 2, 2, row_perm, col_perm_A, XA);
+    matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm, col_perm_B, XB);
+    permuted_dense *A = (permuted_dense *) A_m;
+    permuted_dense *B = (permuted_dense *) B_m;
+
+    matrix *C_m = BTA_pd_pd_alloc(B, A);
+    permuted_dense *C = (permuted_dense *) C_m;
+    BTDA_pd_pd_fill_values(B, d, A, C);
+
+    matrix *tmp_m = A_m->copy_sparsity(A_m);
+    permuted_dense *tmp = (permuted_dense *) tmp_m;
+    DA_pd_fill_values(d, A, tmp);
+    matrix *C_ref_m = BTA_pd_pd_alloc(B, tmp);
+    permuted_dense *C_ref = (permuted_dense *) C_ref_m;
+    BTA_pd_pd_fill_values(B, tmp, C_ref);
+
+    mu_assert("values", cmp_double_array(C->X, C_ref->X, 4));
+
+    free_matrix(C_ref_m);
+    free_matrix(tmp_m);
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    return 0;
+}
+
+/* Direct BTDA_pd_pd on the partial-overlap (gather) path: row_perm_A =
+   [1, 3, 5], row_perm_B = [3, 5, 7], intersection {3, 5}. Same
+   decomposition oracle as above. */
+const char *test_permuted_dense_BTDA_partial_overlap(void)
+{
+    int row_perm_A[3] = {1, 3, 5};
+    int row_perm_B[3] = {3, 5, 7};
+    int col_perm_A[2] = {0, 2};
+    int col_perm_B[2] = {1, 3};
+    double XA[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    double XB[6] = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
+    /* d indexed by global row; only d[3], d[5] are read. */
+    double d[8] = {9.0, 9.0, 9.0, 2.0, 9.0, -1.5, 9.0, 9.0};
+    matrix *A_m = new_permuted_dense(8, 4, 3, 2, row_perm_A, col_perm_A, XA);
+    matrix *B_m = new_permuted_dense(8, 4, 3, 2, row_perm_B, col_perm_B, XB);
+    permuted_dense *A = (permuted_dense *) A_m;
+    permuted_dense *B = (permuted_dense *) B_m;
+
+    matrix *C_m = BTA_pd_pd_alloc(B, A);
+    permuted_dense *C = (permuted_dense *) C_m;
+    BTDA_pd_pd_fill_values(B, d, A, C);
+
+    matrix *tmp_m = A_m->copy_sparsity(A_m);
+    permuted_dense *tmp = (permuted_dense *) tmp_m;
+    DA_pd_fill_values(d, A, tmp);
+    matrix *C_ref_m = BTA_pd_pd_alloc(B, tmp);
+    permuted_dense *C_ref = (permuted_dense *) C_ref_m;
+    BTA_pd_pd_fill_values(B, tmp, C_ref);
+
+    mu_assert("values", cmp_double_array(C->X, C_ref->X, 4));
+
+    free_matrix(C_ref_m);
+    free_matrix(tmp_m);
+    free_matrix(C_m);
     free_matrix(B_m);
     free_matrix(A_m);
     return 0;
@@ -1142,102 +1090,6 @@ const char *test_BA_pd_matrices_fast_path(void)
     free_matrix(C_m);
     free_matrix(A_m);
     free_matrix(B_m);
-    return 0;
-}
-
-/* Direct vtable tests for sum_row_partition_alloc. The test PD represents a (6, 4)
-   matrix with a (3, 2) dense block at rows {0, 3, 4}, cols {1, 3}. We exercise all
-   three axes; for axis=0 (d1=2) the buckets {0/2, 3/2, 4/2} = {0, 1, 2}
-   are all distinct and non-decreasing (linear-scan dedupe); for axis=1
-   (d1=3) the buckets {0%3, 3%3, 4%3} = {0, 0, 1} collapse two input rows
-   onto the same output row (bitmap dedupe), so multiple idx_map entries
-   point to the same output position — a values-fill pass would scatter-add. */
-const char *test_permuted_dense_sum_all_rows(void)
-{
-    int row_perm[3] = {0, 3, 4};
-    int col_perm[2] = {1, 3};
-    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
-
-    int idx_map[6];
-    matrix *out = M->sum_row_partition_alloc(M, -1, /*d1 unused*/ 0, idx_map);
-
-    mu_assert("output is PD", out->is_permuted_dense);
-    permuted_dense *opd = (permuted_dense *) out;
-    mu_assert("out m", out->m == 1);
-    mu_assert("out n", out->n == 4);
-    mu_assert("out m0", opd->m0 == 1);
-    mu_assert("out n0", opd->n0 == 2);
-    int expected_row_perm[1] = {0};
-    int expected_col_perm[2] = {1, 3};
-    mu_assert("out row_perm", cmp_int_array(opd->row_perm, expected_row_perm, 1));
-    mu_assert("out col_perm", cmp_int_array(opd->col_perm, expected_col_perm, 2));
-    /* every input row collapses to row 0, so idx_map[i*n0+j] = j */
-    int expected_idx_map[6] = {0, 1, 0, 1, 0, 1};
-    mu_assert("idx_map", cmp_int_array(idx_map, expected_idx_map, 6));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
-const char *test_permuted_dense_sum_block_of_rows(void)
-{
-    int row_perm[3] = {0, 3, 4};
-    int col_perm[2] = {1, 3};
-    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
-
-    int d1 = 2; /* child shape (d1, d2) = (2, 3); output rows = d2 = 3 */
-    int idx_map[6];
-    matrix *out = M->sum_row_partition_alloc(M, 0, d1, idx_map);
-
-    mu_assert("output is PD", out->is_permuted_dense);
-    permuted_dense *opd = (permuted_dense *) out;
-    mu_assert("out m", out->m == 3);
-    mu_assert("out n", out->n == 4);
-    mu_assert("out m0", opd->m0 == 3);
-    mu_assert("out n0", opd->n0 == 2);
-    int expected_row_perm[3] = {0, 1, 2}; /* {0/2, 3/2, 4/2} */
-    int expected_col_perm[2] = {1, 3};
-    mu_assert("out row_perm", cmp_int_array(opd->row_perm, expected_row_perm, 3));
-    mu_assert("out col_perm", cmp_int_array(opd->col_perm, expected_col_perm, 2));
-    int expected_idx_map[6] = {0, 1, 2, 3, 4, 5};
-    mu_assert("idx_map", cmp_int_array(idx_map, expected_idx_map, 6));
-
-    free_matrix(out);
-    free_matrix(M);
-    return 0;
-}
-
-const char *test_permuted_dense_sum_evenly_spaced_rows(void)
-{
-    int row_perm[3] = {0, 3, 4};
-    int col_perm[2] = {1, 3};
-    double X[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    matrix *M = new_permuted_dense(6, 4, 3, 2, row_perm, col_perm, X);
-
-    int d1 = 3; /* output rows = d1 = 3, buckets = {0%3, 3%3, 4%3} = {0, 0, 1} */
-    int idx_map[6];
-    matrix *out = M->sum_row_partition_alloc(M, 1, d1, idx_map);
-
-    mu_assert("output is PD", out->is_permuted_dense);
-    permuted_dense *opd = (permuted_dense *) out;
-    mu_assert("out m", out->m == 3);
-    mu_assert("out n", out->n == 4);
-    mu_assert("out m0", opd->m0 == 2); /* two distinct buckets {0, 1} */
-    mu_assert("out n0", opd->n0 == 2);
-    int expected_row_perm[2] = {0, 1};
-    int expected_col_perm[2] = {1, 3};
-    mu_assert("out row_perm", cmp_int_array(opd->row_perm, expected_row_perm, 2));
-    mu_assert("out col_perm", cmp_int_array(opd->col_perm, expected_col_perm, 2));
-    /* input rows 0 and 3 both bucket to output row 0 (idx_map → 0, 1);
-       input row 4 buckets to output row 1 (idx_map → 2, 3) */
-    int expected_idx_map[6] = {0, 1, 0, 1, 2, 3};
-    mu_assert("idx_map", cmp_int_array(idx_map, expected_idx_map, 6));
-
-    free_matrix(out);
-    free_matrix(M);
     return 0;
 }
 

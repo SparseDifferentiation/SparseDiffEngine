@@ -32,6 +32,14 @@ matrix *transpose_spd_alloc(const stacked_pd *A);
 /* Fill values of C = transpose(A). */
 void transpose_spd_fill_values(const stacked_pd *A, stacked_pd *C);
 
+/* Allocate C = row-reduce of A (C[j, :] = sum of rows i with group[i] == j,
+   group[i] in [0, m_out)); C is a stacked_pd. C stores the reduction map
+   internally, so the fill takes none. */
+matrix *row_reduce_spd_alloc(const stacked_pd *A, const int *group, int m_out);
+
+/* Fill values of C = row-reduce of A. */
+void row_reduce_spd_fill_values(const stacked_pd *A, stacked_pd *C);
+
 /* Fill values of C = diag(d) @ A, where 'd' is 'global' with length A->m. */
 void DA_spd_fill_values(const double *d, const stacked_pd *A, stacked_pd *C);
 
@@ -61,6 +69,11 @@ void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
    permuted_dense. The output C is stacked_pd. */
 matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A);
 
+/* Fill values of C = B^T @ A where B is stacked_pd, A is permuted_dense, and
+   C is stacked_pd. */
+void BTA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                            stacked_pd *C);
+
 /* Fill values of C = B^T @ diag(d) @ A where B is stacked_pd, A is
    permuted_dense, d is a global vector of length B->m, and C is stacked_pd. */
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
@@ -69,6 +82,11 @@ void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
 /* Allocate sparsity for C = B^T @ A where B is stacked_pd and A is CSC.
    The output C is stacked_pd. */
 matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A);
+
+/* Fill values of C = B^T @ A where B is stacked_pd and A is CSC, and C is
+   stacked_pd. C must be pre-allocated via BTA_spd_csc_alloc. */
+void BTA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A,
+                             stacked_pd *C);
 
 /* Fill values of C = B^T @ diag(d) @ A where B is stacked_pd, A is CSC,
    d is a global vector of length B->m, and C is stacked_pd. */
@@ -79,6 +97,11 @@ void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
    The output C is stacked_pd. */
 matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A);
 
+/* Fill values of C = B^T @ A where both B and A are stacked_pd, and C is
+   stacked_pd. C must be pre-allocated via BTA_spd_spd_alloc. */
+void BTA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A,
+                             stacked_pd *C);
+
 /* Fill values of C = B^T @ diag(d) @ A where both B and A are stacked_pd,
    d is a global vector of length B->m, and C is stacked_pd. C must be
    pre-allocated via BTA_spd_spd_alloc. */
@@ -88,6 +111,11 @@ void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
 /* Allocate sparsity for C = B^T @ A where B is CSC and A is stacked_pd.
    The output C is stacked_pd. */
 matrix *BTA_csc_spd_alloc(const CSC_matrix *B, const stacked_pd *A);
+
+/* Fill values of C = B^T @ A where B is CSC and A is stacked_pd, and C is
+   stacked_pd. C must be pre-allocated via BTA_csc_spd_alloc. */
+void BTA_csc_spd_fill_values(const CSC_matrix *B, const stacked_pd *A,
+                             stacked_pd *C);
 
 /* Fill values of C = B^T @ diag(d) @ A where B is CSC, A is stacked_pd,
    d is a global vector of length A->m, and C is stacked_pd. C must be

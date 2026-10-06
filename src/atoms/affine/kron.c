@@ -44,9 +44,6 @@ static void refresh_param_values(kron_expr *knode)
         return;
     }
 
-    /* Composite sources hold gated nodes of their own (promote, nested
-       mults): mark the whole side subtree before re-evaluating it. */
-    expr_set_needs_refresh(knode->param_source);
     knode->param_source->forward(knode->param_source, NULL);
     knode->base.needs_parameter_refresh = false;
 }
@@ -107,12 +104,12 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = new_sparse_matrix(Jk);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
     kron_expr *knode = (kron_expr *) node;
 
-    child->eval_jacobian(child);
+    eval_jacobian(child);
 
     /* Sparsity is fixed after jacobian_init, so the row offsets still align;
        refill active rows as scale * child-row-values. */
@@ -146,7 +143,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) sp_malloc(child->size * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *child = node->left;
     kron_expr *knode = (kron_expr *) node;
@@ -166,7 +163,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         }
     }
 
-    child->eval_wsum_hess(child, w_prime);
+    eval_wsum_hess(child, w_prime);
     memcpy(node->wsum_hess->x, child->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -174,6 +171,13 @@ static void eval_wsum_hess(expr *node, const double *w)
 static bool is_affine(const expr *node)
 {
     return node->left->is_affine(node->left);
+}
+
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((kron_expr *) node)->param_source);
 }
 
 static void free_type_data(expr *node)
@@ -198,8 +202,8 @@ static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q, i
     kron_expr *knode = (kron_expr *) sp_calloc(1, sizeof(kron_expr));
     expr *node = &knode->base;
     init_expr(node, p * r, q * s, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 
@@ -214,6 +218,7 @@ static kron_expr *new_kron_common(expr *param_node, expr *child, int p, int q, i
     }
 
     knode->base.needs_parameter_refresh = true;
+    knode->base.set_needs_refresh_children = set_needs_refresh_param_source;
     return knode;
 }
 

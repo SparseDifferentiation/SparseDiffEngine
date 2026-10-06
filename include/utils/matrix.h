@@ -21,14 +21,7 @@
 #include "CSC_matrix.h"
 #include "CSR_matrix.h"
 #include <stdbool.h>
-
-/* Broadcast shape used by the broadcast atom and its vtable methods. */
-typedef enum
-{
-    BROADCAST_ROW,   /* (1, n) -> (m, n) */
-    BROADCAST_COL,   /* (m, 1) -> (m, n) */
-    BROADCAST_SCALAR /* (1, 1) -> (m, n) */
-} broadcast_type;
+#include <stdint.h>
 
 /* Polymorphic matrix base. Concrete types embed `matrix` as their first
    member and implement the vtable slots below. Currently implemented:
@@ -77,28 +70,16 @@ typedef void (*matrix_transpose_fill_values_fn)(const matrix *A, matrix *AT);
 typedef CSR_matrix *(*matrix_to_csr_fn)(matrix *A);
 
 /* Refresh any internal caches (e.g. a CSC_matrix mirror) so subsequent ATA /
-   ATDA calls reflect the current values. */
+   ATDA calls reflect the current values. Version-guarded: a no-op when the
+   cache already matches values_version, so it is cheap to call when fresh. */
 typedef void (*matrix_refresh_csc_values_fn)(matrix *A);
 
-/* Allocate C = A[indices, :] */
-typedef matrix *(*matrix_index_alloc_fn)(matrix *A, const int *indices, int n_idxs);
+/* Allocate C = A[map, :]. C stores map internally, so the fill takes none. */
+typedef matrix *(*matrix_row_gather_alloc_fn)(const matrix *A, const int *map,
+                                              int m_out);
 
-/* Fill values of C = A[indices, :] */
-typedef void (*matrix_index_fill_values_fn)(matrix *A, const int *indices,
-                                            int n_idxs, matrix *C);
-
-/* Row-tiling for the promote atom: A must be a 1-row matrix; returns
-   a new matrix of shape (size, A->n) where every row is a copy of A's
-   single row. */
-typedef matrix *(*matrix_promote_alloc_fn)(matrix *A, int size);
-typedef void (*matrix_promote_fill_values_fn)(matrix *A, matrix *out);
-
-/* Broadcast: lift the child Jacobian of a broadcast atom into the output
-   Jacobian. `type` is the broadcast variant; (d1, d2) is the output shape. */
-typedef matrix *(*matrix_broadcast_alloc_fn)(matrix *A, broadcast_type type, int d1,
-                                             int d2);
-typedef void (*matrix_broadcast_fill_values_fn)(matrix *A, broadcast_type type,
-                                                int d1, int d2, matrix *out);
+/* Fill values of C = A[map, :] */
+typedef void (*matrix_row_gather_fill_values_fn)(const matrix *A, matrix *C);
 
 /* diag_vec: A is an (n, A->n) Jacobian for a length-n vector; output is
    (n*n, A->n) where row i lands at output row i*(n+1) (column-major
@@ -106,18 +87,14 @@ typedef void (*matrix_broadcast_fill_values_fn)(matrix *A, broadcast_type type,
 typedef matrix *(*matrix_diag_vec_alloc_fn)(matrix *A);
 typedef void (*matrix_diag_vec_fill_values_fn)(matrix *A, matrix *out);
 
-/* Allocate C as a row-wise reduction of A. The reduction pattern is chosen by
-   axis:
-     - axis = -1: sum all rows of A. C has shape (1, A->n).
-     - axis = 0:  block-sum rows in consecutive groups of d1. C has shape (A->m
-                  / d1, A->n). C[j, :] = sum_{i in [j*d1, (j+1)*d1)} A[i, :].
-     - axis = 1:  stride-sum rows at spacing d1. C has shape (d1, A->n). C[j, :]
-                  = sum_{i : i % d1 == j} A[i, :].
+/* Allocate C = row-reduce of A: C[j, :] = sum of rows i with group[i] == j,
+   group[i] in [0, m_out). C stores the reduction map internally, so the fill
+   takes none. */
+typedef matrix *(*matrix_row_reduce_alloc_fn)(const matrix *A, const int *group,
+                                              int m_out);
 
-   Caller pre-allocates idx_map of size A->nnz that can be used to compute the
-   numerical result of the operation using via accumulation. */
-typedef matrix *(*matrix_sum_row_partition_alloc_fn)(matrix *A, int axis, int d1,
-                                                     int *idx_map);
+/* Fill values of C = row-reduce of A. */
+typedef void (*matrix_row_reduce_fill_values_fn)(const matrix *A, matrix *C);
 
 typedef void (*matrix_free_fn)(matrix *self);
 
@@ -127,6 +104,14 @@ struct matrix
     double *x; /* non-owning pointer to the value buffer */
     bool is_permuted_dense;
     bool is_stacked_pd;
+
+    /* Monotone counter bumped whenever the matrix's values change. Consumers
+       that mirror the values into a cache (CSC mirror, CSR view, ...) record
+       the version they last saw and refresh iff it differs. Code that writes
+       x directly must call matrix_values_changed on the OWNER of the buffer —
+       aliased children (spd blocks, cache views) have no version of their
+       own. */
+    uint64_t values_version;
 
     /* Operator ops */
     matrix_block_left_mult_vec_fn block_left_mult_vec;
@@ -146,19 +131,22 @@ struct matrix
     matrix_refresh_csc_values_fn refresh_csc_values;
 
     /* Atom-specific ops */
-    matrix_index_alloc_fn index_alloc;
-    matrix_index_fill_values_fn index_fill_values;
-    matrix_promote_alloc_fn promote_alloc;
-    matrix_promote_fill_values_fn promote_fill_values;
-    matrix_broadcast_alloc_fn broadcast_alloc;
-    matrix_broadcast_fill_values_fn broadcast_fill_values;
+    matrix_row_gather_alloc_fn row_gather_alloc;
+    matrix_row_gather_fill_values_fn row_gather_fill_values;
     matrix_diag_vec_alloc_fn diag_vec_alloc;
     matrix_diag_vec_fill_values_fn diag_vec_fill_values;
-    matrix_sum_row_partition_alloc_fn sum_row_partition_alloc;
+    matrix_row_reduce_alloc_fn row_reduce_alloc;
+    matrix_row_reduce_fill_values_fn row_reduce_fill_values;
 
     /* Lifecycle */
     matrix_free_fn free_fn;
 };
+
+/* Notify the library after writing A->x directly. */
+static inline void matrix_values_changed(matrix *A)
+{
+    A->values_version++;
+}
 
 /* Free helper */
 static inline void free_matrix(matrix *m)

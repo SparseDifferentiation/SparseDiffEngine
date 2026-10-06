@@ -21,6 +21,10 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+/* Peak-memory tracking is only compiled in with -DSP_TRACK_MEMORY=ON (CMake
+   option). Otherwise sp_* are plain malloc/calloc/realloc/free. */
+#ifdef SP_TRACK_MEMORY
+
 /* Platform shim for "how many usable bytes are at this malloc'd pointer".
     Used to track total live bytes */
 #if defined(__APPLE__)
@@ -94,5 +98,31 @@ static inline void *sp_realloc(void *ptr, size_t size)
        per C standard, so no counter adjustment. */
     return new_ptr;
 }
+
+#else /* !SP_TRACK_MEMORY */
+
+/* Tracking disabled (default): the wrappers forward straight to libc and the
+   library has no mutable global state. */
+static inline void *sp_malloc(size_t size)
+{
+    return malloc(size);
+}
+
+static inline void *sp_calloc(size_t count, size_t size)
+{
+    return calloc(count, size);
+}
+
+static inline void sp_free(void *ptr)
+{
+    free(ptr);
+}
+
+static inline void *sp_realloc(void *ptr, size_t size)
+{
+    return realloc(ptr, size);
+}
+
+#endif /* SP_TRACK_MEMORY */
 
 #endif /* TRACKED_ALLOC_H */

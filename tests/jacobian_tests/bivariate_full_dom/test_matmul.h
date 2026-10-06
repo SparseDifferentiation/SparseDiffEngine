@@ -46,7 +46,7 @@ const char *test_jacobian_matmul(void)
     /* Forward pass and jacobian initialization */
     Z->forward(Z, u_vals);
     jacobian_init(Z);
-    Z->eval_jacobian(Z);
+    eval_jacobian(Z);
 
     /* Verify sparsity pattern */
     mu_assert("Jacobian should have 18 columns", Z->jacobian->n == n_vars);

@@ -17,5 +17,7 @@
  */
 #include "utils/tracked_alloc.h"
 
+#ifdef SP_TRACK_MEMORY
 size_t g_allocated_bytes = 0;
 size_t g_peak_bytes = 0;
+#endif

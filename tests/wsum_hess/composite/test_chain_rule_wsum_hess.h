@@ -93,8 +93,8 @@ const char *test_wsum_hess_sum_exp_left_matmul_dense_transpose(void)
     jacobian_init(node);
     wsum_hess_init(node);
     node->forward(node, u_vals);
-    node->eval_jacobian(node);
-    node->eval_wsum_hess(node, &w);
+    eval_jacobian(node);
+    eval_wsum_hess(node, &w);
 
     CSR_matrix *H = node->wsum_hess->to_csr(node->wsum_hess);
     double dense[16] = {0};

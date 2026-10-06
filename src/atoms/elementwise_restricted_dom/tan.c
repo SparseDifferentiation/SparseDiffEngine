@@ -53,7 +53,7 @@ expr *new_tan(expr *child)
 {
     expr *node = new_restricted(child);
     node->forward = tan_forward;
-    node->eval_jacobian = tan_eval_jacobian;
-    node->eval_wsum_hess = tan_eval_wsum_hess;
+    node->eval_jacobian_impl = tan_eval_jacobian;
+    node->eval_wsum_hess_impl = tan_eval_wsum_hess;
     return node;
 }

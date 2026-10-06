@@ -65,8 +65,7 @@ typedef struct quad_form_expr
        Dense path: permuted_dense via the matrix dispatchers. */
     CSC_matrix *QJf;
     matrix *QJf_dense;
-    double *diag_w; /* length-n diagonal (= 2w) fed to BTDA on the dense path */
-    int n;          /* quadratic dimension = left->size */
+    int n; /* quadratic dimension = left->size */
 
     /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
     expr *param_source;
@@ -77,7 +76,6 @@ typedef struct sum_expr
 {
     expr base;
     int axis;
-    int *idx_map; /* maps child nnz to summed-row positions */
 } sum_expr;
 
 /* trace */
@@ -216,6 +214,14 @@ typedef struct index_expr
     int n_idxs;          /* Number of selected elements */
     bool has_duplicates; /* True if indices have duplicates (affects Hessian path) */
 } index_expr;
+
+/* Broadcast shape used by the broadcast atom. */
+typedef enum
+{
+    BROADCAST_ROW,   /* (1, n) -> (m, n) */
+    BROADCAST_COL,   /* (m, 1) -> (m, n) */
+    BROADCAST_SCALAR /* (1, 1) -> (m, n) */
+} broadcast_type;
 
 typedef struct broadcast_expr
 {

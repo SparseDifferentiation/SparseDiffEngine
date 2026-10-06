@@ -28,11 +28,15 @@ typedef struct sparse_matrix
     matrix base;
     CSR_matrix *csr;
     CSC_matrix *csc_cache;
+    uint64_t csc_seen; /* base.values_version the csc_cache values reflect */
     int *csc_iwork;
-    int *transpose_iwork; /* sized csr->n; allocated by sparse_transpose_alloc
-                             on the output sm and reused by
-                             sparse_transpose_fill_values. NULL when this
-                             sm wasn't produced by transpose_alloc. */
+    /* Int state bound by the alloc that produced this matrix and read by the
+       matching fill: transpose_alloc stores csr->n scratch for
+       transpose_fill_values; row_gather_alloc stores the base.m-long row map
+       for row_gather_fill_values; row_reduce_alloc stores the source-nnz-long
+       position map for row_reduce_fill_values. NULL otherwise; never touched
+       by any other kernel. */
+    int *bound_iwork;
 } sparse_matrix;
 
 /* Constructor. Takes ownership of A; the caller must not free A separately
@@ -43,6 +47,10 @@ matrix *new_sparse_matrix(CSR_matrix *A);
    nnz entries. Equivalent to new_sparse_matrix(new_CSR_matrix(m, n, nnz)).
    Sparsity pattern and values are uninitialized. */
 matrix *new_sparse_matrix_alloc(int m, int n, int nnz);
+
+/* Trim a wrapped capacity-built CSR to its true size (CSR_trim) and re-sync
+   the base's cached x pointer and nnz, since realloc may move the buffer. */
+void sparse_matrix_trim(matrix *M);
 
 /* Transpose helper */
 matrix *sparse_matrix_trans(const sparse_matrix *self, int *iwork);

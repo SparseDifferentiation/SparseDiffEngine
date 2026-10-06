@@ -154,6 +154,44 @@ static void spd_blockwise_fill_coalesce_accumulate(const stacked_pd *spd_iter,
     coalesce_spd_fill_values_accumulate(raw, C);
 }
 
+// ----------------------------------------------------------------------------------
+// C = row-reduce of stacked_pd A: C[j, :] = sum of rows i with group[i] == j.
+// Each block is reduced on its own into a PD (rows of one block that share a
+// group are summed there); the partials may overlap in rows and cells across
+// blocks, so they go through the coalesce-accumulate skeleton above. The result
+// is always a stacked_pd.
+// ----------------------------------------------------------------------------------
+typedef struct
+{
+    const int *group;
+    int m_out;
+} row_reduce_ctx;
+
+static matrix *row_reduce_partial_alloc(const permuted_dense *blk, const void *ctx)
+{
+    const row_reduce_ctx *c = (const row_reduce_ctx *) ctx;
+    return row_reduce_pd_alloc(blk, c->group, c->m_out);
+}
+
+matrix *row_reduce_spd_alloc(const stacked_pd *A, const int *group, int m_out)
+{
+    row_reduce_ctx ctx = {group, m_out};
+    return spd_blockwise_alloc_coalesce(A, m_out, A->base.n,
+                                        row_reduce_partial_alloc, &ctx);
+}
+
+void row_reduce_spd_fill_values(const stacked_pd *A, stacked_pd *C)
+{
+    if (C->base.nnz == 0) return;
+    stacked_pd *raw = C->pre_coalesce;
+    for (int k = 0; k < A->n_blocks; k++)
+    {
+        row_reduce_pd_fill_values(A->blocks[k], raw->blocks[k]);
+    }
+    memset(C->base.x, 0, C->base.nnz * sizeof(double));
+    coalesce_spd_fill_values_accumulate(raw, C);
+}
+
 // ------------------------------------------------------------------------------------
 // C = ATDA for stacked_pd A. Let A = [A1; A2; A3] where Ai has n columns (the same
 // number as A). Then ATDA = A1^T D1 A1 + A2^T D2 A2 + A3^T D3 A3. Term i and j
@@ -277,8 +315,12 @@ matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     return C;
 }
 
-void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
-                            permuted_dense *C)
+/* Shared core for C = B^T @ diag(d) @ A with d == NULL meaning identity.
+   diag(d) is folded into the per-block gather of A_k's rows (d indexed by
+   global row), so no intermediate is ever allocated: Bg | Ag | Cg live in
+   C->kernel_dwork, pre-sized by BTA_pd_spd_alloc. */
+static void BTA_pd_spd_core(const permuted_dense *B, const double *d,
+                            const stacked_pd *A, permuted_dense *C)
 {
     /* return if C is empty */
     if (C->base.nnz == 0)
@@ -319,11 +361,19 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
             memcpy(Bg + p * B->n0, B->X + idx_B[p] * B->n0, B->n0 * sizeof(double));
         }
 
-        /* Ag = A[idx_A, :] where idx_A contains the overlapping row indices */
+        /* Ag = (diag(d)A)[idx_A, :] where idx_A contains the overlapping row
+           indices */
         for (int p = 0; p < s; p++)
         {
             memcpy(Ag + p * Ak->n0, Ak->X + idx_A[p] * Ak->n0,
                    Ak->n0 * sizeof(double));
+        }
+        if (d != NULL)
+        {
+            for (int p = 0; p < s; p++)
+            {
+                cblas_dscal(Ak->n0, d[Ak->row_perm[idx_A[p]]], Ag + p * Ak->n0, 1);
+            }
         }
 
         /* Cg = Bg^T @ Ag. Bg is (s, B->n0) row-major (lda = B->n0); we want
@@ -362,6 +412,12 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
     }
 }
 
+void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
+                            permuted_dense *C)
+{
+    BTA_pd_spd_core(B, NULL, A, C);
+}
+
 // ---------------------------------------------------------------------------------
 // BTDA_pd_spd: C = B^T @ diag(d) @ A. No separate alloc — output sparsity
 // is identical to BTA_pd_spd (D doesn't add/remove nonzeros), so callers
@@ -371,24 +427,7 @@ void BTA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
 void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
                              const stacked_pd *A, permuted_dense *C)
 {
-    /* skip if C is empty (no contributing A-blocks) */
-    if (C->base.nnz == 0)
-    {
-        return;
-    }
-
-    /* TODO: must remove this allocation. Very important. The DA
-       intermediate spd is allocated and freed on every Hessian
-       iteration — violates the no-alloc-in-fill policy. Fix is to
-       fold diag(d) directly into BTA_pd_spd_fill_values (either via a
-       shared internal helper that takes an optional d, or by stashing
-       a persistent DA scratch on C via a new aux slot — mirror of the
-       transpose_cache pattern). */
-    /* C = BT @ (DA) */
-    stacked_pd *DA = (stacked_pd *) copy_sparsity_spd_alloc(A);
-    DA_spd_fill_values(d, A, DA);
-    BTA_pd_spd_fill_values(B, DA, C);
-    free_matrix(&DA->base);
+    BTA_pd_spd_core(B, d, A, C);
 }
 
 // ---------------------------------------------------------------------------------
@@ -400,12 +439,6 @@ void BTDA_pd_spd_fill_values(const permuted_dense *B, const double *d,
 //
 // B = B1 + B2 + B3 where each Bi is a global permuted dense. Then
 // C = B^T D A = C1 + C2 + C3 where Ci = Bi^T D A.
-//
-// TODO: each BTDA_pd_pd_fill_values call internally allocates a DA intermediate
-// (see permuted_dense_linalg.c BTDA_pd_pd_fill_values). That means the BTDA
-// variant here allocates n_blocks DA temps per fill, all on the hot Hessian
-// path. Must be fixed — same future remedy as the per-block BTDA: fold
-// diag(d) directly into BTA_pd_pd's gather step.
 // ---------------------------------------------------------------------------------
 static matrix *wrapper_BTA_pd_pd(const permuted_dense *Bk, const void *ctx)
 {
@@ -418,10 +451,27 @@ static void wrapper_BTDA_pd_pd(const permuted_dense *Bk, const double *d,
     BTDA_pd_pd_fill_values(Bk, d, (const permuted_dense *) ctx, Ck);
 }
 
+/* BTA per-block fill: plain B_k^T @ A, no diagonal. The shared skeleton
+   threads d through verbatim and never dereferences it, so the caller passes
+   d = NULL and we ignore it here. Calling BTA_pd_pd_fill_values directly (vs.
+   the BTDA wrapper) also sidesteps the per-block DA temp. */
+static void wrapper_BTA_pd_pd_fill(const permuted_dense *Bk, const double *d,
+                                   const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_pd_pd_fill_values(Bk, (const permuted_dense *) ctx, Ck);
+}
+
 matrix *BTA_spd_pd_alloc(const stacked_pd *B, const permuted_dense *A)
 {
     return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_pd,
                                         A);
+}
+
+void BTA_spd_pd_fill_values(const stacked_pd *B, const permuted_dense *A,
+                            stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, NULL, A, C, wrapper_BTA_pd_pd_fill);
 }
 
 void BTDA_spd_pd_fill_values(const stacked_pd *B, const double *d,
@@ -448,9 +498,24 @@ static void wrapper_BTDA_pd_csc(const permuted_dense *Bk, const double *d,
     BTDA_pd_csc_fill_values(Bk, d, (const CSC_matrix *) ctx, Ck);
 }
 
+/* BTA per-block fill: plain B_k^T @ A, no diagonal. The skeleton forwards d
+   verbatim and never dereferences it, so the caller passes d = NULL and we
+   ignore it. */
+static void wrapper_BTA_pd_csc_fill(const permuted_dense *Bk, const double *d,
+                                    const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_pd_csc_fill_values(Bk, (const CSC_matrix *) ctx, Ck);
+}
+
 matrix *BTA_spd_csc_alloc(const stacked_pd *B, const CSC_matrix *A)
 {
     return spd_blockwise_alloc_coalesce(B, B->base.n, A->n, wrapper_BTA_pd_csc, A);
+}
+
+void BTA_spd_csc_fill_values(const stacked_pd *B, const CSC_matrix *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, NULL, A, C, wrapper_BTA_pd_csc_fill);
 }
 
 void BTDA_spd_csc_fill_values(const stacked_pd *B, const double *d,
@@ -477,10 +542,26 @@ static void wrapper_BTDA_pd_spd(const permuted_dense *Bk, const double *d,
     BTDA_pd_spd_fill_values(Bk, d, (const stacked_pd *) ctx, Ck);
 }
 
+/* BTA per-block fill: plain B_k^T @ A_spd, no diagonal. The skeleton forwards d
+   verbatim and never dereferences it, so the caller passes d = NULL and we
+   ignore it. Calling BTA_pd_spd_fill_values directly (vs. the BTDA wrapper) also
+   avoids the per-block DA temp. */
+static void wrapper_BTA_pd_spd_fill(const permuted_dense *Bk, const double *d,
+                                    const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_pd_spd_fill_values(Bk, (const stacked_pd *) ctx, Ck);
+}
+
 matrix *BTA_spd_spd_alloc(const stacked_pd *B, const stacked_pd *A)
 {
     return spd_blockwise_alloc_coalesce(B, B->base.n, A->base.n, wrapper_BTA_pd_spd,
                                         A);
+}
+
+void BTA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(B, NULL, A, C, wrapper_BTA_pd_spd_fill);
 }
 
 void BTDA_spd_spd_fill_values(const stacked_pd *B, const double *d,
@@ -512,9 +593,24 @@ static void wrapper_BTDA_csc_pd(const permuted_dense *Ak, const double *d,
     BTDA_csc_pd_fill_values((const CSC_matrix *) ctx, d, Ak, Ck);
 }
 
+/* BTA per-block fill: plain B^T @ A_k, no diagonal. The skeleton forwards d
+   verbatim and never dereferences it, so the caller passes d = NULL and we
+   ignore it. */
+static void wrapper_BTA_csc_pd_fill(const permuted_dense *Ak, const double *d,
+                                    const void *ctx, permuted_dense *Ck)
+{
+    (void) d;
+    BTA_csc_pd_fill_values((const CSC_matrix *) ctx, Ak, Ck);
+}
+
 matrix *BTA_csc_spd_alloc(const CSC_matrix *B, const stacked_pd *A)
 {
     return spd_blockwise_alloc_coalesce(A, B->n, A->base.n, wrapper_BTA_csc_pd, B);
+}
+
+void BTA_csc_spd_fill_values(const CSC_matrix *B, const stacked_pd *A, stacked_pd *C)
+{
+    spd_blockwise_fill_coalesce_accumulate(A, NULL, B, C, wrapper_BTA_csc_pd_fill);
 }
 
 void BTDA_csc_spd_fill_values(const CSC_matrix *B, const double *d,
@@ -527,14 +623,18 @@ void BTDA_csc_spd_fill_values(const CSC_matrix *B, const double *d,
 // BA_pd_spd: C = B @ A where B is permuted_dense and A is stacked_pd. Thin
 // wrapper over the canonical BTA_pd_spd_* kernel: use B's lazily-cached
 // transpose and call BTA. The cache is populated on first call (in alloc)
-// and reused across subsequent fills.
+// and reused across subsequent fills; its values are refreshed only when
+// B's values_version has moved since the last fill (transpose_seen).
 //
 // Contract: B's perms must be immutable between alloc and fill (the cache
 // records B's perms at alloc time and is not re-validated at fill). For
 // callers where B's perms change between calls — notably the kron-spd path
 // that reuses a mutating scratch — bypass this wrapper and call
 // BTA_pd_spd_* directly. BA_dense_kron_spd does exactly that
-// (stacked_pd_kron_linalg.c) and is the only such caller today.
+// (stacked_pd_kron_linalg.c). The values_version guard additionally
+// requires B to be the owner of its value buffer; BA_spd_spd_fill_values
+// passes spd blocks (no version of their own) and therefore also bypasses
+// the wrapper for its fills.
 // ---------------------------------------------------------------------------------
 matrix *BA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
 {
@@ -546,7 +646,11 @@ void BA_pd_spd_fill_values(const permuted_dense *B, const stacked_pd *A,
                            permuted_dense *C)
 {
     permuted_dense *BT = B->transpose_cache;
-    transpose_pd_fill_values(B, BT);
+    if (BT->transpose_seen != B->base.values_version)
+    {
+        transpose_pd_fill_values(B, BT);
+        BT->transpose_seen = B->base.values_version;
+    }
     BTA_pd_spd_fill_values(BT, A, C);
 }
 
@@ -621,6 +725,11 @@ void BA_spd_spd_fill_values(const stacked_pd *B, const stacked_pd *A, stacked_pd
     {
         int q = C->src_block_idx[C->src_block_idx_p[k]];
         const permuted_dense *Bq = B->blocks[q];
-        BA_pd_spd_fill_values(Bq, A, C->blocks[k]);
+        /* Bypass BA_pd_spd_fill_values' version guard: spd blocks have no
+           values_version of their own (writers bump the owning spd), so the
+           cached transpose must be refreshed unconditionally here. */
+        permuted_dense *BqT = Bq->transpose_cache;
+        transpose_pd_fill_values(Bq, BqT);
+        BTA_pd_spd_fill_values(BqT, A, C->blocks[k]);
     }
 }

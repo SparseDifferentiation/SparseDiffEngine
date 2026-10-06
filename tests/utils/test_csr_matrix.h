@@ -260,9 +260,9 @@ const char *test_sum_block_of_rows_csr(void)
      *
      * Result C should be 3x4 matrix with the sums above
      */
-    CSR_matrix *A = new_CSR_matrix(9, 4, 18);
+    CSR_matrix *A = new_CSR_matrix(9, 4, 16);
 
-    double Ax[18] = {1.0, 2.0,  /* row 0 */
+    double Ax[16] = {1.0, 2.0,  /* row 0 */
                      3.0, 1.0,  /* row 1 */
                      4.0, 5.0,  /* row 2 */
                      2.0, 1.0,  /* row 3 */
@@ -272,7 +272,7 @@ const char *test_sum_block_of_rows_csr(void)
                      1.0, 3.0,  /* row 7 */
                      2.0, 6.0}; /* row 8 */
 
-    int Ai[18] = {0, 1,  /* row 0 */
+    int Ai[16] = {0, 1,  /* row 0 */
                   1, 2,  /* row 1 */
                   2, 3,  /* row 2 */
                   0, 3,  /* row 3 */
@@ -284,9 +284,10 @@ const char *test_sum_block_of_rows_csr(void)
 
     int Ap[10] = {0, 2, 4, 6, 8, 10, 11, 12, 14, 16};
 
-    memcpy(A->x, Ax, 18 * sizeof(double));
-    memcpy(A->i, Ai, 18 * sizeof(int));
+    memcpy(A->x, Ax, 16 * sizeof(double));
+    memcpy(A->i, Ai, 16 * sizeof(int));
     memcpy(A->p, Ap, 10 * sizeof(int));
+    mu_assert("A fixture invalid", csr_is_valid(A));
 
     /* Allocate C for 3 blocks and enough space for all nonzeros */
     CSR_matrix *C = new_CSR_matrix(3, 4, 12);
@@ -339,9 +340,9 @@ const char *test_sum_evenly_spaced_rows_csr(void)
             row 1: sum of rows 1, 4, 7 = [1 4 6 0]
             row 2: sum of rows 2, 5, 8 = [3 2 4 11]
     */
-    CSR_matrix *A = new_CSR_matrix(9, 4, 18);
+    CSR_matrix *A = new_CSR_matrix(9, 4, 16);
 
-    double Ax[18] = {1.0, 2.0,  /* row 0 */
+    double Ax[16] = {1.0, 2.0,  /* row 0 */
                      3.0, 1.0,  /* row 1 */
                      4.0, 5.0,  /* row 2 */
                      2.0, 1.0,  /* row 3 */
@@ -351,7 +352,7 @@ const char *test_sum_evenly_spaced_rows_csr(void)
                      1.0, 3.0,  /* row 7 */
                      2.0, 6.0}; /* row 8 */
 
-    int Ai[18] = {0, 1,  /* row 0 */
+    int Ai[16] = {0, 1,  /* row 0 */
                   1, 2,  /* row 1 */
                   2, 3,  /* row 2 */
                   0, 3,  /* row 3 */
@@ -363,9 +364,10 @@ const char *test_sum_evenly_spaced_rows_csr(void)
 
     int Ap[10] = {0, 2, 4, 6, 8, 10, 11, 12, 14, 16};
 
-    memcpy(A->x, Ax, 18 * sizeof(double));
-    memcpy(A->i, Ai, 18 * sizeof(int));
+    memcpy(A->x, Ax, 16 * sizeof(double));
+    memcpy(A->i, Ai, 16 * sizeof(int));
     memcpy(A->p, Ap, 10 * sizeof(int));
+    mu_assert("A fixture invalid", csr_is_valid(A));
 
     /* Allocate C for 3 rows (row_spacing=3) and enough space for all nonzeros */
     CSR_matrix *C = new_CSR_matrix(3, 4, 10);

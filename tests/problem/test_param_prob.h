@@ -618,4 +618,59 @@ const char *test_param_convolve_problem(void)
     return 0;
 }
 
+/* problem_jacobian copies a constraint's block into the aggregated jacobian
+   only when the constraint's values_version moved: an affine constraint's
+   slice is not rewritten after its first copy (proven by poisoning it), and
+   a parameter update re-arms the copy. */
+const char *test_problem_jacobian_memcpy_skip(void)
+{
+    int n = 2;
+    expr *x = new_variable(2, 1, 0, n);
+
+    /* objective: sum(log(x)) */
+    expr *objective = new_sum(new_log(x), -1);
+
+    /* constraint 1 (affine, parameterized): a * x */
+    double theta[1] = {3.0};
+    expr *a_param = new_parameter(1, 1, 0, n, theta);
+    expr *scaled = new_scalar_mult(a_param, x);
+
+    /* constraint 2 (non-affine): exp(x) */
+    expr *exp_c = new_exp(x);
+
+    expr *constraints[2] = {scaled, exp_c};
+    problem *prob = new_problem(objective, constraints, 2, false);
+    expr *param_nodes[1] = {a_param};
+    problem_register_params(prob, param_nodes, 1);
+    problem_init_derivatives(prob);
+
+    double u[2] = {1.0, 2.0};
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    double expected1[4] = {3.0, 3.0, exp(1.0), exp(2.0)};
+    mu_assert("first jacobian wrong",
+              cmp_double_array(prob->jacobian->x, expected1, 4));
+
+    /* poison the affine slice; a re-eval must not rewrite it */
+    prob->jacobian->x[0] = 42.0;
+    prob->jacobian->x[1] = 42.0;
+    problem_jacobian(prob);
+    mu_assert("affine slice must not be recopied", prob->jacobian->x[0] == 42.0);
+    mu_assert("affine slice must not be recopied", prob->jacobian->x[1] == 42.0);
+    mu_assert("non-affine slice must be recopied", prob->jacobian->x[2] == exp(1.0));
+
+    /* a parameter update re-arms the copy */
+    theta[0] = 5.0;
+    problem_update_params(prob, theta);
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+    double expected2[4] = {5.0, 5.0, exp(1.0), exp(2.0)};
+    mu_assert("jacobian after update wrong",
+              cmp_double_array(prob->jacobian->x, expected2, 4));
+
+    free_problem(prob);
+    return 0;
+}
+
 #endif /* TEST_PARAM_PROB_H */

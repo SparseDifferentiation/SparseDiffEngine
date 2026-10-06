@@ -54,9 +54,9 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = x->jacobian->diag_vec_alloc(x->jacobian);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
-    node->left->eval_jacobian(node->left);
+    eval_jacobian(node->left);
 
     /* fill the diagonal rows of the preallocated output. */
     node->left->jacobian->diag_vec_fill_values(node->left->jacobian, node->jacobian);
@@ -77,7 +77,7 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
     int n = x->size;
@@ -89,7 +89,7 @@ static void eval_wsum_hess(expr *node, const double *w)
     }
 
     /* Evaluate child's Hessian with extracted weights */
-    x->eval_wsum_hess(x, node->work->dwork);
+    eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -107,8 +107,9 @@ expr *new_diag_vec(expr *child)
     /* n is the number of elements (works for both row and column vectors) */
     int n = child->size;
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
-    init_expr(node, n, n, child->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+    init_expr(node, n, n, child->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = child;
     expr_retain(child);
 

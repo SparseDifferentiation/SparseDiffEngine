@@ -24,7 +24,7 @@ const char *test_wsum_hess_convolve(void)
     y->forward(y, u);
     jacobian_init(y);
     wsum_hess_init(y);
-    y->eval_wsum_hess(y, w);
+    eval_wsum_hess(y, w);
 
     mu_assert("Convolve wsum_hess should be 3x3", y->wsum_hess->m == 3);
     mu_assert("Convolve wsum_hess should be square", y->wsum_hess->n == 3);

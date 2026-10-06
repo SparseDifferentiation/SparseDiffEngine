@@ -18,6 +18,7 @@
 #include "old-code/old_CSR_sum.h"
 #include "utils/CSR_matrix.h"
 #include "utils/int_double_pair.h"
+#include "utils/utils.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -329,4 +330,199 @@ void sum_spaced_rows_into_row_csr(const CSR_matrix *A, CSR_matrix *C,
     }
 
     C->p[1] = C->nnz;
+}
+
+// ------------------------------------------------------------------------------------
+// Row-sum kernels with an idx_map (input nnz -> output position), retired from the
+// engine when the sum atom moved onto the generic row_reduce primitive. Kept as
+// standalone CSR operations. Fill values with accumulator() from utils/CSR_sum.h
+// after zeroing C->x.
+// ------------------------------------------------------------------------------------
+
+/* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
+void sum_all_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C, int *iwork,
+                            int *idx_map)
+{
+    // -------------------------------------------------------------------
+    //           Build sparsity pattern of the summed row
+    // -------------------------------------------------------------------
+    int *cols = iwork;
+    memcpy(cols, A->i, A->nnz * sizeof(int));
+    sort_int_array(cols, A->nnz);
+
+    int unique_nnz = 0;
+    int prev_col = -1;
+    for (int j = 0; j < A->nnz; j++)
+    {
+        if (cols[j] != prev_col)
+        {
+            C->i[unique_nnz] = cols[j];
+            prev_col = cols[j];
+            unique_nnz++;
+        }
+    }
+
+    C->p[0] = 0;
+    C->p[1] = unique_nnz;
+    C->nnz = unique_nnz;
+
+    // -------------------------------------------------------------------
+    //  Map child values to summed-row positions. col_to_pos maps
+    //  column indices to positions in C's row.
+    // -------------------------------------------------------------------
+    int *col_to_pos = iwork;
+    for (int idx = 0; idx < unique_nnz; idx++)
+    {
+        col_to_pos[C->i[idx]] = idx;
+    }
+
+    for (int i = 0; i < A->m; i++)
+    {
+        for (int j = A->p[i]; j < A->p[i + 1]; j++)
+        {
+            idx_map[j] = col_to_pos[A->i[j]];
+        }
+    }
+}
+
+/* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
+void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
+                                 int row_block_size, int *iwork, int *idx_map)
+{
+    assert(A->m % row_block_size == 0);
+    int n_blocks = A->m / row_block_size;
+    assert(C->m == n_blocks);
+
+    C->n = A->n;
+    C->p[0] = 0;
+    int cursor = 0;
+
+    int *cols = iwork;
+    int *col_to_pos = iwork;
+
+    for (int block = 0; block < n_blocks; block++)
+    {
+        int start_row = block * row_block_size;
+        int end_row = start_row + row_block_size;
+
+        // -----------------------------------------------------------------
+        // Build sparsity pattern of the row resulting from summing
+        // the block of rows from A
+        // -----------------------------------------------------------------
+        C->p[block] = cursor;
+        int count = 0;
+        for (int row = start_row; row < end_row; row++)
+        {
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                cols[count++] = A->i[j];
+            }
+        }
+
+        /* Sort columns and write unique pattern into C->i */
+        sort_int_array(cols, count);
+
+        int unique_nnz = 0;
+        int prev_col = -1;
+        for (int t = 0; t < count; t++)
+        {
+            int col = cols[t];
+            if (t == 0 || col != prev_col)
+            {
+                C->i[cursor + unique_nnz] = col;
+                prev_col = col;
+                unique_nnz++;
+            }
+        }
+
+        cursor += unique_nnz;
+        C->p[block + 1] = cursor;
+
+        // -----------------------------------------------------------------
+        //         Build idx_map for all entries in this block
+        // -----------------------------------------------------------------
+        int row_start = C->p[block];
+        for (int idx = 0; idx < unique_nnz; idx++)
+        {
+            col_to_pos[C->i[row_start + idx]] = row_start + idx;
+        }
+
+        for (int row = start_row; row < end_row; row++)
+        {
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                idx_map[j] = col_to_pos[A->i[j]];
+            }
+        }
+    }
+
+    C->nnz = cursor;
+}
+
+/* iwork must have size max(A->n, A->nnz), and idx_map must have size A->nnz */
+void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
+                                      int row_spacing, int *iwork, int *idx_map)
+{
+    assert(C->m == row_spacing);
+    C->n = A->n;
+    C->p[0] = 0;
+    int cursor = 0;
+
+    int *cols = iwork;
+    int *col_to_pos = iwork;
+
+    for (int C_row = 0; C_row < C->m; C_row++)
+    {
+        // -----------------------------------------------------------------
+        // Build sparsity pattern of the row resulting from summing
+        // evenly spaced rows from A
+        // -----------------------------------------------------------------
+        C->p[C_row] = cursor;
+        int count = 0;
+        for (int row = C_row; row < A->m; row += row_spacing)
+        {
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                cols[count++] = A->i[j];
+            }
+        }
+
+        /* Sort columns and write unique pattern into C->i */
+        sort_int_array(cols, count);
+
+        int unique_nnz = 0;
+        int prev_col = -1;
+        for (int t = 0; t < count; t++)
+        {
+            int col = cols[t];
+            if (t == 0 || col != prev_col)
+            {
+                C->i[cursor + unique_nnz] = col;
+                prev_col = col;
+                unique_nnz++;
+            }
+        }
+
+        cursor += unique_nnz;
+        C->p[C_row + 1] = cursor;
+
+        // -----------------------------------------------------------------
+        //         Build idx_map for all entries in evenly spaced rows
+        // -----------------------------------------------------------------
+        int row_start = C->p[C_row];
+        for (int idx = 0; idx < unique_nnz; idx++)
+        {
+            col_to_pos[C->i[row_start + idx]] = row_start + idx;
+        }
+
+        for (int row = C_row; row < A->m; row += row_spacing)
+        {
+            for (int j = A->p[row]; j < A->p[row + 1]; j++)
+            {
+                idx_map[j] = col_to_pos[A->i[j]];
+            }
+        }
+    }
+
+    C->nnz = cursor;
 }

@@ -52,7 +52,7 @@ expr *new_log(expr *child)
 {
     expr *node = new_restricted(child);
     node->forward = log_forward;
-    node->eval_jacobian = log_eval_jacobian;
-    node->eval_wsum_hess = log_eval_wsum_hess;
+    node->eval_jacobian_impl = log_eval_jacobian;
+    node->eval_wsum_hess_impl = log_eval_wsum_hess;
     return node;
 }

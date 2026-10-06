@@ -71,6 +71,39 @@ int cmp_values(const matrix *M, const double *exp_x, int nnz)
     return cmp_double_array(M->x, exp_x, nnz);
 }
 
+int csr_is_valid(const CSR_matrix *A)
+{
+    if (A->p[0] != 0)
+    {
+        printf("  FAILED: p[0] = %d, expected 0\n", A->p[0]);
+        return 0;
+    }
+    for (int i = 0; i < A->m; i++)
+    {
+        if (A->p[i] > A->p[i + 1])
+        {
+            printf("  FAILED: p[%d] = %d > p[%d] = %d\n", i, A->p[i], i + 1,
+                   A->p[i + 1]);
+            return 0;
+        }
+    }
+    if (A->p[A->m] != A->nnz)
+    {
+        printf("  FAILED: p[m] = %d, but nnz = %d\n", A->p[A->m], A->nnz);
+        return 0;
+    }
+    for (int jj = 0; jj < A->nnz; jj++)
+    {
+        if (A->i[jj] < 0 || A->i[jj] >= A->n)
+        {
+            printf("  FAILED: i[%d] = %d out of range [0, %d)\n", jj, A->i[jj],
+                   A->n);
+            return 0;
+        }
+    }
+    return 1;
+}
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif

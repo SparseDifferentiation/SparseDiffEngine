@@ -48,6 +48,7 @@ typedef struct stacked_pd
 
     /* lazily built CSR view */
     CSR_matrix *csr_cache;
+    uint64_t csr_seen; /* base.values_version the csr_cache values reflect */
 
     /* Private permuted_dense scratch owned by the kernel that produced
        this spd. Allocated by the producing _alloc, used (without

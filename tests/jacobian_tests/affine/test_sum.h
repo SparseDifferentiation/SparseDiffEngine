@@ -8,6 +8,7 @@
 #include "minunit.h"
 #include "numerical_diff.h"
 #include "test_helpers.h"
+#include "utils/stacked_pd.h"
 
 const char *test_jacobian_sum_log(void)
 {
@@ -21,7 +22,7 @@ const char *test_jacobian_sum_log(void)
     expr *sum_node = new_sum(log_node, -1);
     sum_node->forward(sum_node, u_vals);
     jacobian_init(sum_node);
-    sum_node->eval_jacobian(sum_node);
+    eval_jacobian(sum_node);
     double expected_Ax[3] = {1.0, 0.5, 1.0 / 3.0};
     int expected_Ap[2] = {0, 3};
     int expected_Ai[3] = {2, 3, 4};
@@ -54,7 +55,7 @@ const char *test_jacobian_sum_mult(void)
 
     sum_node->forward(sum_node, u_vals);
     jacobian_init(sum_node);
-    sum_node->eval_jacobian(sum_node);
+    eval_jacobian(sum_node);
 
     double expected_Ax[6] = {2, 3, 4, 1, 2, 3};
     int expected_Ap[2] = {0, 6}; /* 1x10 matrix: row 0 spans all 6 nonzeros */
@@ -94,7 +95,7 @@ const char *test_jacobian_sum_log_axis_0(void)
     expr *sum_node = new_sum(log_node, 0);
     sum_node->forward(sum_node, u_vals);
     jacobian_init(sum_node);
-    sum_node->eval_jacobian(sum_node);
+    eval_jacobian(sum_node);
 
     double expected_Ax[6] = {1.0, 1.0 / 3.0, 1.0 / 5.0, 0.5, 0.25, 1.0 / 6.0};
     int expected_Ap[3] = {0, 3, 6};
@@ -136,7 +137,7 @@ const char *test_jacobian_sum_add_log_axis_0(void)
 
     sum_node->forward(sum_node, u_vals);
     jacobian_init(sum_node);
-    sum_node->eval_jacobian(sum_node);
+    eval_jacobian(sum_node);
 
     /* Expected jacobian values for both rows */
     double expected_Ax[12] = {1.0, 1.0 / 3.0, 1.0 / 5.0,  /* d(sum[0])/dx */
@@ -183,7 +184,7 @@ const char *test_jacobian_sum_log_axis_1(void)
     expr *sum_node = new_sum(log_node, 1);
     sum_node->forward(sum_node, u_vals);
     jacobian_init(sum_node);
-    sum_node->eval_jacobian(sum_node);
+    eval_jacobian(sum_node);
 
     double expected_Ax[6] = {1.0, 0.5, 1.0 / 3.0, 0.25, 1.0 / 5.0, 1.0 / 6.0};
     int expected_Ap[4] = {0, 2, 4, 6};
@@ -227,6 +228,82 @@ const char *test_jacobian_sum_axis_minus_one_pd_child(void)
     mu_assert("check_jacobian failed",
               check_jacobian_num(sum_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
 
+    free_expr(sum_node);
+    return 0;
+}
+
+/* sum of a stacked_pd child stays stacked_pd for every axis. L = A @ X with A
+   2x3 and X a 3x2 variable has a 2-block spd Jacobian (one block per column of
+   X: rows {0, 1} and {2, 3}, columns 3j .. 3j+2). */
+static expr *sum_spd_child_fixture(int axis, expr **L_out)
+{
+    static const double A[6] = {1.0, -0.5, 2.0, 0.5, 1.5, -1.0};
+    expr *X = new_variable(3, 2, 0, 6);
+    expr *L = new_left_matmul_dense(NULL, X, 2, 3, A);
+    *L_out = L;
+    return new_sum(L, axis);
+}
+
+const char *test_jacobian_sum_spd_child_axis_minus_one(void)
+{
+    expr *L;
+    expr *sum_node = sum_spd_child_fixture(-1, &L);
+    double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
+    jacobian_init(sum_node);
+    mu_assert("child Jacobian should be spd", L->jacobian->is_stacked_pd);
+    mu_assert("sum Jacobian should be spd", sum_node->jacobian->is_stacked_pd);
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(sum_node, u, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(sum_node);
+    return 0;
+}
+
+/* axis 0 groups rows {0, 1} and {2, 3}: each output row is fed by one block. */
+const char *test_jacobian_sum_spd_child_axis_0(void)
+{
+    expr *L;
+    expr *sum_node = sum_spd_child_fixture(0, &L);
+    double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
+    jacobian_init(sum_node);
+    mu_assert("sum Jacobian should be spd", sum_node->jacobian->is_stacked_pd);
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(sum_node, u, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(sum_node);
+    return 0;
+}
+
+/* axis 1 groups rows {0, 2} and {1, 3}: each output row sums one row from each
+   block, so output row r is [A[r, :], A[r, :]]. Checked exactly through the
+   CSR view on top of the numerical check. */
+const char *test_jacobian_sum_spd_child_axis_1(void)
+{
+    expr *L;
+    expr *sum_node = sum_spd_child_fixture(1, &L);
+    double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
+    jacobian_init(sum_node);
+    mu_assert("sum Jacobian should be spd", sum_node->jacobian->is_stacked_pd);
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(sum_node, u, NUMERICAL_DIFF_DEFAULT_H));
+
+    sum_node->forward(sum_node, u);
+    eval_jacobian(sum_node);
+    CSR_matrix *J = sum_node->jacobian->to_csr(sum_node->jacobian);
+    mu_assert("shape", J->m == 2 && J->n == 6 && J->nnz == 12);
+    double expected[2][6] = {{1.0, -0.5, 2.0, 1.0, -0.5, 2.0},
+                             {0.5, 1.5, -1.0, 0.5, 1.5, -1.0}};
+    double dense[2][6] = {{0}};
+    for (int r = 0; r < 2; r++)
+    {
+        for (int jj = J->p[r]; jj < J->p[r + 1]; jj++)
+        {
+            dense[r][J->i[jj]] += J->x[jj];
+        }
+    }
+    for (int r = 0; r < 2; r++)
+    {
+        mu_assert("axis 1 rows must sum across blocks",
+                  cmp_double_array(dense[r], expected[r], 6));
+    }
     free_expr(sum_node);
     return 0;
 }

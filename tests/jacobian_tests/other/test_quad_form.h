@@ -25,7 +25,7 @@ const char *test_quad_form(void)
 
     jacobian_init(node);
     node->forward(node, u_vals);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double expected_Ax[3] = {10.0, 16.0, 24.0};
     int expected_Ap[2] = {0, 3};
@@ -71,7 +71,7 @@ expr *node = new_quad_form_sparse(Au, Q);
 
 jacobian_init(node);
 node->forward(node, u_vals);
-node->eval_jacobian(node);
+eval_jacobian(node);
 
 double expected_Ax[5] = {422, 2222, 3244, 3786, 120};
 int expected_Ap[2] = {0, 5};

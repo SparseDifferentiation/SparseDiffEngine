@@ -51,7 +51,7 @@ const char *profile_left_matmul(void)
     printf("left_matmul jacobian init time: %8.3f seconds\n",
            GET_ELAPSED_SECONDS(timer));
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    AX->eval_jacobian(AX);
+    eval_jacobian(AX);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     printf("left_matmul jacobian eval time: %8.3f seconds\n",
            GET_ELAPSED_SECONDS(timer));

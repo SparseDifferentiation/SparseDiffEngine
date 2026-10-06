@@ -17,12 +17,13 @@
  */
 #include "utils/matrix_sum.h"
 #include "utils/CSR_sum.h"
+#include "utils/sparse_matrix.h"
 
 void sum_matrices_alloc(matrix *A, matrix *B, matrix *C)
 {
     CSR_matrix *cc = C->to_csr(C);
     sum_csr_alloc(A->to_csr(A), B->to_csr(B), cc);
-    C->nnz = cc->nnz;
+    sparse_matrix_trim(C);
 }
 
 void sum_matrices_fill_values(matrix *A, matrix *B, matrix *C)

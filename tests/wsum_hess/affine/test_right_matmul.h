@@ -38,7 +38,7 @@ const char *test_wsum_hess_right_matmul(void)
     log_x_A->forward(log_x_A, x_vals);
     jacobian_init(log_x_A);
     wsum_hess_init(log_x_A);
-    log_x_A->eval_wsum_hess(log_x_A, w);
+    eval_wsum_hess(log_x_A, w);
 
     /* Expected wsum_hess: diagonal matrix with 4 entries */
     double expected_x[4] = {
@@ -87,7 +87,7 @@ const char *test_wsum_hess_right_matmul_vector(void)
     log_x_A->forward(log_x_A, x_vals);
     jacobian_init(log_x_A);
     wsum_hess_init(log_x_A);
-    log_x_A->eval_wsum_hess(log_x_A, w);
+    eval_wsum_hess(log_x_A, w);
 
     /* Expected wsum_hess: diagonal matrix with 3 entries */
     double expected_x[3] = {

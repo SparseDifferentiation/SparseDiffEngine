@@ -50,11 +50,11 @@ static void jacobian_init_impl(expr *node)
     sum_matrices_alloc(node->left->jacobian, node->right->jacobian, node->jacobian);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     /* evaluate children's jacobians */
-    node->left->eval_jacobian(node->left);
-    node->right->eval_jacobian(node->right);
+    eval_jacobian(node->left);
+    eval_jacobian(node->right);
 
     /* sum children's jacobians */
     sum_matrices_fill_values(node->left->jacobian, node->right->jacobian,
@@ -76,11 +76,11 @@ static void wsum_hess_init_impl(expr *node)
                        node->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     /* evaluate children's wsum_hess */
-    node->left->eval_wsum_hess(node->left, w);
-    node->right->eval_wsum_hess(node->right, w);
+    eval_wsum_hess(node->left, w);
+    eval_wsum_hess(node->right, w);
 
     /* sum children's wsum_hess */
     sum_matrices_fill_values(node->left->wsum_hess, node->right->wsum_hess,
@@ -97,7 +97,8 @@ expr *new_add(expr *left, expr *right)
     assert(left->d1 == right->d1 && left->d2 == right->d2);
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, left->d1, left->d2, left->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = left;
     node->right = right;
     expr_retain(left);

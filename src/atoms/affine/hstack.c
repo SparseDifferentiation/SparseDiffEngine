@@ -63,7 +63,7 @@ static void jacobian_init_impl(expr *node)
 
     /* precompute sparsity pattern of this node's jacobian */
     int row_offset = 0;
-    A->nnz = 0;
+    int cursor = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
@@ -71,35 +71,36 @@ static void jacobian_init_impl(expr *node)
         CSR_matrix *B = child->jacobian->to_csr(child->jacobian);
 
         /* copy columns */
-        memcpy(A->i + A->nnz, B->i, B->nnz * sizeof(int));
+        memcpy(A->i + cursor, B->i, B->nnz * sizeof(int));
 
         /* set row pointers */
         for (int r = 0; r < child->size; r++)
         {
-            A->p[row_offset + r] = A->nnz + B->p[r];
+            A->p[row_offset + r] = cursor + B->p[r];
         }
 
-        A->nnz += B->nnz;
+        cursor += B->nnz;
         row_offset += child->size;
     }
-    A->p[node->size] = A->nnz;
+    A->p[node->size] = cursor;
+    assert(cursor == A->nnz);
     node->jacobian = new_sparse_matrix(A);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    node->jacobian->nnz = 0;
+    int cursor = 0;
 
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
-        child->eval_jacobian(child);
+        eval_jacobian(child);
         /* to_csr needed for stacked_pd */
         CSR_matrix *child_csr = child->jacobian->to_csr(child->jacobian);
-        memcpy(node->jacobian->x + node->jacobian->nnz, child_csr->x,
+        memcpy(node->jacobian->x + cursor, child_csr->x,
                child_csr->nnz * sizeof(double));
-        node->jacobian->nnz += child_csr->nnz;
+        cursor += child_csr->nnz;
     }
 }
 
@@ -121,13 +122,19 @@ static void wsum_hess_init_impl(expr *node)
     hnode->CSR_work = new_CSR_matrix(node->n_vars, node->n_vars, nnz_ub);
 
     /* fill sparsity pattern */
-    H->nnz = 0;
     for (int i = 0; i < hnode->n_args; i++)
     {
         matrix *child_hess = hnode->args[i]->wsum_hess;
         copy_CSR_matrix(H, hnode->CSR_work);
         sum_csr_alloc(hnode->CSR_work, child_hess->to_csr(child_hess), H);
     }
+
+    /* trim both buffers to the final pattern size; CSR_work must be re-synced
+       from H first, since its row pointers still describe an older, smaller
+       pattern */
+    CSR_trim(H);
+    copy_CSR_matrix(H, hnode->CSR_work);
+    CSR_trim(hnode->CSR_work);
     node->wsum_hess = new_sparse_matrix(H);
 }
 
@@ -141,7 +148,7 @@ static void wsum_hess_eval(expr *node, const double *w)
     for (int i = 0; i < hnode->n_args; i++)
     {
         expr *child = hnode->args[i];
-        child->eval_wsum_hess(child, w + row_offset);
+        eval_wsum_hess(child, w + row_offset);
         copy_CSR_matrix(H, hnode->CSR_work);
         sum_csr_fill_values(hnode->CSR_work,
                             child->wsum_hess->to_csr(child->wsum_hess), H);
@@ -161,6 +168,19 @@ static bool is_affine(const expr *node)
         }
     }
     return true;
+}
+
+/* Children live in args[], not left/right, so the parameter-refresh walk
+   needs this hook to reach them. */
+static bool set_needs_refresh_children(expr *node)
+{
+    hstack_expr *hnode = (hstack_expr *) node;
+    bool child_has_params = false;
+    for (int i = 0; i < hnode->n_args; i++)
+    {
+        child_has_params |= expr_set_needs_refresh(hnode->args[i]);
+    }
+    return child_has_params;
 }
 
 static void free_type_data(expr *node)
@@ -192,8 +212,10 @@ expr *new_hstack(expr **args, int n_args, int n_vars)
     hstack_expr *hnode = (hstack_expr *) sp_calloc(1, sizeof(hstack_expr));
     expr *node = &hnode->base;
     init_expr(node, args[0]->d1, d2, n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, wsum_hess_eval,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl, wsum_hess_eval,
               free_type_data);
+
+    node->set_needs_refresh_children = set_needs_refresh_children;
 
     /* Set type-specific fields (deep copy args array) */
     hnode->args = (expr **) sp_calloc(n_args, sizeof(expr *));

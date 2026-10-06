@@ -65,9 +65,10 @@ typedef struct problem
     COO_matrix *jacobian_coo;
     COO_matrix *lagrange_hessian_coo; /* lower triangular part stored in COO */
 
-    /* for the affine shortcut we keep track of the first time the jacobian and
-     * hessian are called */
-    bool jacobian_called;
+    /* per-constraint jacobian values_version last copied into the aggregated
+     * jacobian; the copy is skipped when the version is unchanged (affine
+     * constraints after their first eval) */
+    uint64_t *constraint_jac_seen;
 
     /* statistics for performance measurement */
     Diff_engine_stats stats;

@@ -19,7 +19,7 @@ const char *test_wsum_hess_prod_no_zero(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, &w);
+    eval_wsum_hess(p, &w);
 
     /* Row-major over dense 4x4 block */
     double expected_x[16] = {0.0, 12.0, 8.0, 6.0, 12.0, 0.0, 4.0, 3.0,
@@ -47,7 +47,7 @@ const char *test_wsum_hess_prod_one_zero(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, &w);
+    eval_wsum_hess(p, &w);
 
     double expected_x[16];
     memset(expected_x, 0, sizeof(expected_x));
@@ -81,7 +81,7 @@ const char *test_wsum_hess_prod_two_zeros(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, &w);
+    eval_wsum_hess(p, &w);
 
     double expected_x[16];
     memset(expected_x, 0, sizeof(expected_x));
@@ -110,7 +110,7 @@ const char *test_wsum_hess_prod_many_zeros(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, &w);
+    eval_wsum_hess(p, &w);
 
     double expected_x[16];
     memset(expected_x, 0, sizeof(expected_x));

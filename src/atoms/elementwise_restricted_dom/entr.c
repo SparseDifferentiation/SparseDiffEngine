@@ -53,7 +53,7 @@ expr *new_entr(expr *child)
 {
     expr *node = new_restricted(child);
     node->forward = entr_forward;
-    node->eval_jacobian = entr_eval_jacobian;
-    node->eval_wsum_hess = entr_eval_wsum_hess;
+    node->eval_jacobian_impl = entr_eval_jacobian;
+    node->eval_wsum_hess_impl = entr_eval_wsum_hess;
     return node;
 }

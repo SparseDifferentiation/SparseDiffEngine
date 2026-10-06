@@ -35,9 +35,6 @@ static void forward(expr *node, const double *u)
        its values) */
     if (snode->base.needs_parameter_refresh)
     {
-        /* Composite sources hold gated nodes of their own (promote, nested
-           mults): mark the whole side subtree before re-evaluating it. */
-        expr_set_needs_refresh(snode->param_source);
         snode->param_source->forward(snode->param_source, NULL);
         snode->base.needs_parameter_refresh = false;
     }
@@ -65,13 +62,13 @@ static void jacobian_init_impl(expr *node)
     node->jacobian = x->jacobian->copy_sparsity(x->jacobian);
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
     double a = ((scalar_mult_expr *) node)->param_source->value[0];
 
     /* evaluate child */
-    child->eval_jacobian(child);
+    eval_jacobian(child);
 
     /* scale child's jacobian */
     for (int j = 0; j < child->jacobian->nnz; j++)
@@ -91,10 +88,10 @@ static void wsum_hess_init_impl(expr *node)
     node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
-    x->eval_wsum_hess(x, w);
+    eval_wsum_hess(x, w);
 
     double a = ((scalar_mult_expr *) node)->param_source->value[0];
     for (int j = 0; j < x->wsum_hess->nnz; j++)
@@ -106,6 +103,13 @@ static void eval_wsum_hess(expr *node, const double *w)
 static bool is_affine(const expr *node)
 {
     return node->left->is_affine(node->left);
+}
+
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((scalar_mult_expr *) node)->param_source);
 }
 
 static void free_type_data(expr *node)
@@ -125,8 +129,8 @@ expr *new_scalar_mult(expr *param_node, expr *child)
     expr *node = &mult_node->base;
 
     init_expr(node, child->d1, child->d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 
@@ -135,6 +139,7 @@ expr *new_scalar_mult(expr *param_node, expr *child)
 
     /* special case for handling broadcasting of constants correctly */
     mult_node->base.needs_parameter_refresh = true;
+    mult_node->base.set_needs_refresh_children = set_needs_refresh_param_source;
 
     return node;
 }

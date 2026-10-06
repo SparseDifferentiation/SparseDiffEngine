@@ -39,9 +39,6 @@ static void forward(expr *node, const double *u)
 
     if (cnode->base.needs_parameter_refresh)
     {
-        /* Composite sources hold gated nodes of their own (promote, nested
-           mults): mark the whole side subtree before re-evaluating it. */
-        expr_set_needs_refresh(cnode->param_source);
         cnode->param_source->forward(cnode->param_source, NULL);
         /* refresh the convolution matrix values if it exists (necessary to check
            for null in case someone calls forward before initializing the jacobian,
@@ -91,12 +88,12 @@ static void jacobian_init_impl(expr *node)
         new_sparse_matrix(csr_csc_matmul_alloc(cnode->T, cnode->Jchild_CSC));
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *child = node->left;
     convolve_expr *cnode = (convolve_expr *) node;
 
-    child->eval_jacobian(child);
+    eval_jacobian(child);
 
     /* J = T @ J_child */
     csr_to_csc_fill_values(child->jacobian->to_csr(child->jacobian),
@@ -115,7 +112,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->dwork = (double *) sp_malloc(cnode->n * sizeof(double));
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *child = node->left;
     convolve_expr *cnode = (convolve_expr *) node;
@@ -133,7 +130,7 @@ static void eval_wsum_hess(expr *node, const double *w)
         w_prime[j] = sum;
     }
 
-    child->eval_wsum_hess(child, w_prime);
+    eval_wsum_hess(child, w_prime);
     memcpy(node->wsum_hess->x, child->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));
 }
@@ -141,6 +138,13 @@ static void eval_wsum_hess(expr *node, const double *w)
 static bool is_affine(const expr *node)
 {
     return node->left->is_affine(node->left);
+}
+
+/* param_source lives outside left/right, so the refresh walk reaches it
+   here -- and reports whether it actually holds an updatable parameter. */
+static bool set_needs_refresh_param_source(expr *node)
+{
+    return expr_set_needs_refresh(((convolve_expr *) node)->param_source);
 }
 
 static void free_type_data(expr *node)
@@ -181,8 +185,8 @@ expr *new_convolve(expr *param_node, expr *child)
     convolve_expr *cnode = (convolve_expr *) sp_calloc(1, sizeof(convolve_expr));
     expr *node = &cnode->base;
     init_expr(node, d1, d2, child->n_vars, forward, jacobian_init_impl,
-              eval_jacobian, is_affine, wsum_hess_init_impl, eval_wsum_hess,
-              free_type_data);
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, free_type_data);
     node->left = child;
     expr_retain(child);
 
@@ -197,6 +201,7 @@ expr *new_convolve(expr *param_node, expr *child)
     /* Ensure first forward() pulls current param values through any
        broadcast/promote wrappers and reflects them in T (once T is built). */
     cnode->base.needs_parameter_refresh = true;
+    cnode->base.set_needs_refresh_children = set_needs_refresh_param_source;
 
     return node;
 }

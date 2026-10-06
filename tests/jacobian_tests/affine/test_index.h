@@ -49,7 +49,7 @@ const char *test_index_jacobian_of_variable(void)
     expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
     jacobian_init(idx);
-    idx->eval_jacobian(idx);
+    eval_jacobian(idx);
 
     /* Jacobian is 2x3 with pattern: row 0 selects col 0, row 1 selects col 2 */
     double expected_x[2] = {1.0, 1.0};
@@ -74,7 +74,7 @@ const char *test_index_jacobian_of_log(void)
     expr *idx = new_index(log_node, 1, 2, indices, 2);
     idx->forward(idx, u);
     jacobian_init(idx);
-    idx->eval_jacobian(idx);
+    eval_jacobian(idx);
 
     /* d/dx log(x) = diag(1/x), then select rows 0 and 2.
      * Each selected row has exactly one nonzero (the diagonal entry).
@@ -101,7 +101,7 @@ const char *test_index_jacobian_repeated(void)
     expr *idx = new_index(var, 1, 2, indices, 2);
     idx->forward(idx, u);
     jacobian_init(idx);
-    idx->eval_jacobian(idx);
+    eval_jacobian(idx);
 
     /* Both rows select column 0 */
     double expected_x[2] = {1.0, 1.0};
@@ -128,7 +128,7 @@ const char *test_index_jacobian_duplicates_exceed_source_nnz(void)
     expr *idx = new_index(var, 1, 6, indices, 6);
     idx->forward(idx, u);
     jacobian_init(idx);
-    idx->eval_jacobian(idx);
+    eval_jacobian(idx);
 
     double expected_x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
     int expected_p[7] = {0, 1, 2, 3, 4, 5, 6};
@@ -155,7 +155,7 @@ const char *test_sum_of_index(void)
 
     s->forward(s, u);
     jacobian_init(s);
-    s->eval_jacobian(s);
+    eval_jacobian(s);
 
     /* Gradient: [1, 0, 1] in sparse form. Single output row holds both nnz. */
     double expected_x[2] = {1.0, 1.0};

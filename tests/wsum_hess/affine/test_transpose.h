@@ -21,7 +21,7 @@ const char *test_wsum_hess_transpose(void)
     jacobian_init(XYT);
     wsum_hess_init(XYT);
     double w[4] = {1, 2, 3, 4};
-    XYT->eval_wsum_hess(XYT, w);
+    eval_wsum_hess(XYT, w);
 
     double expected_x[16] = {1, 2, 3, 4, 1, 2, 3, 4, 1, 3, 1, 3, 2, 4, 2, 4};
     int expected_p[9] = {0, 2, 4, 6, 8, 10, 12, 14, 16};

@@ -23,7 +23,7 @@ const char *test_wsum_hess_rel_entr_1(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[11] = {0, 0, 2, 4, 6, 6, 6, 8, 10, 12, 12};
     int expected_i[12] = {1, 6, 2, 7, 3, 8, 1, 6, 2, 7, 3, 8};
@@ -55,7 +55,7 @@ const char *test_wsum_hess_rel_entr_2(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[11] = {0, 0, 2, 4, 6, 6, 6, 8, 10, 12, 12};
     int expected_i[12] = {1, 6, 2, 7, 3, 8, 1, 6, 2, 7, 3, 8};
@@ -87,7 +87,7 @@ const char *test_wsum_hess_rel_entr_matrix(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, w);
+    eval_wsum_hess(node, w);
 
     int expected_p[13] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24};
     int expected_i[24] = {0, 6, 1, 7, 2, 8, 3, 9, 4, 10, 5, 11,

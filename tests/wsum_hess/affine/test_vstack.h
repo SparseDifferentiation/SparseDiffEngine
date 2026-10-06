@@ -32,7 +32,7 @@ const char *test_wsum_hess_vstack_vectors(void)
     stack->forward(stack, u);
     jacobian_init(stack);
     wsum_hess_init(stack);
-    stack->eval_wsum_hess(stack, w);
+    eval_wsum_hess(stack, w);
 
     double expected_x[3] = {-1.0 + 4.0 * exp(1.0), -0.5 + 5.0 * exp(2.0),
                             -1.0 / 3.0 + 6.0 * exp(3.0)};
@@ -85,7 +85,7 @@ const char *test_wsum_hess_vstack_matrix(void)
     stack->forward(stack, u);
     jacobian_init(stack);
     wsum_hess_init(stack);
-    stack->eval_wsum_hess(stack, w);
+    eval_wsum_hess(stack, w);
 
     double expected_x[9] = {-1.0,            /* x0: w[0]*(-1/1) */
                             -0.5,            /* x1: w[1]*(-1/4) */

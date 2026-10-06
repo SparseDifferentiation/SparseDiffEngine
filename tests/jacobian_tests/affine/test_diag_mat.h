@@ -17,7 +17,7 @@ const char *test_diag_mat_jacobian_variable(void)
 
     dm->forward(dm, u);
     jacobian_init(dm);
-    dm->eval_jacobian(dm);
+    eval_jacobian(dm);
 
     double expected_x[2] = {1.0, 1.0};
     int expected_p[3] = {0, 1, 2};
@@ -46,7 +46,7 @@ const char *test_diag_mat_jacobian_of_log(void)
 
     dm->forward(dm, u);
     jacobian_init(dm);
-    dm->eval_jacobian(dm);
+    eval_jacobian(dm);
 
     double expected_x[2] = {1.0, 0.25};
     int expected_p[3] = {0, 1, 2};

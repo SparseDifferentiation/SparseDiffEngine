@@ -68,7 +68,7 @@ int check_jacobian_num(expr *node, const double *u, double h)
 
     jacobian_init(node);
     node->forward(node, u);
-    node->eval_jacobian(node);
+    eval_jacobian(node);
 
     double *J_num = numerical_jacobian(node, u, h);
 
@@ -131,7 +131,8 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
        and permuted_dense the cached csr->x aliases the underlying value
        buffer (so the same call returns the same valid view), but for
        stacked_pd the csr_cache->x is a separate buffer that to_csr
-       memcpy-refreshes from block X each call. */
+       refreshes from block X whenever the jacobian's values_version moved
+       since the previous call. */
     CSR_matrix *jac;
 
     for (int j = 0; j < n; j++)
@@ -139,7 +140,7 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
         /* g(u + h*e_j) */
         u_work[j] = u[j] + h;
         node->forward(node, u_work);
-        node->eval_jacobian(node);
+        eval_jacobian(node);
         jac = node->jacobian->to_csr(node->jacobian);
         memset(g_plus, 0, n * sizeof(double));
         csr_transpose_mult_vec(jac, w, g_plus);
@@ -147,7 +148,7 @@ double *numerical_wsum_hess(expr *node, const double *u, const double *w, double
         /* g(u - h*e_j) */
         u_work[j] = u[j] - h;
         node->forward(node, u_work);
-        node->eval_jacobian(node);
+        eval_jacobian(node);
         jac = node->jacobian->to_csr(node->jacobian);
         memset(g_minus, 0, n * sizeof(double));
         csr_transpose_mult_vec(jac, w, g_minus);
@@ -176,8 +177,8 @@ int check_wsum_hess(expr *node, const double *u, const double *w, double h)
     /* Now compute analytical (reuses jacobian from numerical) */
     wsum_hess_init(node);
     node->forward(node, u);
-    node->eval_jacobian(node);
-    node->eval_wsum_hess(node, w);
+    eval_jacobian(node);
+    eval_wsum_hess(node, w);
 
     double *H_ana = calloc((size_t) n * n, sizeof(double));
     csr_to_dense(node->wsum_hess->to_csr(node->wsum_hess), H_ana);

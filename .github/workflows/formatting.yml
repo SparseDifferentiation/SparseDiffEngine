@@ -8,27 +8,24 @@ on:
 
 jobs:
   format:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest]
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v5
 
-      # Install clang-format if needed
-      - name: Install clang-format (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y clang-format
-
-      - name: Install clang-format (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Install clang-format
         run: brew install clang-format || true
 
-      # Check formatting
-      - name: Check C/C++ formatting
+      # Fail loudly if clang-format is missing — otherwise the check below
+      # would pass vacuously on empty output.
+      - name: Verify clang-format is available
+        run: clang-format --version
+
+      # The \( ... \) grouping matters: without it, -print0 binds only to
+      # the *.h branch and .c files are never checked.
+      - name: Check C formatting
         run: |
-          misformatted=$(find . -name '*.c' -o -name '*.h' -print0 | xargs -0 clang-format -style=file -output-replacements-xml | grep "<replacement " || true)
+          misformatted=$(find . \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -style=file -output-replacements-xml | grep "<replacement " || true)
           if [ -n "$misformatted" ]; then
             echo "ERROR: Some files are not properly formatted. Run clang-format -i."
             exit 1

@@ -29,7 +29,7 @@ const char *test_jacobian_scalar_mult_log_vector(void)
 
     /* Initialize and evaluate jacobian */
     jacobian_init(y);
-    y->eval_jacobian(y);
+    eval_jacobian(y);
 
     /* Expected jacobian: 2.5 * [1/1, 1/2, 1/4] = [2.5, 1.25, 0.625] */
     double expected_x[3] = {2.5, 1.25, 0.625};
@@ -63,7 +63,7 @@ const char *test_jacobian_scalar_mult_log_matrix(void)
 
     /* Initialize and evaluate jacobian */
     jacobian_init(y);
-    y->eval_jacobian(y);
+    eval_jacobian(y);
 
     /* Expected jacobian: 3.0 * [1/1, 1/2, 1/4, 1/8] = [3.0, 1.5, 0.75, 0.375] */
     double expected_x[4] = {3.0, 1.5, 0.75, 0.375};

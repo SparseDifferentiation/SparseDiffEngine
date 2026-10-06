@@ -32,10 +32,12 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork);
 problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
+#ifdef SP_TRACK_MEMORY
     /* we don't reset g_peak_bytes or g_allocated_bytes since allocations
        using sp_malloc/sp_calloc might have happened before new_problem in eg.,
        left_matmul, and their frees will subtract from this counter. */
     g_peak_bytes = g_allocated_bytes;
+#endif
     problem *prob = (problem *) sp_calloc(1, sizeof(problem));
     if (!prob) return NULL;
 
@@ -43,7 +45,6 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
     prob->objective = objective;
     expr_retain(objective);
     prob->n_vars = objective->n_vars;
-    prob->jacobian_called = false;
 
     /* constraints array */
     prob->total_constraint_size = 0;
@@ -192,11 +193,18 @@ void problem_init_jacobian(problem *prob)
     //                           Jacobian structure
     // -------------------------------------------------------------------------------
     jacobian_init(prob->objective);
+    if (prob->n_constraints > 0)
+    {
+        prob->constraint_jac_seen =
+            (uint64_t *) sp_malloc(prob->n_constraints * sizeof(uint64_t));
+    }
     int nnz = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
         jacobian_init(c);
+        /* deliberately stale so the first problem_jacobian call copies */
+        prob->constraint_jac_seen[i] = c->jacobian->values_version - 1;
         CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
         nnz += Jc->nnz;
 
@@ -259,14 +267,16 @@ void problem_init_hessian(problem *prob)
     int hess_nnz_ub = MIN(nnz, sat_mul_int(prob->n_vars, prob->n_vars));
     prob->lagrange_hessian = new_CSR_matrix(prob->n_vars, prob->n_vars, hess_nnz_ub);
 
-    /* affine shortcut */
-    memset(prob->lagrange_hessian->x, 0, hess_nnz_ub * sizeof(double));
-
     prob->hess_idx_map = (int *) sp_malloc(nnz * sizeof(int));
     int *iwork = (int *) sp_malloc(MAX(nnz, prob->n_vars) * sizeof(int));
     problem_lagrange_hess_fill_sparsity(prob, iwork);
+    CSR_trim(prob->lagrange_hessian);
     prob->stats.nnz_hessian = prob->lagrange_hessian->nnz;
     sp_free(iwork);
+
+    /* affine shortcut */
+    memset(prob->lagrange_hessian->x, 0,
+           prob->lagrange_hessian->nnz * sizeof(double));
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
@@ -303,6 +313,7 @@ void problem_init_derivatives(problem *prob)
     problem_init_hessian(prob);
 }
 
+#ifdef SP_TRACK_MEMORY
 static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
 {
     if (bytes < 1024)
@@ -318,6 +329,7 @@ static inline void format_memory(size_t bytes, char *buf, size_t buf_size)
         snprintf(buf, buf_size, "%.2f MB", (double) bytes / (1024.0 * 1024.0));
     }
 }
+#endif
 
 static inline void print_end_message(const Diff_engine_stats *stats)
 {
@@ -335,9 +347,11 @@ static inline void print_end_message(const Diff_engine_stats *stats)
     printf("  Affine constraints (nnz):               %d\n", stats->nnz_affine);
     printf("  Jacobian nonlinear constraints (nnz):   %d\n", stats->nnz_nonlinear);
     printf("  Lagrange Hessian (nnz):                 %d\n", stats->nnz_hessian);
+#ifdef SP_TRACK_MEMORY
     char mem_buf[64];
     format_memory(stats->memory_bytes, mem_buf, sizeof(mem_buf));
     printf("  Peak memory:                            %s\n", mem_buf);
+#endif
 
     printf("\nTiming (seconds):\n");
     printf("  Derivative structure (sparsity):     %8.3f\n",
@@ -365,7 +379,9 @@ void free_problem(problem *prob)
 {
     if (prob == NULL) return;
 
+#ifdef SP_TRACK_MEMORY
     prob->stats.memory_bytes = g_peak_bytes;
+#endif
     if (prob->verbose)
     {
         print_end_message(&prob->stats);
@@ -382,6 +398,7 @@ void free_problem(problem *prob)
     free_COO_matrix(prob->jacobian_coo);
     free_COO_matrix(prob->lagrange_hessian_coo);
     sp_free(prob->hess_idx_map);
+    sp_free(prob->constraint_jac_seen);
 
     /* Release expression references (decrements refcount) */
     free_expr(prob->objective);
@@ -448,9 +465,6 @@ void problem_update_params(problem *prob, const double *theta)
     {
         expr_set_needs_refresh(prob->constraints[i]);
     }
-
-    /* Force re-evaluation of affine Jacobians on next call */
-    prob->jacobian_called = false;
 }
 
 double problem_objective_forward(problem *prob, const double *u)
@@ -493,7 +507,7 @@ void problem_gradient(problem *prob)
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
 
     /* evaluate jacobian of objective */
-    prob->objective->eval_jacobian(prob->objective);
+    eval_jacobian(prob->objective);
 
     /* copy sparse jacobian to dense gradient */
     memset(prob->gradient_values, 0, prob->n_vars * sizeof(double));
@@ -511,30 +525,31 @@ void problem_jacobian(problem *prob)
 {
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    bool first_call = !prob->jacobian_called;
-
     CSR_matrix *J = prob->jacobian;
     int nnz_offset = 0;
 
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
-        if (!first_call && c->is_affine(c))
-        {
-            /* skip evaluation for affine constraints after first call */
-            nnz_offset += c->jacobian->nnz;
-            continue;
-        }
+        eval_jacobian(c);
 
-        c->eval_jacobian(c);
-        memcpy(J->x + nnz_offset, c->jacobian->x, c->jacobian->nnz * sizeof(double));
+        /* copy only when the constraint's jacobian values actually changed
+           (an affine constraint's eval is a no-op after its first call and
+           leaves the version untouched until the next parameter update).
+           Copy through the CSR view: J's rows were laid out from to_csr in
+           problem_init_jacobian, and a stacked_pd's own value buffer is
+           block-major, which is not row order when its blocks interleave
+           rows. For sparse and permuted_dense the view aliases the buffer. */
+        if (prob->constraint_jac_seen[i] != c->jacobian->values_version)
+        {
+            const CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
+            memcpy(J->x + nnz_offset, Jc->x, Jc->nnz * sizeof(double));
+            prob->constraint_jac_seen[i] = c->jacobian->values_version;
+        }
         nnz_offset += c->jacobian->nnz;
     }
 
-    /* update actual nnz (may be less than allocated) */
-    J->nnz = nnz_offset;
-
-    prob->jacobian_called = true;
+    assert(nnz_offset == J->nnz);
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);
 }
@@ -548,7 +563,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
     //             evaluate hessian of objective and constraints
     // ------------------------------------------------------------------------
     expr *obj = prob->objective;
-    obj->eval_wsum_hess(obj, &obj_w);
+    eval_wsum_hess(obj, &obj_w);
 
     int offset = 0;
     expr **constrs = prob->constraints;
@@ -560,7 +575,7 @@ void problem_hessian(problem *prob, double obj_w, const double *w)
             offset += constrs[i]->size;
             continue;
         }
-        constrs[i]->eval_wsum_hess(constrs[i], w + offset);
+        eval_wsum_hess(constrs[i], w + offset);
         offset += constrs[i]->size;
     }
 

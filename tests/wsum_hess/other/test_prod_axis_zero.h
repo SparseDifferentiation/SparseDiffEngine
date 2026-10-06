@@ -34,7 +34,7 @@ const char *test_wsum_hess_prod_axis_zero_no_zeros(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     /* Block diagonal structure: 3 blocks of 2x2 = 6 nnz total
      * Each block has 4 entries (2x2 dense)
@@ -110,7 +110,7 @@ const char *test_wsum_hess_prod_axis_zero_mixed_zeros(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     /* Block 0: 5x5 all off-diagonal = 1.0, total = 25 entries (indices 0-24)
      * Block 1: 5x5 with 1 zero, total = 25 entries (indices 25-49)
@@ -213,7 +213,7 @@ const char *test_wsum_hess_prod_axis_zero_one_zero(void)
     p->forward(p, u_vals);
     jacobian_init(p);
     wsum_hess_init(p);
-    p->eval_wsum_hess(p, w_vals);
+    eval_wsum_hess(p, w_vals);
 
     /* Block 0 (no zeros): w[0]*f[0] = 1
      *   (0,1) = 1/(1*1) = 1, (1,0) = 1

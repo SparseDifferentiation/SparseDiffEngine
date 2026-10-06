@@ -17,8 +17,6 @@
  */
 #include "utils/stacked_pd.h"
 
-#include "utils/CSR_sum.h"
-#include "utils/iVec.h"
 #include "utils/matrix.h"
 #include "utils/permuted_dense.h"
 #include "utils/sparse_matrix.h"
@@ -69,6 +67,7 @@ static void stacked_pd_vtable_DA_fill_values(const double *d, const matrix *self
                                              matrix *out)
 {
     DA_spd_fill_values(d, (const stacked_pd *) self, (stacked_pd *) out);
+    matrix_values_changed(out);
 }
 
 static matrix *stacked_pd_vtable_ATA_alloc(matrix *self)
@@ -80,6 +79,7 @@ static void stacked_pd_vtable_ATDA_fill_values(const matrix *self, const double 
                                                matrix *out)
 {
     ATDA_spd_fill_values((const stacked_pd *) self, d, (stacked_pd *) out);
+    matrix_values_changed(out);
 }
 
 static matrix *stacked_pd_vtable_transpose_alloc(const matrix *self)
@@ -90,6 +90,7 @@ static matrix *stacked_pd_vtable_transpose_alloc(const matrix *self)
 static void stacked_pd_vtable_transpose_fill_values(const matrix *self, matrix *out)
 {
     transpose_spd_fill_values((const stacked_pd *) self, (stacked_pd *) out);
+    matrix_values_changed(out);
 }
 
 static void stacked_pd_vtable_refresh_csc_values(matrix *self)
@@ -134,9 +135,17 @@ static CSR_matrix *stacked_pd_to_csr(matrix *self)
     if (spd->csr_cache == NULL)
     {
         spd->csr_cache = stacked_pd_to_csr_alloc(spd);
+
+        /* Deliberately stale: force the first call to copy the values. */
+        spd->csr_seen = spd->base.values_version - 1;
     }
 
-    /* refresh values every call (block X buffers may have changed). */
+    /* refresh values iff the block X buffers changed since the last call */
+    if (spd->csr_seen == spd->base.values_version)
+    {
+        return spd->csr_cache;
+    }
+    spd->csr_seen = spd->base.values_version;
     int *p_arr = spd->csr_cache->p;
     for (int k = 0; k < spd->n_blocks; k++)
     {
@@ -220,62 +229,39 @@ void compose_csr_idx_map_for_spd(const stacked_pd *spd, const CSR_matrix *csr,
 }
 
 // -----------------------------------------------------------------------------
-//        index of stacked_pd: C = A[indices, :] where A is stacked_pd
+//        row gather of stacked_pd: C = A[map, :] where A is stacked_pd
 // -----------------------------------------------------------------------------
 typedef struct
 {
-    const int *indices;
-    int n_idxs;
-} pd_index_ctx;
+    const int *map;
+    int m_out;
+} pd_row_gather_ctx;
 
-static matrix *wrapper_pd_index(permuted_dense *Bk, const void *ctx)
+static matrix *wrapper_pd_row_gather(permuted_dense *Bk, const void *ctx)
 {
-    const pd_index_ctx *c = (const pd_index_ctx *) ctx;
-    return index_pd_alloc(Bk, c->indices, c->n_idxs);
+    const pd_row_gather_ctx *c = (const pd_row_gather_ctx *) ctx;
+    return row_gather_pd_alloc(Bk, c->map, c->m_out);
 }
 
-static matrix *stacked_pd_vtable_index_alloc(matrix *self, const int *indices,
-                                             int n_idxs)
+/* Every output row has exactly one source row, which lives in exactly one
+   block, so the per-block results stay row-disjoint even when map repeats. */
+static matrix *stacked_pd_vtable_row_gather_alloc(const matrix *self, const int *map,
+                                                  int m_out)
 {
-    stacked_pd *src = (stacked_pd *) self;
-    pd_index_ctx ctx = {indices, n_idxs};
-    return spd_map_filter_blocks(src, n_idxs, src->base.n, wrapper_pd_index, &ctx);
+    const stacked_pd *src = (const stacked_pd *) self;
+    pd_row_gather_ctx ctx = {map, m_out};
+    return spd_map_filter_blocks(src, m_out, src->base.n, wrapper_pd_row_gather,
+                                 &ctx);
 }
 
-static void stacked_pd_vtable_index_fill_values(matrix *self, const int *indices,
-                                                int n_idxs, matrix *out)
+static void stacked_pd_vtable_row_gather_fill_values(const matrix *self, matrix *out)
 {
-    stacked_pd *src = (stacked_pd *) self;
+    const stacked_pd *src = (const stacked_pd *) self;
     stacked_pd *out_spd = (stacked_pd *) out;
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
         int sk = out_spd->src_block_idx[k];
-        index_pd_fill_values(src->blocks[sk], indices, n_idxs, out_spd->blocks[k]);
-    }
-}
-
-// -----------------------------------------------------------------------------
-//        promote: C = promote(A) where A is stacked_pd
-// -----------------------------------------------------------------------------
-static matrix *wrapper_pd_promote(permuted_dense *Bk, const void *ctx)
-{
-    return promote_pd_alloc(Bk, *(const int *) ctx);
-}
-
-static matrix *stacked_pd_vtable_promote_alloc(matrix *self, int size)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    return spd_map_filter_blocks(src, size, src->base.n, wrapper_pd_promote, &size);
-}
-
-static void stacked_pd_vtable_promote_fill_values(matrix *self, matrix *out)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    stacked_pd *out_spd = (stacked_pd *) out;
-    for (int k = 0; k < out_spd->n_blocks; k++)
-    {
-        int sk = out_spd->src_block_idx[k];
-        promote_pd_fill_values(src->blocks[sk], out_spd->blocks[k]);
+        row_gather_pd_fill_values(src->blocks[sk], out_spd->blocks[k]);
     }
 }
 
@@ -305,44 +291,6 @@ static void stacked_pd_vtable_diag_vec_fill_values(matrix *self, matrix *out)
     for (int k = 0; k < out_spd->n_blocks; k++)
     {
         diag_vec_pd_fill_values(src->blocks[k], out_spd->blocks[k]);
-    }
-}
-
-// -----------------------------------------------------------------------------
-//        broadcast: C = broadcast(A) where A is stacked_pd
-// -----------------------------------------------------------------------------
-typedef struct
-{
-    broadcast_type type;
-    int d1;
-    int d2;
-} pd_broadcast_ctx;
-
-static matrix *wrapper_pd_broadcast(permuted_dense *Bk, const void *ctx)
-{
-    const pd_broadcast_ctx *c = (const pd_broadcast_ctx *) ctx;
-    return broadcast_pd_alloc(Bk, c->type, c->d1, c->d2);
-}
-
-static matrix *stacked_pd_vtable_broadcast_alloc(matrix *self, broadcast_type type,
-                                                 int d1, int d2)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    pd_broadcast_ctx ctx = {type, d1, d2};
-    return spd_map_filter_blocks(src, d1 * d2, src->base.n, wrapper_pd_broadcast,
-                                 &ctx);
-}
-
-static void stacked_pd_vtable_broadcast_fill_values(matrix *self,
-                                                    broadcast_type type, int d1,
-                                                    int d2, matrix *out)
-{
-    stacked_pd *src = (stacked_pd *) self;
-    stacked_pd *out_spd = (stacked_pd *) out;
-    for (int k = 0; k < out_spd->n_blocks; k++)
-    {
-        int sk = out_spd->src_block_idx[k];
-        broadcast_pd_fill_values(src->blocks[sk], type, d1, d2, out_spd->blocks[k]);
     }
 }
 
@@ -381,91 +329,15 @@ static void assert_disjoint_row_perms(int n_blocks, permuted_dense *const *block
 }
 #endif
 
-/* C = sum(A, axis) for a stacked_pd A.
-
-   axis == -1: native union path. C is a 1-row permuted_dense whose col_perm
-   is the sorted union of all blocks' col_perms (every input cell collapses
-   to exactly one output column). idx_map is filled in block-major order
-   matching A's base.x layout.
-
-   axis == 0 or 1: internal CSR fallback. A row-reduction of a stacked_pd
-   doesn't in general fit a single PD output (different output rows may have
-   different col footprints), so we materialize via to_csr, dispatch to the
-   existing CSR helper, then re-index idx_map from CSR ordering into A's
-   block-major base.x ordering so a downstream values-fill pass can read
-   directly from A->base.x. */
-static matrix *stacked_pd_vtable_sum_row_partition_alloc(matrix *self, int axis,
-                                                         int d1, int *idx_map)
+static matrix *stacked_pd_vtable_row_reduce_alloc(const matrix *self,
+                                                  const int *group, int m_out)
 {
-    stacked_pd *spd = (stacked_pd *) self;
+    return row_reduce_spd_alloc((const stacked_pd *) self, group, m_out);
+}
 
-    if (axis == -1)
-    {
-        /* multi-way sorted union of each block's col_perm */
-        iVec *col_union = iVec_new(8);
-        const int **col_arrs =
-            (const int **) sp_malloc(spd->n_blocks * sizeof(int *));
-        int *col_lens = (int *) sp_malloc(spd->n_blocks * sizeof(int));
-        for (int k = 0; k < spd->n_blocks; k++)
-        {
-            col_arrs[k] = spd->blocks[k]->col_perm;
-            col_lens[k] = spd->blocks[k]->n0;
-        }
-        sorted_union_int_arrays(col_arrs, col_lens, spd->n_blocks, col_union);
-        sp_free(col_arrs);
-        sp_free(col_lens);
-
-        /* inverse map: column-id (in [0, self->n)) → its position in col_union */
-        int *col_to_pos = (int *) sp_malloc(self->n * sizeof(int));
-        for (int p = 0; p < col_union->len; p++)
-        {
-            col_to_pos[col_union->data[p]] = p;
-        }
-
-        int row_zero = 0;
-        matrix *out = new_permuted_dense(1, self->n, 1, col_union->len, &row_zero,
-                                         col_union->data, NULL);
-        iVec_free(col_union);
-
-        /* fill idx_map in block-major order matching spd->base.x layout */
-        int native_pos = 0;
-        for (int k = 0; k < spd->n_blocks; k++)
-        {
-            permuted_dense *blk = spd->blocks[k];
-            for (int i = 0; i < blk->m0; i++)
-            {
-                for (int j = 0; j < blk->n0; j++)
-                {
-                    idx_map[native_pos++] = col_to_pos[blk->col_perm[j]];
-                }
-            }
-        }
-        sp_free(col_to_pos);
-        return out;
-    }
-
-    /* axis == 0 or 1: CSR fallback */
-    CSR_matrix *A = self->to_csr(self);
-    int m_out = (axis == 0) ? A->m / d1 : d1;
-    int max_out_nnz = MIN(A->nnz, sat_mul_int(m_out, A->n));
-    CSR_matrix *out = new_CSR_matrix(m_out, A->n, max_out_nnz);
-    int *iwork = (int *) sp_malloc(MAX(A->n, A->nnz) * sizeof(int));
-
-    if (axis == 0)
-    {
-        sum_block_of_rows_csr_alloc(A, out, d1, iwork, idx_map);
-    }
-    else
-    {
-        sum_evenly_spaced_rows_csr_alloc(A, out, m_out, iwork, idx_map);
-    }
-    sp_free(iwork);
-
-    /* idx_map is currently in CSR row order; re-index to block-major base.x
-       order so eval_jacobian reads child->jacobian->x directly. */
-    compose_csr_idx_map_for_spd(spd, A, idx_map);
-
-    return new_sparse_matrix(out);
+static void stacked_pd_vtable_row_reduce_fill_values(const matrix *self, matrix *out)
+{
+    row_reduce_spd_fill_values((const stacked_pd *) self, (stacked_pd *) out);
 }
 
 static void wire_vtable(stacked_pd *spd)
@@ -480,15 +352,12 @@ static void wire_vtable(stacked_pd *spd)
     spd->base.transpose_fill_values = stacked_pd_vtable_transpose_fill_values;
     spd->base.refresh_csc_values = stacked_pd_vtable_refresh_csc_values;
     spd->base.to_csr = stacked_pd_to_csr;
-    spd->base.index_alloc = stacked_pd_vtable_index_alloc;
-    spd->base.index_fill_values = stacked_pd_vtable_index_fill_values;
-    spd->base.promote_alloc = stacked_pd_vtable_promote_alloc;
-    spd->base.promote_fill_values = stacked_pd_vtable_promote_fill_values;
+    spd->base.row_gather_alloc = stacked_pd_vtable_row_gather_alloc;
+    spd->base.row_gather_fill_values = stacked_pd_vtable_row_gather_fill_values;
     spd->base.diag_vec_alloc = stacked_pd_vtable_diag_vec_alloc;
     spd->base.diag_vec_fill_values = stacked_pd_vtable_diag_vec_fill_values;
-    spd->base.broadcast_alloc = stacked_pd_vtable_broadcast_alloc;
-    spd->base.broadcast_fill_values = stacked_pd_vtable_broadcast_fill_values;
-    spd->base.sum_row_partition_alloc = stacked_pd_vtable_sum_row_partition_alloc;
+    spd->base.row_reduce_alloc = stacked_pd_vtable_row_reduce_alloc;
+    spd->base.row_reduce_fill_values = stacked_pd_vtable_row_reduce_fill_values;
 }
 
 matrix *new_stacked_pd_unchecked(int m, int n, int n_blocks, permuted_dense **blocks,

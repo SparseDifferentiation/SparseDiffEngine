@@ -32,7 +32,7 @@ const char *test_wsum_hess_quad_form(void)
     node->forward(node, u_vals);
     jacobian_init(node);
     wsum_hess_init(node);
-    node->eval_wsum_hess(node, &w);
+    eval_wsum_hess(node, &w);
 
     int expected_p[11] = {0, 0, 0, 0, 2, 5, 8, 10, 10, 10, 10};
     int expected_i[10] = {3, 4, 3, 4, 5, 4, 5, 6, 5, 6};

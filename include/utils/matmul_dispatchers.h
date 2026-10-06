@@ -29,8 +29,9 @@
 
    Contract: for sparse_matrix operands (A or B), the caller is responsible for
    refreshing csc_cache values via refresh_csc_values before
-   BTDA_matrices_fill_values. */
+   BTA_matrices_fill_values / BTDA_matrices_fill_values. */
 matrix *BTA_matrices_alloc(matrix *A, matrix *B);
+void BTA_matrices_fill_values(matrix *A, matrix *B, matrix *C);
 void BTDA_matrices_fill_values(matrix *A, const double *d, matrix *B, matrix *C);
 
 /* Polymorphic dispatchers for C = B @ A, where B is permuted_dense and A is any

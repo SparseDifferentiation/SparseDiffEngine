@@ -58,4 +58,23 @@ void sum_all_rows_csr_fill_values(const CSR_matrix *A, CSR_matrix *C,
 void sum_block_of_rows_csr_fill_values(const CSR_matrix *A, CSR_matrix *C,
                                        const int *idx_map);
 
+/* Row-sum kernels that also produce an idx_map (input nnz -> position in C->x),
+   so values can be filled by zeroing C->x and calling accumulator() from
+   utils/CSR_sum.h. C must be pre-allocated with capacity >= A->nnz; iwork must
+   have size max(A->n, A->nnz); idx_map must have size A->nnz. C->nnz is set. */
+
+/* All rows of A into the single row of C (C->m == 1). */
+void sum_all_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C, int *iwork,
+                            int *idx_map);
+
+/* Consecutive blocks of row_block_size rows of A into one row of C each
+   (C->m == A->m / row_block_size). */
+void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
+                                 int row_block_size, int *iwork, int *idx_map);
+
+/* Rows of A at stride row_spacing into one row of C each (C->m == row_spacing):
+   C[j, :] = sum_{i : i % row_spacing == j} A[i, :]. */
+void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
+                                      int row_spacing, int *iwork, int *idx_map);
+
 #endif /* OLD_CSR_SUM_H */

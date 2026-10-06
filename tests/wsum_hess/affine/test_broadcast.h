@@ -39,7 +39,7 @@ const char *test_wsum_hess_broadcast_row(void)
      *      col0      col1         col2
      */
     double w[6] = {1.0, 0.5, 2.0, 1.0, 0.25, 0.125};
-    bcast->eval_wsum_hess(bcast, w);
+    eval_wsum_hess(bcast, w);
 
     /* For broadcast_row, weights are summed across the m replicas:
      * Accumulated weights for log(x):
@@ -91,7 +91,7 @@ const char *test_wsum_hess_broadcast_col(void)
      *      col0            col1
      */
     double w[6] = {1.0, 0.5, 0.25, 2.0, 1.0, 0.5};
-    bcast->eval_wsum_hess(bcast, w);
+    eval_wsum_hess(bcast, w);
 
     /* For broadcast_col, weights are summed across the n replicas:
      * Accumulated weights for log(x):
@@ -141,7 +141,7 @@ const char *test_wsum_hess_broadcast_scalar_to_matrix(void)
      * w = [1.0, 0.5, 2.0, 1.0, 0.25, 0.125]
      */
     double w[6] = {1.0, 0.5, 2.0, 1.0, 0.25, 0.125};
-    bcast->eval_wsum_hess(bcast, w);
+    eval_wsum_hess(bcast, w);
 
     /* For broadcast_scalar, all weights are summed:
      * w_acc[0] = sum(w) = 1.0 + 0.5 + 2.0 + 1.0 + 0.25 + 0.125 = 4.875

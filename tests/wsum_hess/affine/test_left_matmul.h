@@ -68,7 +68,7 @@ const char *test_wsum_hess_left_matmul(void)
     A_log_x->forward(A_log_x, x_vals);
     jacobian_init(A_log_x);
     wsum_hess_init(A_log_x);
-    A_log_x->eval_wsum_hess(A_log_x, w);
+    eval_wsum_hess(A_log_x, w);
 
     /* Expected wsum_hess: diagonal matrix with all 3 entries
      * (sparsity matches child's diagonal Hessian) */
@@ -174,7 +174,7 @@ const char *test_wsum_hess_left_matmul_matrix(void)
     A_log_x->forward(A_log_x, x_vals);
     jacobian_init(A_log_x);
     wsum_hess_init(A_log_x);
-    A_log_x->eval_wsum_hess(A_log_x, w);
+    eval_wsum_hess(A_log_x, w);
 
     /* Expected wsum_hess: 6x6 diagonal matrix with all 6 entries */
     double expected_x[6] = {

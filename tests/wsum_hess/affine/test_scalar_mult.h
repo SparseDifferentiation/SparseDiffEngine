@@ -32,7 +32,7 @@ const char *test_wsum_hess_scalar_mult_log_vector(void)
     jacobian_init(y);
     wsum_hess_init(y);
     double w[3] = {1.0, 0.5, 0.25};
-    y->eval_wsum_hess(y, w);
+    eval_wsum_hess(y, w);
 
     double expected_x[3] = {-2.5, -0.3125, -0.0390625};
     int expected_p[4] = {0, 1, 2, 3};
@@ -67,7 +67,7 @@ const char *test_wsum_hess_scalar_mult_log_matrix(void)
     jacobian_init(y);
     wsum_hess_init(y);
     double w[4] = {1.0, 1.0, 1.0, 1.0};
-    y->eval_wsum_hess(y, w);
+    eval_wsum_hess(y, w);
 
     double expected_x[4] = {-3.0, -0.75, -0.1875, -0.046875};
     int expected_p[5] = {0, 1, 2, 3, 4};

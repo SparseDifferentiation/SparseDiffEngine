@@ -27,7 +27,7 @@ const char *test_jacobian_convolve(void)
     double u[3] = {1.0, 2.0, 3.0};
     y->forward(y, u);
     jacobian_init(y);
-    y->eval_jacobian(y);
+    eval_jacobian(y);
 
     mu_assert("Jacobian should have 5 rows", y->jacobian->m == 5);
     mu_assert("Jacobian should have 3 columns", y->jacobian->n == 3);

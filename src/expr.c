@@ -36,12 +36,13 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->var_id = NOT_A_VARIABLE;
     node->forward = forward;
     node->jacobian_init_impl = jacobian_init;
-    node->eval_jacobian = eval_jacobian;
+    node->eval_jacobian_impl = eval_jacobian;
     node->is_affine = is_affine;
     node->wsum_hess_init_impl = wsum_hess_init;
-    node->eval_wsum_hess = eval_wsum_hess;
+    node->eval_wsum_hess_impl = eval_wsum_hess;
     node->free_type_data = free_type_data;
     node->work = (Expr_Work *) sp_calloc(1, sizeof(Expr_Work));
+    node->has_params = true; /* assume dirty until the first walk refines it */
 }
 
 void jacobian_csc_init(expr *node)
@@ -53,6 +54,19 @@ void jacobian_csc_init(expr *node)
     node->work->csc_work = (int *) sp_malloc(node->n_vars * sizeof(int));
     node->work->jacobian_csc = csr_to_csc_alloc(
         node->jacobian->to_csr(node->jacobian), node->work->csc_work);
+
+    /* Deliberately stale: the mirror is built during the symbolic phase,
+       before values are meaningful, so the first refresh must fill. */
+    node->work->jacobian_csc_seen = node->jacobian->values_version - 1;
+}
+
+/* Refresh work->jacobian_csc from node->jacobian iff its values changed. */
+void expr_refresh_jacobian_csc(expr *node)
+{
+    if (node->work->jacobian_csc_seen == node->jacobian->values_version) return;
+    csr_to_csc_fill_values(node->jacobian->to_csr(node->jacobian),
+                           node->work->jacobian_csc, node->work->csc_work);
+    node->work->jacobian_csc_seen = node->jacobian->values_version;
 }
 
 void free_expr(expr *node)
@@ -98,7 +112,14 @@ void free_expr(expr *node)
 
 void jacobian_init(expr *node)
 {
-    if (node == NULL || node->jacobian != NULL) return;
+    if (node == NULL) return;
+
+    /* Affinity is structural; cache it so the eval_jacobian wrapper doesn't
+       pay the O(subtree) recursive is_affine per eval. Set before the init
+       guard so nodes that preset their jacobian at construction get it too. */
+    node->work->is_affine_cached = node->is_affine(node);
+
+    if (node->jacobian != NULL) return;
     node->jacobian_init_impl(node);
 }
 
@@ -108,13 +129,55 @@ void wsum_hess_init(expr *node)
     node->wsum_hess_init_impl(node);
 }
 
-void expr_set_needs_refresh(expr *node)
+/* Runs the atom's eval and bumps the Jacobian's values_version — except
+   for an affine node already evaluated this parameter epoch: its values
+   are constant, so the impl (and with it the whole subtree walk) is
+   skipped and consumers correctly see "unchanged". expr_set_needs_refresh
+   re-arms the eval. */
+void eval_jacobian(expr *node)
 {
     if (node == NULL) return;
+    if (node->work->is_affine_cached && node->work->jacobian_evaluated) return;
+    node->eval_jacobian_impl(node);
+    matrix_values_changed(node->jacobian);
+    node->work->jacobian_evaluated = true;
+}
+
+/* Runs the atom's eval and bumps the Hessian's values_version (no affine
+   handling — the weights change every call). */
+void eval_wsum_hess(expr *node, const double *w)
+{
+    if (node == NULL) return;
+    node->eval_wsum_hess_impl(node, w);
+    matrix_values_changed(node->wsum_hess);
+}
+
+bool expr_set_needs_refresh(expr *node)
+{
+    if (node == NULL) return false;
+
+    /* Known parameter-free: nothing below can have changed, so leave the
+       node's jacobian_evaluated latch set and skip the whole subtree. */
+    if (!node->has_params) return false;
+
     node->needs_parameter_refresh = true;
-    node->work->jacobian_csc_filled = false;
-    expr_set_needs_refresh(node->left);
-    expr_set_needs_refresh(node->right);
+
+    /* Re-arm the eval_jacobian wrapper's values_version bump: the next eval
+       after a parameter update may change even an affine node's values. */
+    node->work->jacobian_evaluated = false;
+
+    bool child_has_params = expr_set_needs_refresh(node->left);
+    child_has_params |= expr_set_needs_refresh(node->right);
+    if (node->set_needs_refresh_children != NULL)
+    {
+        child_has_params |= node->set_needs_refresh_children(node);
+    }
+
+    /* The hook reports nodes the left/right walk cannot see: a parameter
+       leaf reports itself, hstack its args[], the coefficient atoms their
+       param_source. So this assignment is the whole answer. */
+    node->has_params = child_has_params;
+    return node->has_params;
 }
 
 void expr_retain(expr *node)

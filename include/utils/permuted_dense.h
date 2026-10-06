@@ -72,9 +72,20 @@ typedef struct permuted_dense
     int *kernel_iwork;
     size_t kernel_iwork_size;
 
+    /* Int state bound by the alloc that produced this PD and read by the
+       matching fill: row_gather_alloc stores, per dense row of this PD, the
+       dense row of the source it copies (length m0); row_reduce_alloc stores,
+       per dense row of the source, the dense row of this PD it adds into
+       (length source m0). NULL otherwise; never touched by any other kernel
+       (unlike kernel_iwork). */
+    int *bound_iwork;
+
     /* Cached transpose of this PD as another permuted_dense, allocated lazily
-       on first call to permuted_dense_ensure_transpose_cache. */
+       on first call to permuted_dense_ensure_transpose_cache. On the cache PD
+       itself, transpose_seen records the source's base.values_version whose
+       values the cache holds; consumers refill iff it is stale. */
     struct permuted_dense *transpose_cache;
+    uint64_t transpose_seen;
 } permuted_dense;
 
 /* Constructor. row_perm and col_perm must be strictly increasing in their
@@ -105,26 +116,20 @@ void permuted_dense_ensure_row_inv(const permuted_dense *A);
    place; contents are NOT preserved. */
 void permuted_dense_ensure_kernel_dwork(const permuted_dense *A, size_t size);
 
-/* Allocate C = broadcast(A, type, d1, d2), where A and C are permuted dense. */
-matrix *broadcast_pd_alloc(const permuted_dense *A, broadcast_type type, int d1,
-                           int d2);
+/* Allocate C = A[map, :], where A and C are permuted dense. C stores map
+   internally, so the fill takes none. */
+matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out);
 
-/* Fill values of C = broadcast(A, type, d1, d2). */
-void broadcast_pd_fill_values(const permuted_dense *A, broadcast_type type, int d1,
-                              int d2, permuted_dense *C);
+/* Fill values of C = A[map, :], where A and C are permuted dense. */
+void row_gather_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
-/* Allocate C = A[indices, :], where A and C are permuted dense. */
-matrix *index_pd_alloc(const permuted_dense *A, const int *indices, int n_idxs);
+/* Allocate C = row-reduce of A (C[j, :] = sum of rows i with group[i] == j,
+   group[i] in [0, m_out)), where A and C are permuted dense. C stores the
+   reduction map internally, so the fill takes none. */
+matrix *row_reduce_pd_alloc(const permuted_dense *A, const int *group, int m_out);
 
-/* Fill values of C = A[indices, :]. */
-void index_pd_fill_values(const permuted_dense *A, const int *indices, int n_idxs,
-                          permuted_dense *C);
-
-/* Allocate C = promote(A, size), where A and C are permuted dense. */
-matrix *promote_pd_alloc(const permuted_dense *A, int size);
-
-/* Fill values of C = promote(A, size). */
-void promote_pd_fill_values(const permuted_dense *A, permuted_dense *C);
+/* Fill values of C = row-reduce of A, where A and C are permuted dense. */
+void row_reduce_pd_fill_values(const permuted_dense *A, permuted_dense *C);
 
 /* Allocate C = diag_vec(A), where A and C are permuted dense. */
 matrix *diag_vec_pd_alloc(const permuted_dense *A);

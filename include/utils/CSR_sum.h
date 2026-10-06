@@ -34,7 +34,7 @@ void sum_scaled_csr_matrices_fill_values(const CSR_matrix *A, const CSR_matrix *
                                          CSR_matrix *C, const double *d1,
                                          const double *d2);
 
-/* The following five functions are used for summing either more than two CSR_matrix
+/* The following two functions are used for summing either more than two CSR_matrix
    matrices or rows of CSR_matrix matrices. To implement the filling of values
    efficiently, we compute an idx_map when we fill the sparsity pattern of the output
    matrix, which maps each nonzero entry in the input matrix to its position in the
@@ -46,17 +46,8 @@ void sum_scaled_csr_matrices_fill_values(const CSR_matrix *A, const CSR_matrix *
    matrix) corresponding to the j-th nonzero in the input matrix.
 
    Output matrix C, input matrix A, iwork->size = max(A->n, A->nnz) for the first
-   four functions. The last function allocates the output matrix and returns it. */
+   function. The last function allocates the output matrix and returns it. */
 // ------------------------------------------------------------------------------------
-void sum_all_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C, int *iwork,
-                            int *idx_map);
-
-void sum_block_of_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
-                                 int row_block_size, int *iwork, int *idx_map);
-
-void sum_evenly_spaced_rows_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
-                                      int row_spacing, int *iwork, int *idx_map);
-
 void sum_spaced_rows_into_row_csr_alloc(const CSR_matrix *A, CSR_matrix *C,
                                         int spacing, int *iwork, int *idx_map);
 

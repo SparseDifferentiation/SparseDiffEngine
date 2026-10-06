@@ -94,24 +94,25 @@ static void jacobian_init_impl(expr *node)
         CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, nonzero_cols + 1);
 
         /* precompute column indices */
-        jac->nnz = 0;
+        int cursor = 0;
         for (int j = 0; j < node->n_vars; j++)
         {
             if (col_nz[j])
             {
-                jac->i[jac->nnz] = j;
-                jac->nnz++;
+                jac->i[cursor] = j;
+                cursor++;
             }
         }
-        assert(nonzero_cols == jac->nnz);
+        assert(nonzero_cols == cursor);
 
         sp_free(col_nz);
 
         /* insert y variable index at correct position */
-        insert_idx(y->var_id, jac->i, jac->nnz);
-        jac->nnz += 1;
+        insert_idx(y->var_id, jac->i, cursor);
+        cursor += 1;
+        assert(cursor == jac->nnz);
         jac->p[0] = 0;
-        jac->p[1] = jac->nnz;
+        jac->p[1] = cursor;
 
         /* find position where y should be inserted */
         node->work->iwork = (int *) sp_malloc(sizeof(int));
@@ -128,13 +129,15 @@ static void jacobian_init_impl(expr *node)
 
         /* prepare CSC_matrix form of child jacobian for chain rule.
          * For a linear operator the values are constant, so fill
-         * them once here. */
+         * them once here and record the version so the counter stays
+         * truthful. */
         jacobian_csc_init(x);
         csr_to_csc_fill_values(Jx, x->work->jacobian_csc, x->work->csc_work);
+        x->work->jacobian_csc_seen = x->jacobian->values_version;
     }
 }
 
-static void eval_jacobian(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
@@ -265,7 +268,7 @@ static void wsum_hess_init_impl(expr *node)
     }
 }
 
-static void eval_wsum_hess(expr *node, const double *w)
+static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     double *x = node->left->value;
     double y = node->right->value[0];
@@ -341,8 +344,9 @@ expr *new_quad_over_lin(expr *left, expr *right)
     }
 
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
-    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl, eval_jacobian,
-              is_affine, wsum_hess_init_impl, eval_wsum_hess, NULL);
+    init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
+              eval_wsum_hess_impl, NULL);
     node->left = left;
     node->right = right;
     expr_retain(left);
