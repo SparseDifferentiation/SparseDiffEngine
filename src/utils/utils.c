@@ -124,3 +124,26 @@ void cumsum(int *p, int n)
         p[i + 1] += p[i];
     }
 }
+
+int sorted_pos(const int *perm, int n0, int g)
+{
+    int lo = 0;
+    int hi = n0 - 1;
+    while (lo <= hi)
+    {
+        int mid = lo + (hi - lo) / 2;
+        if (perm[mid] == g)
+        {
+            return mid;
+        }
+        if (perm[mid] < g)
+        {
+            lo = mid + 1;
+        }
+        else
+        {
+            hi = mid - 1;
+        }
+    }
+    return -1;
+}

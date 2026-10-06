@@ -62,6 +62,9 @@
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_param_source_refresh.h"
+#ifdef SP_TRACK_MEMORY
+#include "problem/test_peak_memory.h"
+#endif
 #include "problem/test_problem.h"
 #include "utils/test_COO_matrix.h"
 #include "utils/test_alloc_overflow.h"
@@ -448,7 +451,7 @@ int main(void)
     mu_run_test(test_permuted_dense_times_csc, tests_run);
     mu_run_test(test_permuted_dense_times_csc_no_active, tests_run);
     mu_run_test(test_permuted_dense_to_csr_lazy, tests_run);
-    mu_run_test(test_permuted_dense_col_inv, tests_run);
+    mu_run_test(test_permuted_dense_lazy_inv, tests_run);
     mu_run_test(test_permuted_dense_row_gather, tests_run);
     mu_run_test(test_row_gather_sparse, tests_run);
     mu_run_test(test_row_gather_pd_vs_sparse_twin, tests_run);
@@ -464,6 +467,7 @@ int main(void)
 #ifdef SP_TRACK_MEMORY
     mu_run_test(test_row_reduce_spd_fill_no_transient_alloc, tests_run);
 #endif
+    mu_run_test(test_permuted_dense_times_csc_lazy_inv, tests_run);
     mu_run_test(test_permuted_dense_diag_vec, tests_run);
     mu_run_test(test_permuted_dense_BTA_matching_row_perm, tests_run);
     mu_run_test(test_permuted_dense_BTA_empty_overlap, tests_run);
@@ -593,6 +597,9 @@ int main(void)
     mu_run_test(test_problem_constraint_forward, tests_run);
     mu_run_test(test_problem_hessian, tests_run);
     mu_run_test(test_problem_hessian_sum_exp_left_matmul_dense_transpose, tests_run);
+#ifdef SP_TRACK_MEMORY
+    mu_run_test(test_peak_memory_kron_jacobian, tests_run);
+#endif
 
     printf("\n--- Parameter Tests ---\n");
     mu_run_test(test_param_scalar_mult_problem, tests_run);

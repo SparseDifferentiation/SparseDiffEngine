@@ -274,6 +274,7 @@ matrix *BA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     the columns of A. For each column of A, we check if it has any nonzeros in
     rows that are in B's col_perm. If yes, column j of C will have a nonzero
     block corresponding to the rows of B */
+    permuted_dense_ensure_col_inv(B);
     iVec *col_perm_C = iVec_new(10);
     for (int j = 0; j < A->n; j++)
     {
@@ -298,6 +299,7 @@ void BA_pd_csc_fill_values(const double *B, int n0_B, const int *inv,
        row stride n0_B) and ajj is the jjth column of A's sparse block
        (column jj = C->col_perm[j]). inv maps A's row indices to positions
        in B_X (entries with inv[r] == -1 are skipped). */
+    assert(inv != NULL);
 
     /* row i of C */
     for (int i = 0; i < C->m0; i++)
@@ -408,6 +410,7 @@ matrix *BTA_pd_csc_alloc(const permuted_dense *B, const CSC_matrix *A)
     through the columns of A. For each column of A, we check if it has any
     nonzeros in rows that are in B's row_perm. If yes, column j of C will
     have a nonzero block corresponding to the columns of B */
+    permuted_dense_ensure_row_inv(B);
     iVec *col_active = iVec_new(8);
     for (int j = 0; j < A->n; j++)
     {
@@ -476,7 +479,7 @@ matrix *BTA_csc_pd_alloc(const CSC_matrix *B, const permuted_dense *A)
        columns of B. For each column of B, we check if it has any nonzeros in rows
        that are in A->row_perm. If yes, column i of C will have a nonzero block
        corresponding to the columns of A */
-
+    permuted_dense_ensure_row_inv(A);
     iVec *row_active = iVec_new(10);
     for (int i = 0; i < B->n; i++)
     {
@@ -506,6 +509,7 @@ static void BTA_csc_denseT_fill_values(const CSC_matrix *B, const double *A_T,
                                        int m0_A, const int *inv, permuted_dense *C)
 {
     /* C[i_C, j_C] = dot(col C->row_perm[i_C] of B, row j_C of A_T). */
+    assert(inv != NULL);
     for (int i_C = 0; i_C < C->m0; i_C++)
     {
         int B_col = C->row_perm[i_C];

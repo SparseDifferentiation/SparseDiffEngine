@@ -234,6 +234,10 @@ static permuted_dense **build_output_blocks(const stacked_pd *A,
         const int *row_perm = int_csr_get(sig_to_rows, s, &m0);
         out_blocks[s] = (permuted_dense *) new_permuted_dense(
             m, n, m0, col_union->len, row_perm, col_union->data, NULL);
+
+        /* coalesce_spd_scatter reads both inverse arrays every fill. */
+        permuted_dense_ensure_row_inv(out_blocks[s]);
+        permuted_dense_ensure_col_inv(out_blocks[s]);
     }
 
     iVec_free(col_union);
@@ -331,6 +335,7 @@ static inline void coalesce_spd_scatter(const stacked_pd *src, stacked_pd *out,
     for (int k = 0; k < out->n_blocks; k++)
     {
         permuted_dense *out_k = out->blocks[k];
+        assert(out_k->row_inv != NULL && out_k->col_inv != NULL);
         int s_lo = out->src_block_idx_p[k];
         int s_hi = out->src_block_idx_p[k + 1];
 

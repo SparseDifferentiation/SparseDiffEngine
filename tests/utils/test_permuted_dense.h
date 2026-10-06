@@ -323,21 +323,96 @@ const char *test_permuted_dense_to_csr_lazy(void)
     return 0;
 }
 
-/* Sanity check: col_inv is built correctly. col_perm = {0, 3} on n = 6
-   should give col_inv = {0, -1, -1, 1, -1, -1}. */
-const char *test_permuted_dense_col_inv(void)
+/* Inverse arrays are lazy: a fresh PD and its structural copies carry
+   none, row_gather answers membership without building row_inv, and the
+   ensure helpers build the expected contents exactly once. */
+const char *test_permuted_dense_lazy_inv(void)
 {
-    int row_perm[1] = {0};
+    int row_perm[2] = {1, 4};
     int col_perm[2] = {0, 3};
-    double X[2] = {0.0, 0.0};
+    double X[4] = {1.0, 2.0, 3.0, 4.0};
 
-    matrix *M = new_permuted_dense(1, 6, 1, 2, row_perm, col_perm, X);
+    matrix *M = new_permuted_dense(5, 6, 2, 2, row_perm, col_perm, X);
     permuted_dense *pd = (permuted_dense *) M;
+    mu_assert("fresh col_inv NULL", pd->col_inv == NULL);
+    mu_assert("fresh row_inv NULL", pd->row_inv == NULL);
 
-    int expected[6] = {0, -1, -1, 1, -1, -1};
-    mu_assert("col_inv", cmp_int_array(pd->col_inv, expected, 6));
+    matrix *copy = copy_sparsity_pd_alloc(pd);
+    matrix *trans = transpose_pd_alloc(pd);
+    mu_assert("copy col_inv NULL", ((permuted_dense *) copy)->col_inv == NULL);
+    mu_assert("transpose row_inv NULL", ((permuted_dense *) trans)->row_inv == NULL);
 
+    /* rows {4, 0, 1} of M hit source rows {1, -, 0}. */
+    int map[3] = {4, 0, 1};
+    matrix *gathered = row_gather_pd_alloc(pd, map, 3);
+    permuted_dense *g_pd = (permuted_dense *) gathered;
+    mu_assert("row_gather leaves source row_inv NULL", pd->row_inv == NULL);
+    int g_row_perm_expected[2] = {0, 2};
+    mu_assert("gathered m0", g_pd->m0 == 2);
+    mu_assert("gathered row_perm",
+              cmp_int_array(g_pd->row_perm, g_row_perm_expected, 2));
+    row_gather_pd_fill_values(pd, g_pd);
+    double g_X_expected[4] = {3.0, 4.0, 1.0, 2.0};
+    mu_assert("gathered values", cmp_double_array(g_pd->X, g_X_expected, 4));
+
+    permuted_dense_ensure_col_inv(pd);
+    permuted_dense_ensure_row_inv(pd);
+    int col_inv_expected[6] = {0, -1, -1, 1, -1, -1};
+    int row_inv_expected[5] = {-1, 0, -1, -1, 1};
+    mu_assert("col_inv", cmp_int_array(pd->col_inv, col_inv_expected, 6));
+    mu_assert("row_inv", cmp_int_array(pd->row_inv, row_inv_expected, 5));
+
+    int *col_inv_before = pd->col_inv;
+    permuted_dense_ensure_col_inv(pd);
+    mu_assert("ensure is idempotent", pd->col_inv == col_inv_before);
+
+    free_matrix(gathered);
+    free_matrix(trans);
+    free_matrix(copy);
     free_matrix(M);
+    return 0;
+}
+
+/* BA_pd_csc_alloc builds col_inv on its left operand (the fill reads it)
+   but none on its output. */
+const char *test_permuted_dense_times_csc_lazy_inv(void)
+{
+    /* B: 3x4 PD, dense block rows {0, 2} x cols {1, 3}. */
+    int row_perm[2] = {0, 2};
+    int col_perm[2] = {1, 3};
+    double BX[4] = {1.0, 2.0, 3.0, 4.0};
+    matrix *B = new_permuted_dense(3, 4, 2, 2, row_perm, col_perm, BX);
+    permuted_dense *B_pd = (permuted_dense *) B;
+
+    /* A: 4x3 CSC. Column 0 hits row 1 (in B's col_perm), column 1 hits
+       row 2 (not in col_perm), column 2 hits rows 1 and 3. */
+    CSC_matrix *A = new_CSC_matrix(4, 3, 4);
+    int Ap[4] = {0, 1, 2, 4};
+    int Ai[4] = {1, 2, 1, 3};
+    double Ax[4] = {10.0, 5.0, 2.0, 3.0};
+    memcpy(A->p, Ap, 4 * sizeof(int));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->x, Ax, 4 * sizeof(double));
+
+    matrix *C = BA_pd_csc_alloc(B_pd, A);
+    permuted_dense *C_pd = (permuted_dense *) C;
+
+    mu_assert("B col_inv built", B_pd->col_inv != NULL);
+    mu_assert("C col_inv NULL", C_pd->col_inv == NULL);
+    mu_assert("C row_inv NULL", C_pd->row_inv == NULL);
+    int C_col_perm_expected[2] = {0, 2};
+    mu_assert("C n0", C_pd->n0 == 2);
+    mu_assert("C col_perm", cmp_int_array(C_pd->col_perm, C_col_perm_expected, 2));
+    mu_assert("C row_perm", cmp_int_array(C_pd->row_perm, row_perm, 2));
+
+    BA_pd_csc_fill_values(B_pd->X, B_pd->n0, B_pd->col_inv, A, C_pd);
+    /* C[:, 0] = 10 * B[:, 1]; C[:, 1] = 2 * B[:, 1] + 3 * B[:, 3]. */
+    double CX_expected[4] = {10.0, 8.0, 30.0, 18.0};
+    mu_assert("C values", cmp_double_array(C_pd->X, CX_expected, 4));
+
+    free_matrix(C);
+    free_matrix(B);
+    free_CSC_matrix(A);
     return 0;
 }
 

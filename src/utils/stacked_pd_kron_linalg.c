@@ -22,6 +22,7 @@
 #include "utils/stacked_pd.h"
 #include "utils/stacked_pd_linalg.h"
 #include "utils/tracked_alloc.h"
+#include <assert.h>
 #include <stdlib.h>
 
 // ====================================================================================
@@ -65,6 +66,7 @@ static permuted_dense *kron_scratch_init(const permuted_dense *A, int p)
     matrix *pd_m = new_permuted_dense(m * p, n * p, m, n, row_perm, col_perm, NULL);
     sp_free(row_perm);
     sp_free(col_perm);
+    permuted_dense_ensure_col_inv((permuted_dense *) pd_m);
 
     permuted_dense *pd = (permuted_dense *) pd_m;
     sp_free(pd->X);
@@ -89,16 +91,18 @@ static permuted_dense *kron_BT_alloc(const permuted_dense *A, int p)
     matrix *BT_m = new_permuted_dense(n * p, m * p, n, m, row_perm, col_perm, NULL);
     sp_free(row_perm);
     sp_free(col_perm);
+    permuted_dense_ensure_col_inv((permuted_dense *) BT_m);
     return (permuted_dense *) BT_m;
 }
 
 /* Mutate the state to represent kron block k. last_k is the block currently
    encoded (0 immediately after _init); the call clears last_k's col_inv
    entries and sets block-k's, plus refreshes row_perm and col_perm. O(m + n)
-   work. row_inv is left stale — no per-block kernel reads it. Works on both
+   work. row_inv is never built — no per-block kernel reads it. Works on both
    scratch (pd/csc) and BT (spd) under the "full A" contract. */
 static void kron_scratch_set_block(permuted_dense *state, int k, int last_k)
 {
+    assert(state->col_inv != NULL);
     int m = state->m0;
     int n = state->n0;
     for (int i = 0; i < m; i++)

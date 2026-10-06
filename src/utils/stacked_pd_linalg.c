@@ -278,6 +278,7 @@ matrix *BTA_pd_spd_alloc(const permuted_dense *B, const stacked_pd *A)
     // -------------------------------------------------------------------------------
     matrix *C = new_permuted_dense(B->base.n, A->base.n, B->n0, col_union->len,
                                    B->col_perm, col_union->data, NULL);
+    permuted_dense_ensure_col_inv((permuted_dense *) C);
 
     iVec_free(col_union);
     sp_free(col_perms);
@@ -327,6 +328,7 @@ static void BTA_pd_spd_core(const permuted_dense *B, const double *d,
     {
         return;
     }
+    assert(C->col_inv != NULL);
 
     /* reset values of C */
     memset(C->X, 0, (size_t) C->m0 * C->n0 * sizeof(double));

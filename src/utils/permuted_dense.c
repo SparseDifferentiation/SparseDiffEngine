@@ -114,13 +114,24 @@ matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out)
 {
     /* Output position i is dense iff map[i] hits a row in A->row_perm. The kept
        positions form C's row_perm (strictly increasing by construction, repeats
-       in map included); src[k] is the dense row of A that C's row k copies. */
+       in map included); src[k] is the dense row of A that C's row k copies.
+       The fill reads only src, so membership is a binary search in row_perm
+       rather than materializing A->row_inv. */
     int *new_row_perm = (int *) sp_malloc(m_out * sizeof(int));
     int *src = (int *) sp_malloc(m_out * sizeof(int));
     int new_m0 = 0;
+
+    /* map entries outside [row_lo, row_hi] miss without a search: the common
+       case when A is one block of a stacked_pd and map spans all blocks */
+    int row_lo = A->m0 > 0 ? A->row_perm[0] : 0;
+    int row_hi = A->m0 > 0 ? A->row_perm[A->m0 - 1] : -1;
     for (int i = 0; i < m_out; i++)
     {
-        int ii = A->row_inv[map[i]];
+        if (map[i] < row_lo || map[i] > row_hi)
+        {
+            continue;
+        }
+        int ii = sorted_pos(A->row_perm, A->m0, map[i]);
         if (ii >= 0)
         {
             new_row_perm[new_m0] = i;
@@ -390,8 +401,6 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
     pd->X = (double *) sp_malloc(sz * sizeof(double));
     pd->base.x = pd->X;
     pd->owns_X = true;
-    pd->col_inv = (int *) sp_malloc(n * sizeof(int));
-    pd->row_inv = (int *) sp_malloc(m * sizeof(int));
 
     if (m0 > 0)
     {
@@ -402,30 +411,42 @@ matrix *new_permuted_dense(int m, int n, int m0, int n0, const int *row_perm,
         memcpy(pd->col_perm, col_perm, n0 * sizeof(int));
     }
 
-    for (int j = 0; j < n; j++)
-    {
-        pd->col_inv[j] = -1;
-    }
-    for (int jj = 0; jj < n0; jj++)
-    {
-        pd->col_inv[col_perm[jj]] = jj;
-    }
-
-    for (int i = 0; i < m; i++)
-    {
-        pd->row_inv[i] = -1;
-    }
-    for (int ii = 0; ii < m0; ii++)
-    {
-        pd->row_inv[row_perm[ii]] = ii;
-    }
-
     if (X_data != NULL && sz > 0)
     {
         memcpy(pd->X, X_data, sz * sizeof(double));
     }
 
     return &pd->base;
+}
+
+void permuted_dense_ensure_col_inv(const permuted_dense *pd_const)
+{
+    permuted_dense *pd = (permuted_dense *) pd_const;
+    if (pd->col_inv != NULL) return;
+    pd->col_inv = (int *) sp_malloc(pd->base.n * sizeof(int));
+    for (int j = 0; j < pd->base.n; j++)
+    {
+        pd->col_inv[j] = -1;
+    }
+    for (int jj = 0; jj < pd->n0; jj++)
+    {
+        pd->col_inv[pd->col_perm[jj]] = jj;
+    }
+}
+
+void permuted_dense_ensure_row_inv(const permuted_dense *pd_const)
+{
+    permuted_dense *pd = (permuted_dense *) pd_const;
+    if (pd->row_inv != NULL) return;
+    pd->row_inv = (int *) sp_malloc(pd->base.m * sizeof(int));
+    for (int i = 0; i < pd->base.m; i++)
+    {
+        pd->row_inv[i] = -1;
+    }
+    for (int ii = 0; ii < pd->m0; ii++)
+    {
+        pd->row_inv[pd->row_perm[ii]] = ii;
+    }
 }
 
 matrix *new_permuted_dense_full(int m, int n, const double *data)

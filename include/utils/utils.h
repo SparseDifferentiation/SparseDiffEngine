@@ -60,6 +60,10 @@ int sorted_intersect_indices(const int *a, int a_len, const int *b, int b_len,
 void sorted_union_int_arrays(const int *const *arrs, const int *lens, int n_arrs,
                              iVec *out);
 
+/* Position of value g in the sorted, strictly-increasing array 'perm' of
+   length n0 (binary search), or -1 if absent. */
+int sorted_pos(const int *perm, int n0, int g);
+
 /* in-place cumulative sum */
 void cumsum(int *p, int n);
 
