@@ -9,6 +9,7 @@
 #include "utils/CSR_matrix.h"
 #include "utils/iVec.h"
 #include "utils/linalg_sparse_matmuls.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 
@@ -648,88 +649,163 @@ const char *test_block_left_multiply_vec_three_blocks(void)
     return NULL;
 }
 
-/* Reference values: the original merge-based kernel (one sparse dot of a whole
- * row of A per entry of C). The Gustavson rewrite must reproduce it bit for
- * bit, since both add a row's terms in increasing column order of A. */
-static void block_left_multiply_fill_values_ref(const CSR_matrix *A,
-                                                const CSC_matrix *J, CSC_matrix *C)
+/* Test block_left_multiply_fill_values on two blocks, where an entry of C sums
+ * several products and A's rows meet each block in different columns */
+const char *test_block_left_multiply_values_two_blocks(void)
 {
-    int m = A->m;
-    int n = A->n;
-    for (int j = 0; j < J->n; j++)
-    {
-        for (int i = C->p[j]; i < C->p[j + 1]; i++)
-        {
-            int row_a = C->i[i] % m;
-            int block_start = (C->i[i] / m) * n;
-            double sum = 0.0;
-            int a = A->p[row_a], a_end = A->p[row_a + 1];
-            int b = J->p[j], b_end = J->p[j + 1];
-            while (b < b_end && J->i[b] < block_start) b++;
-            while (a < a_end && b < b_end && J->i[b] < block_start + n)
-            {
-                int col_b = J->i[b] - block_start;
-                if (A->i[a] == col_b)
-                {
-                    sum += A->x[a] * J->x[b];
-                    a++;
-                    b++;
-                }
-                else if (A->i[a] < col_b)
-                {
-                    a++;
-                }
-                else
-                {
-                    b++;
-                }
-            }
-            C->x[i] = sum;
-        }
-    }
+    /* A is 2x3 CSR_matrix:
+     * [1.0  2.0  0.0]
+     * [0.0  3.0  4.0]
+     */
+    CSR_matrix *A = new_CSR_matrix(2, 3, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 1, 1, 2};
+    int Ap[3] = {0, 2, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
+
+    /* J is 6x2 CSC_matrix (two blocks of 3 rows each):
+     * Block 1 rows [0,1,2]:
+     * [5.0  0.0]
+     * [6.0  0.0]
+     * [0.0  8.0]
+     * Block 2 rows [3,4,5]:
+     * [0.0  9.0]
+     * [0.0  0.0]
+     * [7.0  0.0]
+     */
+    CSC_matrix *J = new_CSC_matrix(6, 2, 5);
+    double Jx[5] = {5.0, 6.0, 7.0, 8.0, 9.0};
+    int Ji[5] = {0, 1, 5, 2, 3};
+    int Jp[3] = {0, 3, 5};
+    memcpy(J->x, Jx, 5 * sizeof(double));
+    memcpy(J->i, Ji, 5 * sizeof(int));
+    memcpy(J->p, Jp, 3 * sizeof(int));
+
+    /* C = [A @ J1; A @ J2] is 4x2:
+     * A @ J1 = [[1*5 + 2*6, 0], [3*6, 4*8]] = [[17, 0], [18, 32]]
+     * A @ J2 = [[0, 1*9], [4*7, 0]]          = [[0, 9], [28, 0]]
+     * So C is:
+     * [17.0   0.0]
+     * [18.0  32.0]
+     * [ 0.0   9.0]
+     * [28.0   0.0]
+     */
+    CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, 2);
+    block_left_multiply_fill_values(A, J, C);
+
+    int expected_p[3] = {0, 3, 5};
+    int expected_i[5] = {0, 1, 3, 1, 2};
+    double expected_x[5] = {17.0, 18.0, 28.0, 32.0, 9.0};
+
+    mu_assert("C dims incorrect", C->m == 4 && C->n == 2 && C->nnz == 5);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p, 3));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i, 5));
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 5));
+
+    free_CSC_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(J);
+    return NULL;
 }
 
-/* block_left_multiply_fill_values (Gustavson scatter/gather through A's CSC
- * mirror) against the merge-based reference: exact equality on random shapes,
- * densities and block counts, including the dense-row case (c @ x) that made
- * the merge kernel quadratic. */
-const char *test_block_left_multiply_values_match_reference_random(void)
+/* Test block_left_multiply_fill_values with a dense row, as in the gradient of
+ * c @ x: every entry of C needs one entry of a long row of A */
+const char *test_block_left_multiply_values_dense_row(void)
 {
-    srand(7);
-    /* m, n, p, k, density of A, density of J */
-    const double cases[][6] = {
-        {20, 15, 3, 8, 0.2, 0.15}, {1, 40, 1, 40, 1.0, 0.05},
-        {1, 40, 3, 25, 1.0, 0.1},  {7, 9, 4, 12, 0.6, 0.3},
-        {30, 5, 2, 6, 0.05, 0.5},  {5, 30, 2, 50, 0.9, 0.02},
-    };
-    for (int c = 0; c < (int) (sizeof(cases) / sizeof(cases[0])); c++)
-    {
-        int m = (int) cases[c][0], n = (int) cases[c][1], p = (int) cases[c][2],
-            k = (int) cases[c][3];
-        for (int trial = 0; trial < 5; trial++)
-        {
-            CSR_matrix *A = new_csr_random(m, n, cases[c][4]);
-            CSR_matrix *G = new_csr_random(n * p, k, cases[c][5]);
-            int *iwork = (int *) sp_malloc(G->n * sizeof(int));
-            CSC_matrix *J = csr_to_csc_alloc(G, iwork); /* structure only */
-            csr_to_csc_fill_values(G, J, iwork);
-            sp_free(iwork);
+    /* A is 1x4 CSR_matrix:
+     * [1.0  2.0  3.0  4.0]
+     */
+    CSR_matrix *A = new_CSR_matrix(1, 4, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 1, 2, 3};
+    int Ap[2] = {0, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 2 * sizeof(int));
 
-            CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, p);
-            CSC_matrix *C_ref = block_left_multiply_fill_sparsity(A, J, p);
-            block_left_multiply_fill_values(A, J, C);
-            block_left_multiply_fill_values_ref(A, J, C_ref);
+    /* J is 4x4 CSC_matrix (single block), diagonal:
+     * diag(1.0, -1.0, 2.0, 0.5)
+     */
+    CSC_matrix *J = new_CSC_matrix(4, 4, 4);
+    double Jx[4] = {1.0, -1.0, 2.0, 0.5};
+    int Ji[4] = {0, 1, 2, 3};
+    int Jp[5] = {0, 1, 2, 3, 4};
+    memcpy(J->x, Jx, 4 * sizeof(double));
+    memcpy(J->i, Ji, 4 * sizeof(int));
+    memcpy(J->p, Jp, 5 * sizeof(int));
 
-            mu_assert("block values differ from merge reference",
-                      C->nnz == C_ref->nnz &&
-                          memcmp(C->x, C_ref->x, C->nnz * sizeof(double)) == 0);
+    /* C = A @ J is 1x4: [1*1, 2*(-1), 3*2, 4*0.5] = [1.0, -2.0, 6.0, 2.0] */
+    CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
+    block_left_multiply_fill_values(A, J, C);
 
-            free_CSC_matrix(C);
-            free_CSC_matrix(C_ref);
-            free_CSC_matrix(J);
-            free_CSR_matrix(G);
-            free_CSR_matrix(A);
-        }
-    }
+    int expected_p[5] = {0, 1, 2, 3, 4};
+    int expected_i[4] = {0, 0, 0, 0};
+    double expected_x[4] = {1.0, -2.0, 6.0, 2.0};
+
+    mu_assert("C dims incorrect", C->m == 1 && C->n == 4 && C->nnz == 4);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p, 5));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i, 4));
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 4));
+
+    free_CSC_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(J);
+    return NULL;
+}
+
+/* Test the sparse_matrix fill, which keeps A's CSC mirror between calls: new J
+ * values are picked up, and new A values are picked up after
+ * matrix_values_changed */
+const char *test_sparse_matrix_block_left_mult_values_refill(void)
+{
+    /* A is 2x2 CSR_matrix:
+     * [1.0  2.0]
+     * [0.0  3.0]
+     */
+    CSR_matrix *A_csr = new_CSR_matrix(2, 2, 3);
+    double Ax[3] = {1.0, 2.0, 3.0};
+    int Ai[3] = {0, 1, 1};
+    int Ap[3] = {0, 2, 3};
+    memcpy(A_csr->x, Ax, 3 * sizeof(double));
+    memcpy(A_csr->i, Ai, 3 * sizeof(int));
+    memcpy(A_csr->p, Ap, 3 * sizeof(int));
+    matrix *A = new_sparse_matrix(A_csr);
+
+    /* J is 2x1 CSC_matrix: [1.0; 1.0] */
+    CSC_matrix *J = new_CSC_matrix(2, 1, 2);
+    double Jx[2] = {1.0, 1.0};
+    int Ji[2] = {0, 1};
+    int Jp[2] = {0, 2};
+    memcpy(J->x, Jx, 2 * sizeof(double));
+    memcpy(J->i, Ji, 2 * sizeof(int));
+    memcpy(J->p, Jp, 2 * sizeof(int));
+
+    /* C = A @ J = [1 + 2, 3] = [3.0, 3.0] */
+    CSC_matrix *C = A->block_left_mult_sparsity(A, J, 1);
+    A->block_left_mult_values(A, J, C);
+    double expected_1[2] = {3.0, 3.0};
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_1, 2));
+
+    /* J = [2.0; -1.0]: C = [1*2 + 2*(-1), 3*(-1)] = [0.0, -3.0] */
+    J->x[0] = 2.0;
+    J->x[1] = -1.0;
+    A->block_left_mult_values(A, J, C);
+    double expected_2[2] = {0.0, -3.0};
+    mu_assert("C values after new J incorrect",
+              cmp_double_array(C->x, expected_2, 2));
+
+    /* A = [[1, 2], [0, 5]]: C = [0.0, 5*(-1)] = [0.0, -5.0] */
+    A_csr->x[2] = 5.0;
+    matrix_values_changed(A);
+    A->block_left_mult_values(A, J, C);
+    double expected_3[2] = {0.0, -5.0};
+    mu_assert("C values after new A incorrect",
+              cmp_double_array(C->x, expected_3, 2));
+
+    free_CSC_matrix(C);
+    free_CSC_matrix(J);
+    free_matrix(A);
     return NULL;
 }
