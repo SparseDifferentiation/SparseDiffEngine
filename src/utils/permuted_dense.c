@@ -120,8 +120,17 @@ matrix *row_gather_pd_alloc(const permuted_dense *A, const int *map, int m_out)
     int *new_row_perm = (int *) sp_malloc(m_out * sizeof(int));
     int *src = (int *) sp_malloc(m_out * sizeof(int));
     int new_m0 = 0;
+
+    /* map entries outside [row_lo, row_hi] miss without a search: the common
+       case when A is one block of a stacked_pd and map spans all blocks */
+    int row_lo = A->m0 > 0 ? A->row_perm[0] : 0;
+    int row_hi = A->m0 > 0 ? A->row_perm[A->m0 - 1] : -1;
     for (int i = 0; i < m_out; i++)
     {
+        if (map[i] < row_lo || map[i] > row_hi)
+        {
+            continue;
+        }
         int ii = sorted_pos(A->row_perm, A->m0, map[i]);
         if (ii >= 0)
         {

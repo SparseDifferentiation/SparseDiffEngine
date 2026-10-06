@@ -22,6 +22,7 @@
 #include "utils/stacked_pd.h"
 #include "utils/stacked_pd_linalg.h"
 #include "utils/tracked_alloc.h"
+#include <assert.h>
 #include <stdlib.h>
 
 // ====================================================================================
@@ -101,6 +102,7 @@ static permuted_dense *kron_BT_alloc(const permuted_dense *A, int p)
    scratch (pd/csc) and BT (spd) under the "full A" contract. */
 static void kron_scratch_set_block(permuted_dense *state, int k, int last_k)
 {
+    assert(state->col_inv != NULL);
     int m = state->m0;
     int n = state->n0;
     for (int i = 0; i < m; i++)

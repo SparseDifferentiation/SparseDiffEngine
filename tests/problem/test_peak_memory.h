@@ -47,9 +47,11 @@ const char *test_peak_memory_kron_jacobian(void)
     problem *prob = new_problem(objective, constraints, 2, false);
     mu_assert("new_problem failed", prob != NULL);
 
-    /* new_problem rebaselined g_peak_bytes; measure the growth that
-       derivative initialization adds on top of the live bytes here. */
+    /* Measure only the growth derivative initialization adds on top of the
+       bytes live here; reset the peak so new_problem's own transients do
+       not count. */
     size_t base = g_allocated_bytes;
+    g_peak_bytes = base;
     problem_init_derivatives(prob);
     size_t init_peak_growth = g_peak_bytes > base ? g_peak_bytes - base : 0;
 

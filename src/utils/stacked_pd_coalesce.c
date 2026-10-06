@@ -335,6 +335,7 @@ static inline void coalesce_spd_scatter(const stacked_pd *src, stacked_pd *out,
     for (int k = 0; k < out->n_blocks; k++)
     {
         permuted_dense *out_k = out->blocks[k];
+        assert(out_k->row_inv != NULL && out_k->col_inv != NULL);
         int s_lo = out->src_block_idx_p[k];
         int s_hi = out->src_block_idx_p[k + 1];
 
