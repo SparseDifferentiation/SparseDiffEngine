@@ -1,0 +1,82 @@
+name: conda-forge BLAS
+
+# Builds against conda-forge's BLAS packages, which ship no vendor CMake config
+# (Windows) and split CBLAS into libcblas (Linux), as the sparsediffpy
+# conda-forge recipe does.
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up conda-forge environment (Linux)
+        if: runner.os == 'Linux'
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: build
+          create-args: >-
+            cmake ninja c-compiler
+            libblas libcblas blas-devel
+            "libblas=*=*openblas"
+
+      - name: Set up conda-forge environment (Windows)
+        if: runner.os == 'Windows'
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: build
+          create-args: >-
+            cmake openblas libopenblas
+
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: >
+          cmake -B build -S . -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$CONDA_PREFIX"
+          -DCMAKE_C_FLAGS="-isystem $CONDA_PREFIX/include"
+          -DBLA_VENDOR=Generic
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: >
+          cmake -B build -S .
+          -DCMAKE_PREFIX_PATH="$CONDA_PREFIX/Library"
+
+      - name: Show BLAS selection
+        run: grep -E '^(BLAS_|CBLAS_LIBRARY|OPENBLAS_|OpenBLAS_DIR)' build/CMakeCache.txt || true
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Run tests
+        run: cd build && ctest -C Release --output-on-failure
+
+      - name: Check libcblas is linked explicitly (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          readelf -d build/all_tests | grep NEEDED
+          readelf -d build/all_tests | grep -q 'libcblas\.so'
+
+      # libblas from the netlib variant has no cblas_* symbols, so this only
+      # passes because libcblas was linked rather than resolved via libblas.
+      - name: Re-run tests with netlib BLAS (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          micromamba install -y -n build "libblas=*=*netlib" "libcblas=*=*netlib"
+          cd build && ctest -C Release --output-on-failure
