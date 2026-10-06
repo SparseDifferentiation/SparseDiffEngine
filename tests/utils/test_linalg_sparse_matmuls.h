@@ -711,7 +711,8 @@ const char *test_block_left_multiply_values_match_reference_random(void)
             CSR_matrix *A = new_csr_random(m, n, cases[c][4]);
             CSR_matrix *G = new_csr_random(n * p, k, cases[c][5]);
             int *iwork = (int *) sp_malloc(G->n * sizeof(int));
-            CSC_matrix *J = csr_to_csc_alloc(G, iwork);
+            CSC_matrix *J = csr_to_csc_alloc(G, iwork); /* structure only */
+            csr_to_csc_fill_values(G, J, iwork);
             sp_free(iwork);
 
             CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, p);
