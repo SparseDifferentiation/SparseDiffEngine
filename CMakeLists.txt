@@ -21,9 +21,22 @@ else()
   message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 endif()
 
+# MSVC warnings-as-errors: on for standalone builds, off for Python builds so
+# downstream toolchains (e.g. conda-forge) aren't broken by new MSVC warnings
+if(SKBUILD)
+    set(_sde_werror_default OFF)
+else()
+    set(_sde_werror_default ON)
+endif()
+option(SDE_WARNINGS_AS_ERRORS "Treat MSVC warnings as errors (/WX)"
+       ${_sde_werror_default})
+
 # Warning flags (compiler-specific)
 if(MSVC)
-    add_compile_options(/W4 /WX)
+    add_compile_options(/W4)
+    if(SDE_WARNINGS_AS_ERRORS)
+        add_compile_options(/WX)
+    endif()
 else()
     add_compile_options(
         -Wall                  # Enable most warnings
@@ -66,10 +79,36 @@ if(APPLE)
     find_library(ACCELERATE_FRAMEWORK Accelerate)
     target_link_libraries(dnlp_diff ${ACCELERATE_FRAMEWORK})
 elseif(MSVC)
-    find_package(OpenBLAS CONFIG REQUIRED)
-    target_link_libraries(dnlp_diff OpenBLAS::OpenBLAS)
+    find_package(OpenBLAS CONFIG QUIET)
+    if(TARGET OpenBLAS::OpenBLAS)
+        # vcpkg
+        target_link_libraries(dnlp_diff OpenBLAS::OpenBLAS)
+    else()
+        # e.g. conda-forge's openblas ships openblas.lib and
+        # include/openblas/cblas.h, but no imported target
+        find_library(OPENBLAS_LIBRARY NAMES openblas libopenblas REQUIRED)
+        get_filename_component(_sde_openblas_libdir "${OPENBLAS_LIBRARY}" DIRECTORY)
+        get_filename_component(_sde_openblas_prefix "${_sde_openblas_libdir}" DIRECTORY)
+        find_path(OPENBLAS_INCLUDE_DIR cblas.h
+                  HINTS "${_sde_openblas_prefix}/include"
+                  PATH_SUFFIXES openblas REQUIRED)
+        target_link_libraries(dnlp_diff ${OPENBLAS_LIBRARY})
+        target_include_directories(dnlp_diff PUBLIC ${OPENBLAS_INCLUDE_DIR})
+    endif()
 else()
     find_package(BLAS REQUIRED)
+    # conda-forge splits the CBLAS interface into libcblas next to libblas. Link
+    # it explicitly (and before BLAS) so the package keeps working when users
+    # switch BLAS implementations, even if the build-time libblas exports cblas_*.
+    if(BLAS_LIBRARIES)
+        list(GET BLAS_LIBRARIES 0 _sde_blas_lib)
+        get_filename_component(_sde_blas_dir "${_sde_blas_lib}" DIRECTORY)
+        find_library(CBLAS_LIBRARY NAMES cblas
+                     HINTS "${_sde_blas_dir}" NO_DEFAULT_PATH)
+    endif()
+    if(CBLAS_LIBRARY)
+        target_link_libraries(dnlp_diff ${CBLAS_LIBRARY})
+    endif()
     target_link_libraries(dnlp_diff ${BLAS_LIBRARIES})
 endif()
 
