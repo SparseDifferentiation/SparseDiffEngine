@@ -352,6 +352,26 @@ const char *test_wsum_hess_quad_form_Ax(void)
     return 0;
 }
 
+const char *test_wsum_hess_atan_Ax(void)
+{
+    /* atan of an affine child exercises the elementwise chain rule */
+    double u_vals[4] = {1.0, -2.0, 0.5, 3.0};
+    double w[3] = {1.0, -2.0, 3.0};
+
+    CSR_matrix *A = new_csr_random(3, 4, 1.0);
+
+    expr *x = new_variable(4, 1, 0, 4);
+    expr *Ax = new_left_matmul(NULL, x, A);
+    expr *node = new_atan(Ax);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(node, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    free_CSR_matrix(A);
+    return 0;
+}
+
 const char *test_wsum_hess_quad_form_sin_Ax(void)
 {
     double u_vals[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};

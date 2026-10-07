@@ -27,6 +27,7 @@ void init_elementwise(expr *node, expr *child);
 expr *new_exp(expr *child);
 expr *new_sin(expr *child);
 expr *new_cos(expr *child);
+expr *new_atan(expr *child);
 expr *new_sinh(expr *child);
 expr *new_tanh(expr *child);
 expr *new_asinh(expr *child);
