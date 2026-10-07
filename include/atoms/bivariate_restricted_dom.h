@@ -25,4 +25,8 @@ expr *new_rel_entr_vector_args(expr *left, expr *right);
 expr *new_rel_entr_first_arg_scalar(expr *left, expr *right);
 expr *new_rel_entr_second_arg_scalar(expr *left, expr *right);
 
+/* elementwise atan2(y, x), C argument order; leaf-only: both arguments must
+   be distinct variables of the same shape, otherwise returns NULL */
+expr *new_atan2(expr *y, expr *x);
+
 #endif /* BIVARIATE_RESTRICTED_DOM_H */
