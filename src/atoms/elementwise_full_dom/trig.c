@@ -89,3 +89,41 @@ expr *new_cos(expr *child)
     node->local_wsum_hess = cos_local_wsum_hess;
     return node;
 }
+
+/* ----------------------- atan ----------------------- */
+static void atan_forward(expr *node, const double *u)
+{
+    node->left->forward(node->left, u);
+    for (int i = 0; i < node->size; i++)
+    {
+        node->value[i] = atan(node->left->value[i]);
+    }
+}
+
+static void atan_local_jacobian(expr *node, double *vals)
+{
+    double *x = node->left->value;
+    for (int j = 0; j < node->size; j++)
+    {
+        vals[j] = 1.0 / (1.0 + x[j] * x[j]);
+    }
+}
+
+static void atan_local_wsum_hess(expr *node, double *out, const double *w)
+{
+    double *x = node->left->value;
+    for (int j = 0; j < node->size; j++)
+    {
+        double c = 1.0 + x[j] * x[j];
+        out[j] = w[j] * (-2.0 * x[j]) / (c * c);
+    }
+}
+
+expr *new_atan(expr *child)
+{
+    expr *node = new_elementwise(child);
+    node->forward = atan_forward;
+    node->local_jacobian = atan_local_jacobian;
+    node->local_wsum_hess = atan_local_wsum_hess;
+    return node;
+}

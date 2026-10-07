@@ -116,6 +116,25 @@ const char *test_jacobian_AX_BX_multiply(void)
     return 0;
 }
 
+const char *test_jacobian_atan_Ax(void)
+{
+    /* atan of an affine child exercises the elementwise chain rule */
+    double u_vals[4] = {1.0, -2.0, 0.5, 3.0};
+
+    CSR_matrix *A = new_csr_random(3, 4, 1.0);
+
+    expr *x = new_variable(4, 1, 0, 4);
+    expr *Ax = new_left_matmul(NULL, x, A);
+    expr *node = new_atan(Ax);
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(node);
+    free_CSR_matrix(A);
+    return 0;
+}
+
 const char *test_jacobian_quad_form_Ax(void)
 {
     /* (Ax)^T Q (Ax) where Q is symmetric */

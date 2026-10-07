@@ -36,6 +36,34 @@ const char *test_wsum_hess_sin(void)
     return 0;
 }
 
+const char *test_wsum_hess_atan(void)
+{
+    double u_vals[3] = {1.0, 2.0, 3.0};
+    double w[3] = {1.0, 2.0, 3.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *atan_node = new_atan(x);
+    atan_node->forward(atan_node, u_vals);
+    jacobian_init(atan_node);
+    wsum_hess_init(atan_node);
+    eval_wsum_hess(atan_node, w);
+
+    /* Expected values on the diagonal: w_i * (-2 x_i) / (1 + x_i^2)^2 */
+    double expected_x[3] = {1.0 * (-2.0 * 1.0) / (2.0 * 2.0),
+                            2.0 * (-2.0 * 2.0) / (5.0 * 5.0),
+                            3.0 * (-2.0 * 3.0) / (10.0 * 10.0)};
+    int expected_p[4] = {0, 1, 2, 3};
+    int expected_i[3] = {0, 1, 2};
+
+    mu_assert("vals fail", cmp_values(atan_node->wsum_hess, expected_x, 3));
+    mu_assert("sparsity fail",
+              cmp_sparsity(atan_node->wsum_hess, expected_p, expected_i, 3, 3));
+
+    free_expr(atan_node);
+
+    return 0;
+}
+
 const char *test_wsum_hess_cos(void)
 {
     double u_vals[3] = {1.0, 2.0, 3.0};

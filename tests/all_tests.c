@@ -179,6 +179,7 @@ int main(void)
     mu_run_test(test_jacobian_Ax_Bx_multiply, tests_run);
     mu_run_test(test_jacobian_AX_BX_multiply, tests_run);
     mu_run_test(test_jacobian_quad_form_Ax, tests_run);
+    mu_run_test(test_jacobian_atan_Ax, tests_run);
     mu_run_test(test_jacobian_quad_form_exp, tests_run);
     mu_run_test(test_jacobian_matmul_exp_exp, tests_run);
     mu_run_test(test_jacobian_matmul_sin_cos, tests_run);
@@ -297,6 +298,7 @@ int main(void)
     mu_run_test(test_wsum_hess_xexp, tests_run);
     mu_run_test(test_wsum_hess_sin, tests_run);
     mu_run_test(test_wsum_hess_cos, tests_run);
+    mu_run_test(test_wsum_hess_atan, tests_run);
     mu_run_test(test_wsum_hess_tan, tests_run);
     mu_run_test(test_wsum_hess_sinh, tests_run);
     mu_run_test(test_wsum_hess_tanh, tests_run);
@@ -383,6 +385,7 @@ int main(void)
     mu_run_test(test_wsum_hess_multiply_deep_composite, tests_run);
     mu_run_test(test_wsum_hess_quad_form_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_sin_Ax, tests_run);
+    mu_run_test(test_wsum_hess_atan_Ax, tests_run);
     mu_run_test(test_wsum_hess_quad_form_exp, tests_run);
     mu_run_test(test_wsum_hess_sum_outer_product_sin_cos_left_matmul_dense,
                 tests_run);
