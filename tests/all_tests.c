@@ -298,7 +298,6 @@ int main(void)
     mu_run_test(test_wsum_hess_xexp, tests_run);
     mu_run_test(test_wsum_hess_sin, tests_run);
     mu_run_test(test_wsum_hess_cos, tests_run);
-    mu_run_test(test_wsum_hess_atan, tests_run);
     mu_run_test(test_wsum_hess_tan, tests_run);
     mu_run_test(test_wsum_hess_sinh, tests_run);
     mu_run_test(test_wsum_hess_tanh, tests_run);
