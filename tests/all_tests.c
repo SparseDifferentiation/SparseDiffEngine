@@ -140,6 +140,7 @@ int main(void)
     mu_run_test(test_promote_scalar_to_vector, tests_run);
     mu_run_test(test_exp, tests_run);
     mu_run_test(test_log, tests_run);
+    mu_run_test(test_restricted_rejects_non_variable_child, tests_run);
     mu_run_test(test_normal_cdf, tests_run);
     mu_run_test(test_composite, tests_run);
     mu_run_test(test_sum_axis_neg1, tests_run);

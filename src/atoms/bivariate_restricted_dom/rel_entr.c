@@ -203,7 +203,7 @@ expr *new_rel_entr_vector_args(expr *left, expr *right)
     {
         fprintf(stderr,
                 "Error: Both arguments of relative entropy must be variables.\n");
-        exit(EXIT_FAILURE);
+        return NULL;
     }
 
     expr *node = (expr *) sp_calloc(1, sizeof(expr));

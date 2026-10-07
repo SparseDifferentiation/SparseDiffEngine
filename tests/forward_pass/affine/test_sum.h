@@ -19,13 +19,11 @@ const char *test_sum_axis_neg1(void)
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     expr *const_node = new_parameter(3, 2, PARAM_FIXED, 0, values);
-    expr *log_node = new_log(const_node);
-    expr *sum_node = new_sum(log_node, -1);
+    expr *sum_node = new_sum(const_node, -1);
     sum_node->forward(sum_node, NULL);
 
-    /* Expected: sum of log(1) + log(2) + log(3) + log(4) + log(5) + log(6) */
-    double expected =
-        log(1.0) + log(2.0) + log(3.0) + log(4.0) + log(5.0) + log(6.0);
+    /* Expected: 1 + 2 + 3 + 4 + 5 + 6 */
+    double expected = 21.0;
 
     mu_assert("Sum with axis=-1 test failed",
               fabs(sum_node->value[0] - expected) < 1e-10);
@@ -44,15 +42,13 @@ const char *test_sum_axis_0(void)
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     expr *const_node = new_parameter(3, 2, PARAM_FIXED, 0, values);
-    expr *log_node = new_log(const_node);
-    expr *sum_node = new_sum(log_node, 0);
+    expr *sum_node = new_sum(const_node, 0);
     sum_node->forward(sum_node, NULL);
 
     /* Expected: sum along rows (axis=0), result is 1x2
-       [log(1) + log(2) + log(3), log(4) + log(5) + log(6)]
+       [1 + 2 + 3, 4 + 5 + 6]
     */
-    double expected[2] = {log(1.0) + log(2.0) + log(3.0),
-                          log(4.0) + log(5.0) + log(6.0)};
+    double expected[2] = {6.0, 15.0};
 
     mu_assert("Sum with axis=0 test failed",
               cmp_double_array(sum_node->value, expected, 2));
@@ -71,17 +67,15 @@ const char *test_sum_axis_1(void)
     */
     double values[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     expr *const_node = new_parameter(3, 2, PARAM_FIXED, 0, values);
-    expr *log_node = new_log(const_node);
-    expr *sum_node = new_sum(log_node, 1);
+    expr *sum_node = new_sum(const_node, 1);
     sum_node->forward(sum_node, NULL);
 
     /* Expected: sum along columns (axis=1), result is 3x1
-       [log(1) + log(4)]
-       [log(2) + log(5)]
-       [log(3) + log(6)]
+       [1 + 4]
+       [2 + 5]
+       [3 + 6]
     */
-    double expected[3] = {log(1.0) + log(4.0), log(2.0) + log(5.0),
-                          log(3.0) + log(6.0)};
+    double expected[3] = {5.0, 7.0, 9.0};
 
     mu_assert("Sum with axis=1 test failed",
               cmp_double_array(sum_node->value, expected, 3));

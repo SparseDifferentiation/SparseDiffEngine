@@ -340,7 +340,7 @@ expr *new_quad_over_lin(expr *left, expr *right)
     {
         fprintf(stderr,
                 "Error: Denominator of quad-over-lin must be a scalar variable.\n");
-        exit(EXIT_FAILURE);
+        return NULL;
     }
 
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
