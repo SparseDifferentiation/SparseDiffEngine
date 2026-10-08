@@ -45,6 +45,7 @@
 #include "jacobian_tests/affine/test_vstack.h"
 #include "jacobian_tests/bivariate_full_dom/test_elementwise_mult.h"
 #include "jacobian_tests/bivariate_full_dom/test_matmul.h"
+#include "jacobian_tests/bivariate_restricted_dom/test_atan2.h"
 #include "jacobian_tests/bivariate_restricted_dom/test_quad_over_lin.h"
 #include "jacobian_tests/bivariate_restricted_dom/test_rel_entr.h"
 #include "jacobian_tests/bivariate_restricted_dom/test_rel_entr_scalar_vector.h"
@@ -94,6 +95,7 @@
 #include "wsum_hess/affine/test_vstack.h"
 #include "wsum_hess/bivariate_full_dom/test_matmul.h"
 #include "wsum_hess/bivariate_full_dom/test_multiply.h"
+#include "wsum_hess/bivariate_restricted_dom/test_atan2.h"
 #include "wsum_hess/bivariate_restricted_dom/test_quad_over_lin.h"
 #include "wsum_hess/bivariate_restricted_dom/test_rel_entr.h"
 #include "wsum_hess/bivariate_restricted_dom/test_rel_entr_scalar_vector.h"
@@ -202,6 +204,9 @@ int main(void)
     mu_run_test(test_jacobian_rel_entr_vector_args_1, tests_run);
     mu_run_test(test_jacobian_rel_entr_vector_args_2, tests_run);
     mu_run_test(test_jacobian_rel_entr_matrix_args, tests_run);
+    mu_run_test(test_jacobian_atan2_1, tests_run);
+    mu_run_test(test_jacobian_atan2_2, tests_run);
+    mu_run_test(test_atan2_rejects_bad_args, tests_run);
     mu_run_test(test_jacobian_rel_entr_vector_scalar, tests_run);
     mu_run_test(test_jacobian_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_jacobian_elementwise_mult_1, tests_run);
@@ -321,6 +326,8 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_1, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_2, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_matrix, tests_run);
+    mu_run_test(test_wsum_hess_atan2_1, tests_run);
+    mu_run_test(test_wsum_hess_atan2_2, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_vector_scalar, tests_run);
     mu_run_test(test_wsum_hess_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
