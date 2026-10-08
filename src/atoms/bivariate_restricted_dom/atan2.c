@@ -162,9 +162,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     double *hess = node->wsum_hess->x;
     int n = node->size;
 
-    /* per element: hyy = -2xy/r4, hxx = 2xy/r4, hxy = (y^2 - x^2)/r4.
-       Rows of var1 come first, then rows of var2; each row holds
-       [H(var, var1), H(var, var2)]. */
+    /* per element: hyy = -2xy/r4, hxx = 2xy/r4, hxy = (y^2 - x^2)/r4 */
     if (node->left->var_id < node->right->var_id)
     {
         /* var1 = y, var2 = x */
