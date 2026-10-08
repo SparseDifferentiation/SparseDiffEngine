@@ -21,7 +21,8 @@
 #include "expr.h"
 
 /* Shared init functions for restricted domain atoms
- * (variable-child only, no linear operator support) */
+ * (variable-child only, no linear operator support).
+ * The constructors return NULL for a non-variable child. */
 void jacobian_init_restricted(expr *node);
 void wsum_hess_init_restricted(expr *node);
 bool is_affine_restricted(const expr *node);

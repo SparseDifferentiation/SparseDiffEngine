@@ -14,18 +14,18 @@ const char *test_composite(void)
     double u[2] = {1.0, 2.0};
     double c[2] = {1.0, 1.0};
 
-    /* Build tree: log(exp(x) + c) */
+    /* Build tree: sin(exp(x) + c) */
     expr *var = new_variable(2, 1, 0, 2);
     expr *exp_node = new_exp(var);
     expr *const_node = new_parameter(2, 1, PARAM_FIXED, 0, c);
     expr *sum = new_add(exp_node, const_node);
-    expr *log_node = new_log(sum);
+    expr *sin_node = new_sin(sum);
 
-    log_node->forward(log_node, u);
+    sin_node->forward(sin_node, u);
 
-    double correct[2] = {log(exp(1.0) + 1.0), log(exp(2.0) + 1.0)};
-    mu_assert("failed", cmp_double_array(log_node->value, correct, 2));
+    double correct[2] = {sin(exp(1.0) + 1.0), sin(exp(2.0) + 1.0)};
+    mu_assert("failed", cmp_double_array(sin_node->value, correct, 2));
 
-    free_expr(log_node);
+    free_expr(sin_node);
     return 0;
 }

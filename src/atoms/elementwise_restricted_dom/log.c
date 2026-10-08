@@ -51,6 +51,7 @@ static void log_eval_wsum_hess(expr *node, const double *w)
 expr *new_log(expr *child)
 {
     expr *node = new_restricted(child);
+    if (!node) return NULL;
     node->forward = log_forward;
     node->eval_jacobian_impl = log_eval_jacobian;
     node->eval_wsum_hess_impl = log_eval_wsum_hess;

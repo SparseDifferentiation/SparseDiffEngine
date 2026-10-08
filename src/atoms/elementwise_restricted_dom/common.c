@@ -18,6 +18,7 @@
 #include "atoms/elementwise_restricted_dom.h"
 #include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 void jacobian_init_restricted(expr *node)
@@ -63,6 +64,15 @@ bool is_affine_restricted(const expr *node)
 
 expr *new_restricted(expr *child)
 {
+    /* leaf-only: the init functions index the Jacobian/Hessian by
+       child->var_id, so a non-variable child cannot be supported */
+    if (child->var_id == NOT_A_VARIABLE)
+    {
+        fprintf(stderr, "Error: argument of a restricted-domain atom "
+                        "(log, entr, tan, atanh) must be a variable.\n");
+        return NULL;
+    }
+
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
     if (!node) return NULL;
 

@@ -51,6 +51,7 @@ static void atanh_eval_wsum_hess(expr *node, const double *w)
 expr *new_atanh(expr *child)
 {
     expr *node = new_restricted(child);
+    if (!node) return NULL;
     node->forward = atanh_forward;
     node->eval_jacobian_impl = atanh_eval_jacobian;
     node->eval_wsum_hess_impl = atanh_eval_wsum_hess;
