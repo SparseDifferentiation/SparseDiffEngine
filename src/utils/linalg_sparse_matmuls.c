@@ -207,66 +207,80 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
     return C;
 }
 
-void block_left_multiply_fill_values(const CSR_matrix *A, const CSC_matrix *J,
-                                     CSC_matrix *C)
+/* Numeric phase of Gustavson's matmul, column by column of C: for each block of
+   column j, scatter A[:, c] * J[c, j] into a dense accumulator over the rows of
+   A for every entry of J in the block, then gather the accumulator into the
+   block's entries of C. Cost is the number of multiply-adds, independent of
+   the row lengths of A. The previous version took a merge-based sparse dot of
+   a whole row of A per entry of C, which is O(m_out * nnz(row)) and quadratic
+   for a long dense row (c @ x with c of length n: n^2).
+
+   Each row's terms are added in increasing column order of A (the order of J's
+   row indices within the block), the same order as the merge-based dot, so
+   the values are bit-identical to it. acc must hold A_csc->m doubles; it need
+   not be initialized. */
+void block_left_multiply_fill_values_csc(const CSC_matrix *A_csc,
+                                         const CSC_matrix *J, CSC_matrix *C,
+                                         double *acc)
 {
     /* A is m x n, J is (n*p) x k, C is (m*p) x k */
-    int m = A->m;
-    int n = A->n;
-    int k = J->n;
+    int m = A_csc->m;
+    int n = A_csc->n;
 
-    int i, j, row_a, block, block_start, block_end, start, end;
-
-    /* to get rid of unitialized warnings */
-    block = 0;
-    block_start = 0;
-    block_end = 0;
-    start = 0;
-    end = 0;
-
-    /* for each column of J (and C) */
-    for (j = 0; j < k; j++)
+    for (int j = 0; j < J->n; j++)
     {
-        int previous_block = -1;
-
-        for (i = C->p[j]; i < C->p[j + 1]; i++)
+        int jj = J->p[j];
+        int i = C->p[j];
+        while (i < C->p[j + 1])
         {
-            /* choose row of A and block of column of J */
-            row_a = C->i[i] % m;
-            block = C->i[i] / m;
-
-            // -------------------------------------------------------------------------
-            //          find the part of the column of J in the current block
-            // -------------------------------------------------------------------------
-            if (block != previous_block)
+            /* C's row indices are sorted, so one block's entries are contiguous */
+            int block = C->i[i] / m;
+            int row_offset = block * m;
+            int block_start = block * n;
+            int block_end = block_start + n;
+            int i_end = i;
+            while (i_end < C->p[j + 1] && C->i[i_end] < row_offset + m)
             {
-                previous_block = block;
-                block_start = block * n;
-                block_end = block_start + n;
-                start = J->p[j];
-                end = J->p[j + 1];
+                acc[C->i[i_end] - row_offset] = 0.0;
+                i_end++;
+            }
 
-                while (start < J->p[j + 1] && J->i[start] < block_start)
+            /* J's entries of this block (blocks are visited in increasing order) */
+            while (jj < J->p[j + 1] && J->i[jj] < block_start)
+            {
+                jj++;
+            }
+            for (; jj < J->p[j + 1] && J->i[jj] < block_end; jj++)
+            {
+                int c = J->i[jj] - block_start;
+                double v = J->x[jj];
+                for (int q = A_csc->p[c]; q < A_csc->p[c + 1]; q++)
                 {
-                    start++;
-                }
-
-                while (end > start && J->i[end - 1] >= block_end)
-                {
-                    end--;
+                    acc[A_csc->i[q]] += A_csc->x[q] * v;
                 }
             }
 
-            // ------------------------------------------------------------------------------
-            // compute value as sparse dot product of row of A and column of J in
-            // this block
-            // ------------------------------------------------------------------------------
-            int a_len = A->p[row_a + 1] - A->p[row_a];
-            C->x[i] =
-                sparse_dot(A->x + A->p[row_a], A->i + A->p[row_a], a_len,
-                           J->x + start, J->i + start, end - start, block_start);
+            for (; i < i_end; i++)
+            {
+                C->x[i] = acc[C->i[i] - row_offset];
+            }
         }
     }
+}
+
+void block_left_multiply_fill_values(const CSR_matrix *A, const CSC_matrix *J,
+                                     CSC_matrix *C)
+{
+    /* One-off convenience form: builds A's CSC mirror per call. Callers that
+       fill repeatedly (sparse_matrix) keep the mirror and the accumulator. */
+    int *iwork = (int *) sp_malloc((A->n > 0 ? A->n : 1) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A, iwork);
+    csr_to_csc_fill_values(A, A_csc, iwork);
+    double *acc = (double *) sp_malloc((A->m > 0 ? A->m : 1) * sizeof(double));
+    block_left_multiply_fill_values_csc(A_csc, J, C, acc);
+    sp_free(acc);
+    sp_free(iwork);
+    free_CSC_matrix(A_csc);
 }
 
 /* Fill values of C = A @ B where A is CSR_matrix, B is CSC_matrix. */

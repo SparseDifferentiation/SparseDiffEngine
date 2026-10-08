@@ -413,6 +413,9 @@ int main(void)
     mu_run_test(test_block_left_multiply_zero_column, tests_run);
     mu_run_test(test_block_left_multiply_dedup_order, tests_run);
     mu_run_test(test_block_left_multiply_matches_reference_random, tests_run);
+    mu_run_test(test_block_left_multiply_values_two_blocks, tests_run);
+    mu_run_test(test_block_left_multiply_values_dense_row, tests_run);
+    mu_run_test(test_sparse_matrix_block_left_mult_values_refill, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_basic, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_sparse, tests_run);
     mu_run_test(test_csr_csc_matmul_alloc_dedup_order, tests_run);

@@ -37,6 +37,12 @@ CSC_matrix *block_left_multiply_fill_sparsity(const CSR_matrix *A,
 void block_left_multiply_fill_values(const CSR_matrix *A, const CSC_matrix *J,
                                      CSC_matrix *C);
 
+/* Same values from A's CSC mirror (A_csc, values current) with a caller-owned
+   accumulator of A_csc->m doubles; linear in the multiply-adds. */
+void block_left_multiply_fill_values_csc(const CSC_matrix *A_csc,
+                                         const CSC_matrix *J, CSC_matrix *C,
+                                         double *acc);
+
 /* Compute y = kron(I_p, A) @ x where A is m x n and x is(n*p)-length vector.
    The output y is m*p-length vector corresponding to
    y = [A @ x1; A @ x2; ...; A @ xp] where x is divided into p blocks of n

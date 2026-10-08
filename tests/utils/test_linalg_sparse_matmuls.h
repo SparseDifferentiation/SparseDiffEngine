@@ -9,6 +9,7 @@
 #include "utils/CSR_matrix.h"
 #include "utils/iVec.h"
 #include "utils/linalg_sparse_matmuls.h"
+#include "utils/sparse_matrix.h"
 #include "utils/tracked_alloc.h"
 #include "utils/utils.h"
 
@@ -645,5 +646,166 @@ const char *test_block_left_multiply_vec_three_blocks(void)
     mu_assert("y values incorrect", cmp_double_array(y, expected_y, 6));
 
     free_CSR_matrix(A);
+    return NULL;
+}
+
+/* Test block_left_multiply_fill_values on two blocks, where an entry of C sums
+ * several products and A's rows meet each block in different columns */
+const char *test_block_left_multiply_values_two_blocks(void)
+{
+    /* A is 2x3 CSR_matrix:
+     * [1.0  2.0  0.0]
+     * [0.0  3.0  4.0]
+     */
+    CSR_matrix *A = new_CSR_matrix(2, 3, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 1, 1, 2};
+    int Ap[3] = {0, 2, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 3 * sizeof(int));
+
+    /* J is 6x2 CSC_matrix (two blocks of 3 rows each):
+     * Block 1 rows [0,1,2]:
+     * [5.0  0.0]
+     * [6.0  0.0]
+     * [0.0  8.0]
+     * Block 2 rows [3,4,5]:
+     * [0.0  9.0]
+     * [0.0  0.0]
+     * [7.0  0.0]
+     */
+    CSC_matrix *J = new_CSC_matrix(6, 2, 5);
+    double Jx[5] = {5.0, 6.0, 7.0, 8.0, 9.0};
+    int Ji[5] = {0, 1, 5, 2, 3};
+    int Jp[3] = {0, 3, 5};
+    memcpy(J->x, Jx, 5 * sizeof(double));
+    memcpy(J->i, Ji, 5 * sizeof(int));
+    memcpy(J->p, Jp, 3 * sizeof(int));
+
+    /* C = [A @ J1; A @ J2] is 4x2:
+     * A @ J1 = [[1*5 + 2*6, 0], [3*6, 4*8]] = [[17, 0], [18, 32]]
+     * A @ J2 = [[0, 1*9], [4*7, 0]]          = [[0, 9], [28, 0]]
+     * So C is:
+     * [17.0   0.0]
+     * [18.0  32.0]
+     * [ 0.0   9.0]
+     * [28.0   0.0]
+     */
+    CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, 2);
+    block_left_multiply_fill_values(A, J, C);
+
+    int expected_p[3] = {0, 3, 5};
+    int expected_i[5] = {0, 1, 3, 1, 2};
+    double expected_x[5] = {17.0, 18.0, 28.0, 32.0, 9.0};
+
+    mu_assert("C dims incorrect", C->m == 4 && C->n == 2 && C->nnz == 5);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p, 3));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i, 5));
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 5));
+
+    free_CSC_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(J);
+    return NULL;
+}
+
+/* Test block_left_multiply_fill_values with a dense row, as in the gradient of
+ * c @ x: every entry of C needs one entry of a long row of A */
+const char *test_block_left_multiply_values_dense_row(void)
+{
+    /* A is 1x4 CSR_matrix:
+     * [1.0  2.0  3.0  4.0]
+     */
+    CSR_matrix *A = new_CSR_matrix(1, 4, 4);
+    double Ax[4] = {1.0, 2.0, 3.0, 4.0};
+    int Ai[4] = {0, 1, 2, 3};
+    int Ap[2] = {0, 4};
+    memcpy(A->x, Ax, 4 * sizeof(double));
+    memcpy(A->i, Ai, 4 * sizeof(int));
+    memcpy(A->p, Ap, 2 * sizeof(int));
+
+    /* J is 4x4 CSC_matrix (single block), diagonal:
+     * diag(1.0, -1.0, 2.0, 0.5)
+     */
+    CSC_matrix *J = new_CSC_matrix(4, 4, 4);
+    double Jx[4] = {1.0, -1.0, 2.0, 0.5};
+    int Ji[4] = {0, 1, 2, 3};
+    int Jp[5] = {0, 1, 2, 3, 4};
+    memcpy(J->x, Jx, 4 * sizeof(double));
+    memcpy(J->i, Ji, 4 * sizeof(int));
+    memcpy(J->p, Jp, 5 * sizeof(int));
+
+    /* C = A @ J is 1x4: [1*1, 2*(-1), 3*2, 4*0.5] = [1.0, -2.0, 6.0, 2.0] */
+    CSC_matrix *C = block_left_multiply_fill_sparsity(A, J, 1);
+    block_left_multiply_fill_values(A, J, C);
+
+    int expected_p[5] = {0, 1, 2, 3, 4};
+    int expected_i[4] = {0, 0, 0, 0};
+    double expected_x[4] = {1.0, -2.0, 6.0, 2.0};
+
+    mu_assert("C dims incorrect", C->m == 1 && C->n == 4 && C->nnz == 4);
+    mu_assert("C col pointers incorrect", cmp_int_array(C->p, expected_p, 5));
+    mu_assert("C row indices incorrect", cmp_int_array(C->i, expected_i, 4));
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_x, 4));
+
+    free_CSC_matrix(C);
+    free_CSR_matrix(A);
+    free_CSC_matrix(J);
+    return NULL;
+}
+
+/* Test the sparse_matrix fill, which keeps A's CSC mirror between calls: new J
+ * values are picked up, and new A values are picked up after
+ * matrix_values_changed */
+const char *test_sparse_matrix_block_left_mult_values_refill(void)
+{
+    /* A is 2x2 CSR_matrix:
+     * [1.0  2.0]
+     * [0.0  3.0]
+     */
+    CSR_matrix *A_csr = new_CSR_matrix(2, 2, 3);
+    double Ax[3] = {1.0, 2.0, 3.0};
+    int Ai[3] = {0, 1, 1};
+    int Ap[3] = {0, 2, 3};
+    memcpy(A_csr->x, Ax, 3 * sizeof(double));
+    memcpy(A_csr->i, Ai, 3 * sizeof(int));
+    memcpy(A_csr->p, Ap, 3 * sizeof(int));
+    matrix *A = new_sparse_matrix(A_csr);
+
+    /* J is 2x1 CSC_matrix: [1.0; 1.0] */
+    CSC_matrix *J = new_CSC_matrix(2, 1, 2);
+    double Jx[2] = {1.0, 1.0};
+    int Ji[2] = {0, 1};
+    int Jp[2] = {0, 2};
+    memcpy(J->x, Jx, 2 * sizeof(double));
+    memcpy(J->i, Ji, 2 * sizeof(int));
+    memcpy(J->p, Jp, 2 * sizeof(int));
+
+    /* C = A @ J = [1 + 2, 3] = [3.0, 3.0] */
+    CSC_matrix *C = A->block_left_mult_sparsity(A, J, 1);
+    A->block_left_mult_values(A, J, C);
+    double expected_1[2] = {3.0, 3.0};
+    mu_assert("C values incorrect", cmp_double_array(C->x, expected_1, 2));
+
+    /* J = [2.0; -1.0]: C = [1*2 + 2*(-1), 3*(-1)] = [0.0, -3.0] */
+    J->x[0] = 2.0;
+    J->x[1] = -1.0;
+    A->block_left_mult_values(A, J, C);
+    double expected_2[2] = {0.0, -3.0};
+    mu_assert("C values after new J incorrect",
+              cmp_double_array(C->x, expected_2, 2));
+
+    /* A = [[1, 2], [0, 5]]: C = [0.0, 5*(-1)] = [0.0, -5.0] */
+    A_csr->x[2] = 5.0;
+    matrix_values_changed(A);
+    A->block_left_mult_values(A, J, C);
+    double expected_3[2] = {0.0, -5.0};
+    mu_assert("C values after new A incorrect",
+              cmp_double_array(C->x, expected_3, 2));
+
+    free_CSC_matrix(C);
+    free_CSC_matrix(J);
+    free_matrix(A);
     return NULL;
 }

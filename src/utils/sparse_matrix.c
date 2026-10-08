@@ -43,11 +43,22 @@ static CSC_matrix *sparse_block_left_mult_sparsity(const matrix *self,
     return block_left_multiply_fill_sparsity(sm->csr, J, p);
 }
 
+static void sparse_refresh_csc_values(matrix *self);
+
 static void sparse_block_left_mult_values(const matrix *self, const CSC_matrix *J,
                                           CSC_matrix *C)
 {
-    const sparse_matrix *sm = (const sparse_matrix *) self;
-    block_left_multiply_fill_values(sm->csr, J, C);
+    /* The CSC mirror and the accumulator are caches: logically const, so cast
+       like ATA_alloc does. The mirror is version-guarded, so a constant A
+       converts once and a refreshed one reconverts. */
+    sparse_matrix *sm = (sparse_matrix *) self;
+    sparse_refresh_csc_values(&sm->base);
+    if (sm->bl_acc == NULL)
+    {
+        sm->bl_acc =
+            (double *) sp_malloc((sm->csr->m > 0 ? sm->csr->m : 1) * sizeof(double));
+    }
+    block_left_multiply_fill_values_csc(sm->csc_cache, J, C, sm->bl_acc);
 }
 
 static void sparse_free(matrix *self)
@@ -57,6 +68,7 @@ static void sparse_free(matrix *self)
     free_CSC_matrix(sm->csc_cache);
     sp_free(sm->csc_iwork);
     sp_free(sm->bound_iwork);
+    sp_free(sm->bl_acc);
     sp_free(sm);
 }
 
