@@ -87,8 +87,7 @@ list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/sparse_linalg/")
 foreach(_sde_file IN LISTS SPARSE_LINALG_SOURCES SPARSE_LINALG_HEADERS)
     file(STRINGS "${_sde_file}" _sde_includes REGEX "^[ \t]*#[ \t]*include[ \t]*\"")
     foreach(_sde_line IN LISTS _sde_includes)
-        if(_sde_line MATCHES "#[ \t]*include"
-           AND NOT _sde_line MATCHES "\"sparse_linalg/[A-Za-z0-9_]+\\.h\"")
+        if(NOT _sde_line MATCHES "\"sparse_linalg/[A-Za-z0-9_]+\\.h\"")
             message(FATAL_ERROR
                 "Layering violation in ${_sde_file}:\n"
                 "    ${_sde_line}\n"
@@ -98,6 +97,9 @@ foreach(_sde_file IN LISTS SPARSE_LINALG_SOURCES SPARSE_LINALG_HEADERS)
     endforeach()
 endforeach()
 
+# Both libraries are built position-independent so they can be linked into the
+# Python extension module.
+
 # Sparse linear-algebra library
 add_library(sparse_linalg ${SPARSE_LINALG_SOURCES})
 target_include_directories(sparse_linalg PUBLIC ${PROJECT_SOURCE_DIR}/include)
@@ -106,8 +108,8 @@ sde_set_config_options(sparse_linalg)
 
 # Differentiation engine (expression DAG, atoms, problem)
 add_library(dnlp_diff ${ENGINE_SOURCES})
-target_include_directories(dnlp_diff PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(dnlp_diff PUBLIC sparse_linalg)
+set_property(TARGET dnlp_diff PROPERTY POSITION_INDEPENDENT_CODE ON)
 sde_set_config_options(dnlp_diff)
 
 # Optional peak-memory tracking via the sp_malloc/sp_free counters. OFF by default
@@ -178,9 +180,6 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_compile_definitions(_POSIX_C_SOURCE=200809L)
 endif()
-
-# Enable position-independent code for shared library compatibility
-set_property(TARGET dnlp_diff PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 # =============================================================================
 # C tests (only for standalone builds)
