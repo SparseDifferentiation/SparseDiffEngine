@@ -16,14 +16,14 @@
  * limitations under the License.
  */
 #include "atoms/bivariate_full_dom.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/CSR_sum.h"
+#include "sparse_linalg/matmul_dispatchers.h"
+#include "sparse_linalg/matrix_sum.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/stacked_pd.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include "subexpr.h"
-#include "utils/CSR_matrix.h"
-#include "utils/CSR_sum.h"
-#include "utils/matmul_dispatchers.h"
-#include "utils/matrix_sum.h"
-#include "utils/sparse_matrix.h"
-#include "utils/stacked_pd.h"
-#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

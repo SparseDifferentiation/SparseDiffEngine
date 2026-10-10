@@ -18,7 +18,7 @@
 #ifndef OLD_CSR_SUM_H
 #define OLD_CSR_SUM_H
 
-#include "utils/CSR_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
 
 /* Compute C = A + B where A, B, C are CSR_matrix matrices
  * A and B must have same dimensions

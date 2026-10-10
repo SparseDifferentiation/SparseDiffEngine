@@ -7,8 +7,8 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
+#include "sparse_linalg/permuted_dense.h"
 #include "test_helpers.h"
-#include "utils/permuted_dense.h"
 
 const char *test_jacobian_left_matmul_log(void)
 {

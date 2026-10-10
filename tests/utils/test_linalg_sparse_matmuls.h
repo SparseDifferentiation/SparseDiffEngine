@@ -4,13 +4,13 @@
 #include <string.h>
 
 #include "minunit.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/iVec.h"
+#include "sparse_linalg/linalg_sparse_matmuls.h"
+#include "sparse_linalg/tracked_alloc.h"
+#include "sparse_linalg/utils.h"
 #include "test_helpers.h"
-#include "utils/CSC_matrix.h"
-#include "utils/CSR_matrix.h"
-#include "utils/iVec.h"
-#include "utils/linalg_sparse_matmuls.h"
-#include "utils/tracked_alloc.h"
-#include "utils/utils.h"
 
 /* Test block_left_multiply_fill_sparsity with simple case: single block */
 const char *test_block_left_multiply_single_block(void)

@@ -11,8 +11,8 @@
 #include "expr.h"
 #include "minunit.h"
 #include "problem.h"
+#include "sparse_linalg/Timer.h"
 #include "subexpr.h"
-#include "utils/Timer.h"
 
 /* Dense lasso over a lambda path.
  *

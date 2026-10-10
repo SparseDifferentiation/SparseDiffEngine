@@ -19,9 +19,9 @@
 #define SUBEXPR_H
 
 #include "expr.h"
-#include "utils/CSC_matrix.h"
-#include "utils/CSR_matrix.h"
-#include "utils/matrix.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/matrix.h"
 
 /* Forward declaration */
 struct int_double_pair;

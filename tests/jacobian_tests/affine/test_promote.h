@@ -5,8 +5,8 @@
 #include "atoms/affine.h"
 #include "expr.h"
 #include "minunit.h"
+#include "sparse_linalg/permuted_dense.h"
 #include "test_helpers.h"
-#include "utils/permuted_dense.h"
 
 const char *test_promote_scalar_jacobian(void)
 {

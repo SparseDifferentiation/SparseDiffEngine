@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "expr.h"
-#include "utils/CSR_matrix.h"
-#include "utils/matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/matrix.h"
 
 #define EPSILON 1e-7
 

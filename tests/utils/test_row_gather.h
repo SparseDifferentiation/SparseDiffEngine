@@ -2,11 +2,11 @@
 #define TEST_ROW_GATHER_H
 
 #include "minunit.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/stacked_pd.h"
 #include "test_helpers.h"
-#include "utils/CSR_matrix.h"
-#include "utils/permuted_dense.h"
-#include "utils/sparse_matrix.h"
-#include "utils/stacked_pd.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

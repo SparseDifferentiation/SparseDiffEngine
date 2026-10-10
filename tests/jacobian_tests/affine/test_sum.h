@@ -7,8 +7,8 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
+#include "sparse_linalg/stacked_pd.h"
 #include "test_helpers.h"
-#include "utils/stacked_pd.h"
 
 const char *test_jacobian_sum_log(void)
 {

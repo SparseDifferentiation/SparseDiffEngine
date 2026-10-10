@@ -19,10 +19,10 @@
 #define TEST_ALLOC_OVERFLOW_H
 
 #include "minunit.h"
-#include "utils/CSR_matrix.h"
-#include "utils/matrix.h"
-#include "utils/sparse_matrix.h"
-#include "utils/utils.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/matrix.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/utils.h"
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>

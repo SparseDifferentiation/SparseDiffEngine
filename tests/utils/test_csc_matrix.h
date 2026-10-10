@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "minunit.h"
+#include "sparse_linalg/CSC_matrix.h"
 #include "test_helpers.h"
-#include "utils/CSC_matrix.h"
 
 /* Test ATA_alloc with a simple 3x3 example
  * A is 4x3 (4 rows, 3 columns):

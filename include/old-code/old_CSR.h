@@ -18,7 +18,7 @@
 #ifndef OLD_CSR_H
 #define OLD_CSR_H
 
-#include "utils/CSR_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
 
 /* Build (I_p kron A) = blkdiag(A, A, ..., A) of size (p*A->m) x (p*A->n) */
 CSR_matrix *block_diag_repeat_csr(const CSR_matrix *A, int p);

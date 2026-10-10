@@ -2,11 +2,11 @@
 #define TEST_STACKED_PD_H
 
 #include "minunit.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/stacked_pd.h"
+#include "sparse_linalg/stacked_pd_linalg.h"
 #include "test_helpers.h"
-#include "utils/CSC_matrix.h"
-#include "utils/permuted_dense.h"
-#include "utils/stacked_pd.h"
-#include "utils/stacked_pd_linalg.h"
 #include <stdlib.h>
 #include <string.h>
 

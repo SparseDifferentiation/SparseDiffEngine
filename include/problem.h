@@ -19,9 +19,9 @@
 #define PROBLEM_H
 
 #include "expr.h"
-#include "utils/COO_matrix.h"
-#include "utils/CSR_matrix.h"
-#include "utils/Timer.h"
+#include "sparse_linalg/COO_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/Timer.h"
 #include <stdbool.h>
 
 typedef struct
