@@ -18,8 +18,8 @@
 #include "sparse_linalg/permuted_dense.h"
 
 #include "sparse_linalg/cblas_wrapper.h"
+#include "sparse_linalg/internal/permuted_dense_linalg.h"
 #include "sparse_linalg/linalg_dense_sparse_matmuls.h"
-#include "sparse_linalg/permuted_dense_linalg.h"
 #include "sparse_linalg/tracked_alloc.h"
 #include "sparse_linalg/utils.h"
 #include <assert.h>

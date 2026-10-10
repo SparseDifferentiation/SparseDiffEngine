@@ -8,15 +8,16 @@
 
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
-#include "sparse_linalg/CSC_matrix.h"
 #include "sparse_linalg/CSR_matrix.h"
 #include "sparse_linalg/Timer.h"
+#include "sparse_linalg/matmul_dispatchers.h"
 #include "sparse_linalg/permuted_dense.h"
-#include "sparse_linalg/permuted_dense_linalg.h"
-#include "sparse_linalg/utils.h"
+#include "sparse_linalg/sparse_matrix.h"
 #include "test_helpers.h"
 
-/* Microbenchmark: compare BTA_csr_pd vs BTA_csc_pd on trimmed_log_reg-shaped
+/* Microbenchmark: compare the legacy CSR-pd BTA kernel (old-code) against the
+   library's dispatcher path (BTA_matrices_alloc / BTDA_matrices_fill_values on
+   a sparse_matrix, i.e. the BTA_pd_csc kernel) on trimmed_log_reg-shaped
    (m=2000, n0_B=785) inputs at two A densities. Output is one fill timing
    pair per row of the table. */
 static void run_bench_one_density(int m, int n0_B, int n_A, int nnz_per_row,
@@ -78,16 +79,16 @@ static void run_bench_one_density(int m, int n0_B, int n_A, int nnz_per_row,
         free(cols);
     }
 
-    /* CSC view of A. */
-    int *iwork = (int *) malloc(MAX(m, n_A) * sizeof(int));
-    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
-    csr_to_csc_fill_values(A_csr, A_csc, iwork);
+    /* Dispatcher operand: a sparse_matrix around a copy of A (the CSR kernel
+       keeps A_csr). The dispatcher builds the CSC cache during alloc; values
+       are refreshed once since A never changes. */
+    matrix *A_m = new_sparse_matrix(new_csr(A_csr));
 
     /* Allocate outputs once for each variant. */
     matrix *C_csr_m = BTA_pd_csr_alloc(B, A_csr);
     permuted_dense *C_csr = (permuted_dense *) C_csr_m;
-    matrix *C_csc_m = BTA_pd_csc_alloc(B, A_csc);
-    permuted_dense *C_csc = (permuted_dense *) C_csc_m;
+    matrix *C_csc_m = BTA_matrices_alloc(A_m, B_m);
+    A_m->refresh_csc_values(A_m);
 
     /* d for BTDA: all ones, so C = B^T diag(d) A = B^T A. */
     double *d_ones = (double *) malloc(m * sizeof(double));
@@ -102,24 +103,23 @@ static void run_bench_one_density(int m, int n0_B, int n_A, int nnz_per_row,
     clock_gettime(CLOCK_MONOTONIC, &t1.end);
     double t_csr_ms = GET_ELAPSED_SECONDS(t1) * 1000.0 / N_ITERS;
 
-    /* Warm-up + time CSC fill. */
+    /* Warm-up + time dispatcher (CSC kernel) fill. */
     Timer t2;
-    BTDA_pd_csc_fill_values(B, d_ones, A_csc, C_csc);
+    BTDA_matrices_fill_values(A_m, d_ones, B_m, C_csc_m);
     clock_gettime(CLOCK_MONOTONIC, &t2.start);
     for (int it = 0; it < N_ITERS; it++)
-        BTDA_pd_csc_fill_values(B, d_ones, A_csc, C_csc);
+        BTDA_matrices_fill_values(A_m, d_ones, B_m, C_csc_m);
     clock_gettime(CLOCK_MONOTONIC, &t2.end);
     double t_csc_ms = GET_ELAPSED_SECONDS(t2) * 1000.0 / N_ITERS;
 
-    printf("  %-22s CSR = %7.3f ms   CSC = %7.3f ms   ratio CSR/CSC = %.2fx\n",
+    printf("  %-22s CSR = %7.3f ms   dispatcher(CSC) = %7.3f ms   ratio = %.2fx\n",
            label, t_csr_ms, t_csc_ms, t_csr_ms / t_csc_ms);
 
     free_matrix(C_csr_m);
     free_matrix(C_csc_m);
     free_matrix(B_m);
+    free_matrix(A_m);
     free_CSR_matrix(A_csr);
-    free_CSC_matrix(A_csc);
-    free(iwork);
     free(row_perm_B);
     free(col_perm_B);
     free(XB);

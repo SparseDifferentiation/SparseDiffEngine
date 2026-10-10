@@ -14,7 +14,6 @@
 #include "sparse_linalg/Timer.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/stacked_pd.h"
-#include "sparse_linalg/stacked_pd_linalg.h"
 #include "sparse_linalg/tracked_alloc.h"
 
 /* Profile and validate two ways to compute the Hessian of
@@ -27,8 +26,8 @@
    - Approach 2: manually construct the Jacobian
      J = ∂vec(A @ X)/∂vec(X) = I_n ⊗ A as a stacked_pd with n blocks
      (each block carries A's values at the corresponding row/col
-     window). Call ATA_spd_alloc(J) (alloc) and ATDA_spd_fill_values(J,
-     d, H) (fill), where d_k = w_k * exp((A@X)_k). The AX compute is
+     window). Call J->ATA_alloc (alloc) and J->ATDA_fill_values(J, d, H)
+     (fill), where d_k = w_k * exp((A@X)_k). The AX compute is
      done OUTSIDE the timer per user request.
 
    Both Hessians are densified to a 2500x2500 row-major buffer and
@@ -128,12 +127,12 @@ const char *profile_hessian_exp_AX(void)
     free(row_perm);
     matrix *J = new_stacked_pd(n_vars, n_vars, n, j_blocks, NULL, NULL);
     free(j_blocks);
-    matrix *H2 = ATA_spd_alloc((stacked_pd *) J);
+    matrix *H2 = J->ATA_alloc(J);
     clock_gettime(CLOCK_MONOTONIC, &t2a.end);
 
     Timer t2f;
     clock_gettime(CLOCK_MONOTONIC, &t2f.start);
-    ATDA_spd_fill_values((stacked_pd *) J, d, (stacked_pd *) H2);
+    J->ATDA_fill_values(J, d, H2);
     clock_gettime(CLOCK_MONOTONIC, &t2f.end);
 
     /* ------------------------------------------------------------ */

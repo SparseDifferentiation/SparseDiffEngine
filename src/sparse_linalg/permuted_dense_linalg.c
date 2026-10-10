@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "sparse_linalg/permuted_dense_linalg.h"
+#include "sparse_linalg/internal/permuted_dense_linalg.h"
 
 #include "sparse_linalg/cblas_wrapper.h"
 #include "sparse_linalg/iVec.h"

@@ -3,13 +3,10 @@
 
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
-#include "sparse_linalg/CSC_matrix.h"
 #include "sparse_linalg/CSR_matrix.h"
 #include "sparse_linalg/matmul_dispatchers.h"
 #include "sparse_linalg/permuted_dense.h"
-#include "sparse_linalg/permuted_dense_linalg.h"
 #include "sparse_linalg/sparse_matrix.h"
-#include "sparse_linalg/utils.h"
 #include "test_helpers.h"
 #include <stdlib.h>
 #include <string.h>
@@ -352,9 +349,11 @@ const char *test_BTA_csr_pd_no_overlap(void)
     return 0;
 }
 
-/* BTA_pd_csc_alloc + BTDA_pd_csc_fill_values should match the legacy
-   CSR-pd kernels in old-code on both alloc structure and BTDA values.
-   Uses a d with negative + zero entries to exercise sign / drop paths. */
+/* The dispatcher path for (sparse A, pd B) -- BTA_matrices_alloc +
+   BTDA_matrices_fill_values, which run the library's BTA_pd_csc kernels --
+   should match the legacy CSR-pd kernels in old-code on both alloc structure
+   and BTDA values. Uses a d with negative + zero entries to exercise sign /
+   drop paths. */
 const char *test_BTA_pd_csc_matches_csr(void)
 {
     /* Same A and B as test_BTA_pd_csr_basic. */
@@ -369,10 +368,6 @@ const char *test_BTA_pd_csc_matches_csr(void)
     memcpy(A_csr->i, Ai, sizeof Ai);
     memcpy(A_csr->x, Ax, sizeof Ax);
 
-    int *iwork = (int *) malloc(MAX(A_csr->m, A_csr->n) * sizeof(int));
-    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
-    csr_to_csc_fill_values(A_csr, A_csc, iwork);
-
     int row_perm_B[2] = {1, 3};
     int col_perm_B[2] = {0, 2};
     double XB[4] = {10.0, 20.0, 30.0, 40.0};
@@ -386,10 +381,13 @@ const char *test_BTA_pd_csc_matches_csr(void)
     permuted_dense *C_csr = (permuted_dense *) C_csr_m;
     BTDA_pd_csr_fill_values(B, d, A_csr, C_csr);
 
-    /* CSC variant (under test). */
-    matrix *C_csc_m = BTA_pd_csc_alloc(B, A_csc);
+    /* Dispatcher variant (under test). A copy of A, since the oracle keeps
+       A_csr; the dispatcher builds the CSC cache, the caller refreshes it. */
+    matrix *A_m = new_sparse_matrix(new_csr(A_csr));
+    matrix *C_csc_m = BTA_matrices_alloc(A_m, B_m);
     permuted_dense *C_csc = (permuted_dense *) C_csc_m;
-    BTDA_pd_csc_fill_values(B, d, A_csc, C_csc);
+    A_m->refresh_csc_values(A_m);
+    BTDA_matrices_fill_values(A_m, d, B_m, C_csc_m);
 
     /* Structural equality. */
     mu_assert("m matches", C_csc_m->m == C_csr_m->m);
@@ -408,9 +406,8 @@ const char *test_BTA_pd_csc_matches_csr(void)
     free_matrix(C_csr_m);
     free_matrix(C_csc_m);
     free_matrix(B_m);
-    free_CSC_matrix(A_csc);
+    free_matrix(A_m);
     free_CSR_matrix(A_csr);
-    free(iwork);
     return 0;
 }
 
