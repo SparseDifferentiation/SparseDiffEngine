@@ -3,8 +3,13 @@
 
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
+#include "sparse_linalg/CSC_matrix.h"
 #include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/matmul_dispatchers.h"
 #include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/permuted_dense_linalg.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/utils.h"
 #include "test_helpers.h"
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +17,8 @@
 /* Direct unit tests for the legacy CSR-pd BTA kernels in old-code. They no
    longer sit on a production path (matrix_BTA dispatcher hard-wires the
    CSC variants), but the kernels remain as reference implementations and
-   as the CSR side of the cross-comparison test in test_permuted_dense.h. */
+   serve as the oracle for test_BTA_pd_csc_matches_csr and
+   test_BTDA_matrices_csr_pd below. Run by all_tests only. */
 
 const char *test_BTA_pd_csr_basic(void)
 {
@@ -343,6 +349,125 @@ const char *test_BTA_csr_pd_no_overlap(void)
     free_matrix(out_m);
     free_CSR_matrix(B);
     free_matrix(A_m);
+    return 0;
+}
+
+/* BTA_pd_csc_alloc + BTDA_pd_csc_fill_values should match the legacy
+   CSR-pd kernels in old-code on both alloc structure and BTDA values.
+   Uses a d with negative + zero entries to exercise sign / drop paths. */
+const char *test_BTA_pd_csc_matches_csr(void)
+{
+    /* Same A and B as test_BTA_pd_csr_basic. */
+    CSR_matrix *A_csr = new_CSR_matrix(4, 5, 7);
+    A_csr->p[0] = 0;
+    A_csr->p[1] = 2;
+    A_csr->p[2] = 4;
+    A_csr->p[3] = 5;
+    A_csr->p[4] = 7;
+    int Ai[7] = {1, 4, 0, 2, 2, 1, 4};
+    double Ax[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
+    memcpy(A_csr->i, Ai, sizeof Ai);
+    memcpy(A_csr->x, Ax, sizeof Ax);
+
+    int *iwork = (int *) malloc(MAX(A_csr->m, A_csr->n) * sizeof(int));
+    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
+    csr_to_csc_fill_values(A_csr, A_csc, iwork);
+
+    int row_perm_B[2] = {1, 3};
+    int col_perm_B[2] = {0, 2};
+    double XB[4] = {10.0, 20.0, 30.0, 40.0};
+    matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
+    permuted_dense *B = (permuted_dense *) B_m;
+
+    double d[4] = {1.5, -2.0, 0.0, 3.5};
+
+    /* CSR variant (baseline, from old-code). */
+    matrix *C_csr_m = BTA_pd_csr_alloc(B, A_csr);
+    permuted_dense *C_csr = (permuted_dense *) C_csr_m;
+    BTDA_pd_csr_fill_values(B, d, A_csr, C_csr);
+
+    /* CSC variant (under test). */
+    matrix *C_csc_m = BTA_pd_csc_alloc(B, A_csc);
+    permuted_dense *C_csc = (permuted_dense *) C_csc_m;
+    BTDA_pd_csc_fill_values(B, d, A_csc, C_csc);
+
+    /* Structural equality. */
+    mu_assert("m matches", C_csc_m->m == C_csr_m->m);
+    mu_assert("n matches", C_csc_m->n == C_csr_m->n);
+    mu_assert("m0 matches", C_csc->m0 == C_csr->m0);
+    mu_assert("n0 matches", C_csc->n0 == C_csr->n0);
+    mu_assert("row_perm matches",
+              cmp_int_array(C_csc->row_perm, C_csr->row_perm, C_csr->m0));
+    mu_assert("col_perm matches",
+              cmp_int_array(C_csc->col_perm, C_csr->col_perm, C_csr->n0));
+
+    /* Value equality (tolerance-based; dot ordering differs vs dgemm). */
+    mu_assert("BTDA values match",
+              cmp_double_array(C_csc->X, C_csr->X, C_csr->m0 * C_csr->n0));
+
+    free_matrix(C_csr_m);
+    free_matrix(C_csc_m);
+    free_matrix(B_m);
+    free_CSC_matrix(A_csc);
+    free_CSR_matrix(A_csr);
+    free(iwork);
+    return 0;
+}
+
+/* Wrapper dispatch sanity: (CSR_matrix, PD). Compare against direct
+   BTDA_pd_csr_fill_values. */
+const char *test_BTDA_matrices_csr_pd(void)
+{
+    /* A: 4x5 CSR_matrix */
+    CSR_matrix *A = new_CSR_matrix(4, 5, 5);
+    A->p[0] = 0;
+    A->p[1] = 2;
+    A->p[2] = 3;
+    A->p[3] = 4;
+    A->p[4] = 5;
+    int Ai[5] = {0, 3, 2, 1, 4};
+    double Ax[5] = {1.0, 2.0, 3.0, 4.0, 5.0};
+    memcpy(A->i, Ai, sizeof Ai);
+    memcpy(A->x, Ax, sizeof Ax);
+    matrix *A_m = new_sparse_matrix(A);
+
+    /* B: 4x4 PD, row_perm = [1, 3], col_perm = [0, 2]. */
+    int row_perm_B[2] = {1, 3};
+    int col_perm_B[2] = {0, 2};
+    double XB[4] = {10.0, 20.0, 30.0, 40.0};
+    matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
+
+    double d[4] = {1.0, -2.0, 0.5, 3.0};
+
+    /* Wrapper path. Dispatchers don't touch sparse_matrix internals — caller
+       owns csc_cache structure and values. */
+    sparse_matrix_ensure_csc_cache((sparse_matrix *) A_m);
+    matrix *C_m = BTA_matrices_alloc(A_m, B_m);
+    A_m->refresh_csc_values(A_m);
+    BTDA_matrices_fill_values(A_m, d, B_m, C_m);
+
+    /* Direct primitive path. */
+    CSR_matrix *A2 = new_CSR_matrix(4, 5, 5);
+    A2->p[0] = 0;
+    A2->p[1] = 2;
+    A2->p[2] = 3;
+    A2->p[3] = 4;
+    A2->p[4] = 5;
+    memcpy(A2->i, Ai, sizeof Ai);
+    memcpy(A2->x, Ax, sizeof Ax);
+    matrix *B2_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
+    permuted_dense *B2 = (permuted_dense *) B2_m;
+    matrix *C2 = BTA_pd_csr_alloc(B2, A2);
+    BTDA_pd_csr_fill_values(B2, d, A2, (permuted_dense *) C2);
+
+    mu_assert("values", cmp_double_array(C_m->x, C2->x, C_m->nnz));
+
+    free_matrix(C_m);
+    free_matrix(B_m);
+    free_matrix(A_m);
+    free_matrix(C2);
+    free_matrix(B2_m);
+    free_CSR_matrix(A2);
     return 0;
 }
 

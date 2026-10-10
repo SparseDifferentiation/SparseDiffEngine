@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "expr.h"
 #include "sparse_linalg/CSR_matrix.h"
 #include "sparse_linalg/matrix.h"
 

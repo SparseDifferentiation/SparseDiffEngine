@@ -25,3 +25,9 @@ jobs:
                    --track-origins=yes -s --show-reachable=yes \
                    --error-exitcode=1 build/all_tests
 
+      - name: Run sparse_linalg tests under Valgrind
+        run: |
+          valgrind --leak-check=full --show-leak-kinds=all \
+                   --track-origins=yes -s --show-reachable=yes \
+                   --error-exitcode=1 build/sparse_linalg_tests
+

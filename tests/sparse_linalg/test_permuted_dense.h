@@ -2,7 +2,6 @@
 #define TEST_PERMUTED_DENSE_H
 
 #include "minunit.h"
-#include "old-code/old_permuted_dense.h"
 #include "sparse_linalg/CSC_matrix.h"
 #include "sparse_linalg/matmul_dispatchers.h"
 #include "sparse_linalg/permuted_dense.h"
@@ -722,71 +721,6 @@ const char *test_permuted_dense_BTDA_partial_overlap(void)
     free_matrix(C_m);
     free_matrix(B_m);
     free_matrix(A_m);
-    return 0;
-}
-
-/* BTA(CSR_matrix A, PD B): basic correctness against a dense reference.
-   A is (4, 5) CSR_matrix with mixed sparsity; B is (4, 4) PD with row_perm = [1, 3],
-   col_perm = [0, 2], dense block (2, 2). */
-/* BTA_pd_csc_alloc + BTDA_pd_csc_fill_values should match the legacy
-   CSR-pd kernels in old-code on both alloc structure and BTDA values.
-   Uses a d with negative + zero entries to exercise sign / drop paths. */
-const char *test_BTA_pd_csc_matches_csr(void)
-{
-    /* Same A and B as test_BTA_pd_csr_basic. */
-    CSR_matrix *A_csr = new_CSR_matrix(4, 5, 7);
-    A_csr->p[0] = 0;
-    A_csr->p[1] = 2;
-    A_csr->p[2] = 4;
-    A_csr->p[3] = 5;
-    A_csr->p[4] = 7;
-    int Ai[7] = {1, 4, 0, 2, 2, 1, 4};
-    double Ax[7] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0};
-    memcpy(A_csr->i, Ai, sizeof Ai);
-    memcpy(A_csr->x, Ax, sizeof Ax);
-
-    int *iwork = (int *) malloc(MAX(A_csr->m, A_csr->n) * sizeof(int));
-    CSC_matrix *A_csc = csr_to_csc_alloc(A_csr, iwork);
-    csr_to_csc_fill_values(A_csr, A_csc, iwork);
-
-    int row_perm_B[2] = {1, 3};
-    int col_perm_B[2] = {0, 2};
-    double XB[4] = {10.0, 20.0, 30.0, 40.0};
-    matrix *B_m = new_permuted_dense(4, 4, 2, 2, row_perm_B, col_perm_B, XB);
-    permuted_dense *B = (permuted_dense *) B_m;
-
-    double d[4] = {1.5, -2.0, 0.0, 3.5};
-
-    /* CSR variant (baseline, from old-code). */
-    matrix *C_csr_m = BTA_pd_csr_alloc(B, A_csr);
-    permuted_dense *C_csr = (permuted_dense *) C_csr_m;
-    BTDA_pd_csr_fill_values(B, d, A_csr, C_csr);
-
-    /* CSC variant (under test). */
-    matrix *C_csc_m = BTA_pd_csc_alloc(B, A_csc);
-    permuted_dense *C_csc = (permuted_dense *) C_csc_m;
-    BTDA_pd_csc_fill_values(B, d, A_csc, C_csc);
-
-    /* Structural equality. */
-    mu_assert("m matches", C_csc_m->m == C_csr_m->m);
-    mu_assert("n matches", C_csc_m->n == C_csr_m->n);
-    mu_assert("m0 matches", C_csc->m0 == C_csr->m0);
-    mu_assert("n0 matches", C_csc->n0 == C_csr->n0);
-    mu_assert("row_perm matches",
-              cmp_int_array(C_csc->row_perm, C_csr->row_perm, C_csr->m0));
-    mu_assert("col_perm matches",
-              cmp_int_array(C_csc->col_perm, C_csr->col_perm, C_csr->n0));
-
-    /* Value equality (tolerance-based; dot ordering differs vs dgemm). */
-    mu_assert("BTDA values match",
-              cmp_double_array(C_csc->X, C_csr->X, C_csr->m0 * C_csr->n0));
-
-    free_matrix(C_csr_m);
-    free_matrix(C_csc_m);
-    free_matrix(B_m);
-    free_CSC_matrix(A_csc);
-    free_CSR_matrix(A_csr);
-    free(iwork);
     return 0;
 }
 

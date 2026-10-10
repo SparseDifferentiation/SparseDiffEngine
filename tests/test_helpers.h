@@ -1,7 +1,6 @@
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 
-#include "expr.h"
 #include "sparse_linalg/CSR_matrix.h"
 #include "sparse_linalg/matrix.h"
 

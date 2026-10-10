@@ -73,6 +73,8 @@ jobs:
         run: |
           readelf -d build/all_tests | grep NEEDED
           readelf -d build/all_tests | grep -q 'libcblas\.so\.3'
+          readelf -d build/sparse_linalg_tests | grep NEEDED
+          readelf -d build/sparse_linalg_tests | grep -q 'libcblas\.so\.3'
 
       - name: Re-run tests after switching to OpenBLAS (Linux)
         if: runner.os == 'Linux'
