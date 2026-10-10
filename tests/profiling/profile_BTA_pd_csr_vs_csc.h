@@ -6,10 +6,10 @@
 #include <string.h>
 #include <time.h>
 
+#include "Timer.h"
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
 #include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/Timer.h"
 #include "sparse_linalg/matmul_dispatchers.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/sparse_matrix.h"
