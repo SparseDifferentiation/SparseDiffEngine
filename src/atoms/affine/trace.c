@@ -17,8 +17,6 @@
  */
 #include "atoms/affine.h"
 #include "sparse_linalg/CSR_sum.h"
-#include "sparse_linalg/iVec.h"
-#include "sparse_linalg/int_double_pair.h"
 #include "sparse_linalg/sparse_matrix.h"
 #include "sparse_linalg/tracked_alloc.h"
 #include "sparse_linalg/utils.h"

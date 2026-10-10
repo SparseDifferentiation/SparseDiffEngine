@@ -17,7 +17,6 @@
  */
 #include "expr.h"
 #include "sparse_linalg/CSC_matrix.h"
-#include "sparse_linalg/int_double_pair.h"
 #include "sparse_linalg/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>

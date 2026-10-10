@@ -13,12 +13,12 @@
 
 #include "sparse_linalg/CSC_matrix.h"
 #include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/internal/permuted_dense_linalg.h"
+#include "sparse_linalg/internal/stacked_pd_kron_linalg.h"
+#include "sparse_linalg/internal/stacked_pd_linalg.h"
 #include "sparse_linalg/permuted_dense.h"
-#include "sparse_linalg/permuted_dense_linalg.h"
 #include "sparse_linalg/sparse_matrix.h"
 #include "sparse_linalg/stacked_pd.h"
-#include "sparse_linalg/stacked_pd_kron_linalg.h"
-#include "sparse_linalg/stacked_pd_linalg.h"
 #include <assert.h>
 
 /* Forward declarations of the fixed-B dispatchers used internally by

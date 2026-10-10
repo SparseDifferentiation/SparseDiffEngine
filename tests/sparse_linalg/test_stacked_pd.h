@@ -3,9 +3,9 @@
 
 #include "minunit.h"
 #include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/internal/stacked_pd_linalg.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/stacked_pd.h"
-#include "sparse_linalg/stacked_pd_linalg.h"
 #include "test_helpers.h"
 #include <stdlib.h>
 #include <string.h>

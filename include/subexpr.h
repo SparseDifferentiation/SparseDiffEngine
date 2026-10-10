@@ -23,9 +23,6 @@
 #include "sparse_linalg/CSR_matrix.h"
 #include "sparse_linalg/matrix.h"
 
-/* Forward declaration */
-struct int_double_pair;
-
 /* Parameter ID for fixed constants (not updatable) */
 #define PARAM_FIXED -1
 

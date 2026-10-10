@@ -17,10 +17,10 @@
  */
 #include "sparse_linalg/stacked_pd.h"
 
+#include "sparse_linalg/internal/stacked_pd_linalg.h"
 #include "sparse_linalg/matrix.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/sparse_matrix.h"
-#include "sparse_linalg/stacked_pd_linalg.h"
 #include "sparse_linalg/tracked_alloc.h"
 #include "sparse_linalg/utils.h"
 #include <assert.h>

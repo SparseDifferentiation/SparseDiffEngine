@@ -12,7 +12,6 @@
 #include "minunit.h"
 #include "sparse_linalg/Timer.h"
 #include "sparse_linalg/permuted_dense.h"
-#include "sparse_linalg/permuted_dense_linalg.h"
 
 /* Profile and validate Jacobian + Hessian of obj = sum(logistic(A x)).
 
@@ -70,10 +69,8 @@ const char *profile_log_reg(void)
     for (int j = 0; j < n; j++) full_cols[j] = j;
 
     matrix *A_pd_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, A_data);
-    permuted_dense *A_pd = (permuted_dense *) A_pd_M;
     matrix *Jlog_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, NULL);
-    permuted_dense *Jlog_pd = (permuted_dense *) Jlog_M;
-    matrix *H_pd_M = ATA_pd_alloc(A_pd);
+    matrix *H_pd_M = A_pd_M->ATA_alloc(A_pd_M);
     permuted_dense *H_pd = (permuted_dense *) H_pd_M;
 
     free(full_rows);
@@ -96,12 +93,12 @@ const char *profile_log_reg(void)
        dwork) as sigmas read by local_wsum_hess. */
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.start);
     log_obj->local_jacobian(log_obj, log_obj->work->dwork);
-    DA_pd_fill_values(log_obj->work->dwork, A_pd, Jlog_pd);
+    A_pd_M->DA_fill_values(log_obj->work->dwork, A_pd_M, Jlog_M);
     Jlog_M->row_reduce_fill_values(Jlog_M, Jobj);
     clock_gettime(CLOCK_MONOTONIC, &t_b_jac.end);
     clock_gettime(CLOCK_MONOTONIC, &t_b_hess.start);
     log_obj->local_wsum_hess(log_obj, d2, w_ones);
-    ATDA_pd_fill_values(A_pd, d2, H_pd);
+    A_pd_M->ATDA_fill_values(A_pd_M, d2, H_pd_M);
     clock_gettime(CLOCK_MONOTONIC, &t_b_hess.end);
     double sec_b_jac = GET_ELAPSED_SECONDS(t_b_jac);
     double sec_b_hess = GET_ELAPSED_SECONDS(t_b_hess);

@@ -75,24 +75,37 @@ endfunction()
 # linear-algebra layer (src/sparse_linalg, include/sparse_linalg) is built as its
 # own library; everything else under src/ is the differentiation engine.
 file(GLOB_RECURSE SPARSE_LINALG_SOURCES "src/sparse_linalg/*.c")
-file(GLOB_RECURSE SPARSE_LINALG_HEADERS "include/sparse_linalg/*.h")
+file(GLOB_RECURSE SPARSE_LINALG_HEADERS "include/sparse_linalg/*.h" "src/sparse_linalg/*.h")
 file(GLOB_RECURSE ENGINE_SOURCES "src/*.c")
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/src/sparse_linalg/")
 
 # Layering rule: sparse_linalg is a standalone sparse linear-algebra layer and
 # must not depend on the differentiation engine. Every quoted include in a
-# library file must name a library header ("sparse_linalg/<name>.h"); system
+# library file must name a library header: a public one
+# ("sparse_linalg/<name>.h", under include/) or a private one
+# ("sparse_linalg/internal/<name>.h", under src/sparse_linalg/internal/, which
+# only the library and its own test suite can resolve). A public header must
+# never include a private one, or "public" would stop meaning anything. System
 # headers use <...>. Checked here so a violation fails every configure, locally
 # and in CI.
 foreach(_sde_file IN LISTS SPARSE_LINALG_SOURCES SPARSE_LINALG_HEADERS)
     file(STRINGS "${_sde_file}" _sde_includes REGEX "^[ \t]*#[ \t]*include[ \t]*\"")
     foreach(_sde_line IN LISTS _sde_includes)
-        if(NOT _sde_line MATCHES "\"sparse_linalg/[A-Za-z0-9_]+\\.h\"")
+        if(NOT _sde_line MATCHES "\"sparse_linalg/(internal/)?[A-Za-z0-9_]+\\.h\"")
             message(FATAL_ERROR
                 "Layering violation in ${_sde_file}:\n"
                 "    ${_sde_line}\n"
                 "sparse_linalg may include only its own headers "
-                "(#include \"sparse_linalg/<name>.h\") and system headers.")
+                "(#include \"sparse_linalg/<name>.h\" or "
+                "\"sparse_linalg/internal/<name>.h\") and system headers.")
+        endif()
+        if(_sde_file MATCHES "/include/sparse_linalg/"
+           AND _sde_line MATCHES "\"sparse_linalg/internal/")
+            message(FATAL_ERROR
+                "Public header ${_sde_file} includes a private one:\n"
+                "    ${_sde_line}\n"
+                "Headers under include/sparse_linalg must not include "
+                "sparse_linalg/internal/ headers.")
         endif()
     endforeach()
 endforeach()
@@ -111,7 +124,7 @@ foreach(_sde_file IN LISTS SPARSE_LINALG_TEST_FILES)
     file(STRINGS "${_sde_file}" _sde_includes REGEX "^[ \t]*#[ \t]*include[ \t]*\"")
     foreach(_sde_line IN LISTS _sde_includes)
         if(NOT _sde_line MATCHES
-           "\"(sparse_linalg/[A-Za-z0-9_]+|minunit|test_[A-Za-z0-9_]+)\\.h\"")
+           "\"(sparse_linalg/(internal/)?[A-Za-z0-9_]+|minunit|test_[A-Za-z0-9_]+)\\.h\"")
             message(FATAL_ERROR
                 "Layering violation in ${_sde_file}:\n"
                 "    ${_sde_line}\n"
@@ -127,6 +140,9 @@ endforeach()
 # Sparse linear-algebra library
 add_library(sparse_linalg ${SPARSE_LINALG_SOURCES})
 target_include_directories(sparse_linalg PUBLIC ${PROJECT_SOURCE_DIR}/include)
+# src/ resolves the private headers ("sparse_linalg/internal/<name>.h"); it is
+# PRIVATE, so consumers such as dnlp_diff cannot include them at all.
+target_include_directories(sparse_linalg PRIVATE ${PROJECT_SOURCE_DIR}/src)
 set_property(TARGET sparse_linalg PROPERTY POSITION_INDEPENDENT_CODE ON)
 sde_set_config_options(sparse_linalg)
 
@@ -231,13 +247,17 @@ if(NOT SKBUILD)
     # Library suite: links sparse_linalg alone, so a test that reaches into the
     # engine or old-code fails to link. Not gated by PROFILE_ONLY: it has no
     # profiling content and a profile-only build still validates the library
-    # it profiles. tests/ is the only extra include dir; the sibling test
-    # headers resolve relative to sparse_linalg_tests.c.
+    # it profiles. The sibling test headers resolve relative to
+    # sparse_linalg_tests.c; src/ is added because the library's own suite is
+    # white-box and tests the private kernels too.
     add_executable(sparse_linalg_tests
         tests/sparse_linalg/sparse_linalg_tests.c
         tests/test_helpers.c
     )
-    target_include_directories(sparse_linalg_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
+    target_include_directories(sparse_linalg_tests PRIVATE
+        ${PROJECT_SOURCE_DIR}/tests
+        ${PROJECT_SOURCE_DIR}/src
+    )
     target_link_libraries(sparse_linalg_tests sparse_linalg)
 
     add_test(NAME SparseLinalgTests COMMAND sparse_linalg_tests)
