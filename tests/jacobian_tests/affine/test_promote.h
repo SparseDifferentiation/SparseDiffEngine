@@ -75,7 +75,8 @@ const char *test_promote_jacobian_pd_preserved(void)
     P->forward(P, u_vals);
     eval_jacobian(P);
 
-    mu_assert("promote Jacobian should be PD", P->jacobian->is_permuted_dense);
+    mu_assert("promote Jacobian should be PD",
+              P->jacobian->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd = (permuted_dense *) P->jacobian;
     mu_assert("shape", P->jacobian->m == 6 && P->jacobian->n == 2);
     mu_assert("m0", pd->m0 == 6);

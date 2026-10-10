@@ -173,7 +173,8 @@ const char *test_jacobian_left_matmul_pd_from_composite_child(void)
 
     /* Structural: outer's Jacobian must be PD (produced by the
        jacobian_init_pd path via BA_pd_matrices_alloc). */
-    mu_assert("outer Jacobian should be PD", A2_A1_x->jacobian->is_permuted_dense);
+    mu_assert("outer Jacobian should be PD",
+              A2_A1_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd = (permuted_dense *) A2_A1_x->jacobian;
     mu_assert("global m", A2_A1_x->jacobian->m == 4);
     mu_assert("global n", A2_A1_x->jacobian->n == 2);
@@ -223,7 +224,7 @@ const char *test_jacobian_left_matmul_pd_param(void)
     eval_jacobian(A_x);
 
     /* Structural: Jacobian must be PD. */
-    mu_assert("Jacobian should be PD", A_x->jacobian->is_permuted_dense);
+    mu_assert("Jacobian should be PD", A_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd = (permuted_dense *) A_x->jacobian;
     mu_assert("global m", A_x->jacobian->m == 3);
     mu_assert("global n", A_x->jacobian->n == 2);
@@ -250,7 +251,8 @@ const char *test_jacobian_left_matmul_pd_param(void)
     A_x->forward(A_x, x_vals);
     eval_jacobian(A_x);
 
-    mu_assert("Jacobian still PD after refresh", A_x->jacobian->is_permuted_dense);
+    mu_assert("Jacobian still PD after refresh",
+              A_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
     double expected_X2[6] = {7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
     mu_assert("X values (param 2)", cmp_double_array(pd->X, expected_X2, 6));
 

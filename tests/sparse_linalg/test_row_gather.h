@@ -127,7 +127,7 @@ const char *test_row_gather_pd_vs_sparse_twin(void)
     int map[6] = {0, 3, 1, 3, 5, 4};
     matrix *C = A->row_gather_alloc(A, map, 6);
     matrix *C_tw = A_tw->row_gather_alloc(A_tw, map, 6);
-    mu_assert("kind preserved", C->is_permuted_dense);
+    mu_assert("kind preserved", C->kind == MATRIX_PERMUTED_DENSE);
     mu_assert("m0", ((permuted_dense *) C)->m0 == 4);
     mu_assert("nnz", C->nnz == 8);
 
@@ -169,7 +169,7 @@ const char *test_row_gather_spd_vs_sparse_twin(void)
     int map[7] = {4, 2, 4, 0, 3, 1, 2};
     matrix *C = A->row_gather_alloc(A, map, 7);
     matrix *C_tw = A_tw->row_gather_alloc(A_tw, map, 7);
-    mu_assert("kind preserved", C->is_stacked_pd);
+    mu_assert("kind preserved", C->kind == MATRIX_STACKED_PD);
     stacked_pd *C_spd = (stacked_pd *) C;
     mu_assert("empty block dropped", C_spd->n_blocks == 2);
     mu_assert("src_block_idx",

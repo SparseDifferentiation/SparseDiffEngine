@@ -150,7 +150,7 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
             prob->hess_idx_map[idx_offset++] = col_to_pos[H_obj->i[j]];
         }
     }
-    if (prob->objective->wsum_hess->is_stacked_pd)
+    if (prob->objective->wsum_hess->kind == MATRIX_STACKED_PD)
     {
         compose_csr_idx_map_for_spd((const stacked_pd *) prob->objective->wsum_hess,
                                     H_obj, prob->hess_idx_map + obj_start);
@@ -173,7 +173,7 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
                 prob->hess_idx_map[idx_offset++] = col_to_pos[H_c->i[j]];
             }
         }
-        if (constrs[c_idx]->wsum_hess->is_stacked_pd)
+        if (constrs[c_idx]->wsum_hess->kind == MATRIX_STACKED_PD)
         {
             compose_csr_idx_map_for_spd(
                 (const stacked_pd *) constrs[c_idx]->wsum_hess, H_c,

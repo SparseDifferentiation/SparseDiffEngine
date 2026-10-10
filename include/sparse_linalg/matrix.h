@@ -20,7 +20,6 @@
 
 #include "sparse_linalg/CSC_matrix.h"
 #include "sparse_linalg/CSR_matrix.h"
-#include <stdbool.h>
 #include <stdint.h>
 
 /* Polymorphic matrix base. Concrete types embed `matrix` as their first
@@ -29,9 +28,19 @@
        2. permuted_dense — matrix whose nonzeros lie in a single dense block
                            located at chosen rows and columns of the global
                            index space.
-   A third type is potentially planned. */
+       3. stacked_pd     — vertical stack of permuted_dense blocks.
+   `kind` tags which one a handle is. */
 
 typedef struct matrix matrix;
+
+/* Concrete type behind a matrix handle. MATRIX_SPARSE is 0 so a zeroed struct
+   is a sparse_matrix. */
+typedef enum
+{
+    MATRIX_SPARSE = 0,     /* sparse_matrix: CSR-backed */
+    MATRIX_PERMUTED_DENSE, /* permuted_dense: dense block at permuted rows/cols */
+    MATRIX_STACKED_PD      /* stacked_pd: vertical stack of permuted_dense blocks */
+} matrix_kind;
 
 /* y = kron(I_p, A) @ x */
 typedef void (*matrix_block_left_mult_vec_fn)(const matrix *A, const double *x,
@@ -102,8 +111,7 @@ struct matrix
 {
     int m, n, nnz;
     double *x; /* non-owning pointer to the value buffer */
-    bool is_permuted_dense;
-    bool is_stacked_pd;
+    matrix_kind kind;
 
     /* Monotone counter bumped whenever the matrix's values change. Consumers
        that mirror the values into a cache (CSC mirror, CSR view, ...) record

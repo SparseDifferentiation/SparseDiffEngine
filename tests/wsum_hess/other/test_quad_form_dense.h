@@ -46,7 +46,7 @@ const char *test_wsum_hess_quad_form_dense(void)
 
     /* Hessian = 2 w P = 4 P as a dense block over rows/cols {2,3,4} */
     mu_assert("dense quad_form hessian is not permuted_dense",
-              node->wsum_hess->is_permuted_dense);
+              node->wsum_hess->kind == MATRIX_PERMUTED_DENSE);
     int expected_hp[6] = {0, 0, 0, 3, 6, 9};
     int expected_hi[9] = {2, 3, 4, 2, 3, 4, 2, 3, 4};
     double expected_hx[9] = {4.0, 8.0, 0.0, 8.0, 12.0, 0.0, 0.0, 0.0, 16.0};
@@ -187,7 +187,8 @@ const char *test_wsum_hess_quad_form_dense_param(void)
     mu_assert("P1 grad vals fail", cmp_values(node->jacobian, grad1, 3));
     mu_assert("P1 grad sparsity fail",
               cmp_sparsity(node->jacobian, expected_jp, expected_ji, 1, 3));
-    mu_assert("hessian not permuted_dense", node->wsum_hess->is_permuted_dense);
+    mu_assert("hessian not permuted_dense",
+              node->wsum_hess->kind == MATRIX_PERMUTED_DENSE);
     mu_assert("P1 hessian vals fail", cmp_values(node->wsum_hess, hess1, 9));
     mu_assert("P1 hessian sparsity fail",
               cmp_sparsity(node->wsum_hess, expected_hp, expected_hi, 5, 9));

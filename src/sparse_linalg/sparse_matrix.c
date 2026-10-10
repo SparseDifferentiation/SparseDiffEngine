@@ -340,6 +340,7 @@ static void sparse_row_reduce_fill_values(const matrix *self, matrix *out)
 
 static void wire_vtable(sparse_matrix *sm)
 {
+    sm->base.kind = MATRIX_SPARSE;
     sm->base.block_left_mult_vec = sparse_block_left_mult_vec;
     sm->base.block_left_mult_sparsity = sparse_block_left_mult_sparsity;
     sm->base.block_left_mult_values = sparse_block_left_mult_values;

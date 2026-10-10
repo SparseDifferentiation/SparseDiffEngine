@@ -442,7 +442,8 @@ const char *test_problem_jacobian_spd_constraint_interleaved(void)
     problem_constraint_forward(prob, u);
     problem_jacobian(prob);
 
-    mu_assert("constraint Jacobian should be spd", T->jacobian->is_stacked_pd);
+    mu_assert("constraint Jacobian should be spd",
+              T->jacobian->kind == MATRIX_STACKED_PD);
 
     /* T[r] = L[k(r)] with k = {0, 2, 1, 3}; L's Jacobian row (i, j) carries
        A[i, :] in the columns of X's j-th column (vars 3j .. 3j+2). */
@@ -492,7 +493,8 @@ const char *test_problem_jacobian_spd_sum_constraint(void)
     problem_constraint_forward(prob, u);
     problem_jacobian(prob);
 
-    mu_assert("constraint Jacobian should be spd", S->jacobian->is_stacked_pd);
+    mu_assert("constraint Jacobian should be spd",
+              S->jacobian->kind == MATRIX_STACKED_PD);
 
     double expected[2][6] = {{1.0, 2.0, 3.0, 1.0, 2.0, 3.0},
                              {4.0, 5.0, 6.0, 4.0, 5.0, 6.0}};
