@@ -2,9 +2,9 @@
 #define TEST_MATRIX_H
 
 #include "minunit.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/sparse_matrix.h"
 #include "test_helpers.h"
-#include "utils/permuted_dense.h"
-#include "utils/sparse_matrix.h"
 #include <stdlib.h>
 #include <string.h>
 

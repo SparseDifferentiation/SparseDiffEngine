@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 #include "atoms/bivariate_restricted_dom.h"
-#include "utils/sparse_matrix.h"
-#include "utils/tracked_alloc.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>

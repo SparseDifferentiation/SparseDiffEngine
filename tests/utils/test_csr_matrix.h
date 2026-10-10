@@ -5,10 +5,10 @@
 #include "minunit.h"
 #include "old-code/old_CSR.h"
 #include "old-code/old_CSR_sum.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/CSR_sum.h"
+#include "sparse_linalg/int_double_pair.h"
 #include "test_helpers.h"
-#include "utils/CSR_matrix.h"
-#include "utils/CSR_sum.h"
-#include "utils/int_double_pair.h"
 
 const char *test_diag_csr_mult(void)
 {

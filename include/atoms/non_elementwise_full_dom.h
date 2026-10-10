@@ -19,8 +19,8 @@
 #define NON_ELEMENTWISE_FULL_DOM_H
 
 #include "expr.h"
+#include "sparse_linalg/CSR_matrix.h"
 #include "subexpr.h"
-#include "utils/CSR_matrix.h"
 
 /* quad-form with sparse constant matrix Q */
 expr *new_quad_form_sparse(expr *child, CSR_matrix *Q);

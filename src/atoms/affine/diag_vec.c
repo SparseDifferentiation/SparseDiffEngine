@@ -18,7 +18,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "atoms/affine.h"
-#include "utils/tracked_alloc.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

@@ -10,9 +10,9 @@
 #include "atoms/elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "utils/Timer.h"
-#include "utils/permuted_dense.h"
-#include "utils/permuted_dense_linalg.h"
+#include "sparse_linalg/Timer.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/permuted_dense_linalg.h"
 
 /* Profile and validate Jacobian + Hessian of obj = sum(logistic(A x)).
 

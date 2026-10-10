@@ -16,12 +16,12 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/linalg_sparse_matmuls.h"
+#include "sparse_linalg/mini_numpy.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include "subexpr.h"
-#include "utils/CSR_matrix.h"
-#include "utils/linalg_sparse_matmuls.h"
-#include "utils/mini_numpy.h"
-#include "utils/sparse_matrix.h"
-#include "utils/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

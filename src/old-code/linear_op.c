@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 #include "old-code/old_affine.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include "subexpr.h"
-#include "utils/CSR_matrix.h"
-#include "utils/sparse_matrix.h"
-#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

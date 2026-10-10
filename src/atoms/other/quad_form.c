@@ -16,14 +16,14 @@
  * limitations under the License.
  */
 #include "atoms/non_elementwise_full_dom.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/cblas_wrapper.h"
+#include "sparse_linalg/matmul_dispatchers.h"
+#include "sparse_linalg/matrix_sum.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include "subexpr.h"
-#include "utils/CSC_matrix.h"
-#include "utils/cblas_wrapper.h"
-#include "utils/matmul_dispatchers.h"
-#include "utils/matrix_sum.h"
-#include "utils/permuted_dense.h"
-#include "utils/sparse_matrix.h"
-#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

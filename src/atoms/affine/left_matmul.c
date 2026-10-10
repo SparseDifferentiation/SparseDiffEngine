@@ -16,13 +16,13 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "sparse_linalg/matmul_dispatchers.h"
+#include "sparse_linalg/mini_numpy.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/stacked_pd.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include "subexpr.h"
-#include "utils/matmul_dispatchers.h"
-#include "utils/mini_numpy.h"
-#include "utils/permuted_dense.h"
-#include "utils/sparse_matrix.h"
-#include "utils/stacked_pd.h"
-#include "utils/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

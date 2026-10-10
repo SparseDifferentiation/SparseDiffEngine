@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 #include "atoms/elementwise_full_dom.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include "subexpr.h"
-#include "utils/tracked_alloc.h"
 #include <math.h>
 #include <stdlib.h>
 

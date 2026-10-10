@@ -3,17 +3,17 @@
 
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/matmul_dispatchers.h"
+#include "sparse_linalg/permuted_dense.h"
+#include "sparse_linalg/permuted_dense_linalg.h"
+#include "sparse_linalg/sparse_matrix.h"
+#include "sparse_linalg/stacked_pd.h"
+#include "sparse_linalg/stacked_pd_linalg.h"
+#include "sparse_linalg/tracked_alloc.h"
+#include "sparse_linalg/utils.h"
 #include "test_helpers.h"
-#include "utils/CSC_matrix.h"
-#include "utils/CSR_matrix.h"
-#include "utils/matmul_dispatchers.h"
-#include "utils/permuted_dense.h"
-#include "utils/permuted_dense_linalg.h"
-#include "utils/sparse_matrix.h"
-#include "utils/stacked_pd.h"
-#include "utils/stacked_pd_linalg.h"
-#include "utils/tracked_alloc.h"
-#include "utils/utils.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -19,7 +19,7 @@
 #define OLD_AFFINE_H
 
 #include "expr.h"
-#include "utils/CSR_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
 
 expr *new_linear(expr *u, const CSR_matrix *A, const double *b);
 

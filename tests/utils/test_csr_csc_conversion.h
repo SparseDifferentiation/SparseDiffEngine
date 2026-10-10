@@ -4,9 +4,9 @@
 #include <string.h>
 
 #include "minunit.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
 #include "test_helpers.h"
-#include "utils/CSC_matrix.h"
-#include "utils/CSR_matrix.h"
 
 /* Test CSR_matrix to CSC_matrix conversion with fill_sparsity and fill_values */
 const char *test_csr_to_csc_split(void)

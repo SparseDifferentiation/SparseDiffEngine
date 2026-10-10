@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 #include "expr.h"
-#include "utils/CSC_matrix.h"
-#include "utils/int_double_pair.h"
-#include "utils/tracked_alloc.h"
+#include "sparse_linalg/CSC_matrix.h"
+#include "sparse_linalg/int_double_pair.h"
+#include "sparse_linalg/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 

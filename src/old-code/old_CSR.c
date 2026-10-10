@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 #include "old-code/old_CSR.h"
-#include "utils/CSR_matrix.h"
+#include "sparse_linalg/CSR_matrix.h"
 #include <assert.h>
 #include <string.h>
 

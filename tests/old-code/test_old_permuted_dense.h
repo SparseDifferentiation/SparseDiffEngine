@@ -3,9 +3,9 @@
 
 #include "minunit.h"
 #include "old-code/old_permuted_dense.h"
+#include "sparse_linalg/CSR_matrix.h"
+#include "sparse_linalg/permuted_dense.h"
 #include "test_helpers.h"
-#include "utils/CSR_matrix.h"
-#include "utils/permuted_dense.h"
 #include <stdlib.h>
 #include <string.h>
 
