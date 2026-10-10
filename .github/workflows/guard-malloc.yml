@@ -26,3 +26,8 @@ jobs:
         run: >
           MallocScribble=1 MallocGuardEdges=1
           leaks --atExit -- ./build/all_tests
+
+      - name: Run sparse_linalg tests under guard-malloc + leaks
+        run: >
+          MallocScribble=1 MallocGuardEdges=1
+          leaks --atExit -- ./build/sparse_linalg_tests

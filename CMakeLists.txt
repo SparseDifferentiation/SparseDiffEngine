@@ -97,6 +97,30 @@ foreach(_sde_file IN LISTS SPARSE_LINALG_SOURCES SPARSE_LINALG_HEADERS)
     endforeach()
 endforeach()
 
+# The library test suite, its shared helpers and the bench build against
+# sparse_linalg alone. include/ is public on the target, so the linker would
+# not catch a header-only reach into the engine; this does. Quoted includes may
+# name a library header, minunit/test_helpers, or a sibling test_<name>.h.
+file(GLOB_RECURSE SPARSE_LINALG_TEST_FILES
+    "tests/sparse_linalg/*.c" "tests/sparse_linalg/*.h" "bench/sparse_linalg/*.c")
+list(APPEND SPARSE_LINALG_TEST_FILES
+    "${PROJECT_SOURCE_DIR}/tests/minunit.h"
+    "${PROJECT_SOURCE_DIR}/tests/test_helpers.h"
+    "${PROJECT_SOURCE_DIR}/tests/test_helpers.c")
+foreach(_sde_file IN LISTS SPARSE_LINALG_TEST_FILES)
+    file(STRINGS "${_sde_file}" _sde_includes REGEX "^[ \t]*#[ \t]*include[ \t]*\"")
+    foreach(_sde_line IN LISTS _sde_includes)
+        if(NOT _sde_line MATCHES
+           "\"(sparse_linalg/[A-Za-z0-9_]+|minunit|test_[A-Za-z0-9_]+)\\.h\"")
+            message(FATAL_ERROR
+                "Layering violation in ${_sde_file}:\n"
+                "    ${_sde_line}\n"
+                "sparse_linalg tests may include only sparse_linalg/<name>.h, "
+                "minunit.h, test_helpers.h and sibling test_<name>.h files.")
+        endif()
+    endforeach()
+endforeach()
+
 # Both libraries are built position-independent so they can be linked into the
 # Python extension module.
 
@@ -203,4 +227,18 @@ if(NOT SKBUILD)
     endif()
     
     add_test(NAME AllTests COMMAND all_tests)
+
+    # Library suite: links sparse_linalg alone, so a test that reaches into the
+    # engine or old-code fails to link. Not gated by PROFILE_ONLY: it has no
+    # profiling content and a profile-only build still validates the library
+    # it profiles. tests/ is the only extra include dir; the sibling test
+    # headers resolve relative to sparse_linalg_tests.c.
+    add_executable(sparse_linalg_tests
+        tests/sparse_linalg/sparse_linalg_tests.c
+        tests/test_helpers.c
+    )
+    target_include_directories(sparse_linalg_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
+    target_link_libraries(sparse_linalg_tests sparse_linalg)
+
+    add_test(NAME SparseLinalgTests COMMAND sparse_linalg_tests)
 endif()
