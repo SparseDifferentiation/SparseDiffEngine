@@ -66,7 +66,8 @@ const char *test_jacobian_transpose_pd_preserved(void)
     eval_jacobian(T);
 
     /* Structural: output Jacobian must be a PD. */
-    mu_assert("transpose Jacobian should be PD", T->jacobian->is_permuted_dense);
+    mu_assert("transpose Jacobian should be PD",
+              T->jacobian->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd_T = (permuted_dense *) T->jacobian;
     mu_assert("global m", T->jacobian->m == 6);
     mu_assert("global n", T->jacobian->n == 2);
@@ -105,8 +106,10 @@ const char *test_jacobian_transpose_spd_preserved(void)
     jacobian_init(T);
     T->forward(T, u);
     eval_jacobian(T);
-    mu_assert("child Jacobian should be spd", L->jacobian->is_stacked_pd);
-    mu_assert("transpose Jacobian should be spd", T->jacobian->is_stacked_pd);
+    mu_assert("child Jacobian should be spd",
+              L->jacobian->kind == MATRIX_STACKED_PD);
+    mu_assert("transpose Jacobian should be spd",
+              T->jacobian->kind == MATRIX_STACKED_PD);
 
     /* Dense child Jacobian: output entry (i, j) (col-major row i + 2j) carries
        A[i, :] in the columns of X's j-th column (vars 3j .. 3j+2). */

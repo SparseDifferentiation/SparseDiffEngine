@@ -223,7 +223,8 @@ const char *test_jacobian_sum_axis_minus_one_pd_child(void)
 
     double u_vals[2] = {0.5, -1.5};
     jacobian_init(sum_node);
-    mu_assert("child Jacobian should be PD", A2_A1_x->jacobian->is_permuted_dense);
+    mu_assert("child Jacobian should be PD",
+              A2_A1_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
 
     mu_assert("check_jacobian failed",
               check_jacobian_num(sum_node, u_vals, NUMERICAL_DIFF_DEFAULT_H));
@@ -250,8 +251,10 @@ const char *test_jacobian_sum_spd_child_axis_minus_one(void)
     expr *sum_node = sum_spd_child_fixture(-1, &L);
     double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
     jacobian_init(sum_node);
-    mu_assert("child Jacobian should be spd", L->jacobian->is_stacked_pd);
-    mu_assert("sum Jacobian should be spd", sum_node->jacobian->is_stacked_pd);
+    mu_assert("child Jacobian should be spd",
+              L->jacobian->kind == MATRIX_STACKED_PD);
+    mu_assert("sum Jacobian should be spd",
+              sum_node->jacobian->kind == MATRIX_STACKED_PD);
     mu_assert("check_jacobian failed",
               check_jacobian_num(sum_node, u, NUMERICAL_DIFF_DEFAULT_H));
     free_expr(sum_node);
@@ -265,7 +268,8 @@ const char *test_jacobian_sum_spd_child_axis_0(void)
     expr *sum_node = sum_spd_child_fixture(0, &L);
     double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
     jacobian_init(sum_node);
-    mu_assert("sum Jacobian should be spd", sum_node->jacobian->is_stacked_pd);
+    mu_assert("sum Jacobian should be spd",
+              sum_node->jacobian->kind == MATRIX_STACKED_PD);
     mu_assert("check_jacobian failed",
               check_jacobian_num(sum_node, u, NUMERICAL_DIFF_DEFAULT_H));
     free_expr(sum_node);
@@ -281,7 +285,8 @@ const char *test_jacobian_sum_spd_child_axis_1(void)
     expr *sum_node = sum_spd_child_fixture(1, &L);
     double u[6] = {0.1, 0.2, 0.3, -0.1, -0.2, -0.3};
     jacobian_init(sum_node);
-    mu_assert("sum Jacobian should be spd", sum_node->jacobian->is_stacked_pd);
+    mu_assert("sum Jacobian should be spd",
+              sum_node->jacobian->kind == MATRIX_STACKED_PD);
     mu_assert("check_jacobian failed",
               check_jacobian_num(sum_node, u, NUMERICAL_DIFF_DEFAULT_H));
 

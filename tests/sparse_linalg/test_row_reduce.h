@@ -155,7 +155,7 @@ const char *test_row_reduce_pd(void)
     const char *msg = row_reduce_check_against_twin(A, group, 2, &C);
     mu_assert(msg ? msg : "", msg == NULL);
 
-    mu_assert("kind preserved", C->is_permuted_dense);
+    mu_assert("kind preserved", C->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd = (permuted_dense *) C;
     mu_assert("shape", C->m == 2 && C->n == 4 && pd->m0 == 2 && pd->n0 == 2);
     int exp_row_perm[2] = {0, 1};
@@ -184,7 +184,7 @@ const char *test_row_reduce_spd_cross_block_accumulate(void)
     const char *msg = row_reduce_check_against_twin(A, group, 2, &C);
     mu_assert(msg ? msg : "", msg == NULL);
 
-    mu_assert("kind preserved", C->is_stacked_pd);
+    mu_assert("kind preserved", C->kind == MATRIX_STACKED_PD);
     stacked_pd *spd = (stacked_pd *) C;
     mu_assert("one output block", spd->n_blocks == 1);
     int exp_row_perm[2] = {0, 1};
@@ -210,7 +210,7 @@ const char *test_row_reduce_spd_within_block(void)
     const char *msg = row_reduce_check_against_twin(A, group, 2, &C);
     mu_assert(msg ? msg : "", msg == NULL);
 
-    mu_assert("kind preserved", C->is_stacked_pd);
+    mu_assert("kind preserved", C->kind == MATRIX_STACKED_PD);
     stacked_pd *spd = (stacked_pd *) C;
     mu_assert("two output blocks", spd->n_blocks == 2);
     int exp_cp0[2] = {0, 2};
@@ -240,7 +240,7 @@ const char *test_row_reduce_spd_all_to_one(void)
     const char *msg = row_reduce_check_against_twin(A, group, 1, &C);
     mu_assert(msg ? msg : "", msg == NULL);
 
-    mu_assert("kind preserved", C->is_stacked_pd);
+    mu_assert("kind preserved", C->kind == MATRIX_STACKED_PD);
     stacked_pd *spd = (stacked_pd *) C;
     mu_assert("one output block", spd->n_blocks == 1 && spd->blocks[0]->m0 == 1);
     int exp_col_perm[3] = {0, 1, 2};

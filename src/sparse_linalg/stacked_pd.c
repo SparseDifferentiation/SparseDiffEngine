@@ -342,7 +342,7 @@ static void stacked_pd_vtable_row_reduce_fill_values(const matrix *self, matrix 
 
 static void wire_vtable(stacked_pd *spd)
 {
-    spd->base.is_stacked_pd = true;
+    spd->base.kind = MATRIX_STACKED_PD;
     spd->base.free_fn = stacked_pd_free;
     spd->base.copy_sparsity = stacked_pd_vtable_copy_sparsity;
     spd->base.DA_fill_values = stacked_pd_vtable_DA_fill_values;

@@ -156,7 +156,7 @@ const char *test_values_version_stacked_pd_to_csr(void)
     jacobian_init(e);
     e->forward(e, u1);
     eval_jacobian(e);
-    mu_assert("jacobian must be stacked_pd", e->jacobian->is_stacked_pd);
+    mu_assert("jacobian must be stacked_pd", e->jacobian->kind == MATRIX_STACKED_PD);
 
     CSR_matrix *view = e->jacobian->to_csr(e->jacobian);
     double *vals1 = (double *) malloc(view->nnz * sizeof(double));
@@ -281,9 +281,9 @@ const char *test_values_version_spd_hess_terms(void)
     jacobian_init(outer);
     wsum_hess_init(outer);
     mu_assert("hess_term1 must be stacked_pd",
-              outer->work->hess_term1->is_stacked_pd);
+              outer->work->hess_term1->kind == MATRIX_STACKED_PD);
     mu_assert("hess_term2 must be stacked_pd",
-              outer->work->hess_term2->is_stacked_pd);
+              outer->work->hess_term2->kind == MATRIX_STACKED_PD);
 
     mu_assert("first hessian eval",
               check_wsum_hess(outer, u1, w1, NUMERICAL_DIFF_DEFAULT_H));

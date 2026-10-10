@@ -326,7 +326,7 @@ static void permuted_dense_vtable_row_reduce_fill_values(const matrix *self,
 
 static void wire_vtable(permuted_dense *pd)
 {
-    pd->base.is_permuted_dense = true;
+    pd->base.kind = MATRIX_PERMUTED_DENSE;
     pd->base.free_fn = permuted_dense_free;
     pd->base.block_left_mult_vec = permuted_dense_vtable_block_left_mult_vec;
     pd->base.block_left_mult_sparsity =

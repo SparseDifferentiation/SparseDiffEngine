@@ -175,7 +175,8 @@ const char *test_broadcast_row_jacobian_pd_preserved(void)
     B->forward(B, u_vals);
     eval_jacobian(B);
 
-    mu_assert("broadcast row Jacobian should be PD", B->jacobian->is_permuted_dense);
+    mu_assert("broadcast row Jacobian should be PD",
+              B->jacobian->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd = (permuted_dense *) B->jacobian;
     mu_assert("shape", B->jacobian->m == 6 && B->jacobian->n == 2);
     mu_assert("m0", pd->m0 == 6);
@@ -207,7 +208,8 @@ const char *test_broadcast_col_jacobian_pd_preserved(void)
     B->forward(B, u_vals);
     eval_jacobian(B);
 
-    mu_assert("broadcast col Jacobian should be PD", B->jacobian->is_permuted_dense);
+    mu_assert("broadcast col Jacobian should be PD",
+              B->jacobian->kind == MATRIX_PERMUTED_DENSE);
     permuted_dense *pd = (permuted_dense *) B->jacobian;
     mu_assert("shape", B->jacobian->m == 6 && B->jacobian->n == 2);
     mu_assert("m0", pd->m0 == 6);

@@ -458,13 +458,13 @@ static void wsum_hess_init_chain_rule(expr *node)
 
     /* If f/g wsum_hess is stacked_pd, re-index its idx_map so accumulation
        with eval_wsum_hess works correctly */
-    if (f->wsum_hess->is_stacked_pd)
+    if (f->wsum_hess->kind == MATRIX_STACKED_PD)
     {
         compose_csr_idx_map_for_spd((const stacked_pd *) f->wsum_hess,
                                     f->wsum_hess->to_csr(f->wsum_hess),
                                     mnode->idx_map_Hf);
     }
-    if (g->wsum_hess->is_stacked_pd)
+    if (g->wsum_hess->kind == MATRIX_STACKED_PD)
     {
         compose_csr_idx_map_for_spd((const stacked_pd *) g->wsum_hess,
                                     g->wsum_hess->to_csr(g->wsum_hess),

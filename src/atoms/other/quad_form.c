@@ -271,7 +271,7 @@ static void wsum_hess_init_dense(expr *node)
     else
     {
         /* The dispatchers read a sparse child jacobian through its csc_cache. */
-        if (!x->jacobian->is_permuted_dense && !x->jacobian->is_stacked_pd)
+        if (x->jacobian->kind == MATRIX_SPARSE)
         {
             sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
         }
