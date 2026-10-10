@@ -241,4 +241,12 @@ if(NOT SKBUILD)
     target_link_libraries(sparse_linalg_tests sparse_linalg)
 
     add_test(NAME SparseLinalgTests COMMAND sparse_linalg_tests)
+
+    # Microbenchmark harness for sparse_linalg kernels (links the library only).
+    # Always built; the tiny-size smoke test keeps it compiling and running on
+    # every CI platform. Real runs: ./build/sparse_linalg_bench [args].
+    add_executable(sparse_linalg_bench bench/sparse_linalg/sparse_linalg_bench.c)
+    target_link_libraries(sparse_linalg_bench sparse_linalg)
+
+    add_test(NAME SparseLinalgBenchSmoke COMMAND sparse_linalg_bench 64 64 16 2)
 endif()
