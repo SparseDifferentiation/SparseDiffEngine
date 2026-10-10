@@ -3,12 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Timer.h"
 #include "atoms/affine.h"
 #include "atoms/elementwise_full_dom.h"
 #include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparse_linalg/Timer.h"
 #include "test_helpers.h"
 
 const char *profile_left_matmul(void)

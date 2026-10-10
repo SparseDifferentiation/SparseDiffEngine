@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "Timer.h"
 #include "atoms/affine.h"
 #include "atoms/elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparse_linalg/Timer.h"
 #include "sparse_linalg/permuted_dense.h"
 
 /* Profile and validate Jacobian + Hessian of obj = sum(logistic(A x)).
