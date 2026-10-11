@@ -125,15 +125,14 @@ static void jacobian_init_dense(expr *node)
     jacobian_init(x);
 
     /* initialize this node's jacobian */
-    permuted_dense *A_pd = (permuted_dense *) lnode->A;
     if (lnode->n_blocks == 1)
     {
-        node->jacobian = BA_pd_matrices_alloc(A_pd, x->jacobian);
+        node->jacobian = BA_pd_matrices_alloc(lnode->A, x->jacobian);
     }
     else
     {
         node->jacobian =
-            BA_dense_kron_matrices_alloc(A_pd, lnode->n_blocks, x->jacobian);
+            BA_dense_kron_matrices_alloc(lnode->A, lnode->n_blocks, x->jacobian);
     }
 }
 
@@ -145,16 +144,14 @@ static void eval_jacobian_dense(expr *node)
     expr *x = node->left;
     eval_jacobian(x);
 
-    permuted_dense *A_pd = (permuted_dense *) lnode->A;
     if (lnode->n_blocks == 1)
     {
-        BA_pd_matrices_fill_values(A_pd, x->jacobian,
-                                   (permuted_dense *) node->jacobian);
+        BA_pd_matrices_fill_values(lnode->A, x->jacobian, node->jacobian);
     }
     else
     {
-        BA_dense_kron_matrices_fill_values(A_pd, lnode->n_blocks, x->jacobian,
-                                           (stacked_pd *) node->jacobian);
+        BA_dense_kron_matrices_fill_values(lnode->A, lnode->n_blocks, x->jacobian,
+                                           node->jacobian);
     }
 }
 

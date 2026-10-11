@@ -182,23 +182,21 @@ static void wsum_hess_init_impl(expr *node)
            accumulator below can read each matrix's ->x directly. */
         if (C->kind == MATRIX_STACKED_PD)
         {
-            compose_csr_idx_map_for_spd((const stacked_pd *) C, C->to_csr(C),
-                                        mul_node->idx_map_C);
+            compose_csr_idx_map_for_spd(C, C->to_csr(C), mul_node->idx_map_C);
         }
         if (CT->kind == MATRIX_STACKED_PD)
         {
-            compose_csr_idx_map_for_spd((const stacked_pd *) CT, CT->to_csr(CT),
-                                        mul_node->idx_map_CT);
+            compose_csr_idx_map_for_spd(CT, CT->to_csr(CT), mul_node->idx_map_CT);
         }
         if (x->wsum_hess->kind == MATRIX_STACKED_PD)
         {
-            compose_csr_idx_map_for_spd((const stacked_pd *) x->wsum_hess,
+            compose_csr_idx_map_for_spd(x->wsum_hess,
                                         x->wsum_hess->to_csr(x->wsum_hess),
                                         mul_node->idx_map_Hx);
         }
         if (y->wsum_hess->kind == MATRIX_STACKED_PD)
         {
-            compose_csr_idx_map_for_spd((const stacked_pd *) y->wsum_hess,
+            compose_csr_idx_map_for_spd(y->wsum_hess,
                                         y->wsum_hess->to_csr(y->wsum_hess),
                                         mul_node->idx_map_Hy);
         }

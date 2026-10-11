@@ -5,7 +5,6 @@
 #include "atoms/affine.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparsediff_linalg/permuted_dense.h"
 #include "test_helpers.h"
 
 const char *test_promote_scalar_jacobian(void)
@@ -77,15 +76,12 @@ const char *test_promote_jacobian_pd_preserved(void)
 
     mu_assert("promote Jacobian should be PD",
               P->jacobian->kind == MATRIX_PERMUTED_DENSE);
-    permuted_dense *pd = (permuted_dense *) P->jacobian;
-    mu_assert("shape", P->jacobian->m == 6 && P->jacobian->n == 2);
-    mu_assert("m0", pd->m0 == 6);
-    mu_assert("n0", pd->n0 == 2);
-    int expected_row_perm[6] = {0, 1, 2, 3, 4, 5};
-    mu_assert("row_perm", cmp_int_array(pd->row_perm, expected_row_perm, 6));
+    matrix *jac = P->jacobian;
+    mu_assert("shape", jac->m == 6 && jac->n == 2);
+    mu_assert("full block", jac->nnz == 12);
     double expected_X[12] = {1.5, -2.0, 1.5, -2.0, 1.5, -2.0,
                              1.5, -2.0, 1.5, -2.0, 1.5, -2.0};
-    mu_assert("X values", cmp_double_array(pd->X, expected_X, 12));
+    mu_assert("X values", cmp_double_array(jac->x, expected_X, 12));
 
     free_expr(P);
     return 0;

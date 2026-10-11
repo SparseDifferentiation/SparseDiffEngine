@@ -59,8 +59,6 @@
 #include "jacobian_tests/other/test_quad_form.h"
 #include "jacobian_tests/test_values_version.h"
 #include "numerical_diff/test_numerical_diff.h"
-#include "old-code/test_old_CSR.h"
-#include "old-code/test_old_permuted_dense.h"
 #include "problem/test_param_broadcast.h"
 #include "problem/test_param_prob.h"
 #include "problem/test_param_source_refresh.h"
@@ -104,7 +102,6 @@
 #endif /* PROFILE_ONLY */
 
 #ifdef PROFILE_ONLY
-#include "profiling/profile_BTA_pd_csr_vs_csc.h"
 #include "profiling/profile_hessian_exp_AX.h"
 #include "profiling/profile_lasso.h"
 #include "profiling/profile_left_matmul.h"
@@ -388,24 +385,6 @@ int main(void)
     mu_run_test(test_wsum_hess_matmul_sin_Ax_cos_Bx, tests_run);
     mu_run_test(test_wsum_hess_matmul_X_X, tests_run);
 
-    printf("\n--- Old-code Tests ---\n");
-    mu_run_test(test_diag_csr_mult, tests_run);
-    mu_run_test(test_csr_sum, tests_run);
-    mu_run_test(test_csr_sum2, tests_run);
-    mu_run_test(test_kron_identity_csr, tests_run);
-    mu_run_test(test_csr_vecmat_values_sparse, tests_run);
-    mu_run_test(test_sum_all_rows_csr, tests_run);
-    mu_run_test(test_sum_block_of_rows_csr, tests_run);
-    mu_run_test(test_sum_evenly_spaced_rows_csr, tests_run);
-    mu_run_test(test_BTA_pd_csc_matches_csr, tests_run);
-    mu_run_test(test_BTA_pd_csr_basic, tests_run);
-    mu_run_test(test_BTA_pd_csr_leaf_variable, tests_run);
-    mu_run_test(test_BTA_pd_csr_no_overlap, tests_run);
-    mu_run_test(test_BTA_csr_pd_basic, tests_run);
-    mu_run_test(test_BTA_csr_pd_leaf_variable, tests_run);
-    mu_run_test(test_BTA_csr_pd_no_overlap, tests_run);
-    mu_run_test(test_BTDA_matrices_csr_pd, tests_run);
-
     printf("\n--- Numerical Diff Tests ---\n");
     mu_run_test(test_check_jacobian_composite_exp, tests_run);
     mu_run_test(test_check_wsum_hess_exp_composite, tests_run);
@@ -459,7 +438,6 @@ int main(void)
     mu_run_test(profile_left_matmul, tests_run);
     mu_run_test(profile_log_reg, tests_run);
     mu_run_test(profile_trimmed_log_reg, tests_run);
-    mu_run_test(profile_BTA_pd_csr_vs_csc, tests_run);
     mu_run_test(profile_hessian_exp_AX, tests_run);
     mu_run_test(profile_memory, tests_run);
 #endif /* PROFILE_ONLY */

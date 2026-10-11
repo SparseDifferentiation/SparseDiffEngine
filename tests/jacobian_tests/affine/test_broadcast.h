@@ -5,7 +5,6 @@
 #include "atoms/affine.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparsediff_linalg/permuted_dense.h"
 #include "test_helpers.h"
 
 const char *test_broadcast_row_jacobian(void)
@@ -177,16 +176,13 @@ const char *test_broadcast_row_jacobian_pd_preserved(void)
 
     mu_assert("broadcast row Jacobian should be PD",
               B->jacobian->kind == MATRIX_PERMUTED_DENSE);
-    permuted_dense *pd = (permuted_dense *) B->jacobian;
-    mu_assert("shape", B->jacobian->m == 6 && B->jacobian->n == 2);
-    mu_assert("m0", pd->m0 == 6);
-    mu_assert("n0", pd->n0 == 2);
-    int expected_row_perm[6] = {0, 1, 2, 3, 4, 5};
-    mu_assert("row_perm", cmp_int_array(pd->row_perm, expected_row_perm, 6));
+    matrix *jac = B->jacobian;
+    mu_assert("shape", jac->m == 6 && jac->n == 2);
+    mu_assert("full block", jac->nnz == 12);
     for (int r = 0; r < 6; r++)
     {
         mu_assert("X row must be A row r / 2",
-                  cmp_double_array(pd->X + 2 * r, A + 2 * (r / 2), 2));
+                  cmp_double_array(jac->x + 2 * r, A + 2 * (r / 2), 2));
     }
 
     free_expr(B);
@@ -210,14 +206,13 @@ const char *test_broadcast_col_jacobian_pd_preserved(void)
 
     mu_assert("broadcast col Jacobian should be PD",
               B->jacobian->kind == MATRIX_PERMUTED_DENSE);
-    permuted_dense *pd = (permuted_dense *) B->jacobian;
-    mu_assert("shape", B->jacobian->m == 6 && B->jacobian->n == 2);
-    mu_assert("m0", pd->m0 == 6);
-    mu_assert("n0", pd->n0 == 2);
+    matrix *jac = B->jacobian;
+    mu_assert("shape", jac->m == 6 && jac->n == 2);
+    mu_assert("full block", jac->nnz == 12);
     for (int r = 0; r < 6; r++)
     {
         mu_assert("X row must be A row r % 2",
-                  cmp_double_array(pd->X + 2 * r, A + 2 * (r % 2), 2));
+                  cmp_double_array(jac->x + 2 * r, A + 2 * (r % 2), 2));
     }
 
     free_expr(B);

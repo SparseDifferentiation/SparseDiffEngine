@@ -4,7 +4,6 @@
 
 #include "atoms/affine.h"
 #include "minunit.h"
-#include "sparsediff_linalg/permuted_dense.h"
 #include "test_helpers.h"
 #include <math.h>
 #include <stdio.h>
@@ -68,15 +67,10 @@ const char *test_jacobian_transpose_pd_preserved(void)
     /* Structural: output Jacobian must be a PD. */
     mu_assert("transpose Jacobian should be PD",
               T->jacobian->kind == MATRIX_PERMUTED_DENSE);
-    permuted_dense *pd_T = (permuted_dense *) T->jacobian;
-    mu_assert("global m", T->jacobian->m == 6);
-    mu_assert("global n", T->jacobian->n == 2);
-    mu_assert("m0", pd_T->m0 == 6);
-    mu_assert("n0", pd_T->n0 == 2);
-    int expected_row_perm[6] = {0, 1, 2, 3, 4, 5};
-    int expected_col_perm[2] = {0, 1};
-    mu_assert("row_perm", cmp_int_array(pd_T->row_perm, expected_row_perm, 6));
-    mu_assert("col_perm", cmp_int_array(pd_T->col_perm, expected_col_perm, 2));
+    matrix *jac = T->jacobian;
+    mu_assert("global m", jac->m == 6);
+    mu_assert("global n", jac->n == 2);
+    mu_assert("full block", jac->nnz == 12);
 
     /* Numerical: X_out rows = A rows permuted by k(r) = [0,3,1,4,2,5]. */
     double expected_X[12] = {1.0,  2.0,   /* row 0 from A row 0 */
@@ -85,7 +79,7 @@ const char *test_jacobian_transpose_pd_preserved(void)
                              9.0,  10.0,  /* row 3 from A row 4 */
                              5.0,  6.0,   /* row 4 from A row 2 */
                              11.0, 12.0}; /* row 5 from A row 5 */
-    mu_assert("X values", cmp_double_array(pd_T->X, expected_X, 12));
+    mu_assert("X values", cmp_double_array(jac->x, expected_X, 12));
 
     free_expr(T);
     return 0;

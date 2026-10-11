@@ -71,7 +71,6 @@ const char *profile_log_reg(void)
     matrix *A_pd_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, A_data);
     matrix *Jlog_M = new_permuted_dense(m, n, m, n, full_rows, full_cols, NULL);
     matrix *H_pd_M = A_pd_M->ATA_alloc(A_pd_M);
-    permuted_dense *H_pd = (permuted_dense *) H_pd_M;
 
     free(full_rows);
     free(full_cols);
@@ -128,10 +127,8 @@ const char *profile_log_reg(void)
     mu_assert("Jacobian mismatch", max_J_diff < 1e-10);
 
     /* ---- Compare Hessian (n x n): scatter Path A's CSR_matrix into a dense
-       n x n array, compare to H_pd->X (already dense row-major).
-       Extract the CSR_matrix view ONCE: PD's to_csr does an O(m0 * n0)
-       memcpy refresh per call, so calling it inside the inner loop is
-       quadratically expensive. ---- */
+       n x n array, compare to H_pd_M->x (a full PD: already dense row-major).
+       Extract the CSR_matrix view ONCE outside the loop. ---- */
     CSR_matrix *H_a = obj->wsum_hess->to_csr(obj->wsum_hess);
     double *H_a_dense = (double *) calloc((size_t) n * n, sizeof(double));
     for (int i = 0; i < n; i++)
@@ -145,7 +142,7 @@ const char *profile_log_reg(void)
     double max_H_diff = 0.0;
     for (size_t k = 0; k < (size_t) n * n; k++)
     {
-        double diff = fabs(H_a_dense[k] - H_pd->X[k]);
+        double diff = fabs(H_a_dense[k] - H_pd_M->x[k]);
         if (diff > max_H_diff) max_H_diff = diff;
     }
     printf("  Hessian max abs diff:    %10.3e\n", max_H_diff);
