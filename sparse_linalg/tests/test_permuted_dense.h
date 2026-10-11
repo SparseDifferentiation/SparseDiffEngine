@@ -1,9 +1,9 @@
 #ifndef TEST_PERMUTED_DENSE_H
 #define TEST_PERMUTED_DENSE_H
 
+#include "internal/permuted_dense_linalg.h"
 #include "minunit.h"
 #include "sparse_linalg/CSC_matrix.h"
-#include "sparse_linalg/internal/permuted_dense_linalg.h"
 #include "sparse_linalg/matmul_dispatchers.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/sparse_matrix.h"

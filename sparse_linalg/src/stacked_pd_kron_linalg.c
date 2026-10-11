@@ -15,10 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "sparse_linalg/internal/stacked_pd_kron_linalg.h"
+#include "internal/stacked_pd_kron_linalg.h"
 
-#include "sparse_linalg/internal/permuted_dense_linalg.h"
-#include "sparse_linalg/internal/stacked_pd_linalg.h"
+#include "internal/permuted_dense_linalg.h"
+#include "internal/stacked_pd_linalg.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/stacked_pd.h"
 #include "sparse_linalg/tracked_alloc.h"
