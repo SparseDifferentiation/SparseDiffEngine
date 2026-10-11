@@ -29,7 +29,7 @@ jobs:
         run: ./build/all_tests
 
       - name: Run sparse_linalg tests
-        run: ./build/sparse_linalg_tests
+        run: ./build/sparse_linalg/sparse_linalg_tests
 
   # Create GitHub release after tests pass
   release:

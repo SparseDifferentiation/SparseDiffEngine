@@ -3,10 +3,10 @@
 #include "minunit.h"
 
 /* Library-only suite: this executable links sparse_linalg alone, so every
-   header below may include only sparse_linalg/<name>.h, minunit.h,
-   test_helpers.h and sibling test_<name>.h files (checked at configure time
-   in CMakeLists.txt). Tests that need old-code or engine kernels live under
-   tests/old-code and run from all_tests. */
+   header below may include only sparse_linalg/<name>.h, internal/<name>.h,
+   minunit.h, test_helpers.h and sibling test_<name>.h files (checked at
+   configure time in ../CMakeLists.txt). Tests that need old-code or engine
+   kernels live in the engine's tests/old-code and run from all_tests. */
 #include "test_COO_matrix.h"
 #include "test_alloc_overflow.h"
 #include "test_cblas.h"

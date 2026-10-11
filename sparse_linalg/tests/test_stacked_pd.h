@@ -1,9 +1,9 @@
 #ifndef TEST_STACKED_PD_H
 #define TEST_STACKED_PD_H
 
+#include "internal/stacked_pd_linalg.h"
 #include "minunit.h"
 #include "sparse_linalg/CSC_matrix.h"
-#include "sparse_linalg/internal/stacked_pd_linalg.h"
 #include "sparse_linalg/permuted_dense.h"
 #include "sparse_linalg/stacked_pd.h"
 #include "test_helpers.h"
