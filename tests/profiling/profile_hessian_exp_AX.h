@@ -151,19 +151,12 @@ const char *profile_hessian_exp_AX(void)
         }
     }
 
-    stacked_pd *H2s = (stacked_pd *) H2;
-    for (int k = 0; k < H2s->n_blocks; k++)
+    CSR_matrix *csr2 = H2->to_csr(H2);
+    for (int i = 0; i < csr2->m; i++)
     {
-        permuted_dense *blk = H2s->blocks[k];
-        for (int i = 0; i < blk->m0; i++)
+        for (int kk = csr2->p[i]; kk < csr2->p[i + 1]; kk++)
         {
-            for (int j = 0; j < blk->n0; j++)
-            {
-                int gi = blk->row_perm[i];
-                int gj = blk->col_perm[j];
-                D2[(size_t) gi * (size_t) n_vars + (size_t) gj] =
-                    blk->X[i * blk->n0 + j];
-            }
+            D2[(size_t) i * (size_t) n_vars + (size_t) csr2->i[kk]] = csr2->x[kk];
         }
     }
 

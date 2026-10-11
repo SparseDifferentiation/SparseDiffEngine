@@ -268,7 +268,7 @@ static void eval_jacobian_chain_rule(expr *node)
                           mnode->term1_CSR);
     I_kron_X_fill_values(m, k, n, f->value, g->work->jacobian_csc, mnode->term2_CSR);
     sum_csr_fill_values(mnode->term1_CSR, mnode->term2_CSR,
-                        ((sparse_matrix *) node->jacobian)->csr);
+                        node->jacobian->to_csr(node->jacobian));
 }
 
 // ------------------------------------------------------------------------------------
@@ -460,14 +460,12 @@ static void wsum_hess_init_chain_rule(expr *node)
        with eval_wsum_hess works correctly */
     if (f->wsum_hess->kind == MATRIX_STACKED_PD)
     {
-        compose_csr_idx_map_for_spd((const stacked_pd *) f->wsum_hess,
-                                    f->wsum_hess->to_csr(f->wsum_hess),
+        compose_csr_idx_map_for_spd(f->wsum_hess, f->wsum_hess->to_csr(f->wsum_hess),
                                     mnode->idx_map_Hf);
     }
     if (g->wsum_hess->kind == MATRIX_STACKED_PD)
     {
-        compose_csr_idx_map_for_spd((const stacked_pd *) g->wsum_hess,
-                                    g->wsum_hess->to_csr(g->wsum_hess),
+        compose_csr_idx_map_for_spd(g->wsum_hess, g->wsum_hess->to_csr(g->wsum_hess),
                                     mnode->idx_map_Hg);
     }
 

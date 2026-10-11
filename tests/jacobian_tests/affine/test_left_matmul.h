@@ -7,7 +7,6 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
-#include "sparsediff_linalg/permuted_dense.h"
 #include "test_helpers.h"
 
 const char *test_jacobian_left_matmul_log(void)
@@ -175,19 +174,15 @@ const char *test_jacobian_left_matmul_pd_from_composite_child(void)
        jacobian_init_pd path via BA_pd_matrices_alloc). */
     mu_assert("outer Jacobian should be PD",
               A2_A1_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
-    permuted_dense *pd = (permuted_dense *) A2_A1_x->jacobian;
-    mu_assert("global m", A2_A1_x->jacobian->m == 4);
-    mu_assert("global n", A2_A1_x->jacobian->n == 2);
-    mu_assert("m0", pd->m0 == 4);
-    mu_assert("n0", pd->n0 == 2);
-    int expected_row_perm[4] = {0, 1, 2, 3};
-    int expected_col_perm[2] = {0, 1};
-    mu_assert("row_perm", cmp_int_array(pd->row_perm, expected_row_perm, 4));
-    mu_assert("col_perm", cmp_int_array(pd->col_perm, expected_col_perm, 2));
+    matrix *jac = A2_A1_x->jacobian;
+    mu_assert("global m", jac->m == 4);
+    mu_assert("global n", jac->n == 2);
+    /* nnz == m * n: the dense block covers the full shape (identity perms). */
+    mu_assert("full block", jac->nnz == 8);
 
-    /* Numerical: X = A2 @ A1 (row-major 4x2). */
+    /* Numerical: X = A2 @ A1 (row-major 4x2; a PD's x is its block). */
     double expected_X[8] = {6.0, 8.0, 3.0, 4.0, 6.0, 8.0, 3.0, 4.0};
-    mu_assert("X values", cmp_double_array(pd->X, expected_X, 8));
+    mu_assert("X values", cmp_double_array(jac->x, expected_X, 8));
 
     /* Cross-check against numerical differentiation for paranoia. */
     mu_assert("check_jacobian failed",
@@ -225,25 +220,20 @@ const char *test_jacobian_left_matmul_pd_param(void)
 
     /* Structural: Jacobian must be PD. */
     mu_assert("Jacobian should be PD", A_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
-    permuted_dense *pd = (permuted_dense *) A_x->jacobian;
-    mu_assert("global m", A_x->jacobian->m == 3);
-    mu_assert("global n", A_x->jacobian->n == 2);
-    mu_assert("m0", pd->m0 == 3);
-    mu_assert("n0", pd->n0 == 2);
-    int expected_row_perm[3] = {0, 1, 2};
-    int expected_col_perm[2] = {0, 1};
-    mu_assert("row_perm", cmp_int_array(pd->row_perm, expected_row_perm, 3));
-    mu_assert("col_perm", cmp_int_array(pd->col_perm, expected_col_perm, 2));
+    matrix *jac = A_x->jacobian;
+    mu_assert("global m", jac->m == 3);
+    mu_assert("global n", jac->n == 2);
+    mu_assert("full block", jac->nnz == 6);
 
-    /* Values: pd->X is row-major of A. */
+    /* Values: the block is row-major A. */
     double expected_X1[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    mu_assert("X values (param 1)", cmp_double_array(pd->X, expected_X1, 6));
+    mu_assert("X values (param 1)", cmp_double_array(jac->x, expected_X1, 6));
 
     mu_assert("numerical check (param 1)",
               check_jacobian_num(A_x, x_vals, NUMERICAL_DIFF_DEFAULT_H));
 
-    /* Update the parameter and re-evaluate. The PD output struct is reused;
-       only pd->X should change. */
+    /* Update the parameter and re-evaluate. The PD output is reused; only its
+       values should change. */
     double theta2[6] = {7.0, 9.0, 11.0, 8.0, 10.0, 12.0};
     memcpy(A_param->value, theta2, 6 * sizeof(double));
     expr_set_needs_refresh(A_x);
@@ -254,7 +244,7 @@ const char *test_jacobian_left_matmul_pd_param(void)
     mu_assert("Jacobian still PD after refresh",
               A_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
     double expected_X2[6] = {7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
-    mu_assert("X values (param 2)", cmp_double_array(pd->X, expected_X2, 6));
+    mu_assert("X values (param 2)", cmp_double_array(jac->x, expected_X2, 6));
 
     mu_assert("numerical check (param 2)",
               check_jacobian_num(A_x, x_vals, NUMERICAL_DIFF_DEFAULT_H));

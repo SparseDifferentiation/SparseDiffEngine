@@ -152,8 +152,8 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
     }
     if (prob->objective->wsum_hess->kind == MATRIX_STACKED_PD)
     {
-        compose_csr_idx_map_for_spd((const stacked_pd *) prob->objective->wsum_hess,
-                                    H_obj, prob->hess_idx_map + obj_start);
+        compose_csr_idx_map_for_spd(prob->objective->wsum_hess, H_obj,
+                                    prob->hess_idx_map + obj_start);
     }
 
     /* map constraint hessian entries */
@@ -175,9 +175,8 @@ static void problem_lagrange_hess_fill_sparsity(problem *prob, int *iwork)
         }
         if (constrs[c_idx]->wsum_hess->kind == MATRIX_STACKED_PD)
         {
-            compose_csr_idx_map_for_spd(
-                (const stacked_pd *) constrs[c_idx]->wsum_hess, H_c,
-                prob->hess_idx_map + c_start);
+            compose_csr_idx_map_for_spd(constrs[c_idx]->wsum_hess, H_c,
+                                        prob->hess_idx_map + c_start);
         }
     }
 }

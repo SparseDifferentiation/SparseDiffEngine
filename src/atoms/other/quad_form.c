@@ -272,8 +272,7 @@ static void wsum_hess_init_dense(expr *node)
     {
         /* term1 = J_f^T Q J_f = (Q J_f)^T J_f. QJf is PD; passing it as the
            transposed operand B keeps the PD type on the dispatch key. */
-        permuted_dense *Q_pd = (permuted_dense *) qnode->Q;
-        qnode->QJf_dense = BA_pd_matrices_alloc(Q_pd, x->jacobian);
+        qnode->QJf_dense = BA_pd_matrices_alloc(qnode->Q, x->jacobian);
         node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf_dense);
 
         /* term2 = sum_i (Q f(x))_i nabla^2 f_i */
@@ -306,8 +305,7 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
     else
     {
         /* term1 = 2w J_f^T Q J_f = 2w (Q J_f)^T J_f */
-        BA_pd_matrices_fill_values((permuted_dense *) qnode->Q, x->jacobian,
-                                   (permuted_dense *) qnode->QJf_dense);
+        BA_pd_matrices_fill_values(qnode->Q, x->jacobian, qnode->QJf_dense);
         BTA_matrices_fill_values(x->jacobian, qnode->QJf_dense,
                                  node->work->hess_term1);
         cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
