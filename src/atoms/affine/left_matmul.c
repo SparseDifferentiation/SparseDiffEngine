@@ -145,9 +145,6 @@ static void eval_jacobian_dense(expr *node)
     expr *x = node->left;
     eval_jacobian(x);
 
-    /* must refresh CSC cache if x->jacobian is sparse_matrix */
-    x->jacobian->refresh_csc_values(x->jacobian);
-
     permuted_dense *A_pd = (permuted_dense *) lnode->A;
     if (lnode->n_blocks == 1)
     {

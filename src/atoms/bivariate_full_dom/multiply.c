@@ -152,17 +152,6 @@ static void wsum_hess_init_impl(expr *node)
             node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
         }
 
-        /* For sparse matrices we need the CSC cache to be valid for the
-           BTA_matrices_alloc / BTDA_matrices_fill_values calls below. */
-        if (x->jacobian->kind == MATRIX_SPARSE)
-        {
-            sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
-        }
-        if (y->jacobian->kind == MATRIX_SPARSE)
-        {
-            sparse_matrix_ensure_csc_cache((sparse_matrix *) y->jacobian);
-        }
-
         /* compute sparsity of C and prepare CT */
         matrix *C = BTA_matrices_alloc(x->jacobian, y->jacobian);
         matrix *CT = C->transpose_alloc(C);
@@ -232,21 +221,11 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     {
         bool is_x_affine = x->is_affine(x);
         bool is_y_affine = y->is_affine(y);
-        // ----------------------------------------------------------------------
-        //  Refresh each operand's CSC_matrix cache as needed for the (Sparse,
-        //  Sparse) dispatch path. For PD operands, refresh_csc_values is a no-op.
-        //  The refresh is version-guarded, so an affine child's cache is only
-        //  filled once per parameter epoch.
-        // ----------------------------------------------------------------------
-        x->jacobian->refresh_csc_values(x->jacobian);
-        y->jacobian->refresh_csc_values(y->jacobian);
-
         // ---------------------------------------------------------------
         //                    compute C and CT
         // ---------------------------------------------------------------
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         BTDA_matrices_fill_values(x->jacobian, w, y->jacobian, mul_node->C);
-        matrix_values_changed(mul_node->C);
         mul_node->C->transpose_fill_values(mul_node->C, mul_node->CT);
 
         // ---------------------------------------------------------------

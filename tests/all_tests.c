@@ -210,7 +210,6 @@ int main(void)
     mu_run_test(test_values_version_non_affine, tests_run);
     mu_run_test(test_values_version_affine, tests_run);
     mu_run_test(test_impl_skip_affine, tests_run);
-    mu_run_test(test_values_version_csc_mirror_dedup, tests_run);
     mu_run_test(test_values_version_stacked_pd_to_csr, tests_run);
     mu_run_test(test_values_version_param_under_hstack, tests_run);
     mu_run_test(test_refresh_prunes_param_free, tests_run);

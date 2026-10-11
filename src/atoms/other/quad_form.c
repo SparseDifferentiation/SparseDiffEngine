@@ -270,12 +270,6 @@ static void wsum_hess_init_dense(expr *node)
     }
     else
     {
-        /* The dispatchers read a sparse child jacobian through its csc_cache. */
-        if (x->jacobian->kind == MATRIX_SPARSE)
-        {
-            sparse_matrix_ensure_csc_cache((sparse_matrix *) x->jacobian);
-        }
-
         /* term1 = J_f^T Q J_f = (Q J_f)^T J_f. QJf is PD; passing it as the
            transposed operand B keeps the PD type on the dispatch key. */
         permuted_dense *Q_pd = (permuted_dense *) qnode->Q;
@@ -311,10 +305,6 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
     }
     else
     {
-        /* Mirror the child jacobian's current values into its csc_cache; the PD
-           dispatchers below read from it. */
-        x->jacobian->refresh_csc_values(x->jacobian);
-
         /* term1 = 2w J_f^T Q J_f = 2w (Q J_f)^T J_f */
         BA_pd_matrices_fill_values((permuted_dense *) qnode->Q, x->jacobian,
                                    (permuted_dense *) qnode->QJf_dense);

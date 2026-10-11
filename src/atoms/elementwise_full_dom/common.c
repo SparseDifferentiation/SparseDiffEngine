@@ -139,19 +139,12 @@ void eval_wsum_hess_elementwise(expr *node, const double *w)
     {
         if (child->is_affine(child))
         {
-            /* Version-guarded: fills the affine child's CSC_matrix mirror on the
-               first call, no-ops after. */
-            child->jacobian->refresh_csc_values(child->jacobian);
-
             node->local_wsum_hess(node, node->work->dwork, w);
             child->jacobian->ATDA_fill_values(child->jacobian, node->work->dwork,
                                               node->wsum_hess);
         }
         else
         {
-            /* Non-affine child: values change every iteration, must refresh. */
-            child->jacobian->refresh_csc_values(child->jacobian);
-
             /* term1: Jg^T @ D @ Jg */
             node->local_wsum_hess(node, node->work->dwork, w);
             child->jacobian->ATDA_fill_values(child->jacobian, node->work->dwork,
