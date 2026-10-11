@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
-#include "sparsediff_linalg/CSR_sum.h"
-#include "sparsediff_linalg/sparse_matrix.h"
+#include "int_utils.h"
+#include "sparsediff_linalg/csr_kernels.h"
+#include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
-#include "sparsediff_linalg/utils.h"
 #include "subexpr.h"
 #include <assert.h>
 #include <stdio.h>

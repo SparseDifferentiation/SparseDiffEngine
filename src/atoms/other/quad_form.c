@@ -18,10 +18,8 @@
 #include "atoms/non_elementwise_full_dom.h"
 #include "sparsediff_linalg/CSC_matrix.h"
 #include "sparsediff_linalg/cblas_wrapper.h"
-#include "sparsediff_linalg/matmul_dispatchers.h"
-#include "sparsediff_linalg/matrix_sum.h"
-#include "sparsediff_linalg/permuted_dense.h"
-#include "sparsediff_linalg/sparse_matrix.h"
+#include "sparsediff_linalg/matmul.h"
+#include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <assert.h>

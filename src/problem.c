@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 #include "problem.h"
-#include "sparsediff_linalg/CSR_sum.h"
-#include "sparsediff_linalg/stacked_pd.h"
+#include "int_utils.h"
+#include "sparsediff_linalg/csr_kernels.h"
+#include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
-#include "sparsediff_linalg/utils.h"
 #include "subexpr.h"
 #include <assert.h>
 #include <stdio.h>
@@ -33,10 +33,10 @@ problem *new_problem(expr *objective, expr **constraints, int n_constraints,
                      bool verbose)
 {
 #ifdef SP_TRACK_MEMORY
-    /* we don't reset g_peak_bytes or g_allocated_bytes since allocations
-       using sp_malloc/sp_calloc might have happened before new_problem in eg.,
-       left_matmul, and their frees will subtract from this counter. */
-    g_peak_bytes = g_allocated_bytes;
+    /* Start the high-water mark at the current live count: allocations made
+       before new_problem (e.g. in left_matmul) stay counted, and their frees
+       subtract from the live count as usual. */
+    sp_memory_reset_peak();
 #endif
     problem *prob = (problem *) sp_calloc(1, sizeof(problem));
     if (!prob) return NULL;
@@ -379,7 +379,7 @@ void free_problem(problem *prob)
     if (prob == NULL) return;
 
 #ifdef SP_TRACK_MEMORY
-    prob->stats.memory_bytes = g_peak_bytes;
+    sp_memory_stats(NULL, &prob->stats.memory_bytes);
 #endif
     if (prob->verbose)
     {
