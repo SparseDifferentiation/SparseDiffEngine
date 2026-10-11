@@ -42,6 +42,14 @@ else()
     enable_testing()
 endif()
 set(SPARSEDIFF_LINALG_WARNINGS_AS_ERRORS ${SDE_WARNINGS_AS_ERRORS})
+# The library is a git submodule (https://github.com/SparseDifferentiation/sparsediff_linalg),
+# so a plain clone leaves the directory empty.
+if(NOT EXISTS "${PROJECT_SOURCE_DIR}/sparsediff_linalg/CMakeLists.txt")
+    message(FATAL_ERROR
+        "sparsediff_linalg/ is empty: the sparsediff_linalg submodule is not checked "
+        "out. Run\n    git submodule update --init --recursive\n"
+        "or clone with --recurse-submodules.")
+endif()
 add_subdirectory(sparsediff_linalg)
 
 add_compile_definitions(DIFF_ENGINE_VERSION="${DIFF_ENGINE_VERSION}")

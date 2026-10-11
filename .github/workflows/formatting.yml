@@ -12,6 +12,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: Install clang-format
         run: brew install clang-format || true
@@ -25,7 +27,7 @@ jobs:
       # the *.h branch and .c files are never checked.
       - name: Check C formatting
         run: |
-          misformatted=$(find . \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -style=file -output-replacements-xml | grep "<replacement " || true)
+          misformatted=$(find . -path ./sparsediff_linalg -prune -o \( -name '*.c' -o -name '*.h' \) -print0 | xargs -0 clang-format -style=file -output-replacements-xml | grep "<replacement " || true)
           if [ -n "$misformatted" ]; then
             echo "ERROR: Some files are not properly formatted. Run clang-format -i."
             exit 1
