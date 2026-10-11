@@ -11,10 +11,10 @@
 #include "atoms/elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/permuted_dense.h"
-#include "sparse_linalg/stacked_pd.h"
-#include "sparse_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/permuted_dense.h"
+#include "sparsediff_linalg/stacked_pd.h"
+#include "sparsediff_linalg/tracked_alloc.h"
 
 /* Profile and validate two ways to compute the Hessian of
    w^T exp(A @ X) for n x n matrices A, X with n = 50.

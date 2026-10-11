@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
-#include "sparse_linalg/matrix_sum.h"
-#include "sparse_linalg/sparse_matrix.h"
-#include "sparse_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/matrix_sum.h"
+#include "sparsediff_linalg/sparse_matrix.h"
+#include "sparsediff_linalg/tracked_alloc.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

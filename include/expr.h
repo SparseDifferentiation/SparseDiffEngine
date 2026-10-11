@@ -18,9 +18,9 @@
 #ifndef EXPR_H
 #define EXPR_H
 
-#include "sparse_linalg/CSC_matrix.h"
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/matrix.h"
+#include "sparsediff_linalg/CSC_matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/matrix.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

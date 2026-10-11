@@ -37,5 +37,5 @@ jobs:
       - name: Run tests under ASan+UBSan
         run: ./build/all_tests
 
-      - name: Run sparse_linalg tests under ASan+UBSan
-        run: ./build/sparse_linalg/sparse_linalg_tests
+      - name: Run sparsediff_linalg tests under ASan+UBSan
+        run: ./build/sparsediff_linalg/sparsediff_linalg_tests

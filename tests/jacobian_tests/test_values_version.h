@@ -8,7 +8,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
-#include "sparse_linalg/sparse_matrix.h"
+#include "sparsediff_linalg/sparse_matrix.h"
 #include "test_helpers.h"
 
 /* Non-affine node: every eval_jacobian call bumps the jacobian's

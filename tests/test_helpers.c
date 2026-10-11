@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/matrix.h"
 
 #define EPSILON 1e-7
 

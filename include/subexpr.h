@@ -19,9 +19,9 @@
 #define SUBEXPR_H
 
 #include "expr.h"
-#include "sparse_linalg/CSC_matrix.h"
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/matrix.h"
+#include "sparsediff_linalg/CSC_matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/matrix.h"
 
 /* Parameter ID for fixed constants (not updatable) */
 #define PARAM_FIXED -1

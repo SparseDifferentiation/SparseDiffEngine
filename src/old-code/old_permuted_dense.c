@@ -17,8 +17,8 @@
  */
 #include "old-code/old_permuted_dense.h"
 
-#include "sparse_linalg/cblas_wrapper.h"
-#include "sparse_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/cblas_wrapper.h"
+#include "sparsediff_linalg/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 

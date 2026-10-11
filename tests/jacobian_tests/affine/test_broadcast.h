@@ -5,7 +5,7 @@
 #include "atoms/affine.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparse_linalg/permuted_dense.h"
+#include "sparsediff_linalg/permuted_dense.h"
 #include "test_helpers.h"
 
 const char *test_broadcast_row_jacobian(void)

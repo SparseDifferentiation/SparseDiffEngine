@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 #include "problem.h"
-#include "sparse_linalg/CSR_sum.h"
-#include "sparse_linalg/stacked_pd.h"
-#include "sparse_linalg/tracked_alloc.h"
-#include "sparse_linalg/utils.h"
+#include "sparsediff_linalg/CSR_sum.h"
+#include "sparsediff_linalg/stacked_pd.h"
+#include "sparsediff_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/utils.h"
 #include "subexpr.h"
 #include <assert.h>
 #include <stdio.h>

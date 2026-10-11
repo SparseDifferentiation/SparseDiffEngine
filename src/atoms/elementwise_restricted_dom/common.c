@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 #include "atoms/elementwise_restricted_dom.h"
-#include "sparse_linalg/sparse_matrix.h"
-#include "sparse_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/sparse_matrix.h"
+#include "sparsediff_linalg/tracked_alloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 
