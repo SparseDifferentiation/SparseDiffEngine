@@ -4,7 +4,7 @@
 
 #include "atoms/affine.h"
 #include "minunit.h"
-#include "sparse_linalg/permuted_dense.h"
+#include "sparsediff_linalg/permuted_dense.h"
 #include "test_helpers.h"
 #include <math.h>
 #include <stdio.h>

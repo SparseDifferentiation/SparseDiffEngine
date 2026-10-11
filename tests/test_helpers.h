@@ -1,8 +1,8 @@
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/matrix.h"
 
 /* Compare two double arrays directly
  * Returns 1 if all values match, 0 otherwise */
@@ -33,7 +33,7 @@ CSR_matrix *new_csr_random(int m, int n, double density);
 /* Only available with -DSP_TRACK_MEMORY=ON: reads the tracked allocator
  * counters, which do not exist in a default build. */
 #ifdef SP_TRACK_MEMORY
-#include "sparse_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/tracked_alloc.h"
 
 /* No-alloc-in-fill contract: after alloc and one warm-up fill, a second fill
  * must not touch the tracked allocator at all. Any transient sp_malloc inside

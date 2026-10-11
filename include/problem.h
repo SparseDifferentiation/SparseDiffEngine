@@ -20,8 +20,8 @@
 
 #include "Timer.h"
 #include "expr.h"
-#include "sparse_linalg/COO_matrix.h"
-#include "sparse_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/COO_matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
 #include <stdbool.h>
 
 typedef struct

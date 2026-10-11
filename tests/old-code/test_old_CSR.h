@@ -7,15 +7,15 @@
 #include "minunit.h"
 #include "old-code/old_CSR.h"
 #include "old-code/old_CSR_sum.h"
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/int_double_pair.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/int_double_pair.h"
 #include "test_helpers.h"
 
 /* Direct unit tests for the legacy CSR kernels in old-code (diag_csr_mult,
    sum_csr_matrices, Ax_csr_fill_values, the sum_*_rows_csr family and
    kron_identity_csr). None of them sits on a production path; the tests keep
    the reference implementations honest. Run by all_tests only, since the
-   kernels are compiled into the engine, not into sparse_linalg. */
+   kernels are compiled into the engine, not into sparsediff_linalg. */
 
 const char *test_diag_csr_mult(void)
 {

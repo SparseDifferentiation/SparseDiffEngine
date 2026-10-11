@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 #include "old-code/old_CSR_sum.h"
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/int_double_pair.h"
-#include "sparse_linalg/utils.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/int_double_pair.h"
+#include "sparsediff_linalg/utils.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
-#include "sparse_linalg/mini_numpy.h"
-#include "sparse_linalg/tracked_alloc.h"
+#include "sparsediff_linalg/mini_numpy.h"
+#include "sparsediff_linalg/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
 

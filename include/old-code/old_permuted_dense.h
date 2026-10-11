@@ -18,8 +18,8 @@
 #ifndef OLD_PERMUTED_DENSE_H
 #define OLD_PERMUTED_DENSE_H
 
-#include "sparse_linalg/CSR_matrix.h"
-#include "sparse_linalg/permuted_dense.h"
+#include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/permuted_dense.h"
 
 /* Legacy CSR-based (PD, Sparse) BTA / BTDA kernels.
 

@@ -5,7 +5,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "numerical_diff.h"
-#include "sparse_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
 #include "subexpr.h"
 #include "test_helpers.h"
 

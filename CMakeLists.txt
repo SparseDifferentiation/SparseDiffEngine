@@ -37,12 +37,12 @@ option(SDE_WARNINGS_AS_ERRORS "Treat MSVC warnings as errors (/WX)"
 # directory-scoped below this point (warnings, definitions) is engine-only: it
 # reaches only subdirectories added after it.
 if(SKBUILD)
-    set(SPARSE_LINALG_BUILD_TESTS OFF)
+    set(SPARSEDIFF_LINALG_BUILD_TESTS OFF)
 else()
     enable_testing()
 endif()
-set(SPARSE_LINALG_WARNINGS_AS_ERRORS ${SDE_WARNINGS_AS_ERRORS})
-add_subdirectory(sparse_linalg)
+set(SPARSEDIFF_LINALG_WARNINGS_AS_ERRORS ${SDE_WARNINGS_AS_ERRORS})
+add_subdirectory(sparsediff_linalg)
 
 add_compile_definitions(DIFF_ENGINE_VERSION="${DIFF_ENGINE_VERSION}")
 
@@ -87,14 +87,14 @@ function(sde_set_config_options target)
 endfunction()
 
 # Source files - automatically gather all .c files from src/ (the library lives
-# under sparse_linalg/, outside this tree).
+# under sparsediff_linalg/, outside this tree).
 file(GLOB_RECURSE ENGINE_SOURCES "src/*.c")
 
 # Differentiation engine (expression DAG, atoms, problem). Built
 # position-independent so it can be linked into the Python extension module.
 add_library(dnlp_diff ${ENGINE_SOURCES})
 target_include_directories(dnlp_diff PUBLIC ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(dnlp_diff PUBLIC sparse_linalg::sparse_linalg)
+target_link_libraries(dnlp_diff PUBLIC sparsediff_linalg::sparsediff_linalg)
 set_property(TARGET dnlp_diff PROPERTY POSITION_INDEPENDENT_CODE ON)
 sde_set_config_options(dnlp_diff)
 

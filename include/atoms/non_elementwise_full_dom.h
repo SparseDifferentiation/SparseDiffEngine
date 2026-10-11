@@ -19,7 +19,7 @@
 #define NON_ELEMENTWISE_FULL_DOM_H
 
 #include "expr.h"
-#include "sparse_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
 #include "subexpr.h"
 
 /* quad-form with sparse constant matrix Q */

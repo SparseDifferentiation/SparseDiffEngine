@@ -19,7 +19,7 @@
 #define AFFINE_H
 
 #include "expr.h"
-#include "sparse_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/CSR_matrix.h"
 
 expr *new_add(expr *left, expr *right);
 expr *new_neg(expr *child);
