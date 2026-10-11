@@ -382,11 +382,10 @@ const char *test_BTA_pd_csc_matches_csr(void)
     BTDA_pd_csr_fill_values(B, d, A_csr, C_csr);
 
     /* Dispatcher variant (under test). A copy of A, since the oracle keeps
-       A_csr; the dispatcher builds the CSC cache, the caller refreshes it. */
+       A_csr; the dispatcher owns the CSC mirror and keeps it fresh. */
     matrix *A_m = new_sparse_matrix(new_csr(A_csr));
     matrix *C_csc_m = BTA_matrices_alloc(A_m, B_m);
     permuted_dense *C_csc = (permuted_dense *) C_csc_m;
-    A_m->refresh_csc_values(A_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_csc_m);
 
     /* Structural equality. */
@@ -436,11 +435,8 @@ const char *test_BTDA_matrices_csr_pd(void)
 
     double d[4] = {1.0, -2.0, 0.5, 3.0};
 
-    /* Wrapper path. Dispatchers don't touch sparse_matrix internals — caller
-       owns csc_cache structure and values. */
-    sparse_matrix_ensure_csc_cache((sparse_matrix *) A_m);
+    /* Wrapper path. */
     matrix *C_m = BTA_matrices_alloc(A_m, B_m);
-    A_m->refresh_csc_values(A_m);
     BTDA_matrices_fill_values(A_m, d, B_m, C_m);
 
     /* Direct primitive path. */

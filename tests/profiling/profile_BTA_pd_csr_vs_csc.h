@@ -88,7 +88,6 @@ static void run_bench_one_density(int m, int n0_B, int n_A, int nnz_per_row,
     matrix *C_csr_m = BTA_pd_csr_alloc(B, A_csr);
     permuted_dense *C_csr = (permuted_dense *) C_csr_m;
     matrix *C_csc_m = BTA_matrices_alloc(A_m, B_m);
-    A_m->refresh_csc_values(A_m);
 
     /* d for BTDA: all ones, so C = B^T diag(d) A = B^T A. */
     double *d_ones = (double *) malloc(m * sizeof(double));

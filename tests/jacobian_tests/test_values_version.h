@@ -105,39 +105,6 @@ const char *test_impl_skip_affine(void)
     return 0;
 }
 
-/* sparse_matrix CSC mirror: refresh_csc_values fills once per write and
- * dedupes repeated calls with no write in between. */
-const char *test_values_version_csc_mirror_dedup(void)
-{
-    double u[3] = {0.1, 0.2, 0.3};
-    expr *x = new_variable(3, 1, 0, 3);
-    expr *e = new_exp(x);
-
-    jacobian_init(e);
-    e->forward(e, u);
-    eval_jacobian(e);
-
-    /* jacobian of exp over a leaf variable is a diagonal sparse_matrix, so
-       the CSC mirror holds the same values in the same order */
-    double expected[3] = {exp(u[0]), exp(u[1]), exp(u[2])};
-    sparse_matrix *sm = (sparse_matrix *) e->jacobian;
-
-    e->jacobian->refresh_csc_values(e->jacobian);
-    mu_assert("csc_seen must catch up to values_version",
-              sm->csc_seen == sm->base.values_version);
-    mu_assert("csc values after first refresh",
-              cmp_double_array(sm->csc_cache->x, expected, 3));
-
-    /* no write in between: second refresh must be a no-op and leave the
-       values correct */
-    e->jacobian->refresh_csc_values(e->jacobian);
-    mu_assert("csc values after deduped refresh",
-              cmp_double_array(sm->csc_cache->x, expected, 3));
-
-    free_expr(e);
-    return 0;
-}
-
 /* stacked_pd CSR view: to_csr returns a stable pointer, skips the value
  * copy when nothing was written, and refreshes after a write + bump. */
 const char *test_values_version_stacked_pd_to_csr(void)
