@@ -11,7 +11,7 @@
 #include "atoms/elementwise_full_dom.h"
 #include "expr.h"
 #include "minunit.h"
-#include "sparsediff_linalg/permuted_dense.h"
+#include "sparsediff_linalg/matrix.h"
 
 /* Profile and validate Jacobian + Hessian of obj = sum(logistic(A x)).
 

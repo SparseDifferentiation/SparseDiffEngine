@@ -37,14 +37,16 @@ CSR_matrix *new_csr_random(int m, int n, double density);
 
 /* No-alloc-in-fill contract: after alloc and one warm-up fill, a second fill
  * must not touch the tracked allocator at all. Any transient sp_malloc inside
- * the fill raises g_peak_bytes above the baseline even if freed before
- * returning; a permanent one raises g_allocated_bytes. */
+ * the fill raises the peak above the baseline even if freed before returning;
+ * a permanent one raises the live count. */
 static inline int fill_is_alloc_free(void (*fill)(const void *ctx), const void *ctx)
 {
-    size_t base = g_allocated_bytes;
-    g_peak_bytes = base;
+    size_t base, live, peak;
+    sp_memory_stats(&base, NULL);
+    sp_memory_reset_peak();
     fill(ctx);
-    return g_allocated_bytes == base && g_peak_bytes == base;
+    sp_memory_stats(&live, &peak);
+    return live == base && peak == base;
 }
 #endif
 

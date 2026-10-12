@@ -17,9 +17,8 @@
  */
 #include "atoms/affine.h"
 #include "sparsediff_linalg/CSR_matrix.h"
-#include "sparsediff_linalg/linalg_sparse_matmuls.h"
-#include "sparsediff_linalg/mini_numpy.h"
-#include "sparsediff_linalg/sparse_matrix.h"
+#include "sparsediff_linalg/csr_kernels.h"
+#include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <stdio.h>
