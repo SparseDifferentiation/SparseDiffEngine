@@ -17,7 +17,6 @@
  */
 #include "atoms/bivariate_full_dom.h"
 #include "sparsediff_linalg/CSR_matrix.h"
-#include "sparsediff_linalg/csr_kernels.h"
 #include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -162,42 +161,9 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->C = C;
         mul_node->CT = CT;
 
-        /* compute sparsity pattern of H = C + C^T + term2 + term3 (we also
-           fill index maps telling us where to accumulate each element of each
-           matrix in the sum) */
-        int *maps[4];
-        CSR_matrix *hess = sum_4_csr_alloc(C->to_csr(C), CT->to_csr(CT),
-                                           x->wsum_hess->to_csr(x->wsum_hess),
-                                           y->wsum_hess->to_csr(y->wsum_hess), maps);
-        node->wsum_hess = new_sparse_matrix(hess);
-        mul_node->idx_map_C = maps[0];
-        mul_node->idx_map_CT = maps[1];
-        mul_node->idx_map_Hx = maps[2];
-        mul_node->idx_map_Hy = maps[3];
-
-        /* If C / CT / x->wsum_hess / y->wsum_hess come out as stacked_pd,
-           re-index the corresponding idx_map from CSR position so the
-           accumulator below can read each matrix's ->x directly. */
-        if (C->kind == MATRIX_STACKED_PD)
-        {
-            compose_csr_idx_map_for_spd(C, C->to_csr(C), mul_node->idx_map_C);
-        }
-        if (CT->kind == MATRIX_STACKED_PD)
-        {
-            compose_csr_idx_map_for_spd(CT, CT->to_csr(CT), mul_node->idx_map_CT);
-        }
-        if (x->wsum_hess->kind == MATRIX_STACKED_PD)
-        {
-            compose_csr_idx_map_for_spd(x->wsum_hess,
-                                        x->wsum_hess->to_csr(x->wsum_hess),
-                                        mul_node->idx_map_Hx);
-        }
-        if (y->wsum_hess->kind == MATRIX_STACKED_PD)
-        {
-            compose_csr_idx_map_for_spd(y->wsum_hess,
-                                        y->wsum_hess->to_csr(y->wsum_hess),
-                                        mul_node->idx_map_Hy);
-        }
+        /* sparsity pattern of H = C + C^T + term2 + term3; the sum binds the
+           per-operand index maps it accumulates through at eval */
+        node->wsum_hess = sum_4_matrices_alloc(C, CT, x->wsum_hess, y->wsum_hess);
     }
 }
 
@@ -248,15 +214,8 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
         // ---------------------------------------------------------------
         //        compute H = C + C^T + term2 + term3
         // ---------------------------------------------------------------
-        memset(node->wsum_hess->x, 0, node->wsum_hess->nnz * sizeof(double));
-        accumulator(mul_node->C->x, mul_node->C->nnz, mul_node->idx_map_C,
-                    node->wsum_hess->x);
-        accumulator(mul_node->CT->x, mul_node->CT->nnz, mul_node->idx_map_CT,
-                    node->wsum_hess->x);
-        accumulator(x->wsum_hess->x, x->wsum_hess->nnz, mul_node->idx_map_Hx,
-                    node->wsum_hess->x);
-        accumulator(y->wsum_hess->x, y->wsum_hess->nnz, mul_node->idx_map_Hy,
-                    node->wsum_hess->x);
+        sum_4_matrices_fill_values(mul_node->C, mul_node->CT, x->wsum_hess,
+                                   y->wsum_hess, node->wsum_hess);
     }
 }
 
@@ -265,10 +224,6 @@ static void free_type_data(expr *node)
     elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
     free_matrix(mul_node->C);
     free_matrix(mul_node->CT);
-    sp_free(mul_node->idx_map_C);
-    sp_free(mul_node->idx_map_CT);
-    sp_free(mul_node->idx_map_Hx);
-    sp_free(mul_node->idx_map_Hy);
 }
 
 static bool is_affine(const expr *node)
