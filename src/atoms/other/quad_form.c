@@ -18,6 +18,7 @@
 #include "atoms/non_elementwise_full_dom.h"
 #include "sparsediff_linalg/CSC_matrix.h"
 #include "sparsediff_linalg/cblas_wrapper.h"
+#include "sparsediff_linalg/csr_kernels.h"
 #include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -136,8 +137,9 @@ static void eval_jacobian_impl(expr *node)
     }
 }
 
-/* Sparse-backend hessian. The non-leaf chain rule J_f^T Q J_f uses raw CSR/CSC
-   symmetric products that have no matrix-vtable equivalent. */
+/* Sparse-backend hessian. The non-leaf chain rule forms term1 = J_f^T Q J_f as
+   (Q J_f)^T J_f through the matrix dispatchers, like the dense path: Q J_f is a
+   sparse handle built with the csr x csc product. */
 static void wsum_hess_init_sparse(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -177,10 +179,9 @@ static void wsum_hess_init_sparse(expr *node)
         /* jacobian_csc_init(x) already called in jacobian_init */
         CSC_matrix *Jf = x->work->jacobian_csc;
 
-        /* term1 = Jf^T W Jf = Jf^T B*/
-        CSC_matrix *B = symBA_alloc(Q, Jf);
-        qnode->QJf = B;
-        node->work->hess_term1 = new_sparse_matrix(BTA_alloc(Jf, B));
+        /* QJf = Q J_f as a sparse handle; term1 = (Q J_f)^T J_f */
+        qnode->QJf = new_sparse_matrix(csr_csc_matmul_alloc(Q, Jf));
+        node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
         /* term2 = sum_i (Qf(x))_i nabla^2 f_i */
         wsum_hess_init(x);
@@ -213,16 +214,16 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
     {
         /* refresh the CSC_matrix mirror of the child's Jacobian (version-guarded:
            no-ops when the jacobian pass already refreshed it this eval, or when
-           an affine child's values are unchanged) */
+           an affine child's values are unchanged); the csr x csc product reads it */
         CSC_matrix *Jf = x->work->jacobian_csc;
         expr_refresh_jacobian_csc(x);
 
-        CSC_matrix *QJf = qnode->QJf;
-        CSR_matrix *term1 = node->work->hess_term1->to_csr(node->work->hess_term1);
+        /* QJf = Q J_f, written through the raw fill, so notify the handle */
+        csr_csc_matmul_fill_values(Q, Jf, qnode->QJf->to_csr(qnode->QJf));
+        matrix_values_changed(qnode->QJf);
 
-        /* term1 = J_f^T Q J_f = J_f^T B */
-        BA_fill_values(Q, Jf, QJf);
-        BTDA_fill_values(Jf, QJf, NULL, term1);
+        /* term1 = J_f^T Q J_f = (Q J_f)^T J_f */
+        BTA_matrices_fill_values(x->jacobian, qnode->QJf, node->work->hess_term1);
 
         /* term2 */
         eval_wsum_hess(x, node->work->dwork);
@@ -270,8 +271,8 @@ static void wsum_hess_init_dense(expr *node)
     {
         /* term1 = J_f^T Q J_f = (Q J_f)^T J_f. QJf is PD; passing it as the
            transposed operand B keeps the PD type on the dispatch key. */
-        qnode->QJf_dense = BA_pd_matrices_alloc(qnode->Q, x->jacobian);
-        node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf_dense);
+        qnode->QJf = BA_pd_matrices_alloc(qnode->Q, x->jacobian);
+        node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
         /* term2 = sum_i (Q f(x))_i nabla^2 f_i */
         wsum_hess_init(x);
@@ -303,9 +304,8 @@ static void eval_wsum_hess_dense(expr *node, const double *w)
     else
     {
         /* term1 = 2w J_f^T Q J_f = 2w (Q J_f)^T J_f */
-        BA_pd_matrices_fill_values(qnode->Q, x->jacobian, qnode->QJf_dense);
-        BTA_matrices_fill_values(x->jacobian, qnode->QJf_dense,
-                                 node->work->hess_term1);
+        BA_pd_matrices_fill_values(qnode->Q, x->jacobian, qnode->QJf);
+        BTA_matrices_fill_values(x->jacobian, qnode->QJf, node->work->hess_term1);
         cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x,
                     1);
         matrix_values_changed(node->work->hess_term1);
@@ -335,16 +335,8 @@ static void free_type_data(expr *node)
     quad_form_expr *qnode = (quad_form_expr *) node;
     free_matrix(qnode->Q);
     qnode->Q = NULL;
-    if (qnode->QJf != NULL)
-    {
-        free_CSC_matrix(qnode->QJf);
-        qnode->QJf = NULL;
-    }
-    if (qnode->QJf_dense != NULL)
-    {
-        free_matrix(qnode->QJf_dense);
-        qnode->QJf_dense = NULL;
-    }
+    free_matrix(qnode->QJf);
+    qnode->QJf = NULL;
     free_expr(qnode->param_source);
     qnode->param_source = NULL;
 }
