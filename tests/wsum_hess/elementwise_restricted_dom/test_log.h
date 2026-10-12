@@ -61,7 +61,7 @@ const char *test_wsum_hess_exp_composite(void)
     memcpy(A_csr->p, Ap, 4 * sizeof(int));
 
     expr *x = new_variable(5, 1, 0, 5);
-    expr *Ax_node = new_linear(x, A_csr, NULL);
+    expr *Ax_node = new_left_matmul(NULL, x, A_csr);
     expr *exp_node = new_exp(Ax_node);
 
     mu_assert("check_wsum_hess failed",

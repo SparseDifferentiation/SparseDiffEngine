@@ -1,7 +1,7 @@
 #include <stdio.h>
 
+#include "atoms/affine.h"
 #include "minunit.h"
-#include "old-code/old_affine.h"
 
 /* Include all test headers */
 #ifndef PROFILE_ONLY
@@ -12,7 +12,6 @@
 #include "forward_pass/affine/test_hstack.h"
 #include "forward_pass/affine/test_kron.h"
 #include "forward_pass/affine/test_left_matmul_dense.h"
-#include "forward_pass/affine/test_linear_op.h"
 #include "forward_pass/affine/test_neg.h"
 #include "forward_pass/affine/test_promote.h"
 #include "forward_pass/affine/test_sum.h"
@@ -121,7 +120,6 @@ int main(void)
     mu_run_test(test_variable, tests_run);
     mu_run_test(test_constant, tests_run);
     mu_run_test(test_addition, tests_run);
-    mu_run_test(test_linear_op, tests_run);
     mu_run_test(test_neg_forward, tests_run);
     mu_run_test(test_promote_scalar_to_vector, tests_run);
     mu_run_test(test_exp, tests_run);

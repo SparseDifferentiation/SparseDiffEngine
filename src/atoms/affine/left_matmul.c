@@ -30,8 +30,8 @@
    A @ f(x), where A is a given matrix and f(x) is an arbitrary expression.
    Here, f(x) can be a vector-valued expression and a matrix-valued
    expression. The dimensions are A - m x n, f(x) - n x p, y - m x p.
-   Note that here A does not have global column indices but it is a local matrix.
-   This is an important distinction compared to linear_op_expr.
+   Note that A has local column indices (f(x)'s entries), not global variable
+   indices.
 
    * To compute the forward pass: vec(y) = A_kron @ vec(f(x)),
      where A_kron = I_p kron A is a Kronecker product of size (m*p) x (n*p),

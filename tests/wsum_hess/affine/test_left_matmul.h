@@ -115,7 +115,7 @@ const char *test_wsum_hess_left_matmul_exp_composite(void)
     memcpy(A->i, A_i, 7 * sizeof(int));
     memcpy(A->x, A_x, 7 * sizeof(double));
 
-    expr *Bx = new_linear(x, B, NULL);
+    expr *Bx = new_left_matmul(NULL, x, B);
     expr *exp_Bx = new_exp(Bx);
     expr *A_exp_Bx = new_left_matmul(NULL, exp_Bx, A);
 

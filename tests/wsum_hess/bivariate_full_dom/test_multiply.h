@@ -70,8 +70,8 @@ const char *test_wsum_hess_multiply_sparse_random(void)
 
     /* Create variable and linear operators */
     expr *x = new_variable(10, 1, 0, 10);
-    expr *Ax_node = new_linear(x, A, NULL);
-    expr *Bx_node = new_linear(x, B, NULL);
+    expr *Ax_node = new_left_matmul(NULL, x, A);
+    expr *Bx_node = new_left_matmul(NULL, x, B);
 
     /* Create multiply node */
     expr *mult_node = new_elementwise_mult(Ax_node, Bx_node);
@@ -84,6 +84,7 @@ const char *test_wsum_hess_multiply_sparse_random(void)
     jacobian_init(mult_node);
     wsum_hess_init(mult_node);
     double w[5] = {0.50646339, 0.44756224, 0.67295241, 0.16424956, 0.03031469};
+    eval_jacobian(mult_node); /* the Hessian chain rule reads child Jacobians */
     eval_wsum_hess(mult_node, w);
 
     /* Expected Hessian in CSR_matrix format (10x10) */
@@ -172,19 +173,19 @@ const char *test_wsum_hess_multiply_linear_ops(void)
 
     /* Create linear operator expressions */
     expr *x = new_variable(3, 1, 0, 3);
-    expr *Ax_node = new_linear(x, A, NULL);
-    expr *Bx_node = new_linear(x, B, NULL);
+    expr *Ax_node = new_left_matmul(NULL, x, A);
+    expr *Bx_node = new_left_matmul(NULL, x, B);
 
     /* Create elementwise multiply node */
     expr *mult_node = new_elementwise_mult(Ax_node, Bx_node);
 
-    /* Forward pass */
-    double u_vals[3] = {1.0, 1.0, 1.0};
-    mult_node->forward(mult_node, u_vals);
-
-    /* Initialize Hessian structure */
+    /* Initialize derivative structures, then forward + Jacobian pass (the
+       Hessian chain rule reads the children's Jacobian values) */
     jacobian_init(mult_node);
     wsum_hess_init(mult_node);
+    double u_vals[3] = {1.0, 1.0, 1.0};
+    mult_node->forward(mult_node, u_vals);
+    eval_jacobian(mult_node);
 
     /* Evaluate Hessian with weights */
     double w[4] = {1.0, 2.0, 3.0, 4.0};

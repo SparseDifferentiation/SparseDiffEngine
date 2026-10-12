@@ -24,7 +24,7 @@ const char *test_wsum_hess_sum_exp_linear(void)
     double w = 1.5;
 
     expr *x = new_variable(2, 1, 0, 2);
-    expr *Ax_node = new_linear(x, A, NULL);
+    expr *Ax_node = new_left_matmul(NULL, x, A);
     expr *exp_node = new_exp(Ax_node);
     expr *sum_node = new_sum(exp_node, -1);
 
