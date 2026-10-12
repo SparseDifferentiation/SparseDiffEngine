@@ -149,29 +149,6 @@ static matrix *embed_Q_at_variable(const quad_form_expr *qnode, const expr *x)
     return new_sparse_matrix(H);
 }
 
-/* Q J_f through the dispatchers. A permuted_dense Q keeps the BA_pd kernels (no
-   transpose scratch, output permuted_dense). A sparse Q uses symmetry: Q J_f =
-   Q^T J_f is the dispatcher's B^T A with Q as the transposed operand, and the
-   output takes J_f's kind. */
-static matrix *QJf_alloc(const quad_form_expr *qnode, matrix *Jf)
-{
-    if (qnode->Q->kind == MATRIX_PERMUTED_DENSE)
-    {
-        return BA_pd_matrices_alloc(qnode->Q, Jf);
-    }
-    return BTA_matrices_alloc(Jf, qnode->Q);
-}
-
-static void QJf_fill_values(const quad_form_expr *qnode, matrix *Jf, matrix *QJf)
-{
-    if (qnode->Q->kind == MATRIX_PERMUTED_DENSE)
-    {
-        BA_pd_matrices_fill_values(qnode->Q, Jf, QJf);
-        return;
-    }
-    BTA_matrices_fill_values(Jf, qnode->Q, QJf);
-}
-
 static void wsum_hess_init_impl(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -185,8 +162,10 @@ static void wsum_hess_init_impl(expr *node)
 
     /* The hessian of h(x) = f(x)^T Q f(x) is term1 + term2 where
          term1 = J_f^T Q J_f = (Q J_f)^T J_f,
-         term2 = sum_i (Q f(x))_i nabla^2 f_i. */
-    qnode->QJf = QJf_alloc(qnode, x->jacobian);
+         term2 = sum_i (Q f(x))_i nabla^2 f_i.
+       Q is symmetric, so Q J_f = Q^T J_f is the dispatcher's B^T A with Q as the
+       transposed operand, whatever Q's kind. */
+    qnode->QJf = BTA_matrices_alloc(x->jacobian, qnode->Q);
     node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
     wsum_hess_init(x);
@@ -215,8 +194,8 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     }
 
     /* term1 = 2w (Q J_f)^T J_f. The fills refresh the caches they read (J_f's
-       each eval, a sparse Q's once) themselves. */
-    QJf_fill_values(qnode, x->jacobian, qnode->QJf);
+       each eval, Q's only when Q changes) themselves. */
+    BTA_matrices_fill_values(x->jacobian, qnode->Q, qnode->QJf);
     BTA_matrices_fill_values(x->jacobian, qnode->QJf, node->work->hess_term1);
     cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x, 1);
     matrix_values_changed(node->work->hess_term1);
