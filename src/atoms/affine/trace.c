@@ -58,10 +58,7 @@ static void jacobian_init_impl(expr *node)
         map[i] = i * (d1 + 1);
     }
     tnode->diag_rows = x->jacobian->row_gather_alloc(x->jacobian, map, d1);
-    for (int i = 0; i < d1; i++)
-    {
-        map[i] = 0;
-    }
+    memset(map, 0, d1 * sizeof(int));
     node->jacobian = tnode->diag_rows->row_reduce_alloc(tnode->diag_rows, map, 1);
     sp_free(map);
 }
