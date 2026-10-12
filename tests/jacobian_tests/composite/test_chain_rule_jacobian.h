@@ -250,6 +250,55 @@ const char *test_jacobian_matmul_Ax_By(void)
     return 0;
 }
 
+/* Z = (A1 @ X) @ (A2 @ Y) with dense A1 (2x3), A2 (2x2): both children carry
+   stacked_pd Jacobians, so matmul's kron dispatchers take their spd cells. */
+const char *test_jacobian_matmul_dense_Ax_By(void)
+{
+    double u_vals[12] = {1.0, -2.0, 3.0,  4.0,  -5.0, 6.0,
+                         7.0, 8.0,  -9.0, 10.0, 0.5,  -1.5};
+    double A1[6] = {1, 2, 3, 4, 5, 6};
+    double A2[4] = {-1, 2, 0.5, 3};
+
+    expr *X = new_variable(3, 2, 0, 12);                  /* 3x2, vars 0-5 */
+    expr *Y = new_variable(2, 3, 6, 12);                  /* 2x3, vars 6-11 */
+    expr *A1X = new_left_matmul_dense(NULL, X, 2, 3, A1); /* 2x2 */
+    expr *A2Y = new_left_matmul_dense(NULL, Y, 2, 2, A2); /* 2x3 */
+    expr *Z = new_matmul(A1X, A2Y);                       /* 2x3 */
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+    mu_assert("left child should be spd", A1X->jacobian->kind == MATRIX_STACKED_PD);
+    mu_assert("right child should be spd", A2Y->jacobian->kind == MATRIX_STACKED_PD);
+
+    free_expr(Z);
+    return 0;
+}
+
+/* Outer product Z = (A1 @ x) @ (y^T A2^T) with dense A1 (2x3), A2 (4x2) and a
+   column x, row y: both children carry permuted_dense Jacobians. */
+const char *test_jacobian_matmul_outer_dense(void)
+{
+    double u_vals[5] = {1.0, -2.0, 3.0, 0.5, -1.5};
+    double A1[6] = {1, 2, 3, 4, 5, 6};
+    double A2[8] = {-1, 2, 0.5, 3, 1, -2, 4, 0.25};
+
+    expr *x = new_variable(3, 1, 0, 5);                   /* 3x1, vars 0-2 */
+    expr *y = new_variable(1, 2, 3, 5);                   /* 1x2, vars 3-4 */
+    expr *A1x = new_left_matmul_dense(NULL, x, 2, 3, A1); /* 2x1 */
+    expr *yA2 = new_left_matmul_dense(NULL, y, 4, 2, A2); /* 1x4 */
+    expr *Z = new_matmul(A1x, yA2);                       /* 2x4 */
+
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(Z, u_vals, NUMERICAL_DIFF_DEFAULT_H));
+    mu_assert("left child should be pd",
+              A1x->jacobian->kind == MATRIX_PERMUTED_DENSE);
+    mu_assert("right child should be pd",
+              yA2->jacobian->kind == MATRIX_PERMUTED_DENSE);
+
+    free_expr(Z);
+    return 0;
+}
+
 const char *test_jacobian_matmul_sin_Ax_cos_Bx(void)
 {
     /* Z = sin(A @ X) @ cos(B @ X), shared variable X */

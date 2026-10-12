@@ -187,21 +187,18 @@ typedef struct kron_expr
 typedef struct matmul_expr
 {
     expr base;
-    /* Jacobian workspace */
-    CSR_matrix *term1_CSR; /* (Y^T x I_m) @ J_f */
-    CSR_matrix *term2_CSR; /* (I_n x X) @ J_g */
+    /* Jacobian workspace (chain rule): J_h = (Y^T kron I_m) J_f + (I_n kron X) J_g.
+       YT and X are full permuted_dense holding the children's current values. */
+    matrix *YT;    /* n x k, Y^T */
+    matrix *X;     /* m x k */
+    matrix *term1; /* (Y^T kron I_m) @ J_f */
+    matrix *term2; /* (I_n kron X) @ J_g */
 
-    /* Hessian workspace (composite only) */
-    CSR_matrix *B;       /* cross-Hessian B(w), mk x kn */
-    CSR_matrix *BJg;     /* B @ J_g */
-    CSC_matrix *BJg_CSC; /* BJg in CSC_matrix */
-    int *BJg_csc_work;   /* CSR_matrix-to-CSC_matrix workspace */
-    CSR_matrix *C;       /* J_f^T @ B @ J_g */
-    CSR_matrix *CT;      /* C^T */
-    int *idx_map_C;
-    int *idx_map_CT;
-    int *idx_map_Hf;
-    int *idx_map_Hg;
+    /* Hessian workspace (chain rule): H = C + C^T + H_f + H_g. */
+    matrix *B;   /* cross-Hessian B(w), mk x kn */
+    matrix *BJg; /* B @ J_g */
+    matrix *C;   /* J_f^T @ B @ J_g */
+    matrix *CT;  /* C^T */
 } matmul_expr;
 
 /* Index/slicing: y = child[indices] where indices is a list of flat positions */

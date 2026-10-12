@@ -47,12 +47,6 @@ typedef struct
 {
     double *dwork;
     int *iwork;
-    CSC_matrix *jacobian_csc;
-    int *csc_work; /* for CSR_matrix-CSC_matrix conversion */
-
-    /* jacobian->values_version that the jacobian_csc mirror reflects;
-       expr_refresh_jacobian_csc refills iff it differs. */
-    uint64_t jacobian_csc_seen;
 
     /* node->is_affine(node), computed once by jacobian_init (affinity is
        structural, and the recursive is_affine is too costly per eval). */
@@ -145,13 +139,6 @@ void wsum_hess_init(expr *node);
  * refresh. Always call these instead of the impl slots. */
 void eval_jacobian(expr *node);
 void eval_wsum_hess(expr *node, const double *w);
-
-/* Refresh work->jacobian_csc from node->jacobian iff its values changed. */
-void expr_refresh_jacobian_csc(expr *node);
-
-/* Initialize CSC_matrix form of the Jacobian from the CSR_matrix Jacobian.
- * Must be called after jacobian_init. */
-void jacobian_csc_init(expr *node);
 
 /* Mark the subtree dirty and report whether it contains an updatable
  * parameter. A subtree known to be parameter-free is skipped entirely: its

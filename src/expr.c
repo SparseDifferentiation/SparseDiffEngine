@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 #include "expr.h"
-#include "sparsediff_linalg/CSC_matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include <stdlib.h>
 #include <string.h>
@@ -42,30 +41,6 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
     node->free_type_data = free_type_data;
     node->work = (Expr_Work *) sp_calloc(1, sizeof(Expr_Work));
     node->has_params = true; /* assume dirty until the first walk refines it */
-}
-
-void jacobian_csc_init(expr *node)
-{
-    if (node->work->jacobian_csc != NULL)
-    {
-        return;
-    }
-    node->work->csc_work = (int *) sp_malloc(node->n_vars * sizeof(int));
-    node->work->jacobian_csc = csr_to_csc_alloc(
-        node->jacobian->to_csr(node->jacobian), node->work->csc_work);
-
-    /* Deliberately stale: the mirror is built during the symbolic phase,
-       before values are meaningful, so the first refresh must fill. */
-    node->work->jacobian_csc_seen = node->jacobian->values_version - 1;
-}
-
-/* Refresh work->jacobian_csc from node->jacobian iff its values changed. */
-void expr_refresh_jacobian_csc(expr *node)
-{
-    if (node->work->jacobian_csc_seen == node->jacobian->values_version) return;
-    csr_to_csc_fill_values(node->jacobian->to_csr(node->jacobian),
-                           node->work->jacobian_csc, node->work->csc_work);
-    node->work->jacobian_csc_seen = node->jacobian->values_version;
 }
 
 void free_expr(expr *node)
@@ -97,8 +72,6 @@ void free_expr(expr *node)
     {
         sp_free(node->work->dwork);
         sp_free(node->work->iwork);
-        free_CSC_matrix(node->work->jacobian_csc);
-        sp_free(node->work->csc_work);
         sp_free(node->work->local_jac_diag);
         free_matrix(node->work->hess_term1);
         free_matrix(node->work->hess_term2);

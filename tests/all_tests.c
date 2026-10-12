@@ -171,6 +171,8 @@ int main(void)
     mu_run_test(test_jacobian_matmul_Ax_By, tests_run);
     mu_run_test(test_jacobian_matmul_sin_Ax_cos_Bx, tests_run);
     mu_run_test(test_jacobian_matmul_X_X, tests_run);
+    mu_run_test(test_jacobian_matmul_dense_Ax_By, tests_run);
+    mu_run_test(test_jacobian_matmul_outer_dense, tests_run);
     mu_run_test(test_jacobian_neg_left_matmul_dense, tests_run);
     mu_run_test(test_jacobian_scalar_mult_left_matmul_dense, tests_run);
     mu_run_test(test_jacobian_reshape_left_matmul_dense, tests_run);
@@ -383,6 +385,8 @@ int main(void)
     mu_run_test(test_wsum_hess_matmul_Ax_By, tests_run);
     mu_run_test(test_wsum_hess_matmul_sin_Ax_cos_Bx, tests_run);
     mu_run_test(test_wsum_hess_matmul_X_X, tests_run);
+    mu_run_test(test_wsum_hess_matmul_dense_Ax_By, tests_run);
+    mu_run_test(test_wsum_hess_matmul_outer_dense, tests_run);
 
     printf("\n--- Numerical Diff Tests ---\n");
     mu_run_test(test_check_jacobian_composite_exp, tests_run);

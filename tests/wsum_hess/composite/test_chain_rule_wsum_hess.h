@@ -464,6 +464,50 @@ const char *test_wsum_hess_matmul_Ax_By(void)
     return 0;
 }
 
+/* Z = (A1 @ X) @ (A2 @ Y) with dense A1, A2: stacked_pd child Jacobians feed
+   the cross term J_f^T B(w) J_g through the dispatchers' spd cells. */
+const char *test_wsum_hess_matmul_dense_Ax_By(void)
+{
+    double u_vals[12] = {1.0, -2.0, 3.0,  4.0,  -5.0, 6.0,
+                         7.0, 8.0,  -9.0, 10.0, 0.5,  -1.5};
+    double w[6] = {1.1, -2.2, 3.3, 4.4, -5.5, 6.6};
+    double A1[6] = {1, 2, 3, 4, 5, 6};
+    double A2[4] = {-1, 2, 0.5, 3};
+
+    expr *X = new_variable(3, 2, 0, 12);
+    expr *Y = new_variable(2, 3, 6, 12);
+    expr *A1X = new_left_matmul_dense(NULL, X, 2, 3, A1);
+    expr *A2Y = new_left_matmul_dense(NULL, Y, 2, 2, A2);
+    expr *Z = new_matmul(A1X, A2Y);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(Z, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    return 0;
+}
+
+/* Outer product with permuted_dense child Jacobians. */
+const char *test_wsum_hess_matmul_outer_dense(void)
+{
+    double u_vals[5] = {1.0, -2.0, 3.0, 0.5, -1.5};
+    double w[8] = {1.1, -2.2, 3.3, 4.4, -5.5, 6.6, 0.7, -0.8};
+    double A1[6] = {1, 2, 3, 4, 5, 6};
+    double A2[8] = {-1, 2, 0.5, 3, 1, -2, 4, 0.25};
+
+    expr *x = new_variable(3, 1, 0, 5);
+    expr *y = new_variable(1, 2, 3, 5);
+    expr *A1x = new_left_matmul_dense(NULL, x, 2, 3, A1);
+    expr *yA2 = new_left_matmul_dense(NULL, y, 4, 2, A2);
+    expr *Z = new_matmul(A1x, yA2);
+
+    mu_assert("check_wsum_hess failed",
+              check_wsum_hess(Z, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(Z);
+    return 0;
+}
+
 const char *test_wsum_hess_matmul_sin_Ax_cos_Bx(void)
 {
     /* Z = sin(A @ X) @ cos(B @ X), shared variable */
