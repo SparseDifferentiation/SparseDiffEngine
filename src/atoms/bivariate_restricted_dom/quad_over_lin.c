@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/bivariate_restricted_dom.h"
-#include "sparsediff_linalg/CSC_matrix.h"
+#include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
@@ -82,58 +82,26 @@ static void jacobian_init_impl(expr *node)
         }
         node->jacobian = new_sparse_matrix(jac);
     }
-    else /* left node is not a variable (guaranteed to be a linear operator) */
+    else /* left node is not a variable (an affine child x = f(u)) */
     {
-        node->work->dwork = (double *) sp_malloc(x->size * sizeof(double));
+        quad_over_lin_expr *qnode = (quad_over_lin_expr *) node;
+        jacobian_init(x); /* no-op for a linear operator with a preset jacobian */
 
-        /* compute required allocation and allocate jacobian */
-        bool *col_nz = (bool *) sp_calloc(
-            node->n_vars, sizeof(bool)); /* TODO: could use iwork here instead*/
-        CSR_matrix *Jx = x->jacobian->to_csr(x->jacobian);
-        int nonzero_cols = count_nonzero_cols(Jx, col_nz);
-        CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, nonzero_cols + 1);
+        /* x-part: (2 f(u)/y)^T J_f = d^T J_f through the dispatcher; the alloc
+           derives the column pattern from J_f, whatever its kind. */
+        qnode->d = new_permuted_dense_full(x->size, 1, NULL);
+        qnode->xpart = BTA_matrices_alloc(x->jacobian, qnode->d);
 
-        /* precompute column indices */
-        int cursor = 0;
-        for (int j = 0; j < node->n_vars; j++)
-        {
-            if (col_nz[j])
-            {
-                jac->i[cursor] = j;
-                cursor++;
-            }
-        }
-        assert(nonzero_cols == cursor);
+        /* y-part: a single entry at y's column (y never appears in f(u)) */
+        CSR_matrix *ey = new_CSR_matrix(1, node->n_vars, 1);
+        ey->p[0] = 0;
+        ey->p[1] = 1;
+        ey->i[0] = y->var_id;
+        qnode->ypart = new_sparse_matrix(ey);
 
-        sp_free(col_nz);
-
-        /* insert y variable index at correct position */
-        insert_idx(y->var_id, jac->i, cursor);
-        cursor += 1;
-        assert(cursor == jac->nnz);
-        jac->p[0] = 0;
-        jac->p[1] = cursor;
-
-        /* find position where y should be inserted */
-        node->work->iwork = (int *) sp_malloc(sizeof(int));
-        for (int j = 0; j < jac->nnz; j++)
-        {
-            if (jac->i[j] == y->var_id)
-            {
-                node->work->iwork[0] = j;
-                break;
-            }
-        }
-
-        node->jacobian = new_sparse_matrix(jac);
-
-        /* prepare CSC_matrix form of child jacobian for chain rule.
-         * For a linear operator the values are constant, so fill
-         * them once here and record the version so the counter stays
-         * truthful. */
-        jacobian_csc_init(x);
-        csr_to_csc_fill_values(Jx, x->work->jacobian_csc, x->work->csc_work);
-        x->work->jacobian_csc_seen = x->jacobian->values_version;
+        node->jacobian =
+            new_sparse_matrix_alloc(1, node->n_vars, qnode->xpart->nnz + 1);
+        sum_matrices_alloc(qnode->xpart, qnode->ypart, node->jacobian);
     }
 }
 
@@ -141,11 +109,12 @@ static void eval_jacobian_impl(expr *node)
 {
     expr *x = node->left;
     expr *y = node->right;
-    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     /* if x is a variable */
     if (x->var_id != NOT_A_VARIABLE)
     {
+        CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
+
         /* if x has lower idx than y*/
         if (x->var_id < y->var_id)
         {
@@ -166,19 +135,24 @@ static void eval_jacobian_impl(expr *node)
     }
     else /* x is not a variable */
     {
-        /* local jacobian */
+        quad_over_lin_expr *qnode = (quad_over_lin_expr *) node;
+        eval_jacobian(x); /* affine child: the wrapper short-circuits after once */
+
+        /* x-part: d = 2 f(u)/y, then d^T J_f */
+        double *d = qnode->d->x;
         for (int j = 0; j < x->size; j++)
         {
-            node->work->dwork[j] = (2.0 * x->value[j]) / y->value[0];
+            d[j] = (2.0 * x->value[j]) / y->value[0];
         }
+        matrix_values_changed(qnode->d);
+        BTA_matrices_fill_values(x->jacobian, qnode->d, qnode->xpart);
 
-        /* chain rule (no derivative wrt y) using CSC_matrix format */
-        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, jac);
+        /* y-part: derivative wrt y (y does not appear in the numerator, since
+           it is a new variable for the denominator) */
+        qnode->ypart->x[0] = -node->value[0] / y->value[0];
+        matrix_values_changed(qnode->ypart);
 
-        /* insert derivative wrt y at right place (for correctness this assumes
-           that y does not appear in the numerator, but this will always be
-           the case since y is a new variable for the denominator */
-        jac->x[node->work->iwork[0]] = -node->value[0] / y->value[0];
+        sum_matrices_fill_values(qnode->xpart, qnode->ypart, node->jacobian);
     }
 }
 
@@ -333,6 +307,14 @@ static bool is_affine(const expr *node)
     return false;
 }
 
+static void free_type_data(expr *node)
+{
+    quad_over_lin_expr *qnode = (quad_over_lin_expr *) node;
+    free_matrix(qnode->d);
+    free_matrix(qnode->xpart);
+    free_matrix(qnode->ypart);
+}
+
 expr *new_quad_over_lin(expr *left, expr *right)
 {
     /* if right is not a scalar or a variable by itself, we raise an error */
@@ -343,10 +325,12 @@ expr *new_quad_over_lin(expr *left, expr *right)
         return NULL;
     }
 
-    expr *node = (expr *) sp_calloc(1, sizeof(expr));
+    quad_over_lin_expr *qnode =
+        (quad_over_lin_expr *) sp_calloc(1, sizeof(quad_over_lin_expr));
+    expr *node = &qnode->base;
     init_expr(node, 1, 1, left->n_vars, forward, jacobian_init_impl,
               eval_jacobian_impl, is_affine, wsum_hess_init_impl,
-              eval_wsum_hess_impl, NULL);
+              eval_wsum_hess_impl, free_type_data);
     node->left = left;
     node->right = right;
     expr_retain(left);
