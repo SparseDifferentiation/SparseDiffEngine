@@ -60,12 +60,12 @@ const char *test_quad_over_lin3(void)
 {
     // var = (z, x, w, y) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of (Ax)^T(Ax)/y where
-    // A = [0 0 1 2 3 0 0 0
-    //      0 0 4 5 6 0 0]
+    // A = [1 2 3
+    //      4 5 6]  (local columns of x)
 
-    CSR_matrix *A = new_CSR_matrix(2, 8, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 3, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    int Ai[6] = {2, 3, 4, 2, 3, 4};
+    int Ai[6] = {0, 1, 2, 0, 1, 2};
     int Ap[3] = {0, 3, 6};
     memcpy(A->x, Ax, 6 * sizeof(double));
     memcpy(A->i, Ai, 6 * sizeof(int));
@@ -74,7 +74,7 @@ const char *test_quad_over_lin3(void)
     // Create variables with global indices
     expr *x = new_variable(3, 1, 2, 8);
     expr *y = new_variable(1, 1, 7, 8);
-    expr *Ax_expr = new_linear(x, A, NULL);
+    expr *Ax_expr = new_left_matmul(NULL, x, A);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0};
 
@@ -99,13 +99,12 @@ const char *test_quad_over_lin4(void)
 {
     // var = (z, y, w, x) where z is 2 x 1, x is 3 x 1, w is 2 x 1, y is 1 x 1
     // we compute jacobian of (Ax)^T(Ax)/y where
-    // A = [0 0 0 0 0 1 2 3
-    //      0 0 0 0 0 4 5 6
-    //
+    // A = [1 2 3
+    //      4 5 6]  (local columns of x)
 
-    CSR_matrix *A = new_CSR_matrix(2, 8, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 3, 6);
     double Ax[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    int Ai[6] = {5, 6, 7, 5, 6, 7};
+    int Ai[6] = {0, 1, 2, 0, 1, 2};
     int Ap[3] = {0, 3, 6};
     memcpy(A->x, Ax, 6 * sizeof(double));
     memcpy(A->i, Ai, 6 * sizeof(int));
@@ -114,7 +113,7 @@ const char *test_quad_over_lin4(void)
     // Create variables with global indices
     expr *x = new_variable(3, 1, 5, 8);
     expr *y = new_variable(1, 1, 2, 8);
-    expr *Ax_expr = new_linear(x, A, NULL);
+    expr *Ax_expr = new_left_matmul(NULL, x, A);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {0, 0, 4, 0, 0, 1.0, 2.0, 3.0};
 
@@ -154,7 +153,7 @@ const char *test_quad_over_lin5(void)
     // Create variables with global indices
     expr *u = new_variable(8, 1, 0, 8);
     expr *y = new_variable(1, 1, 2, 8);
-    expr *Ax_expr = new_linear(u, A, NULL);
+    expr *Ax_expr = new_left_matmul(NULL, u, A);
     expr *node = new_quad_over_lin(Ax_expr, y);
     double u_vals[8] = {1, 2, 4, 3, 2, 1.0, 2.0, 3.0};
 

@@ -9,16 +9,16 @@ const char *test_check_jacobian_composite_exp(void)
 {
     double u_vals[6] = {0, 0, 1, 2, 3, 0};
 
-    CSR_matrix *A = new_CSR_matrix(2, 6, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 3, 6); /* local columns of u */
     double Ax[6] = {3, 2, 1, 2, 1, 1};
-    int Ai[6] = {2, 3, 4, 2, 3, 4};
+    int Ai[6] = {0, 1, 2, 0, 1, 2};
     int Ap[3] = {0, 3, 6};
     memcpy(A->x, Ax, 6 * sizeof(double));
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 3 * sizeof(int));
 
     expr *u = new_variable(3, 1, 2, 6);
-    expr *Au = new_linear(u, A, NULL);
+    expr *Au = new_left_matmul(NULL, u, A);
     expr *exp_node = new_exp(Au);
 
     mu_assert("check_jacobian failed",
@@ -42,7 +42,7 @@ const char *test_check_wsum_hess_exp_composite(void)
     memcpy(A_csr->p, Ap, 4 * sizeof(int));
 
     expr *x = new_variable(5, 1, 0, 5);
-    expr *Ax_node = new_linear(x, A_csr, NULL);
+    expr *Ax_node = new_left_matmul(NULL, x, A_csr);
     expr *exp_node = new_exp(Ax_node);
 
     mu_assert("check_wsum_hess failed",

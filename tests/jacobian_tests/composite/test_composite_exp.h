@@ -11,16 +11,16 @@ const char *test_jacobian_composite_exp(void)
 {
     double u_vals[6] = {0, 0, 1, 2, 3, 0};
 
-    CSR_matrix *A = new_CSR_matrix(2, 6, 6);
+    CSR_matrix *A = new_CSR_matrix(2, 3, 6); /* local columns of u */
     double Ax[6] = {3, 2, 1, 2, 1, 1};
-    int Ai[6] = {2, 3, 4, 2, 3, 4};
+    int Ai[6] = {0, 1, 2, 0, 1, 2};
     int Ap[3] = {0, 3, 6};
     memcpy(A->x, Ax, 6 * sizeof(double));
     memcpy(A->i, Ai, 6 * sizeof(int));
     memcpy(A->p, Ap, 3 * sizeof(int));
 
     expr *u = new_variable(3, 1, 2, 6);
-    expr *Au = new_linear(u, A, NULL);
+    expr *Au = new_left_matmul(NULL, u, A);
     expr *exp_node = new_exp(Au);
     jacobian_init(exp_node);
     exp_node->forward(exp_node, u_vals);
@@ -45,17 +45,17 @@ const char *test_jacobian_composite_exp_add(void)
 {
     double u_vals[7] = {0, 0, 1, 1, 1, 2, 2};
 
-    CSR_matrix *A = new_CSR_matrix(3, 7, 9);
+    CSR_matrix *A = new_CSR_matrix(3, 3, 9); /* local columns of x */
     double Ax[9] = {1, 1, 1, 2, 2, 2, 3, 3, 3};
-    int Ai[9] = {2, 3, 4, 2, 3, 4, 2, 3, 4};
+    int Ai[9] = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     int Ap[4] = {0, 3, 6, 9};
     memcpy(A->x, Ax, 9 * sizeof(double));
     memcpy(A->i, Ai, 9 * sizeof(int));
     memcpy(A->p, Ap, 4 * sizeof(int));
 
-    CSR_matrix *B = new_CSR_matrix(3, 7, 6);
+    CSR_matrix *B = new_CSR_matrix(3, 2, 6); /* local columns of y */
     double Bx[6] = {1, 1, 2, 2, 3, 3};
-    int Bi[6] = {5, 6, 5, 6, 5, 6};
+    int Bi[6] = {0, 1, 0, 1, 0, 1};
     int Bp[4] = {0, 2, 4, 6};
     memcpy(B->x, Bx, 6 * sizeof(double));
     memcpy(B->i, Bi, 6 * sizeof(int));
@@ -63,8 +63,8 @@ const char *test_jacobian_composite_exp_add(void)
 
     expr *x = new_variable(3, 1, 2, 7);
     expr *y = new_variable(2, 1, 5, 7);
-    expr *Ax_expr = new_linear(x, A, NULL);
-    expr *By_expr = new_linear(y, B, NULL);
+    expr *Ax_expr = new_left_matmul(NULL, x, A);
+    expr *By_expr = new_left_matmul(NULL, y, B);
     expr *exp_Ax = new_exp(Ax_expr);
     expr *exp_By = new_exp(By_expr);
     expr *sum = new_add(exp_Ax, exp_By);

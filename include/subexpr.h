@@ -36,14 +36,6 @@ typedef struct parameter_expr
     int param_id;
 } parameter_expr;
 
-/* Linear operator: y = A * x + b
- * The matrix A is stored as node->jacobian (CSR_matrix). */
-typedef struct linear_op_expr
-{
-    expr base;
-    double *b; /* constant offset vector (NULL if no offset) */
-} linear_op_expr;
-
 /* Power: y = x^p */
 typedef struct power_expr
 {
@@ -132,9 +124,8 @@ typedef struct elementwise_mult_expr
     matrix *CT; /* CT = C^T; same concrete type as C */
 } elementwise_mult_expr;
 
-/* Left matrix multiplication: y = A * f(x) where f(x) is an expression. Note that
-here A does not have global column indices but it is a local matrix. This is an
-important distinction compared to linear_op_expr. */
+/* Left matrix multiplication: y = A * f(x) where f(x) is an expression. A has
+local column indices (f(x)'s entries), not global variable indices. */
 typedef struct left_matmul_expr
 {
     expr base;

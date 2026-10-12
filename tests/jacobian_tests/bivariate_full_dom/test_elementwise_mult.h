@@ -60,13 +60,13 @@ const char *test_jacobian_elementwise_mult_3(void)
     // we compute jacobian of Ax * By (elementwise multiplication)
 
     /*
-    A = [0 0 1 2 0 0 0 0 0 0
-         0 0 1 1 3 0 0 0 0 0
-         0 0 1 -1 1 0 0 0 0 0]
+    A = [1 2 0
+         1 1 3
+         1 -1 1]  (local columns of x)
     */
-    CSR_matrix *A = new_CSR_matrix(3, 10, 8);
+    CSR_matrix *A = new_CSR_matrix(3, 3, 8); /* local columns of x */
     double Ax_vals[8] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
-    int Ai[8] = {2, 3, 2, 3, 4, 2, 3, 4};
+    int Ai[8] = {0, 1, 0, 1, 2, 0, 1, 2};
     int Ap[4] = {0, 2, 5, 8};
     memcpy(A->x, Ax_vals, 8 * sizeof(double));
     memcpy(A->i, Ai, 8 * sizeof(int));
@@ -74,14 +74,14 @@ const char *test_jacobian_elementwise_mult_3(void)
     mu_assert("A fixture invalid", csr_is_valid(A));
 
     /*
-    B = [0 0 0 0 0 0 0 1 3 0
-         0 0 0 0 0 0 0 1 1 4
-         0 0 0 0 0 0 0 1 -2 1]
+    B = [1 3 0
+         1 1 4
+         1 -2 1]  (local columns of y)
 
     */
-    CSR_matrix *B = new_CSR_matrix(3, 10, 8);
+    CSR_matrix *B = new_CSR_matrix(3, 3, 8); /* local columns of y */
     double Bx_vals[8] = {1.0, 3.0, 1.0, 1.0, 4.0, 1.0, -2.0, 1.0};
-    int Bi[8] = {7, 8, 7, 8, 9, 7, 8, 9};
+    int Bi[8] = {0, 1, 0, 1, 2, 0, 1, 2};
     int Bp[4] = {0, 2, 5, 8};
     memcpy(B->x, Bx_vals, 8 * sizeof(double));
     memcpy(B->i, Bi, 8 * sizeof(int));
@@ -91,8 +91,8 @@ const char *test_jacobian_elementwise_mult_3(void)
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
     expr *y = new_variable(3, 1, 7, 10);
-    expr *Ax = new_linear(x, A, NULL);
-    expr *By = new_linear(y, B, NULL);
+    expr *Ax = new_left_matmul(NULL, x, A);
+    expr *By = new_left_matmul(NULL, y, B);
     expr *node = new_elementwise_mult(Ax, By);
 
     node->forward(node, u_vals);
@@ -158,13 +158,13 @@ const char *test_jacobian_elementwise_mult_4(void)
     // we compute jacobian of Ax * Ax (elementwise multiplication)
 
     /*
-    A = [0 0 1 2 0 0 0 0 0 0
-         0 0 1 1 3 0 0 0 0 0
-         0 0 1 -1 1 0 0 0 0 0]
+    A = [1 2 0
+         1 1 3
+         1 -1 1]  (local columns of x)
     */
-    CSR_matrix *A = new_CSR_matrix(3, 10, 8);
+    CSR_matrix *A = new_CSR_matrix(3, 3, 8); /* local columns of x */
     double Ax_vals[8] = {1.0, 2.0, 1.0, 1.0, 3.0, 1.0, -1.0, 1.0};
-    int Ai[8] = {2, 3, 2, 3, 4, 2, 3, 4};
+    int Ai[8] = {0, 1, 0, 1, 2, 0, 1, 2};
     int Ap[4] = {0, 2, 5, 8};
     memcpy(A->x, Ax_vals, 8 * sizeof(double));
     memcpy(A->i, Ai, 8 * sizeof(int));
@@ -173,7 +173,7 @@ const char *test_jacobian_elementwise_mult_4(void)
 
     double u_vals[10] = {0, 0, 1.0, 2.0, 3.0, 0, 0, 4.0, 5.0, 6.0};
     expr *x = new_variable(3, 1, 2, 10);
-    expr *Ax = new_linear(x, A, NULL);
+    expr *Ax = new_left_matmul(NULL, x, A);
     expr *node = new_elementwise_mult(Ax, Ax);
 
     node->forward(node, u_vals);
