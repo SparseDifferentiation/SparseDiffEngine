@@ -201,7 +201,7 @@ const char *test_jacobian_sum_log_axis_1(void)
    correctly when the child Jacobian is a permuted_dense. Constructed as
    sum(A2 @ (A1 @ x), -1): a single left_matmul on a leaf variable goes
    through the sparse leaf-var fast path, but the outer left_matmul on a
-   composite child fires the PD jacobian_init path (BA_pd_matrices_alloc),
+   composite child fires the PD jacobian_init path (BA_matrices_alloc),
    giving us a PD child for sum. We assert the PD-ness of the child and then
    verify the resulting sum Jacobian by finite differences.
 

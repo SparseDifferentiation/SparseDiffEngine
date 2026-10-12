@@ -148,7 +148,7 @@ const char *test_jacobian_left_matmul_exp_composite(void)
 
 /* outer = A2 @ (A1 @ x). Inner left_matmul produces a PD Jacobian via the
    leaf-var fast path. Outer left_matmul sees a PD child Jacobian and must
-   fire the produce_pd_jacobian_from_child branch via BA_pd_matrices_*.
+   fire the produce_pd_jacobian_from_child branch via BA_matrices_*.
 
    x is a length-2 leaf variable at var_id=0, n_vars=2.
    A1 is 3x2: [[1,2],[3,4],[5,6]] (row-major).
@@ -171,7 +171,7 @@ const char *test_jacobian_left_matmul_pd_from_composite_child(void)
     eval_jacobian(A2_A1_x);
 
     /* Structural: outer's Jacobian must be PD (produced by the
-       jacobian_init_pd path via BA_pd_matrices_alloc). */
+       jacobian_init_pd path via BA_matrices_alloc). */
     mu_assert("outer Jacobian should be PD",
               A2_A1_x->jacobian->kind == MATRIX_PERMUTED_DENSE);
     matrix *jac = A2_A1_x->jacobian;
@@ -196,7 +196,7 @@ const char *test_jacobian_left_matmul_pd_from_composite_child(void)
    Verifies the PD path (jacobian_init_pd / eval_jacobian_pd) handles a
    parameterized A — the structure is fixed at construction, refresh_dense_left
    updates A->X before each forward, and eval_jacobian_pd reads those values
-   via BA_pd_matrices_fill_values.
+   via BA_matrices_fill_values.
 
    x is length 2 at var_id=0, n_vars=2.
    A_param is 3x2. The parameter convention is column-major, so the param's

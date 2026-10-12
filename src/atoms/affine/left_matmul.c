@@ -125,7 +125,7 @@ static void jacobian_init_dense(expr *node)
     /* initialize this node's jacobian */
     if (lnode->n_blocks == 1)
     {
-        node->jacobian = BA_pd_matrices_alloc(lnode->A, x->jacobian);
+        node->jacobian = BA_matrices_alloc(lnode->A, x->jacobian);
     }
     else
     {
@@ -144,7 +144,7 @@ static void eval_jacobian_dense(expr *node)
 
     if (lnode->n_blocks == 1)
     {
-        BA_pd_matrices_fill_values(lnode->A, x->jacobian, node->jacobian);
+        BA_matrices_fill_values(lnode->A, x->jacobian, node->jacobian);
     }
     else
     {
