@@ -192,6 +192,44 @@ const char *test_jacobian_left_matmul_pd_from_composite_child(void)
     return 0;
 }
 
+/* Same composition with a SPARSE outer A2 (the same 0/1 pattern as a CSR).
+   A single-block sparse left_matmul goes through BA_matrices_* like the dense
+   one, so the PD child Jacobian stays PD instead of being flattened to CSR. */
+const char *test_jacobian_left_matmul_sparse_pd_from_composite_child(void)
+{
+    double A1_data[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    CSR_matrix *A2 = new_CSR_matrix(4, 3, 6);
+    int A2p[5] = {0, 2, 3, 5, 6};
+    int A2i[6] = {0, 2, 1, 0, 2, 1};
+    double A2x[6] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    memcpy(A2->p, A2p, sizeof(A2p));
+    memcpy(A2->i, A2i, sizeof(A2i));
+    memcpy(A2->x, A2x, sizeof(A2x));
+
+    expr *x = new_variable(2, 1, 0, 2);
+    expr *A1_x = new_left_matmul_dense(NULL, x, 3, 2, A1_data);
+    expr *A2_A1_x = new_left_matmul(NULL, A1_x, A2);
+    free_CSR_matrix(A2);
+
+    double x_vals[2] = {0.5, -1.5};
+    A2_A1_x->forward(A2_A1_x, x_vals);
+    jacobian_init(A2_A1_x);
+    eval_jacobian(A2_A1_x);
+
+    matrix *jac = A2_A1_x->jacobian;
+    mu_assert("outer Jacobian should be PD", jac->kind == MATRIX_PERMUTED_DENSE);
+    mu_assert("global m", jac->m == 4);
+    mu_assert("global n", jac->n == 2);
+    mu_assert("full block", jac->nnz == 8);
+    double expected_X[8] = {6.0, 8.0, 3.0, 4.0, 6.0, 8.0, 3.0, 4.0};
+    mu_assert("X values", cmp_double_array(jac->x, expected_X, 8));
+    mu_assert("check_jacobian failed",
+              check_jacobian_num(A2_A1_x, x_vals, NUMERICAL_DIFF_DEFAULT_H));
+
+    free_expr(A2_A1_x);
+    return 0;
+}
+
 /* Parameterized A: A_param @ x with leaf-variable x and n_blocks == 1.
    Verifies the PD path (jacobian_init_pd / eval_jacobian_pd) handles a
    parameterized A — the structure is fixed at construction, refresh_dense_left

@@ -161,6 +161,13 @@ static void jacobian_init_sparse(expr *node)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     jacobian_init(x);
 
+    /* J_y = A J_f through the dispatchers, like the dense case. */
+    if (lnode->n_blocks == 1)
+    {
+        node->jacobian = BA_matrices_alloc(lnode->A, x->jacobian);
+        return;
+    }
+
     /* initialize this node's jacobian */
     lnode->Jchild_CSC =
         csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
@@ -177,6 +184,12 @@ static void eval_jacobian_sparse(expr *node)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     expr *x = node->left;
     eval_jacobian(x);
+
+    if (lnode->n_blocks == 1)
+    {
+        BA_matrices_fill_values(lnode->A, x->jacobian, node->jacobian);
+        return;
+    }
 
     /* evaluate this node's jacobian */
     CSC_matrix *Jchild_CSC = lnode->Jchild_CSC;
@@ -266,19 +279,22 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     left_matmul_expr *lnode =
         (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    /* Sparse A — always the general CSC-mirror path. */
+    /* Sparse A: a single block goes through the dispatchers; the kron form
+       keeps the CSC-mirror path. */
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_sparse,
               eval_jacobian_sparse, is_affine, wsum_hess_init_impl,
               eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
 
-    /* allocate workspace. iwork is used for converting J_child csr to csc
-       (requiring size node->n_vars).
-       csc_to_csr_work is used for converting J_CSC to CSR_matrix (requiring
-       node->size) */
-    node->work->iwork = (int *) sp_malloc(node->n_vars * sizeof(int));
-    lnode->csc_to_csr_work = (int *) sp_malloc(node->size * sizeof(int));
+    /* Workspace of the kron form only. iwork is used for converting J_child
+       csr to csc (requiring size node->n_vars). csc_to_csr_work is used for
+       converting J_CSC to CSR_matrix (requiring node->size) */
+    if (n_blocks > 1)
+    {
+        node->work->iwork = (int *) sp_malloc(node->n_vars * sizeof(int));
+        lnode->csc_to_csr_work = (int *) sp_malloc(node->size * sizeof(int));
+    }
     lnode->n_blocks = n_blocks;
 
     /* store A and AT. new_sparse_matrix takes ownership, so clone first. */
