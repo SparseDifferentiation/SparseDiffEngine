@@ -58,9 +58,13 @@ typedef struct quad_form_expr
     expr base;
     matrix *Q;
     /* Q * J_f for the composition chain-rule hessian, formed through the matrix
-       dispatchers on both paths: a sparse handle when Q is sparse, a
-       permuted_dense when Q is dense. */
+       dispatchers on both paths: a permuted_dense when Q is dense, J_f's kind
+       when Q is sparse (Q symmetric, so it is Q^T J_f with Q as the transposed
+       operand). */
     matrix *QJf;
+    /* Q f(x) as an n x 1 permuted_dense: the transposed operand that forms the
+       composition Jacobian 2 (Q f(x))^T J_f through the matrix dispatchers. */
+    matrix *Qx;
     int n; /* quadratic dimension = left->size */
 
     /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
