@@ -82,7 +82,7 @@ typedef struct sum_expr
 typedef struct trace_expr
 {
     expr base;
-    int *idx_map; /* maps child nnz to summed-row positions */
+    matrix *diag_rows; /* the d1 rows of J_X at X's diagonal (row_gather) */
 } trace_expr;
 
 /* Product of all entries */
