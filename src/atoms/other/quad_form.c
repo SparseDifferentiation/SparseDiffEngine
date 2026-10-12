@@ -26,17 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Quadratic form y = x'Qx, with Q a matrix handle: a sparse_matrix (constant) or
-   an n x n permuted_dense (constant or parameter-fed). Q is assumed symmetric.
+/* Quadratic form y = x'Qx, with Q a sparse_matrix (constant) or an n x n
+   permuted_dense (constant or parameter-fed). Q is assumed symmetric. */
 
-   Leaf x: the Jacobian is 2 (Q x)^T over the variable block and the Hessian is
-   2wQ embedded at that block, in Q's kind. Composition x = f(u): the Jacobian
-   2 (Q f(u))^T J_f and the Hessian J_f^T Q J_f + sum_i (Q f(u))_i nabla^2 f_i
-   are formed through the matrix dispatchers, with J_f read as a handle of any
-   kind. Only embed_Q_at_variable and QJf_alloc/fill_values look at Q's kind. */
-
-/* Refresh Q from the parameter once per solve (no-op when Q is constant).
-   Q is symmetric, so column-major == row-major and the copy is verbatim. */
+/* Refresh Q from the parameter (no-op when Q is constant). */
 static void refresh_param_values_qf(quad_form_expr *qnode)
 {
     if (qnode->param_source == NULL || !qnode->base.needs_parameter_refresh)
@@ -54,7 +47,7 @@ static void forward(expr *node, const double *u)
     quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
 
-    /* refresh Q from the parameter if needed (no-op when Q is constant) */
+    /* refresh Q from the parameter if needed */
     if (qnode->param_source != NULL && node->needs_parameter_refresh)
     {
         qnode->param_source->forward(qnode->param_source, NULL);
@@ -89,9 +82,7 @@ static void jacobian_init_impl(expr *node)
     }
     else
     {
-        /* chain rule: J = 2 (Q f(x))^T J_f, the dispatcher's B^T A with B = Q f(x)
-           held as an n x 1 permuted_dense. The alloc derives the column pattern
-           from J_f, whatever its kind; the result is a 1 x n_vars permuted_dense. */
+        /* chain rule: J = 2 (Q f(x))^T J_f (J is a 1 x n_vars permuted_dense.) */
         jacobian_init(x);
         qnode->Qx = new_permuted_dense_full(qnode->n, 1, NULL);
         node->jacobian = BTA_matrices_alloc(x->jacobian, qnode->Qx);
@@ -105,11 +96,9 @@ static void eval_jacobian_impl(expr *node)
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        /* jacobian = 2 * (Q @ x)^T (leaf x: sparsity is the variable block) */
-        CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
-        matrix *Q = qnode->Q;
-        Q->block_left_mult_vec(Q, x->value, jac->x, 1);
-        cblas_dscal(qnode->n, 2.0, jac->x, 1);
+        /* jacobian = 2 (Q x)^T; dwork holds Q x from forward */
+        memcpy(node->jacobian->x, node->work->dwork, qnode->n * sizeof(double));
+        cblas_dscal(qnode->n, 2.0, node->jacobian->x, 1);
     }
     else
     {
