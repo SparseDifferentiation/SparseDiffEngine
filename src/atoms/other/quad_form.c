@@ -16,9 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/non_elementwise_full_dom.h"
-#include "sparsediff_linalg/CSC_matrix.h"
 #include "sparsediff_linalg/cblas_wrapper.h"
-#include "sparsediff_linalg/csr_kernels.h"
 #include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -30,8 +28,9 @@
 
 /* Quadratic form y = x'Qx. Sparse path: Q is a CSR matrix. Dense path: Q is an
    n x n permuted_dense (optionally parameter-fed). For a leaf x the Hessian 2Q is
-   materialized as a dense block; for a composition x = f(u) the dense path forms the
-   chain rule J_f^T Q J_f via the PD matmul dispatchers. Q is assumed symmetric. */
+   materialized directly; for a composition x = f(u) the Jacobian 2 (Q f(u))^T J_f
+   and the chain rule J_f^T Q J_f are formed through the matrix dispatchers, with
+   the child's Jacobian read as a handle of any kind. Q is assumed symmetric. */
 
 /* Refresh Q from the parameter once per solve (no-op when Q is constant).
    Q is symmetric, so column-major == row-major and the copy is verbatim. */
@@ -70,6 +69,7 @@ static void forward(expr *node, const double *u)
 
 static void jacobian_init_impl(expr *node)
 {
+    quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
 
     if (x->var_id != NOT_A_VARIABLE)
@@ -86,27 +86,12 @@ static void jacobian_init_impl(expr *node)
     }
     else
     {
-        /* chain rule: J = 2 * (Q @ f(x))^T * J_f */
+        /* chain rule: J = 2 (Q f(x))^T J_f, the dispatcher's B^T A with B = Q f(x)
+           held as an n x 1 permuted_dense. The alloc derives the column pattern
+           from J_f, whatever its kind; the result is a 1 x n_vars permuted_dense. */
         jacobian_init(x);
-        jacobian_csc_init(x);
-        CSC_matrix *J_csc = x->work->jacobian_csc;
-
-        /* allocate the right number of nnz */
-        int nnz = count_nonzero_cols_csc(J_csc);
-        CSR_matrix *jac = new_CSR_matrix(1, node->n_vars, nnz);
-        jac->p[0] = 0;
-        jac->p[1] = nnz;
-
-        /* fill sparsity pattern */
-        int idx = 0;
-        for (int j = 0; j < J_csc->n; j++)
-        {
-            if (J_csc->p[j + 1] > J_csc->p[j])
-            {
-                jac->i[idx++] = j;
-            }
-        }
-        node->jacobian = new_sparse_matrix(jac);
+        qnode->Qx = new_permuted_dense_full(qnode->n, 1, NULL);
+        node->jacobian = BTA_matrices_alloc(x->jacobian, qnode->Qx);
     }
 }
 
@@ -114,32 +99,31 @@ static void eval_jacobian_impl(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
     expr *x = node->left;
-    CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
 
     if (x->var_id != NOT_A_VARIABLE)
     {
         /* jacobian = 2 * (Q @ x)^T (leaf x: sparsity is the variable block) */
+        CSR_matrix *jac = node->jacobian->to_csr(node->jacobian);
         matrix *Q = qnode->Q;
         Q->block_left_mult_vec(Q, x->value, jac->x, 1);
         cblas_dscal(qnode->n, 2.0, jac->x, 1);
     }
     else
     {
-        /* jacobian = 2 * (Q @ f(x))^T @ J_f */
+        /* jacobian = 2 (Q f(x))^T J_f; dwork holds Q f(x) from forward. The fill
+           refreshes whatever cache it reads of J_f and bumps the jacobian. */
         eval_jacobian(x);
-        expr_refresh_jacobian_csc(x);
-
-        /* The jacobian has same values as the gradient, which is
-           J_f^T (Q @ f(x)). Here, dwork stores Q @ f(x) from forward */
-        yTA_fill_values(x->work->jacobian_csc, node->work->dwork, jac);
-
-        cblas_dscal(jac->nnz, 2.0, jac->x, 1);
+        memcpy(qnode->Qx->x, node->work->dwork, qnode->n * sizeof(double));
+        matrix_values_changed(qnode->Qx);
+        BTA_matrices_fill_values(x->jacobian, qnode->Qx, node->jacobian);
+        cblas_dscal(node->jacobian->nnz, 2.0, node->jacobian->x, 1);
     }
 }
 
 /* Sparse-backend hessian. The non-leaf chain rule forms term1 = J_f^T Q J_f as
-   (Q J_f)^T J_f through the matrix dispatchers, like the dense path: Q J_f is a
-   sparse handle built with the csr x csc product. */
+   (Q J_f)^T J_f through the matrix dispatchers, like the dense path. Q is
+   symmetric, so Q J_f = Q^T J_f is the dispatcher's B^T A with Q as the
+   transposed operand; the output takes J_f's kind. */
 static void wsum_hess_init_sparse(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -176,11 +160,8 @@ static void wsum_hess_init_sparse(expr *node)
             = J_f^T B.
         */
 
-        /* jacobian_csc_init(x) already called in jacobian_init */
-        CSC_matrix *Jf = x->work->jacobian_csc;
-
-        /* QJf = Q J_f as a sparse handle; term1 = (Q J_f)^T J_f */
-        qnode->QJf = new_sparse_matrix(csr_csc_matmul_alloc(Q, Jf));
+        /* QJf = Q J_f = Q^T J_f; term1 = (Q J_f)^T J_f */
+        qnode->QJf = BTA_matrices_alloc(x->jacobian, qnode->Q);
         node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
         /* term2 = sum_i (Qf(x))_i nabla^2 f_i */
@@ -212,17 +193,9 @@ static void eval_wsum_hess_sparse(expr *node, const double *w)
     }
     else
     {
-        /* refresh the CSC_matrix mirror of the child's Jacobian (version-guarded:
-           no-ops when the jacobian pass already refreshed it this eval, or when
-           an affine child's values are unchanged); the csr x csc product reads it */
-        CSC_matrix *Jf = x->work->jacobian_csc;
-        expr_refresh_jacobian_csc(x);
-
-        /* QJf = Q J_f, written through the raw fill, so notify the handle */
-        csr_csc_matmul_fill_values(Q, Jf, qnode->QJf->to_csr(qnode->QJf));
-        matrix_values_changed(qnode->QJf);
-
-        /* term1 = J_f^T Q J_f = (Q J_f)^T J_f */
+        /* term1 = J_f^T Q J_f = (Q J_f)^T J_f, with Q J_f = Q^T J_f. The fills
+           refresh the caches they read (J_f's each eval, Q's once) themselves. */
+        BTA_matrices_fill_values(x->jacobian, qnode->Q, qnode->QJf);
         BTA_matrices_fill_values(x->jacobian, qnode->QJf, node->work->hess_term1);
 
         /* term2 */
@@ -337,6 +310,8 @@ static void free_type_data(expr *node)
     qnode->Q = NULL;
     free_matrix(qnode->QJf);
     qnode->QJf = NULL;
+    free_matrix(qnode->Qx);
+    qnode->Qx = NULL;
     free_expr(qnode->param_source);
     qnode->param_source = NULL;
 }
