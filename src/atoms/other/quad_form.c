@@ -149,29 +149,6 @@ static matrix *embed_Q_at_variable(const quad_form_expr *qnode, const expr *x)
     return new_sparse_matrix(H);
 }
 
-/* Q J_f through the dispatchers. A permuted_dense Q keeps the BA_pd kernels (no
-   transpose scratch, output permuted_dense). A sparse Q uses symmetry: Q J_f =
-   Q^T J_f is the dispatcher's B^T A with Q as the transposed operand, and the
-   output takes J_f's kind. */
-static matrix *QJf_alloc(const quad_form_expr *qnode, matrix *Jf)
-{
-    if (qnode->Q->kind == MATRIX_PERMUTED_DENSE)
-    {
-        return BA_pd_matrices_alloc(qnode->Q, Jf);
-    }
-    return BTA_matrices_alloc(Jf, qnode->Q);
-}
-
-static void QJf_fill_values(const quad_form_expr *qnode, matrix *Jf, matrix *QJf)
-{
-    if (qnode->Q->kind == MATRIX_PERMUTED_DENSE)
-    {
-        BA_pd_matrices_fill_values(qnode->Q, Jf, QJf);
-        return;
-    }
-    BTA_matrices_fill_values(Jf, qnode->Q, QJf);
-}
-
 static void wsum_hess_init_impl(expr *node)
 {
     quad_form_expr *qnode = (quad_form_expr *) node;
@@ -184,15 +161,15 @@ static void wsum_hess_init_impl(expr *node)
     }
 
     /* The hessian of h(x) = f(x)^T Q f(x) is term1 + term2 where
-         term1 = J_f^T Q J_f = (Q J_f)^T J_f,
+         term1 = J_f^T Q J_f = (Q J_f)^T J_f = (Q^T J_f)^T J_f
          term2 = sum_i (Q f(x))_i nabla^2 f_i. */
-    qnode->QJf = QJf_alloc(qnode, x->jacobian);
+    qnode->QJf = BTA_matrices_alloc(x->jacobian, qnode->Q);
     node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
     wsum_hess_init(x);
     node->work->hess_term2 = x->wsum_hess->copy_sparsity(x->wsum_hess);
 
-    /* hess = term1 + term2 (CSR-backed; sum_matrices is type-agnostic) */
+    /* hess = term1 + term2 */
     int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;
     node->wsum_hess = new_sparse_matrix_alloc(node->n_vars, node->n_vars, max_nnz);
     sum_matrices_alloc(node->work->hess_term1, node->work->hess_term2,
@@ -207,29 +184,30 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
 
     if (x->var_id != NOT_A_VARIABLE)
     {
-        /* hessian = 2wQ at the variable block: verbatim copy of Q's values */
+        /* hessian = 2wQ  */
         matrix *Q = qnode->Q;
         memcpy(node->wsum_hess->x, Q->x, Q->nnz * sizeof(double));
         cblas_dscal(Q->nnz, two_w, node->wsum_hess->x, 1);
         return;
     }
 
+    matrix *H1 = node->work->hess_term1;
+    matrix *H2 = node->work->hess_term2;
+
     /* term1 = 2w (Q J_f)^T J_f. The fills refresh the caches they read (J_f's
-       each eval, a sparse Q's once) themselves. */
-    QJf_fill_values(qnode, x->jacobian, qnode->QJf);
-    BTA_matrices_fill_values(x->jacobian, qnode->QJf, node->work->hess_term1);
-    cblas_dscal(node->work->hess_term1->nnz, two_w, node->work->hess_term1->x, 1);
-    matrix_values_changed(node->work->hess_term1);
+       each eval, Q's only when Q changes) themselves. */
+    BTA_matrices_fill_values(x->jacobian, qnode->Q, qnode->QJf);
+    BTA_matrices_fill_values(x->jacobian, qnode->QJf, H1);
+    cblas_dscal(H1->nnz, two_w, H1->x, 1);
+    matrix_values_changed(H1);
 
     /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
     eval_wsum_hess(x, node->work->dwork);
-    memcpy(node->work->hess_term2->x, x->wsum_hess->x,
-           x->wsum_hess->nnz * sizeof(double));
-    cblas_dscal(node->work->hess_term2->nnz, two_w, node->work->hess_term2->x, 1);
-    matrix_values_changed(node->work->hess_term2);
+    memcpy(H2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
+    cblas_dscal(H2->nnz, two_w, H2->x, 1);
+    matrix_values_changed(H2);
 
-    sum_matrices_fill_values(node->work->hess_term1, node->work->hess_term2,
-                             node->wsum_hess);
+    sum_matrices_fill_values(H1, H2, node->wsum_hess);
 }
 
 /* param_source lives outside left/right, so the refresh walk reaches it
@@ -255,7 +233,6 @@ static void free_type_data(expr *node)
 static bool is_affine(const expr *node)
 {
     (void) node;
-    /* TODO: it is affine (constant) if both children are constant */
     return false;
 }
 
