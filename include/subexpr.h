@@ -53,6 +53,17 @@ typedef struct power_expr
 
 /* Quadratic form: y = x'*Q*x. Q is a polymorphic matrix: a sparse (CSR) backend
    on the sparse path, or a dense (permuted_dense) backend on the dense path. */
+typedef struct quad_over_lin_expr
+{
+    expr base;
+    /* Composition case x = f(u): J = (2 f(u)/y)^T J_f + (-value/y) e_y^T, formed
+       as the dispatcher's B^T A with d = 2 f(u)/y (n x 1 permuted_dense) as the
+       transposed operand, plus a one-entry row at y's column, summed. */
+    matrix *d;     /* n x 1 permuted_dense holding 2 f(u)/y */
+    matrix *xpart; /* 1 x n_vars, d^T J_f (permuted_dense from BTA) */
+    matrix *ypart; /* 1 x n_vars sparse with one entry at y->var_id */
+} quad_over_lin_expr;
+
 typedef struct quad_form_expr
 {
     expr base;
