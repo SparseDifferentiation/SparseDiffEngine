@@ -204,3 +204,31 @@ const char *test_wsum_hess_hstack_matrix(void)
     free_expr(hstack_node);
     return 0;
 }
+
+const char *test_wsum_hess_hstack_shared_arg(void)
+{
+    /* hstack([log(x), log(x)]) with the same log(x) node in both slots: each
+     * slot gets its own weights, so H = diag(-(w[k] + w[k + 3]) / x_k^2). */
+    double u_vals[3] = {1.0, 2.0, 3.0};
+    double w[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *log_x = new_log(x);
+    expr *args[2] = {log_x, log_x};
+    expr *hstack_node = new_hstack(args, 2, 3);
+
+    hstack_node->forward(hstack_node, u_vals);
+    jacobian_init(hstack_node);
+    wsum_hess_init(hstack_node);
+    eval_wsum_hess(hstack_node, w);
+
+    int expected_p[4] = {0, 1, 2, 3};
+    int expected_i[3] = {0, 1, 2};
+    double expected_x[3] = {-5.0, -7.0 / 4.0, -9.0 / 9.0};
+    mu_assert("sparsity fail",
+              cmp_sparsity(hstack_node->wsum_hess, expected_p, expected_i, 3, 3));
+    mu_assert("vals fail", cmp_values(hstack_node->wsum_hess, expected_x, 3));
+
+    free_expr(hstack_node);
+    return 0;
+}

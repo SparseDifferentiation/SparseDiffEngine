@@ -319,6 +319,7 @@ int main(void)
     mu_run_test(test_wsum_hess_rel_entr_scalar_vector, tests_run);
     mu_run_test(test_wsum_hess_hstack, tests_run);
     mu_run_test(test_wsum_hess_hstack_matrix, tests_run);
+    mu_run_test(test_wsum_hess_hstack_shared_arg, tests_run);
     mu_run_test(test_wsum_hess_vstack_vectors, tests_run);
     mu_run_test(test_wsum_hess_vstack_matrix, tests_run);
     mu_run_test(test_wsum_hess_index_log, tests_run);
