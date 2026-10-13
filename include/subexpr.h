@@ -19,7 +19,6 @@
 #define SUBEXPR_H
 
 #include "expr.h"
-#include "sparsediff_linalg/CSC_matrix.h"
 #include "sparsediff_linalg/CSR_matrix.h"
 #include "sparsediff_linalg/matrix.h"
 
@@ -113,6 +112,7 @@ typedef struct hstack_expr
     expr base;
     expr **args;
     int n_args;
+    matrix **child_jac;  /* args' Jacobians: the operands of the vstack */
     matrix **child_hess; /* args' Hessians: the operands of the sum */
 } hstack_expr;
 
@@ -132,9 +132,6 @@ typedef struct left_matmul_expr
     matrix *A;
     matrix *AT;
     int n_blocks;
-    CSC_matrix *Jchild_CSC;
-    CSC_matrix *J_CSC;
-    int *csc_to_csr_work;
     expr *param_source;
     void (*refresh_param_values)(struct left_matmul_expr *);
 } left_matmul_expr;
