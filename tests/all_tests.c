@@ -266,6 +266,9 @@ int main(void)
     mu_run_test(test_jacobian_matmul, tests_run);
     mu_run_test(test_jacobian_convolve, tests_run);
     mu_run_test(test_jacobian_convolve_composite, tests_run);
+    mu_run_test(test_jacobian_convolve_csc_consumer, tests_run);
+    mu_run_test(test_jacobian_convolve_pd_child, tests_run);
+    mu_run_test(test_jacobian_convolve_spd_child, tests_run);
     mu_run_test(test_jacobian_kron_const_left, tests_run);
     mu_run_test(test_jacobian_kron_const_right, tests_run);
     mu_run_test(test_jacobian_kron_sparse, tests_run);
