@@ -113,7 +113,7 @@ typedef struct hstack_expr
     expr base;
     expr **args;
     int n_args;
-    CSR_matrix *CSR_work; /* for summing Hessians of children */
+    matrix **child_hess; /* args' Hessians: the operands of the sum */
 } hstack_expr;
 
 /* Elementwise multiplication */
