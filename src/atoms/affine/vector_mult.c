@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <stdio.h>

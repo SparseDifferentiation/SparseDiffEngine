@@ -17,7 +17,6 @@
  */
 #include "atoms/affine.h"
 #include "sparsediff_linalg/dense.h"
-#include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matmul_kron.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -109,81 +108,26 @@ static void free_type_data(expr *node)
     lnode->param_source = NULL;
 }
 
-/* jacobian_init for dense left matmul */
-static void jacobian_init_dense(expr *node)
+/* J_y = kron(I_p, A) J_f; the dispatcher routes on A's kind and on p == 1. */
+static void jacobian_init_impl(expr *node)
 {
     /* initialize jacobian of child */
     expr *x = node->left;
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     jacobian_init(x);
 
-    /* initialize this node's jacobian */
-    if (lnode->n_blocks == 1)
-    {
-        node->jacobian = BA_matrices_alloc(lnode->A, x->jacobian);
-    }
-    else
-    {
-        node->jacobian =
-            BA_dense_kron_matrices_alloc(lnode->A, lnode->n_blocks, x->jacobian);
-    }
+    node->jacobian = BA_kron_matrices_alloc(lnode->A, lnode->n_blocks, x->jacobian);
 }
 
-/* eval_jacobian for dense left matmul. */
-static void eval_jacobian_dense(expr *node)
+static void eval_jacobian_impl(expr *node)
 {
     /* evaluate jacobian of child */
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     expr *x = node->left;
     eval_jacobian(x);
 
-    if (lnode->n_blocks == 1)
-    {
-        BA_matrices_fill_values(lnode->A, x->jacobian, node->jacobian);
-    }
-    else
-    {
-        BA_dense_kron_matrices_fill_values(lnode->A, lnode->n_blocks, x->jacobian,
-                                           node->jacobian);
-    }
-}
-
-/* jacobian_init for sparse left matmul */
-static void jacobian_init_sparse(expr *node)
-{
-    /* initialize jacobian of child */
-    expr *x = node->left;
-    left_matmul_expr *lnode = (left_matmul_expr *) node;
-    jacobian_init(x);
-
-    /* J_y = A J_f through the dispatchers, like the dense case. */
-    if (lnode->n_blocks == 1)
-    {
-        node->jacobian = BA_matrices_alloc(lnode->A, x->jacobian);
-        return;
-    }
-
-    /* J_y = kron(I_p, A) J_f */
-    node->jacobian =
-        BA_sparse_kron_matrices_alloc(lnode->A, lnode->n_blocks, x->jacobian);
-}
-
-/* eval_jacobian for sparse left matmul */
-static void eval_jacobian_sparse(expr *node)
-{
-    /* evaluate jacobian of child */
-    left_matmul_expr *lnode = (left_matmul_expr *) node;
-    expr *x = node->left;
-    eval_jacobian(x);
-
-    if (lnode->n_blocks == 1)
-    {
-        BA_matrices_fill_values(lnode->A, x->jacobian, node->jacobian);
-        return;
-    }
-
-    BA_sparse_kron_matrices_fill_values(lnode->A, lnode->n_blocks, x->jacobian,
-                                        node->jacobian);
+    BA_kron_matrices_fill_values(lnode->A, lnode->n_blocks, x->jacobian,
+                                 node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -264,10 +208,8 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     left_matmul_expr *lnode =
         (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    /* Sparse A: a single block goes through BA_matrices_*, the kron form
-       through BA_sparse_kron_matrices_*. */
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_sparse,
-              eval_jacobian_sparse, is_affine, wsum_hess_init_impl,
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
               eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
@@ -300,8 +242,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
     left_matmul_expr *lnode =
         (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_dense,
-              eval_jacobian_dense, is_affine, wsum_hess_init_impl,
+    init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_impl,
+              eval_jacobian_impl, is_affine, wsum_hess_init_impl,
               eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
