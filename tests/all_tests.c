@@ -383,6 +383,7 @@ int main(void)
     mu_run_test(test_wsum_hess_quad_form_exp, tests_run);
     mu_run_test(test_wsum_hess_sum_outer_product_sin_cos_left_matmul_dense,
                 tests_run);
+    mu_run_test(test_wsum_hess_add_shared_subexpr, tests_run);
     mu_run_test(test_wsum_hess_matmul_exp_exp, tests_run);
     mu_run_test(test_wsum_hess_matmul_sin_cos, tests_run);
     mu_run_test(test_wsum_hess_matmul_Ax_By, tests_run);

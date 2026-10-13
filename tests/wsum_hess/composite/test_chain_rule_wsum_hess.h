@@ -1,6 +1,7 @@
 #include "atoms/affine.h"
 #include "atoms/bivariate_full_dom.h"
 #include "atoms/elementwise_full_dom.h"
+#include "atoms/elementwise_restricted_dom.h"
 #include "atoms/non_elementwise_full_dom.h"
 #include "minunit.h"
 #include "numerical_diff.h"
@@ -609,5 +610,29 @@ const char *test_wsum_hess_sum_outer_product_sin_cos_left_matmul_dense(void)
               check_wsum_hess(node, u_vals, &w, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(node);
+    return 0;
+}
+
+const char *test_wsum_hess_add_shared_subexpr(void)
+{
+    /* add(log x, exp(log x)) and add(exp(log x), log x) with one shared log x
+     * node: evaluating the side that contains log x re-evaluates log x's
+     * Hessian with other weights, which must not leak into the other side. */
+    double u_vals[3] = {0.5, 1.0, 1.5};
+    double w[3] = {1.0, 2.0, 3.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *log_x = new_log(x);
+    expr *f = new_add(log_x, new_exp(log_x));
+    mu_assert("check_wsum_hess failed (shared node on the left)",
+              check_wsum_hess(f, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(f);
+
+    x = new_variable(3, 1, 0, 3);
+    log_x = new_log(x);
+    f = new_add(new_exp(log_x), log_x);
+    mu_assert("check_wsum_hess failed (shared node on the right)",
+              check_wsum_hess(f, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(f);
     return 0;
 }

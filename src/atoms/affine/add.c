@@ -67,24 +67,21 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(node->left);
     wsum_hess_init(node->right);
 
-    /* we never have to store more than the sum of children's nnz */
-    int nnz_max = node->left->wsum_hess->nnz + node->right->wsum_hess->nnz;
-    node->wsum_hess = new_sparse_matrix_alloc(node->n_vars, node->n_vars, nnz_max);
-
-    /* fill sparsity pattern of hessian */
-    sum_matrices_alloc(node->left->wsum_hess, node->right->wsum_hess,
-                       node->wsum_hess);
+    /* sparsity pattern of the sum of children's hessians */
+    matrix *ops[2] = {node->left->wsum_hess, node->right->wsum_hess};
+    node->wsum_hess = sum_n_matrices_alloc(ops, 2);
 }
 
 static void eval_wsum_hess_impl(expr *node, const double *w)
 {
-    /* evaluate children's wsum_hess */
+    /* add each child's hessian right after evaluating it: if the children
+       share a subexpression, evaluating the right child may overwrite the left
+       child's hessian values */
+    sum_n_matrices_fill_zero(node->wsum_hess);
     eval_wsum_hess(node->left, w);
+    sum_n_matrices_fill_add(node->left->wsum_hess, 0, node->wsum_hess);
     eval_wsum_hess(node->right, w);
-
-    /* sum children's wsum_hess */
-    sum_matrices_fill_values(node->left->wsum_hess, node->right->wsum_hess,
-                             node->wsum_hess);
+    sum_n_matrices_fill_add(node->right->wsum_hess, 1, node->wsum_hess);
 }
 
 static bool is_affine(const expr *node)
