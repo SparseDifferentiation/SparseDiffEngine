@@ -21,6 +21,7 @@
 #include "sparsediff_linalg/CSR_matrix.h"
 #include "sparsediff_linalg/cblas_wrapper.h"
 #include "sparsediff_linalg/dense.h"
+#include "sparsediff_linalg/matmul_kron.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/matrix_sum.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -428,7 +429,7 @@ static void wsum_hess_init_chain_rule(expr *node)
     mnode->B = new_sparse_matrix(build_cross_hessian_sparsity(m, k, n));
     mnode->BJg = BA_matrices_alloc(mnode->B, g->jacobian);
     mnode->C = BTA_matrices_alloc(mnode->BJg, f->jacobian);
-    mnode->CT = mnode->C->transpose_alloc(mnode->C);
+    mnode->CT = transpose_matrices_alloc(mnode->C);
 
     /* initialize Hessians of children */
     wsum_hess_init(f);
@@ -462,7 +463,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     matrix_values_changed(mnode->B);
     BA_matrices_fill_values(mnode->B, g->jacobian, mnode->BJg);
     BTA_matrices_fill_values(mnode->BJg, f->jacobian, mnode->C);
-    mnode->C->transpose_fill_values(mnode->C, mnode->CT);
+    transpose_matrices_fill_values(mnode->C, mnode->CT);
 
     /* compute Hessian of f */
     if (!is_f_affine)

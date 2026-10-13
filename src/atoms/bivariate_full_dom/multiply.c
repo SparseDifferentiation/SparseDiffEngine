@@ -152,7 +152,7 @@ static void wsum_hess_init_impl(expr *node)
 
         /* compute sparsity of C and prepare CT */
         matrix *C = BTA_matrices_alloc(x->jacobian, y->jacobian);
-        matrix *CT = C->transpose_alloc(C);
+        matrix *CT = transpose_matrices_alloc(C);
 
         /* initialize wsum_hessians of children */
         wsum_hess_init(x);
@@ -189,7 +189,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
         // ---------------------------------------------------------------
         elementwise_mult_expr *mul_node = (elementwise_mult_expr *) node;
         BTDA_matrices_fill_values(x->jacobian, w, y->jacobian, mul_node->C);
-        mul_node->C->transpose_fill_values(mul_node->C, mul_node->CT);
+        transpose_matrices_fill_values(mul_node->C, mul_node->CT);
 
         // ---------------------------------------------------------------
         //              compute term2 and term 3

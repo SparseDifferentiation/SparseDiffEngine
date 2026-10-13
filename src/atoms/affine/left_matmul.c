@@ -18,6 +18,7 @@
 #include "atoms/affine.h"
 #include "sparsediff_linalg/dense.h"
 #include "sparsediff_linalg/matmul.h"
+#include "sparsediff_linalg/matmul_kron.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
@@ -81,7 +82,7 @@ static void forward(expr *node, const double *u)
     /* y = A_kron @ vec(f(x)) */
     matrix *A = lnode->A;
     int n_blocks = lnode->n_blocks;
-    A->block_left_mult_vec(A, x->value, node->value, n_blocks);
+    BA_kron_vec_matrices(A, x->value, node->value, n_blocks);
 }
 
 static bool is_affine(const expr *node)
@@ -168,13 +169,9 @@ static void jacobian_init_sparse(expr *node)
         return;
     }
 
-    /* initialize this node's jacobian */
-    lnode->Jchild_CSC =
-        csr_to_csc_alloc(x->jacobian->to_csr(x->jacobian), node->work->iwork);
-    lnode->J_CSC = lnode->A->block_left_mult_sparsity(lnode->A, lnode->Jchild_CSC,
-                                                      lnode->n_blocks);
+    /* J_y = kron(I_p, A) J_f */
     node->jacobian =
-        new_sparse_matrix(csc_to_csr_alloc(lnode->J_CSC, lnode->csc_to_csr_work));
+        BA_sparse_kron_matrices_alloc(lnode->A, lnode->n_blocks, x->jacobian);
 }
 
 /* eval_jacobian for sparse left matmul */
@@ -191,14 +188,8 @@ static void eval_jacobian_sparse(expr *node)
         return;
     }
 
-    /* evaluate this node's jacobian */
-    CSC_matrix *Jchild_CSC = lnode->Jchild_CSC;
-    CSC_matrix *J_CSC = lnode->J_CSC;
-    csr_to_csc_fill_values(x->jacobian->to_csr(x->jacobian), Jchild_CSC,
-                           node->work->iwork);
-    lnode->A->block_left_mult_values(lnode->A, Jchild_CSC, J_CSC);
-    csc_to_csr_fill_values(J_CSC, node->jacobian->to_csr(node->jacobian),
-                           lnode->csc_to_csr_work);
+    BA_sparse_kron_matrices_fill_values(lnode->A, lnode->n_blocks, x->jacobian,
+                                        node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -208,7 +199,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* allocate this node's hessian with the same sparsity as child's */
-    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 
     /* work for computing A^T w*/
     int n_blocks = ((left_matmul_expr *) node)->n_blocks;
@@ -223,7 +214,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     /* compute A^T w*/
     matrix *AT = lnode->AT;
     int n_blocks = lnode->n_blocks;
-    AT->block_left_mult_vec(AT, w, node->work->dwork, n_blocks);
+    BA_kron_vec_matrices(AT, w, node->work->dwork, n_blocks);
 
     eval_wsum_hess(node->left, node->work->dwork);
     memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
@@ -299,8 +290,8 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
 
     /* store A and AT. new_sparse_matrix takes ownership, so clone first. */
     lnode->A = new_sparse_matrix(new_csr(A));
-    lnode->AT = lnode->A->transpose_alloc(lnode->A);
-    lnode->A->transpose_fill_values(lnode->A, lnode->AT);
+    lnode->AT = transpose_matrices_alloc(lnode->A);
+    transpose_matrices_fill_values(lnode->A, lnode->AT);
 
     /* parameter support */
     lnode->param_source = param_node;
@@ -360,8 +351,8 @@ expr *new_left_matmul_dense(expr *param_node, expr *u, int m, int n,
         }
 
         lnode->A = new_permuted_dense_full(m, n, data);
-        lnode->AT = lnode->A->transpose_alloc(lnode->A);
-        lnode->A->transpose_fill_values(lnode->A, lnode->AT);
+        lnode->AT = transpose_matrices_alloc(lnode->A);
+        transpose_matrices_fill_values(lnode->A, lnode->AT);
     }
 
     return node;

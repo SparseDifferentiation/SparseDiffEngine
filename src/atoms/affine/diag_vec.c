@@ -50,8 +50,16 @@ static void jacobian_init_impl(expr *node)
     expr *x = node->left;
     jacobian_init(x);
 
-    /* output type matches child's; rows i*(n+1) hold child row i, others zero. */
-    node->jacobian = x->jacobian->diag_vec_alloc(x->jacobian);
+    /* row i of the child's jacobian lands at row i*(n+1) (the diagonal
+       positions), every other row is zero: a row_reduce with singleton groups */
+    int n = x->size;
+    int *group = (int *) sp_malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++)
+    {
+        group[i] = i * (n + 1);
+    }
+    node->jacobian = x->jacobian->row_reduce_alloc(x->jacobian, group, n * n);
+    sp_free(group);
 }
 
 static void eval_jacobian_impl(expr *node)
@@ -59,7 +67,8 @@ static void eval_jacobian_impl(expr *node)
     eval_jacobian(node->left);
 
     /* fill the diagonal rows of the preallocated output. */
-    node->left->jacobian->diag_vec_fill_values(node->left->jacobian, node->jacobian);
+    node->left->jacobian->row_reduce_fill_values(node->left->jacobian,
+                                                 node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -74,7 +83,7 @@ static void wsum_hess_init_impl(expr *node)
 
     /* Copy child's Hessian structure (diag_vec is linear, so its own Hessian is
      * zero) */
-    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 }
 
 static void eval_wsum_hess_impl(expr *node, const double *w)

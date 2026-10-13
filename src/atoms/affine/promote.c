@@ -59,7 +59,7 @@ static void eval_jacobian_impl(expr *node)
 static void wsum_hess_init_impl(expr *node)
 {
     wsum_hess_init(node->left);
-    node->wsum_hess = node->left->wsum_hess->copy_sparsity(node->left->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(node->left->wsum_hess);
 }
 
 static void eval_wsum_hess_impl(expr *node, const double *w)

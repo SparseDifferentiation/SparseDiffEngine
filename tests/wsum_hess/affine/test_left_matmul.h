@@ -200,7 +200,7 @@ const char *test_wsum_hess_left_matmul_matrix(void)
 /* Regression test for the Phase 3 transpose_fill_values omission in
    new_left_matmul_dense. Mirrors the Python failure
        cp.sum(A @ cp.exp(X))   with X a (2,2) Variable and A a 2x2 numpy array.
-   eval_wsum_hess reads lnode->AT->X via AT->block_left_mult_vec; before the
+   eval_wsum_hess reads lnode->AT->X via BA_kron_vec_matrices(AT, ...); before the
    fix, AT->X was uninitialized memory (transpose_alloc allocates without
    filling) and the analytic Hessian disagreed with finite differences. */
 const char *test_wsum_hess_left_matmul_dense_matrix_exp(void)
