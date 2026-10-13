@@ -167,6 +167,7 @@ int main(void)
     mu_run_test(test_jacobian_atan_Ax, tests_run);
     mu_run_test(test_jacobian_quad_form_exp, tests_run);
     mu_run_test(test_jacobian_matmul_exp_exp, tests_run);
+    mu_run_test(test_jacobian_matmul_exp_X_exp_y, tests_run);
     mu_run_test(test_jacobian_matmul_sin_cos, tests_run);
     mu_run_test(test_jacobian_matmul_Ax_By, tests_run);
     mu_run_test(test_jacobian_matmul_sin_Ax_cos_Bx, tests_run);
