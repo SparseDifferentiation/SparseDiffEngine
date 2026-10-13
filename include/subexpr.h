@@ -165,8 +165,7 @@ typedef struct convolve_expr
     expr *param_source; /* length-m kernel */
     int m;              /* kernel length */
     int n;              /* input length */
-    CSR_matrix *T;      /* (m+n-1) x n convolution matrix */
-    CSC_matrix *Jchild_CSC;
+    matrix *T;          /* (m+n-1) x n convolution matrix (sparse) */
 } convolve_expr;
 
 /* Kronecker product Z = kron(A, B) where one operand is variable-free (held by

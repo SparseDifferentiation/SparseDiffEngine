@@ -18,6 +18,7 @@
 #include "atoms/affine.h"
 #include "sparsediff_linalg/CSR_matrix.h"
 #include "sparsediff_linalg/csr_kernels.h"
+#include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
@@ -44,7 +45,9 @@ static void forward(expr *node, const double *u)
            which might happen when we expose Python bindings to SparseDiffEngine) */
         if (cnode->T != NULL)
         {
-            conv_matrix_fill_values(cnode->T, cnode->param_source->value);
+            conv_matrix_fill_values(cnode->T->to_csr(cnode->T),
+                                    cnode->param_source->value);
+            matrix_values_changed(cnode->T);
         }
         cnode->base.needs_parameter_refresh = false;
     }
@@ -76,15 +79,14 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(child);
 
     /* Build convolution matrix of size (m+n-1) x n with m*n nonzeros */
-    cnode->T = new_CSR_matrix(m + n - 1, n, m * n);
-    conv_matrix_fill_sparsity(cnode->T, m, n);
-    conv_matrix_fill_values(cnode->T, a);
+    CSR_matrix *T = new_CSR_matrix(m + n - 1, n, m * n);
+    conv_matrix_fill_sparsity(T, m, n);
+    conv_matrix_fill_values(T, a);
+    cnode->T = new_sparse_matrix(T);
 
-    /* J = T @ J_child */
-    cnode->Jchild_CSC = csr_to_csc_alloc(child->jacobian->to_csr(child->jacobian),
-                                         node->work->iwork);
-    node->jacobian =
-        new_sparse_matrix(csr_csc_matmul_alloc(cnode->T, cnode->Jchild_CSC));
+    /* J = T @ J_child; its kind follows the child's (sparse, permuted_dense or
+       stacked_pd) */
+    node->jacobian = BA_matrices_alloc(cnode->T, child->jacobian);
 }
 
 static void eval_jacobian_impl(expr *node)
@@ -95,10 +97,7 @@ static void eval_jacobian_impl(expr *node)
     eval_jacobian(child);
 
     /* J = T @ J_child */
-    csr_to_csc_fill_values(child->jacobian->to_csr(child->jacobian),
-                           cnode->Jchild_CSC, node->work->iwork);
-    csr_csc_matmul_fill_values(cnode->T, cnode->Jchild_CSC,
-                               node->jacobian->to_csr(node->jacobian));
+    BA_matrices_fill_values(cnode->T, child->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -149,8 +148,7 @@ static bool set_needs_refresh_param_source(expr *node)
 static void free_type_data(expr *node)
 {
     convolve_expr *cnode = (convolve_expr *) node;
-    free_CSR_matrix(cnode->T);
-    free_CSC_matrix(cnode->Jchild_CSC);
+    free_matrix(cnode->T);
     free_expr(cnode->param_source);
 }
 
@@ -193,9 +191,6 @@ expr *new_convolve(expr *param_node, expr *child)
     expr_retain(param_node);
     cnode->m = m;
     cnode->n = n;
-
-    /* iwork is used for csr_to_csc of child's Jacobian (size n_vars). */
-    node->work->iwork = (int *) sp_malloc(node->n_vars * sizeof(int));
 
     /* Ensure first forward() pulls current param values through any
        broadcast/promote wrappers and reflects them in T (once T is built). */
