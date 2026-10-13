@@ -17,7 +17,6 @@
  */
 #include "atoms/affine.h"
 #include "sparsediff_linalg/CSR_matrix.h"
-#include "sparsediff_linalg/csr_kernels.h"
 #include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -31,6 +30,39 @@
  * m + n - 1. In matrix form, y = T(a) @ child, where T(a) is the
  * (m+n-1) x n Toeplitz/convolution matrix with T(a)[k, j] = a[k-j] when
  * 0 <= k-j < m. */
+
+/* Fill T_csr's row pointers and column indices for the 1D full-convolution
+   Toeplitz matrix T(a), sized (m+n-1) x n with m*n nonzeros. Values (x) are
+   not written; call conv_matrix_fill_values to populate them. */
+static void conv_matrix_fill_sparsity(CSR_matrix *T_csr, int m, int n)
+{
+    int nnz = 0;
+    for (int r = 0; r < T_csr->m; r++)
+    {
+        T_csr->p[r] = nnz;
+        int col_lo = r - m + 1 > 0 ? r - m + 1 : 0;
+        int col_hi = r < n - 1 ? r : n - 1;
+        for (int col = col_lo; col <= col_hi; col++)
+        {
+            T_csr->i[nnz] = col;
+            nnz++;
+        }
+    }
+    T_csr->p[T_csr->m] = nnz;
+}
+
+/* Overwrite T_csr->x from kernel a, using the sparsity already written by
+   conv_matrix_fill_sparsity. T[r, col] = a[r - col]. */
+static void conv_matrix_fill_values(CSR_matrix *T_csr, const double *a)
+{
+    for (int r = 0; r < T_csr->m; r++)
+    {
+        for (int k = T_csr->p[r]; k < T_csr->p[r + 1]; k++)
+        {
+            T_csr->x[k] = a[r - T_csr->i[k]];
+        }
+    }
+}
 
 static void forward(expr *node, const double *u)
 {
