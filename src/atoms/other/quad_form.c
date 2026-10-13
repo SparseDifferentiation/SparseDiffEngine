@@ -19,6 +19,7 @@
 #include "sparsediff_linalg/cblas_wrapper.h"
 #include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
+#include "sparsediff_linalg/matrix_sum.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <assert.h>
