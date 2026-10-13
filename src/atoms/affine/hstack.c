@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
-#include "sparsediff_linalg/CSR_matrix.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/matrix_sum.h"
+#include "sparsediff_linalg/matrix_vstack.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <assert.h>
@@ -50,58 +50,27 @@ static void jacobian_init_impl(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
 
-    /* initialize children's jacobians */
-    int nnz = 0;
+    /* initialize children's jacobians; this node's is their vertical stack */
+    hnode->child_jac = (matrix **) sp_malloc(hnode->n_args * sizeof(matrix *));
     for (int i = 0; i < hnode->n_args; i++)
     {
         assert(hnode->args[i] != NULL);
         jacobian_init(hnode->args[i]);
-        nnz += hnode->args[i]->jacobian->nnz;
+        hnode->child_jac[i] = hnode->args[i]->jacobian;
     }
-
-    CSR_matrix *A = new_CSR_matrix(node->size, node->n_vars, nnz);
-
-    /* precompute sparsity pattern of this node's jacobian */
-    int row_offset = 0;
-    int cursor = 0;
-
-    for (int i = 0; i < hnode->n_args; i++)
-    {
-        expr *child = hnode->args[i];
-        CSR_matrix *B = child->jacobian->to_csr(child->jacobian);
-
-        /* copy columns */
-        memcpy(A->i + cursor, B->i, B->nnz * sizeof(int));
-
-        /* set row pointers */
-        for (int r = 0; r < child->size; r++)
-        {
-            A->p[row_offset + r] = cursor + B->p[r];
-        }
-
-        cursor += B->nnz;
-        row_offset += child->size;
-    }
-    A->p[node->size] = cursor;
-    assert(cursor == A->nnz);
-    node->jacobian = new_sparse_matrix(A);
+    node->jacobian = vstack_matrices_alloc(hnode->child_jac, hnode->n_args);
 }
 
 static void eval_jacobian_impl(expr *node)
 {
     hstack_expr *hnode = (hstack_expr *) node;
-    int cursor = 0;
-
     for (int i = 0; i < hnode->n_args; i++)
     {
-        expr *child = hnode->args[i];
-        eval_jacobian(child);
-        /* to_csr needed for stacked_pd */
-        CSR_matrix *child_csr = child->jacobian->to_csr(child->jacobian);
-        memcpy(node->jacobian->x + cursor, child_csr->x,
-               child_csr->nnz * sizeof(double));
-        cursor += child_csr->nnz;
+        eval_jacobian(hnode->args[i]);
     }
+
+    /* copies only the children whose jacobian values changed */
+    vstack_matrices_fill_values(hnode->child_jac, hnode->n_args, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -172,6 +141,8 @@ static void free_type_data(expr *node)
 
     sp_free(hnode->child_hess);
     hnode->child_hess = NULL;
+    sp_free(hnode->child_jac);
+    hnode->child_jac = NULL;
     sp_free(hnode->args);
     hnode->args = NULL;
 }

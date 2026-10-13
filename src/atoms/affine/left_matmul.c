@@ -102,16 +102,10 @@ static void free_type_data(expr *node)
     left_matmul_expr *lnode = (left_matmul_expr *) node;
     free_matrix(lnode->A);
     free_matrix(lnode->AT);
-    free_CSC_matrix(lnode->Jchild_CSC);
-    free_CSC_matrix(lnode->J_CSC);
-    sp_free(lnode->csc_to_csr_work);
     free_expr(lnode->param_source);
 
     lnode->A = NULL;
     lnode->AT = NULL;
-    lnode->Jchild_CSC = NULL;
-    lnode->J_CSC = NULL;
-    lnode->csc_to_csr_work = NULL;
     lnode->param_source = NULL;
 }
 
@@ -270,22 +264,14 @@ expr *new_left_matmul(expr *param_node, expr *u, const CSR_matrix *A)
     left_matmul_expr *lnode =
         (left_matmul_expr *) sp_calloc(1, sizeof(left_matmul_expr));
     expr *node = &lnode->base;
-    /* Sparse A: a single block goes through the dispatchers; the kron form
-       keeps the CSC-mirror path. */
+    /* Sparse A: a single block goes through BA_matrices_*, the kron form
+       through BA_sparse_kron_matrices_*. */
     init_expr(node, d1, d2, u->n_vars, forward, jacobian_init_sparse,
               eval_jacobian_sparse, is_affine, wsum_hess_init_impl,
               eval_wsum_hess_impl, free_type_data);
     node->left = u;
     expr_retain(u);
 
-    /* Workspace of the kron form only. iwork is used for converting J_child
-       csr to csc (requiring size node->n_vars). csc_to_csr_work is used for
-       converting J_CSC to CSR_matrix (requiring node->size) */
-    if (n_blocks > 1)
-    {
-        node->work->iwork = (int *) sp_malloc(node->n_vars * sizeof(int));
-        lnode->csc_to_csr_work = (int *) sp_malloc(node->size * sizeof(int));
-    }
     lnode->n_blocks = n_blocks;
 
     /* store A and AT. new_sparse_matrix takes ownership, so clone first. */

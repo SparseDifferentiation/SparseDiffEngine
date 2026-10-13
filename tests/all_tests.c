@@ -233,6 +233,7 @@ int main(void)
     mu_run_test(test_jacobian_sum_spd_child_axis_1, tests_run);
     mu_run_test(test_jacobian_hstack_vectors, tests_run);
     mu_run_test(test_jacobian_hstack_matrix, tests_run);
+    mu_run_test(test_jacobian_hstack_stacked_pd_child, tests_run);
     mu_run_test(test_jacobian_vstack_vectors, tests_run);
     mu_run_test(test_jacobian_vstack_matrix, tests_run);
     mu_run_test(test_index_forward_simple, tests_run);

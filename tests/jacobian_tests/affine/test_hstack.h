@@ -6,6 +6,7 @@
 #include "atoms/elementwise_restricted_dom.h"
 #include "expr.h"
 #include "minunit.h"
+#include "numerical_diff.h"
 #include "test_helpers.h"
 
 const char *test_jacobian_hstack_vectors(void)
@@ -89,6 +90,32 @@ const char *test_jacobian_hstack_matrix(void)
     mu_assert("vals fail", cmp_values(stack->jacobian, expected_Ax, 18));
     mu_assert("sparsity fail",
               cmp_sparsity(stack->jacobian, expected_Ap, expected_Ai, 18, 18));
+
+    free_expr(stack);
+    return 0;
+}
+
+/* hstack(A @ exp(X), sin(X)) for a 2x2 variable X: the left_matmul child's
+   Jacobian is kron(I_2, A) diag(exp(x)), a stacked_pd, so the stack reads it
+   blockwise rather than through a CSR view. Checked at two points so the
+   second evaluation goes through the refill. */
+const char *test_jacobian_hstack_stacked_pd_child(void)
+{
+    double A[4] = {1.0, 2.0, -0.5, 3.0};
+    double u1[4] = {0.1, 0.2, 0.3, 0.4};
+    double u2[4] = {-0.7, 0.5, 1.1, -0.2};
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *f = new_left_matmul_dense(NULL, new_exp(X), 2, 2, A);
+    expr *g = new_sin(X);
+    expr *args[2] = {f, g};
+    expr *stack = new_hstack(args, 2, 4);
+
+    mu_assert("check_jacobian at u1 failed",
+              check_jacobian_num(stack, u1, NUMERICAL_DIFF_DEFAULT_H));
+    mu_assert("child jacobian is stacked_pd",
+              f->jacobian->kind == MATRIX_STACKED_PD);
+    mu_assert("check_jacobian at u2 failed",
+              check_jacobian_num(stack, u2, NUMERICAL_DIFF_DEFAULT_H));
 
     free_expr(stack);
     return 0;

@@ -18,6 +18,7 @@
 #include "problem.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/matrix_sum.h"
+#include "sparsediff_linalg/matrix_vstack.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <assert.h>
@@ -92,51 +93,35 @@ void problem_init_jacobian(problem *prob)
     jacobian_init(prob->objective);
     if (prob->n_constraints > 0)
     {
-        prob->constraint_jac_seen =
-            (uint64_t *) sp_malloc(prob->n_constraints * sizeof(uint64_t));
+        prob->jac_ops =
+            (matrix **) sp_malloc(prob->n_constraints * sizeof(matrix *));
     }
-    int nnz = 0;
     for (int i = 0; i < prob->n_constraints; i++)
     {
         expr *c = prob->constraints[i];
         jacobian_init(c);
-        /* deliberately stale so the first problem_jacobian call copies */
-        prob->constraint_jac_seen[i] = c->jacobian->values_version - 1;
-        CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
-        nnz += Jc->nnz;
+        prob->jac_ops[i] = c->jacobian;
 
         if (c->is_affine(c))
         {
-            prob->stats.nnz_affine += Jc->nnz;
+            prob->stats.nnz_affine += c->jacobian->nnz;
         }
         else
         {
-            prob->stats.nnz_nonlinear += Jc->nnz;
+            prob->stats.nnz_nonlinear += c->jacobian->nnz;
         }
     }
 
-    prob->jacobian = new_CSR_matrix(prob->total_constraint_size, prob->n_vars, nnz);
-
-    /* set sparsity pattern of jacobian */
-    CSR_matrix *H = prob->jacobian;
-    H->p[0] = 0;
-    int row_offset = 0;
-    int nnz_offset = 0;
-    for (int i = 0; i < prob->n_constraints; i++)
+    /* the constraint jacobians stacked row-wise; vstack needs an operand */
+    if (prob->n_constraints > 0)
     {
-        expr *c = prob->constraints[i];
-        CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
-
-        for (int r = 1; r <= Jc->m; r++)
-        {
-            H->p[row_offset + r] = nnz_offset + Jc->p[r];
-        }
-
-        memcpy(H->i + nnz_offset, Jc->i, Jc->nnz * sizeof(int));
-        row_offset += Jc->m;
-        nnz_offset += Jc->nnz;
+        prob->jac_stack = vstack_matrices_alloc(prob->jac_ops, prob->n_constraints);
     }
-    assert(nnz_offset == nnz);
+    else
+    {
+        prob->jac_stack = new_sparse_matrix_alloc(0, prob->n_vars, 0);
+    }
+    prob->jacobian = prob->jac_stack->to_csr(prob->jac_stack);
 
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_init_derivatives += GET_ELAPSED_SECONDS(timer);
@@ -284,11 +269,11 @@ void free_problem(problem *prob)
     /* Free allocated arrays */
     sp_free(prob->constraint_values);
     sp_free(prob->gradient_values);
-    free_CSR_matrix(prob->jacobian);
+    free_matrix(prob->jac_stack);
+    sp_free(prob->jac_ops);
     free_matrix(prob->hess_sum);
     free_COO_matrix(prob->jacobian_coo);
     free_COO_matrix(prob->lagrange_hessian_coo);
-    sp_free(prob->constraint_jac_seen);
 
     /* Release expression references (decrements refcount) */
     free_expr(prob->objective);
@@ -415,31 +400,19 @@ void problem_jacobian(problem *prob)
 {
     Timer timer;
     clock_gettime(CLOCK_MONOTONIC, &timer.start);
-    CSR_matrix *J = prob->jacobian;
-    int nnz_offset = 0;
-
     for (int i = 0; i < prob->n_constraints; i++)
     {
-        expr *c = prob->constraints[i];
-        eval_jacobian(c);
-
-        /* copy only when the constraint's jacobian values actually changed
-           (an affine constraint's eval is a no-op after its first call and
-           leaves the version untouched until the next parameter update).
-           Copy through the CSR view: J's rows were laid out from to_csr in
-           problem_init_jacobian, and a stacked_pd's own value buffer is
-           block-major, which is not row order when its blocks interleave
-           rows. For sparse and permuted_dense the view aliases the buffer. */
-        if (prob->constraint_jac_seen[i] != c->jacobian->values_version)
-        {
-            const CSR_matrix *Jc = c->jacobian->to_csr(c->jacobian);
-            memcpy(J->x + nnz_offset, Jc->x, Jc->nnz * sizeof(double));
-            prob->constraint_jac_seen[i] = c->jacobian->values_version;
-        }
-        nnz_offset += c->jacobian->nnz;
+        eval_jacobian(prob->constraints[i]);
     }
 
-    assert(nnz_offset == J->nnz);
+    /* copies only the constraints whose jacobian values changed (an affine
+       constraint's eval is a no-op after its first call and leaves the version
+       untouched until the next parameter update) */
+    if (prob->n_constraints > 0)
+    {
+        vstack_matrices_fill_values(prob->jac_ops, prob->n_constraints,
+                                    prob->jac_stack);
+    }
     clock_gettime(CLOCK_MONOTONIC, &timer.end);
     prob->stats.time_eval_jacobian += GET_ELAPSED_SECONDS(timer);
 }
