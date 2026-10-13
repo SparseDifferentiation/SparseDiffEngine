@@ -234,7 +234,7 @@ static void jacobian_init_chain_rule(expr *node)
     mnode->YT = new_permuted_dense_full(n, k, NULL);
     mnode->X = new_permuted_dense_full(m, k, NULL);
     mnode->term1 = BA_dense_kron_I_matrices_alloc(mnode->YT, m, f->jacobian);
-    mnode->term2 = BA_dense_kron_matrices_alloc(mnode->X, n, g->jacobian);
+    mnode->term2 = BA_kron_matrices_alloc(mnode->X, n, g->jacobian);
     int max_nnz = mnode->term1->nnz + mnode->term2->nnz;
     max_nnz = MIN(max_nnz, sat_mul_int(node->size, node->n_vars));
     node->jacobian = new_sparse_matrix_alloc(node->size, node->n_vars, max_nnz);
@@ -261,11 +261,12 @@ static void eval_jacobian_chain_rule(expr *node)
     A_transpose(mnode->X->x, f->value, k, m);
     matrix_values_changed(mnode->X);
 
-    /* evaluate term1, term2, and their sum. The sum reads the two stacked_pd
-       terms through their CSR views, one O(nnz) refresh per term per eval; a
-       bound-map sum in the library would remove that. */
+    /* evaluate term1, term2, and their sum. term1 is stacked_pd and term2 is
+       stacked_pd for n > 1 (permuted_dense for n == 1); the sum reads them
+       through their CSR views, one O(nnz) refresh per stacked_pd term per
+       eval; a bound-map sum in the library would remove that. */
     BA_dense_kron_I_matrices_fill_values(mnode->YT, m, f->jacobian, mnode->term1);
-    BA_dense_kron_matrices_fill_values(mnode->X, n, g->jacobian, mnode->term2);
+    BA_kron_matrices_fill_values(mnode->X, n, g->jacobian, mnode->term2);
     sum_matrices_fill_values(mnode->term1, mnode->term2, node->jacobian);
 }
 

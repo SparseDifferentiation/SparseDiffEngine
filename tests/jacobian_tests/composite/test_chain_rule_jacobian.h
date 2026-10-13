@@ -209,6 +209,29 @@ const char *test_jacobian_matmul_exp_exp(void)
     return 0;
 }
 
+/* Z = exp(X) @ exp(y) with y a column (n == 1): term2 = kron(I_1, X) @ J_g goes
+   through BA_matrices_* and is permuted_dense. */
+const char *test_jacobian_matmul_exp_X_exp_y(void)
+{
+    /* X is 2x3 (vars 0-5), y is 3x1 (vars 6-8) */
+    double u1[9] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+    double u2[9] = {-0.4, 0.3, 1.1, -0.2, 0.6, 0.05, -0.7, 0.9, 0.25};
+
+    expr *X = new_variable(2, 3, 0, 9);
+    expr *y = new_variable(3, 1, 6, 9);
+    expr *Z = new_matmul(new_exp(X), new_exp(y));
+
+    mu_assert("check_jacobian failed at u1",
+              check_jacobian_num(Z, u1, NUMERICAL_DIFF_DEFAULT_H));
+    mu_assert("check_jacobian failed at u2",
+              check_jacobian_num(Z, u2, NUMERICAL_DIFF_DEFAULT_H));
+    mu_assert("term2 should be permuted_dense for n == 1",
+              ((matmul_expr *) Z)->term2->kind == MATRIX_PERMUTED_DENSE);
+
+    free_expr(Z);
+    return 0;
+}
+
 const char *test_jacobian_matmul_sin_cos(void)
 {
     /* Z = sin(X) @ cos(Y), X is 2x2, Y is 2x3 */
