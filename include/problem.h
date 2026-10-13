@@ -60,8 +60,8 @@ typedef struct problem
 
     /* allocated by problem_init_derivatives */
     CSR_matrix *jacobian;
-    CSR_matrix *lagrange_hessian;
-    int *hess_idx_map; /* maps all wsum_hess nnz to lagrange_hessian */
+    CSR_matrix *lagrange_hessian; /* CSR view of hess_sum; do not free */
+    matrix *hess_sum;             /* sum of all wsum_hess */
     COO_matrix *jacobian_coo;
     COO_matrix *lagrange_hessian_coo; /* lower triangular part stored in COO */
 

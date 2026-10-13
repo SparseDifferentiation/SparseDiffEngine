@@ -347,6 +347,45 @@ const char *test_problem_hessian(void)
     return 0;
 }
 
+/* Constraints c1 = log(x) and c2 = exp(log(x)) share the node log(x), so
+ * evaluating c2's hessian re-evaluates log(x) with c2's weights. The
+ * Lagrange hessian must still use c1's values for c1:
+ *   L = sum(x) + w[0:3]^T log(x) + w[3:6]^T exp(log(x)),
+ *   H = diag(-w[i] / x[i]^2), since exp(log(x)) = x has a zero hessian.
+ * Summing after all evaluations would give diag(-w[3+i] / x[i]) instead.
+ */
+const char *test_problem_hessian_shared_subexpr(void)
+{
+    int n_vars = 3;
+    expr *x = new_variable(3, 1, 0, n_vars);
+    expr *objective = new_sum(x, -1);
+    expr *log_x = new_log(x);
+    expr *exp_log_x = new_exp(log_x);
+    expr *constraints[2] = {log_x, exp_log_x};
+
+    problem *prob = new_problem(objective, constraints, 2, false);
+    problem_init_derivatives(prob);
+
+    double u[3] = {1.0, 2.0, 3.0};
+    problem_objective_forward(prob, u);
+    problem_constraint_forward(prob, u);
+    problem_jacobian(prob);
+
+    double w[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    problem_hessian(prob, 1.0, w);
+
+    CSR_matrix *H = prob->lagrange_hessian;
+    int expected_p[4] = {0, 1, 2, 3};
+    int expected_i[3] = {0, 1, 2};
+    double expected_x[3] = {-1.0, -2.0 / 4.0, -3.0 / 9.0};
+    mu_assert("H->p wrong", cmp_int_array(H->p, expected_p, 4));
+    mu_assert("H->i wrong", cmp_int_array(H->i, expected_i, 3));
+    mu_assert("H->x wrong", cmp_double_array(H->x, expected_x, 3));
+
+    free_problem(prob);
+    return 0;
+}
+
 /* Mirror the Python pipeline: build the user-reported sum(exp(A @ X.T))
    as a problem objective (no constraints), call problem_hessian, then
    read prob->lagrange_hessian. Uses the exact A and X values the user
