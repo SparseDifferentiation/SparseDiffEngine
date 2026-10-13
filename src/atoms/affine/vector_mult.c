@@ -59,7 +59,7 @@ static void jacobian_init_impl(expr *node)
     jacobian_init(x);
 
     /* same sparsity as child */
-    node->jacobian = x->jacobian->copy_sparsity(x->jacobian);
+    node->jacobian = copy_sparsity_matrices_alloc(x->jacobian);
 }
 
 static void eval_jacobian_impl(expr *node)
@@ -71,7 +71,7 @@ static void eval_jacobian_impl(expr *node)
     eval_jacobian(x);
 
     /* row-wise scale child's jacobian: diag(a) @ Jx */
-    x->jacobian->DA_fill_values(a, x->jacobian, node->jacobian);
+    DA_matrices_fill_values(a, x->jacobian, node->jacobian);
 }
 
 static void wsum_hess_init_impl(expr *node)
@@ -82,7 +82,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* same sparsity as child */
-    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 
     /* workspace for storing scaled weights */
     node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));

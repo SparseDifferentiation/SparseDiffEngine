@@ -87,7 +87,7 @@ static void wsum_hess_init_impl(expr *node)
        contribution to wsum_hess of entries of the child that will always have
        zero weight in eval_wsum_hess. We do this for simplicity. But the Hessian
        can for sure be made more sophisticated. */
-    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 }
 
 static void eval_wsum_hess_impl(expr *node, const double *w)

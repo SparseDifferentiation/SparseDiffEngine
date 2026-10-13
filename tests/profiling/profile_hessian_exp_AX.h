@@ -12,6 +12,7 @@
 #include "expr.h"
 #include "minunit.h"
 #include "sparsediff_linalg/CSR_matrix.h"
+#include "sparsediff_linalg/matmul.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 
@@ -25,9 +26,9 @@
    - Approach 2: manually construct the Jacobian
      J = ∂vec(A @ X)/∂vec(X) = I_n ⊗ A as a stacked_pd with n blocks
      (each block carries A's values at the corresponding row/col
-     window). Call J->ATA_alloc (alloc) and J->ATDA_fill_values(J, d, H)
-     (fill), where d_k = w_k * exp((A@X)_k). The AX compute is
-     done OUTSIDE the timer per user request.
+     window). Call ATA_matrices_alloc(J) (alloc) and ATDA_matrices_fill_values(J, d,
+   H) (fill), where d_k = w_k * exp((A@X)_k). The AX compute is done OUTSIDE the
+   timer per user request.
 
    Both Hessians are densified to a 2500x2500 row-major buffer and
    compared via max-abs diff (asserted < 1e-9). */
@@ -126,12 +127,12 @@ const char *profile_hessian_exp_AX(void)
     free(row_perm);
     matrix *J = new_stacked_pd(n_vars, n_vars, n, j_blocks, NULL, NULL);
     free(j_blocks);
-    matrix *H2 = J->ATA_alloc(J);
+    matrix *H2 = ATA_matrices_alloc(J);
     clock_gettime(CLOCK_MONOTONIC, &t2a.end);
 
     Timer t2f;
     clock_gettime(CLOCK_MONOTONIC, &t2f.start);
-    J->ATDA_fill_values(J, d, H2);
+    ATDA_matrices_fill_values(J, d, H2);
     clock_gettime(CLOCK_MONOTONIC, &t2f.end);
 
     /* ------------------------------------------------------------ */

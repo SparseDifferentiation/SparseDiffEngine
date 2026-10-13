@@ -138,7 +138,7 @@ static void wsum_hess_init_impl(expr *node)
     convolve_expr *cnode = (convolve_expr *) node;
 
     wsum_hess_init(child);
-    node->wsum_hess = child->wsum_hess->copy_sparsity(child->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(child->wsum_hess);
     node->work->dwork = (double *) sp_malloc(cnode->n * sizeof(double));
 }
 

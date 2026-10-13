@@ -18,6 +18,7 @@
 #include "atoms/non_elementwise_full_dom.h"
 #include "sparsediff_linalg/cblas_wrapper.h"
 #include "sparsediff_linalg/matmul.h"
+#include "sparsediff_linalg/matmul_kron.h"
 #include "sparsediff_linalg/matrix.h"
 #include "sparsediff_linalg/matrix_sum.h"
 #include "sparsediff_linalg/tracked_alloc.h"
@@ -60,7 +61,7 @@ static void forward(expr *node, const double *u)
 
     /* dwork = Q @ x; value = x' (Q x) */
     matrix *Q = qnode->Q;
-    Q->block_left_mult_vec(Q, x->value, node->work->dwork, 1);
+    BA_kron_vec_matrices(Q, x->value, node->work->dwork, 1);
     node->value[0] = cblas_ddot(qnode->n, x->value, 1, node->work->dwork, 1);
 }
 
@@ -168,7 +169,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
     wsum_hess_init(x);
-    node->work->hess_term2 = x->wsum_hess->copy_sparsity(x->wsum_hess);
+    node->work->hess_term2 = copy_sparsity_matrices_alloc(x->wsum_hess);
 
     /* hess = term1 + term2 */
     int max_nnz = node->work->hess_term1->nnz + node->work->hess_term2->nnz;

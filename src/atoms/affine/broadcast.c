@@ -107,7 +107,7 @@ static void wsum_hess_init_impl(expr *node)
     wsum_hess_init(x);
 
     /* Same sparsity as child - weights get summed */
-    node->wsum_hess = x->wsum_hess->copy_sparsity(x->wsum_hess);
+    node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 
     /* allocate space for weight vector */
     node->work->dwork = sp_malloc(node->size * sizeof(double));
