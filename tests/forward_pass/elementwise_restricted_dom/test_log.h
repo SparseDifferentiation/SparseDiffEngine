@@ -33,6 +33,8 @@ const char *test_restricted_rejects_non_variable_child(void)
     mu_assert("log of affine child should be NULL", new_log(Ax) == NULL);
     mu_assert("rel_entr of affine child should be NULL",
               new_rel_entr_vector_args(Ax, x) == NULL);
+    mu_assert("rel_entr of same variable should be NULL",
+              new_rel_entr_vector_args(x, x) == NULL);
     mu_assert("quad_over_lin with non-scalar affine denominator should be NULL",
               new_quad_over_lin(x, Ax) == NULL);
 

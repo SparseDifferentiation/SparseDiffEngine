@@ -29,8 +29,6 @@
 
 // ------------------------------------------------------------------------------
 // Implementation of elementwise multiplication when both arguments are vectors.
-// If one argument is a scalar variable, the broadcasting should be represented
-// as a linear operator child node? How to treat if one variable is a constant?
 // ------------------------------------------------------------------------------
 static void forward(expr *node, const double *u)
 {
@@ -162,8 +160,7 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->C = C;
         mul_node->CT = CT;
 
-        /* sparsity pattern of H = C + C^T + term2 + term3; the sum binds the
-           per-operand index maps it accumulates through at eval */
+        /* sparsity pattern of H = C + C^T + term2 + term3 */
         node->wsum_hess = sum_4_matrices_alloc(C, CT, x->wsum_hess, y->wsum_hess);
     }
 }

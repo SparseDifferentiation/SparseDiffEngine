@@ -67,7 +67,8 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
     }
     else
     {
-        sigmas = node->work->dwork;
+        /* local_jac_diag holds sigma(g(x)) from eval_jacobian */
+        sigmas = node->work->local_jac_diag;
     }
 
     for (int j = 0; j < node->size; j++)

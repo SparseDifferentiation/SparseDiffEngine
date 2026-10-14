@@ -206,6 +206,14 @@ expr *new_rel_entr_vector_args(expr *left, expr *right)
         return NULL;
     }
 
+    /* the derivative code assumes two distinct variables */
+    if (left->var_id == right->var_id)
+    {
+        fprintf(stderr, "Error: Arguments of relative entropy must be distinct "
+                        "variables.\n");
+        return NULL;
+    }
+
     expr *node = (expr *) sp_calloc(1, sizeof(expr));
     init_expr(node, left->d1, left->d2, left->n_vars, forward_vector_args,
               jacobian_init_vectors_args, eval_jacobian_vector_args, is_affine,

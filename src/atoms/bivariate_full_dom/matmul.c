@@ -214,8 +214,7 @@ static void eval_jacobian_no_chain_rule(expr *node)
 //  Jacobian initialization and evaluation for the case where chain rule is needed,
 //  ie., when at least one child is composite, or same variable. The jacobian of h(u)
 //  = f(u) @ g(u) where f is m x k and g is k x n, is given by
-//      Jh = (g^T kron I_m) Jf + (I_n kron f) Jg,
-//  the two kron dispatchers with g^T and f held as full permuted_dense operands.
+//      Jh = (g^T kron I_m) Jf + (I_n kron f) Jg.
 // ------------------------------------------------------------------------------------
 static void jacobian_init_chain_rule(expr *node)
 {
@@ -254,17 +253,13 @@ static void eval_jacobian_chain_rule(expr *node)
     eval_jacobian(f);
     eval_jacobian(g);
 
-    /* g->value is Y (k x n) column-major, which is Y^T row-major; f->value is X
-       (m x k) column-major, transposed into X's row-major block. */
+    /* refresh the values of Y^T and X */
     memcpy(mnode->YT->x, g->value, (size_t) k * n * sizeof(double));
     matrix_values_changed(mnode->YT);
     A_transpose(mnode->X->x, f->value, k, m);
     matrix_values_changed(mnode->X);
 
-    /* evaluate term1, term2, and their sum. term1 is stacked_pd and term2 is
-       stacked_pd for n > 1 (permuted_dense for n == 1); the sum reads them
-       through their CSR views, one O(nnz) refresh per stacked_pd term per
-       eval; a bound-map sum in the library would remove that. */
+    /* Jh = term1 + term2 */
     BA_dense_kron_I_matrices_fill_values(mnode->YT, m, f->jacobian, mnode->term1);
     BA_kron_matrices_fill_values(mnode->X, n, g->jacobian, mnode->term2);
     sum_matrices_fill_values(mnode->term1, mnode->term2, node->jacobian);
