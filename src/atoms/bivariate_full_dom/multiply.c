@@ -161,7 +161,8 @@ static void wsum_hess_init_impl(expr *node)
         mul_node->CT = CT;
 
         /* sparsity pattern of H = C + C^T + term2 + term3 */
-        node->wsum_hess = sum_4_matrices_alloc(C, CT, x->wsum_hess, y->wsum_hess);
+        matrix *ops[4] = {C, CT, x->wsum_hess, y->wsum_hess};
+        node->wsum_hess = sum_n_matrices_alloc(ops, 4);
     }
 }
 
@@ -189,8 +190,13 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
         transpose_matrices_fill_values(mul_node->C, mul_node->CT);
 
         // ---------------------------------------------------------------
-        //              compute term2 and term 3
+        //   compute H = C + C^T + term2 + term3, adding each term right
+        //   after it is evaluated
         // ---------------------------------------------------------------
+        sum_n_matrices_fill_zero(node->wsum_hess);
+        sum_n_matrices_fill_add(mul_node->C, 0, node->wsum_hess);
+        sum_n_matrices_fill_add(mul_node->CT, 1, node->wsum_hess);
+
         if (!is_x_affine)
         {
             for (int i = 0; i < node->size; i++)
@@ -199,6 +205,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
             }
             eval_wsum_hess(x, node->work->dwork);
         }
+        sum_n_matrices_fill_add(x->wsum_hess, 2, node->wsum_hess);
 
         if (!is_y_affine)
         {
@@ -208,12 +215,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
             }
             eval_wsum_hess(y, node->work->dwork);
         }
-
-        // ---------------------------------------------------------------
-        //        compute H = C + C^T + term2 + term3
-        // ---------------------------------------------------------------
-        sum_4_matrices_fill_values(mul_node->C, mul_node->CT, x->wsum_hess,
-                                   y->wsum_hess, node->wsum_hess);
+        sum_n_matrices_fill_add(y->wsum_hess, 3, node->wsum_hess);
     }
 }
 
