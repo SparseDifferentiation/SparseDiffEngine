@@ -67,9 +67,8 @@ void eval_jacobian_elementwise(expr *node)
         /* jacobian of h(x) = f(g(x)) is Jf @ Jg, and here Jf is diagonal */
         eval_jacobian(child);
         node->local_jacobian(node, node->work->local_jac_diag);
-        memcpy(node->work->dwork, node->work->local_jac_diag,
-               node->size * sizeof(double));
-        DA_matrices_fill_values(node->work->dwork, child->jacobian, node->jacobian);
+        DA_matrices_fill_values(node->work->local_jac_diag, child->jacobian,
+                                node->jacobian);
     }
 }
 
