@@ -432,8 +432,8 @@ static void wsum_hess_init_chain_rule(expr *node)
     wsum_hess_init(g);
 
     /* H = C + C^T + H_f + H_g */
-    node->wsum_hess =
-        sum_4_matrices_alloc(mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess);
+    matrix *ops[4] = {mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess};
+    node->wsum_hess = sum_n_matrices_alloc(ops, 4);
 
     /* allocate weight backprop workspace */
     if (!f->is_affine(f) || !g->is_affine(g))
@@ -461,12 +461,20 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     BTA_matrices_fill_values(mnode->BJg, f->jacobian, mnode->C);
     transpose_matrices_fill_values(mnode->C, mnode->CT);
 
+    /* H = C + C^T + H_f + H_g, adding each term right after it is evaluated:
+       if f and g share a subexpression, evaluating g may overwrite f's
+       hessian values */
+    sum_n_matrices_fill_zero(node->wsum_hess);
+    sum_n_matrices_fill_add(mnode->C, 0, node->wsum_hess);
+    sum_n_matrices_fill_add(mnode->CT, 1, node->wsum_hess);
+
     /* compute Hessian of f */
     if (!is_f_affine)
     {
         Y_kron_I_vec(m, k, n, g->value, w, node->work->dwork);
         eval_wsum_hess(f, node->work->dwork);
     }
+    sum_n_matrices_fill_add(f->wsum_hess, 2, node->wsum_hess);
 
     /* compute Hessian of g */
     if (!is_g_affine)
@@ -474,10 +482,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
         I_kron_XT_vec(m, k, n, f->value, w, node->work->dwork);
         eval_wsum_hess(g, node->work->dwork);
     }
-
-    /* H = C + C^T + H_f + H_g */
-    sum_4_matrices_fill_values(mnode->C, mnode->CT, f->wsum_hess, g->wsum_hess,
-                               node->wsum_hess);
+    sum_n_matrices_fill_add(g->wsum_hess, 3, node->wsum_hess);
 }
 
 expr *new_matmul(expr *x, expr *y)

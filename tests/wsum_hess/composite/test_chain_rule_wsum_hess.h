@@ -636,3 +636,51 @@ const char *test_wsum_hess_add_shared_subexpr(void)
     free_expr(f);
     return 0;
 }
+
+const char *test_wsum_hess_multiply_shared_subexpr(void)
+{
+    /* multiply(log x, exp(log x)) and multiply(exp(log x), log x) with one
+     * shared log x node: evaluating the side that contains log x re-evaluates
+     * log x's Hessian with other weights, which must not leak into the other
+     * side. */
+    double u_vals[3] = {0.5, 1.0, 1.5};
+    double w[3] = {1.0, 2.0, 3.0};
+
+    expr *x = new_variable(3, 1, 0, 3);
+    expr *log_x = new_log(x);
+    expr *f = new_elementwise_mult(log_x, new_exp(log_x));
+    mu_assert("check_wsum_hess failed (shared node on the left)",
+              check_wsum_hess(f, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(f);
+
+    x = new_variable(3, 1, 0, 3);
+    log_x = new_log(x);
+    f = new_elementwise_mult(new_exp(log_x), log_x);
+    mu_assert("check_wsum_hess failed (shared node on the right)",
+              check_wsum_hess(f, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(f);
+    return 0;
+}
+
+const char *test_wsum_hess_matmul_shared_subexpr(void)
+{
+    /* log(X) @ exp(log(X)) and exp(log(X)) @ log(X) with one shared log(X)
+     * node, X is 2x2 */
+    double u_vals[4] = {0.5, 1.0, 1.5, 2.0};
+    double w[4] = {1.0, 2.0, 3.0, 4.0};
+
+    expr *X = new_variable(2, 2, 0, 4);
+    expr *log_X = new_log(X);
+    expr *Z = new_matmul(log_X, new_exp(log_X));
+    mu_assert("check_wsum_hess failed (shared node on the left)",
+              check_wsum_hess(Z, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(Z);
+
+    X = new_variable(2, 2, 0, 4);
+    log_X = new_log(X);
+    Z = new_matmul(new_exp(log_X), log_X);
+    mu_assert("check_wsum_hess failed (shared node on the right)",
+              check_wsum_hess(Z, u_vals, w, NUMERICAL_DIFF_DEFAULT_H));
+    free_expr(Z);
+    return 0;
+}
