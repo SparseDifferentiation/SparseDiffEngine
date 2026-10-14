@@ -461,9 +461,7 @@ static void eval_wsum_hess_chain_rule(expr *node, const double *w)
     BTA_matrices_fill_values(mnode->BJg, f->jacobian, mnode->C);
     transpose_matrices_fill_values(mnode->C, mnode->CT);
 
-    /* H = C + C^T + H_f + H_g, adding each term right after it is evaluated:
-       if f and g share a subexpression, evaluating g may overwrite f's
-       hessian values */
+    /* H = C + C^T + H_f + H_g, adding each term right after it is evaluated */
     sum_n_matrices_fill_zero(node->wsum_hess);
     sum_n_matrices_fill_add(mnode->C, 0, node->wsum_hess);
     sum_n_matrices_fill_add(mnode->CT, 1, node->wsum_hess);

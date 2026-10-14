@@ -191,8 +191,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
 
         // ---------------------------------------------------------------
         //   compute H = C + C^T + term2 + term3, adding each term right
-        //   after it is evaluated: if x and y share a subexpression,
-        //   evaluating y may overwrite x's hessian values
+        //   after it is evaluated
         // ---------------------------------------------------------------
         sum_n_matrices_fill_zero(node->wsum_hess);
         sum_n_matrices_fill_add(mul_node->C, 0, node->wsum_hess);
