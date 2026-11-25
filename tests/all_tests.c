@@ -290,6 +290,7 @@ int main(void)
     mu_run_test(test_wsum_hess_entr, tests_run);
     mu_run_test(test_wsum_hess_logistic, tests_run);
     mu_run_test(test_wsum_hess_power, tests_run);
+    mu_run_test(test_power_special_exponents, tests_run);
     mu_run_test(test_wsum_hess_xexp, tests_run);
     mu_run_test(test_wsum_hess_sin, tests_run);
     mu_run_test(test_wsum_hess_cos, tests_run);

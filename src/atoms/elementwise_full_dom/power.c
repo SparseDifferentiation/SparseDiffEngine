@@ -21,6 +21,40 @@
 #include <math.h>
 #include <stdlib.h>
 
+/* out[i] = c * x[i]^e. The exponents that arise from x^2 and x^(-1) and their
+   derivatives avoid pow, which is slow. */
+static void scaled_pow(double *out, const double *x, int n, double c, double e)
+{
+    if (e == 0.0)
+    {
+        for (int i = 0; i < n; i++) out[i] = c;
+    }
+    else if (e == 1.0)
+    {
+        for (int i = 0; i < n; i++) out[i] = c * x[i];
+    }
+    else if (e == 2.0)
+    {
+        for (int i = 0; i < n; i++) out[i] = c * (x[i] * x[i]);
+    }
+    else if (e == -1.0)
+    {
+        for (int i = 0; i < n; i++) out[i] = c / x[i];
+    }
+    else if (e == -2.0)
+    {
+        for (int i = 0; i < n; i++) out[i] = c / (x[i] * x[i]);
+    }
+    else if (e == -3.0)
+    {
+        for (int i = 0; i < n; i++) out[i] = c / (x[i] * x[i] * x[i]);
+    }
+    else
+    {
+        for (int i = 0; i < n; i++) out[i] = c * pow(x[i], e);
+    }
+}
+
 static void forward(expr *node, const double *u)
 {
 
@@ -30,10 +64,7 @@ static void forward(expr *node, const double *u)
     /* local forward pass */
     double *x = node->left->value;
     double p = ((power_expr *) node)->p;
-    for (int i = 0; i < node->size; i++)
-    {
-        node->value[i] = pow(x[i], p);
-    }
+    scaled_pow(node->value, x, node->size, 1.0, p);
 }
 
 static void local_jacobian(expr *node, double *vals)
@@ -41,10 +72,7 @@ static void local_jacobian(expr *node, double *vals)
     double *x = node->left->value;
     double p = ((power_expr *) node)->p;
 
-    for (int j = 0; j < node->size; j++)
-    {
-        vals[j] = p * pow(x[j], p - 1);
-    }
+    scaled_pow(vals, x, node->size, p, p - 1);
 }
 
 static void local_wsum_hess(expr *node, double *out, const double *w)
@@ -52,9 +80,10 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
     double *x = node->left->value;
     double p = ((power_expr *) node)->p;
 
+    scaled_pow(out, x, node->size, p * (p - 1), p - 2);
     for (int j = 0; j < node->size; j++)
     {
-        out[j] = w[j] * p * (p - 1) * pow(x[j], p - 2);
+        out[j] *= w[j];
     }
 }
 
