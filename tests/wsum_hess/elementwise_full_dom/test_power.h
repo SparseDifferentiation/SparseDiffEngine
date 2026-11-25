@@ -35,3 +35,38 @@ const char *test_wsum_hess_power(void)
 
     return 0;
 }
+
+/* p = 2 and p = -1 use every special case in power.c, p = 0.5 uses pow */
+const char *test_power_special_exponents(void)
+{
+    double u_vals[3] = {0.5, 1.5, 3.0};
+    double w[3] = {1.0, -2.0, 3.0};
+    double exponents[3] = {2.0, -1.0, 0.5};
+
+    for (int k = 0; k < 3; k++)
+    {
+        double p = exponents[k];
+        double f[3], df[3], d2f[3];
+        for (int i = 0; i < 3; i++)
+        {
+            f[i] = pow(u_vals[i], p);
+            df[i] = p * pow(u_vals[i], p - 1);
+            d2f[i] = w[i] * p * (p - 1) * pow(u_vals[i], p - 2);
+        }
+
+        expr *node = new_power(new_variable(3, 1, 0, 3), p);
+        node->forward(node, u_vals);
+        jacobian_init(node);
+        eval_jacobian(node);
+        wsum_hess_init(node);
+        eval_wsum_hess(node, w);
+
+        mu_assert("forward fail", cmp_double_array(node->value, f, 3));
+        mu_assert("jacobian fail", cmp_values(node->jacobian, df, 3));
+        mu_assert("hessian fail", cmp_values(node->wsum_hess, d2f, 3));
+
+        free_expr(node);
+    }
+
+    return 0;
+}
