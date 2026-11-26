@@ -205,10 +205,8 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     matrix_values_changed(H1);
 
     /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
-    for (int i = 0; i < qnode->n; i++)
-    {
-        qnode->hess_w[i] = two_w * node->work->dwork[i];
-    }
+    memcpy(qnode->hess_w, node->work->dwork, qnode->n * sizeof(double));
+    cblas_dscal(qnode->n, two_w, qnode->hess_w, 1);
     eval_wsum_hess(x, qnode->hess_w);
     memcpy(H2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
     matrix_values_changed(H2);
