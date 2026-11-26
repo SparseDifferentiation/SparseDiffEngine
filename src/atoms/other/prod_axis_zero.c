@@ -30,7 +30,7 @@ static void forward(expr *node, const double *u)
 {
     /* forward pass of child */
     expr *x = node->left;
-    x->forward(x, u);
+    expr_forward(x, u);
 
     prod_axis *pnode = (prod_axis *) node;
     int d1 = x->d1;

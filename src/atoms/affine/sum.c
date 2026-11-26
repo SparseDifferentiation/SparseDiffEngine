@@ -31,7 +31,7 @@ static void forward(expr *node, const double *u)
     int axis = snode->axis;
 
     /* child's forward pass */
-    x->forward(x, u);
+    expr_forward(x, u);
 
     if (axis == -1)
     {

@@ -35,7 +35,7 @@ static void forward(expr *node, const double *u)
     expr *x = node->left;
     broadcast_expr *bcast = (broadcast_expr *) node;
 
-    x->forward(x, u);
+    expr_forward(x, u);
 
     if (bcast->type == BROADCAST_ROW)
     {

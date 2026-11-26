@@ -20,7 +20,7 @@
 
 static void log_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     for (int i = 0; i < node->size; i++)
     {
@@ -52,7 +52,7 @@ expr *new_log(expr *child)
 {
     expr *node = new_restricted(child);
     if (!node) return NULL;
-    node->forward = log_forward;
+    node->forward_impl = log_forward;
     node->eval_jacobian_impl = log_eval_jacobian;
     node->eval_wsum_hess_impl = log_eval_wsum_hess;
     return node;

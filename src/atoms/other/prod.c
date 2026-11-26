@@ -36,7 +36,7 @@ static void forward(expr *node, const double *u)
     expr *x = node->left;
 
     /* forward pass of child */
-    x->forward(x, u);
+    expr_forward(x, u);
 
     /* local forward pass and count zeros */
     double prod_nonzero = 1.0;

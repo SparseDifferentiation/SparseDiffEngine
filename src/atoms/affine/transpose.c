@@ -25,7 +25,7 @@
 static void forward(expr *node, const double *u)
 {
     /* forward pass for child */
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     /* local forward pass */
     int d1 = node->d1;

@@ -21,7 +21,7 @@
 static void entr_forward(expr *node, const double *u)
 {
     expr *child = node->left;
-    child->forward(child, u);
+    expr_forward(child, u);
 
     for (int i = 0; i < node->size; i++)
     {
@@ -53,7 +53,7 @@ expr *new_entr(expr *child)
 {
     expr *node = new_restricted(child);
     if (!node) return NULL;
-    node->forward = entr_forward;
+    node->forward_impl = entr_forward;
     node->eval_jacobian_impl = entr_eval_jacobian;
     node->eval_wsum_hess_impl = entr_eval_wsum_hess;
     return node;

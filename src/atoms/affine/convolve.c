@@ -71,7 +71,7 @@ static void forward(expr *node, const double *u)
 
     if (cnode->base.needs_parameter_refresh)
     {
-        cnode->param_source->forward(cnode->param_source, NULL);
+        expr_forward(cnode->param_source, NULL);
         /* refresh the convolution matrix values if it exists (necessary to check
            for null in case someone calls forward before initializing the jacobian,
            which might happen when we expose Python bindings to SparseDiffEngine) */
@@ -84,7 +84,7 @@ static void forward(expr *node, const double *u)
         cnode->base.needs_parameter_refresh = false;
     }
 
-    child->forward(child, u);
+    expr_forward(child, u);
 
     const double *a = cnode->param_source->value;
     const double *x = child->value;

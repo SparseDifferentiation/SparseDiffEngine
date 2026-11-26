@@ -38,8 +38,8 @@ static void forward(expr *node, const double *u)
     expr *y = node->right;
 
     /* children's forward passes */
-    x->forward(x, u);
-    y->forward(y, u);
+    expr_forward(x, u);
+    expr_forward(y, u);
 
     /* local forward pass */
     node->value[0] = 0.0;

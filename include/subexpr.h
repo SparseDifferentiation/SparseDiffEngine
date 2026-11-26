@@ -67,7 +67,8 @@ typedef struct quad_form_expr
     /* Q f(x) as an n x 1 permuted_dense: the transposed operand that forms the
        composition Jacobian 2 (Q f(x))^T J_f through the matrix dispatchers. */
     matrix *Qx;
-    int n; /* quadratic dimension = left->size */
+    int n;          /* quadratic dimension = left->size */
+    double *hess_w; /* weights 2w Q f(x) passed to the child's hessian */
 
     /* parametric dense path: param_source feeds Q each solve (NULL otherwise) */
     expr *param_source;

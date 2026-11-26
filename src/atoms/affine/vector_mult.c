@@ -36,14 +36,14 @@ static void forward(expr *node, const double *u)
        its values) */
     if (vnode->base.needs_parameter_refresh)
     {
-        vnode->param_source->forward(vnode->param_source, NULL);
+        expr_forward(vnode->param_source, NULL);
         vnode->base.needs_parameter_refresh = false;
     }
 
     const double *a = vnode->param_source->value;
 
     /* child's forward pass */
-    child->forward(child, u);
+    expr_forward(child, u);
 
     /* local forward pass: elementwise multiply by a */
     for (int i = 0; i < node->size; i++)

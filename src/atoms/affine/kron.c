@@ -44,7 +44,7 @@ static void refresh_param_values(kron_expr *knode)
         return;
     }
 
-    knode->param_source->forward(knode->param_source, NULL);
+    expr_forward(knode->param_source, NULL);
     knode->base.needs_parameter_refresh = false;
 }
 
@@ -54,7 +54,7 @@ static void forward(expr *node, const double *u)
     kron_expr *knode = (kron_expr *) node;
 
     refresh_param_values(knode);
-    child->forward(child, u);
+    expr_forward(child, u);
 
     const double *a = knode->param_source->value;
     const double *x = child->value;

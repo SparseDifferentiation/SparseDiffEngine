@@ -26,7 +26,7 @@
 
 static void forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     /* broadcast scalar value to all output elements */
     for (int i = 0; i < node->size; i++)
