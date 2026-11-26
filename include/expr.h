@@ -42,8 +42,7 @@ typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
 typedef bool (*set_needs_refresh_children_fn)(struct expr *node);
 
-/* Memoized result of node->is_affine(node). Affinity is structural, so it is
-   computed once. AFFINITY_UNKNOWN must be 0 (the workspace is calloc'ed). */
+/* AFFINITY_UNKNOWN must be 0 (the workspace is calloc'ed) */
 typedef enum
 {
     AFFINITY_UNKNOWN = 0,
@@ -59,22 +58,16 @@ typedef struct
 
     affinity affine_state; /* memoized node->is_affine(node) */
 
-    /* True while the Jacobian values are valid, which lets eval_jacobian
-       skip the node (and its whole subtree). Set by eval_jacobian; cleared by
-       expr_set_needs_refresh and, for a non-affine node, by a new forward
-       pass. */
+    /* The Jacobian values are valid. Cleared by expr_set_needs_refresh and,
+       for a non-affine node, by a new forward pass. */
     bool jacobian_evaluated;
 
     /* forward pass that last evaluated this node (see expr_forward) */
     uint64_t fwd_epoch;
 
-    /* Shared-node bookkeeping of eval_wsum_hess: the number of wsum_hess_init
-       calls received (in-edges), the eval_wsum_hess calls received so far in
-       the current pass, and the weights accumulated over them (allocated iff
-       hess_n_in > 1). */
-    int hess_n_in;
-    int hess_visits;
-    double *hess_w;
+    int hess_n_in;          /* number of wsum_hess_init calls (in-edges) */
+    int hess_visits;        /* eval_wsum_hess calls so far in this pass */
+    double *hess_w;         /* weights summed over them (iff hess_n_in > 1) */
     double *local_jac_diag; /* cached f'(g(x)) diagonal */
     matrix *hess_term1;     /* Jg^T D Jg workspace */
     matrix *hess_term2;     /* child wsum_hess workspace */
@@ -152,8 +145,7 @@ void free_expr(expr *node);
 /* Forward pass on a DAG. node->forward(node, u) starts a pass and evaluates
  * the node. Atoms recurse into their children with expr_forward, which
  * evaluates a node at most once per pass. A new value invalidates a non-affine
- * node's Jacobian. Threads may run forward passes on DAGs that share no
- * nodes. */
+ * node's Jacobian. */
 void expr_forward(expr *node, const double *u);
 
 /* Guarded init: the impl runs once per node, however many parents it has.
@@ -170,12 +162,9 @@ void wsum_hess_init(expr *node);
  *
  * eval_jacobian skips a node whose Jacobian is still valid.
  *
- * eval_wsum_hess runs the impl of a node with several in-edges only once per
- * pass: the Hessian is linear in the weights, so it accumulates the weights of
- * all in-edges and evaluates on the last one. Earlier callers read zeros. This
- * requires that an atom only ever adds a child's Hessian to its own (a scaling
- * goes into the weights passed to the child). An affine node is skipped; its
- * Hessian is zero. */
+ * eval_wsum_hess evaluates a node with several in-edges once per pass, at the
+ * sum of their weights. An atom must therefore only add a child's Hessian to
+ * its own, never rescale it (a scaling goes into the child's weights). */
 void eval_jacobian(expr *node);
 void eval_wsum_hess(expr *node, const double *w);
 

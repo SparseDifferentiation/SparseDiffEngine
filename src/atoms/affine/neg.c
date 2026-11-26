@@ -71,8 +71,7 @@ static void wsum_hess_init_impl(expr *node)
 
 static void eval_wsum_hess_impl(expr *node, const double *w)
 {
-    /* For f(x) = -g(x): sum_i w_i Hf_i = sum_i (-w_i) Hg_i. The sign goes into
-       the child's weights, never onto its Hessian (see eval_wsum_hess). */
+    /* For f(x) = -g(x): sum_i w_i Hf_i = sum_i (-w_i) Hg_i */
     for (int i = 0; i < node->size; i++)
     {
         node->work->dwork[i] = -w[i];

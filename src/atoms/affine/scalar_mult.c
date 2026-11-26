@@ -97,8 +97,6 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     expr *x = node->left;
     double a = ((scalar_mult_expr *) node)->param_source->value[0];
 
-    /* the scaling goes into the child's weights, never onto its Hessian (see
-       eval_wsum_hess) */
     memcpy(node->work->dwork, w, node->size * sizeof(double));
     cblas_dscal(node->size, a, node->work->dwork, 1);
     eval_wsum_hess(x, node->work->dwork);

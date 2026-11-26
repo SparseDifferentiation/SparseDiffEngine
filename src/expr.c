@@ -39,7 +39,8 @@ static bool expr_is_affine(const expr *node)
 #define EXPR_THREAD_LOCAL __thread
 #endif
 
-/* Identifies the current forward pass; bumped by every top-level forward. */
+/* Identifies the current forward pass; bumped by every top-level forward.
+   Thread-local, so threads may run passes on DAGs that share no nodes. */
 static EXPR_THREAD_LOCAL uint64_t fwd_epoch = 0;
 
 void expr_forward(expr *node, const double *u)
