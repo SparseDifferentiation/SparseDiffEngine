@@ -145,9 +145,14 @@ void free_expr(expr *node);
 /* Forward pass on a DAG. node->forward(node, u) starts a pass: it bumps
  * expr_fwd_epoch and evaluates the node. Atoms recurse into their children
  * with expr_forward, which evaluates a node at most once per pass. A new value
- * invalidates a non-affine node's Jacobian. (The epoch is a global, so forward
- * passes are not thread-safe.) */
-extern uint64_t expr_fwd_epoch;
+ * invalidates a non-affine node's Jacobian. The epoch is thread-local, so
+ * threads may run forward passes on DAGs that share no nodes. */
+#if defined(_MSC_VER)
+#define SP_THREAD_LOCAL __declspec(thread)
+#else
+#define SP_THREAD_LOCAL __thread
+#endif
+extern SP_THREAD_LOCAL uint64_t expr_fwd_epoch;
 void expr_forward_root(struct expr *node, const double *u);
 static inline void expr_forward(struct expr *node, const double *u)
 {

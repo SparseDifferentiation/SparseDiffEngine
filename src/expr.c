@@ -32,7 +32,7 @@ static bool expr_is_affine(const expr *node)
     return wk->affine_state == 1;
 }
 
-uint64_t expr_fwd_epoch = 0;
+SP_THREAD_LOCAL uint64_t expr_fwd_epoch = 0;
 
 void expr_forward_root(expr *node, const double *u)
 {
