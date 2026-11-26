@@ -28,7 +28,7 @@
 
 static void forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     memcpy(node->value, node->left->value, node->size * sizeof(double));
 }
 

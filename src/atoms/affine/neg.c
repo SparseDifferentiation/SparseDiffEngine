@@ -24,7 +24,7 @@
 static void forward(expr *node, const double *u)
 {
     /* child's forward pass */
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     /* negate values */
     for (int i = 0; i < node->size; i++)
@@ -62,20 +62,23 @@ static void wsum_hess_init_impl(expr *node)
     /* initialize child's wsum_hess */
     wsum_hess_init(x);
 
+    /* weights passed to the child */
+    node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
+
     /* same sparsity pattern as child (polymorphic copy) */
     node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 }
 
 static void eval_wsum_hess_impl(expr *node, const double *w)
 {
-    /* For f(x) = -g(x): d²f/dx² = -d²g/dx² */
-    eval_wsum_hess(node->left, w);
-
-    /* negate values (sparsity pattern set in wsum_hess_init_impl) */
-    for (int k = 0; k < node->left->wsum_hess->nnz; k++)
+    /* For f(x) = -g(x): sum_i w_i Hf_i = sum_i (-w_i) Hg_i */
+    for (int i = 0; i < node->size; i++)
     {
-        node->wsum_hess->x[k] = -node->left->wsum_hess->x[k];
+        node->work->dwork[i] = -w[i];
     }
+    eval_wsum_hess(node->left, node->work->dwork);
+    memcpy(node->wsum_hess->x, node->left->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

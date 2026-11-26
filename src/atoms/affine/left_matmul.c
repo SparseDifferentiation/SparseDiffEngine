@@ -68,7 +68,7 @@ static void forward(expr *node, const double *u)
     /* call forward on param_source if it exists and needs refresh */
     if (lnode->param_source != NULL && lnode->base.needs_parameter_refresh)
     {
-        lnode->param_source->forward(lnode->param_source, NULL);
+        expr_forward(lnode->param_source, NULL);
     }
 
     refresh_param_values(lnode);
@@ -76,7 +76,7 @@ static void forward(expr *node, const double *u)
     expr *x = node->left;
 
     /* child's forward pass */
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     /* y = A_kron @ vec(f(x)) */
     matrix *A = lnode->A;

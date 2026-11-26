@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "sparsediff_linalg/cblas_wrapper.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <assert.h>
@@ -35,14 +36,14 @@ static void forward(expr *node, const double *u)
        its values) */
     if (snode->base.needs_parameter_refresh)
     {
-        snode->param_source->forward(snode->param_source, NULL);
+        expr_forward(snode->param_source, NULL);
         snode->base.needs_parameter_refresh = false;
     }
 
     double a = snode->param_source->value[0];
 
     /* child's forward pass */
-    child->forward(child, u);
+    expr_forward(child, u);
 
     /* local forward pass: multiply each element by scalar a */
     for (int i = 0; i < node->size; i++)
@@ -84,6 +85,9 @@ static void wsum_hess_init_impl(expr *node)
     /* initialize child's weighted Hessian */
     wsum_hess_init(x);
 
+    /* weights passed to the child */
+    node->work->dwork = (double *) sp_malloc(node->size * sizeof(double));
+
     /* same sparsity as child */
     node->wsum_hess = copy_sparsity_matrices_alloc(x->wsum_hess);
 }
@@ -91,13 +95,13 @@ static void wsum_hess_init_impl(expr *node)
 static void eval_wsum_hess_impl(expr *node, const double *w)
 {
     expr *x = node->left;
-    eval_wsum_hess(x, w);
-
     double a = ((scalar_mult_expr *) node)->param_source->value[0];
-    for (int j = 0; j < x->wsum_hess->nnz; j++)
-    {
-        node->wsum_hess->x[j] = a * x->wsum_hess->x[j];
-    }
+
+    memcpy(node->work->dwork, w, node->size * sizeof(double));
+    cblas_dscal(node->size, a, node->work->dwork, 1);
+    eval_wsum_hess(x, node->work->dwork);
+    memcpy(node->wsum_hess->x, x->wsum_hess->x,
+           node->wsum_hess->nnz * sizeof(double));
 }
 
 static bool is_affine(const expr *node)

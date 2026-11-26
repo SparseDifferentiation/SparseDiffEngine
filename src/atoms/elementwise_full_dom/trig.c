@@ -21,7 +21,7 @@
 /* ----------------------- sin ----------------------- */
 static void sin_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = sin(node->left->value[i]);
@@ -48,7 +48,7 @@ static void sin_local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_sin(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = sin_forward;
+    node->forward_impl = sin_forward;
     node->local_jacobian = sin_local_jacobian;
     node->local_wsum_hess = sin_local_wsum_hess;
     return node;
@@ -57,7 +57,7 @@ expr *new_sin(expr *child)
 /* ----------------------- cos ----------------------- */
 static void cos_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = cos(node->left->value[i]);
@@ -84,7 +84,7 @@ static void cos_local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_cos(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = cos_forward;
+    node->forward_impl = cos_forward;
     node->local_jacobian = cos_local_jacobian;
     node->local_wsum_hess = cos_local_wsum_hess;
     return node;
@@ -93,7 +93,7 @@ expr *new_cos(expr *child)
 /* ----------------------- atan ----------------------- */
 static void atan_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = atan(node->left->value[i]);
@@ -122,7 +122,7 @@ static void atan_local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_atan(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = atan_forward;
+    node->forward_impl = atan_forward;
     node->local_jacobian = atan_local_jacobian;
     node->local_wsum_hess = atan_local_wsum_hess;
     return node;

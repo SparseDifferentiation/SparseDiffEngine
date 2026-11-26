@@ -49,7 +49,7 @@ static void forward(expr *node, const double *u)
     index_expr *idx = (index_expr *) node;
 
     /* child's forward pass */
-    x->forward(x, u);
+    expr_forward(x, u);
 
     /* gather selected elements */
     for (int i = 0; i < idx->n_idxs; i++)

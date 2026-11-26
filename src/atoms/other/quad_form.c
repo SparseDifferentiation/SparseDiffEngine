@@ -52,12 +52,12 @@ static void forward(expr *node, const double *u)
     /* refresh Q from the parameter if needed */
     if (qnode->param_source != NULL && node->needs_parameter_refresh)
     {
-        qnode->param_source->forward(qnode->param_source, NULL);
+        expr_forward(qnode->param_source, NULL);
     }
     refresh_param_values_qf(qnode);
 
     /* child's forward pass */
-    x->forward(x, u);
+    expr_forward(x, u);
 
     /* dwork = Q @ x; value = x' (Q x) */
     matrix *Q = qnode->Q;
@@ -169,6 +169,7 @@ static void wsum_hess_init_impl(expr *node)
     node->work->hess_term1 = BTA_matrices_alloc(x->jacobian, qnode->QJf);
 
     wsum_hess_init(x);
+    qnode->hess_w = (double *) sp_malloc(qnode->n * sizeof(double));
     node->work->hess_term2 = copy_sparsity_matrices_alloc(x->wsum_hess);
 
     /* hess = term1 + term2 */
@@ -204,9 +205,10 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     matrix_values_changed(H1);
 
     /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
-    eval_wsum_hess(x, node->work->dwork);
+    memcpy(qnode->hess_w, node->work->dwork, qnode->n * sizeof(double));
+    cblas_dscal(qnode->n, two_w, qnode->hess_w, 1);
+    eval_wsum_hess(x, qnode->hess_w);
     memcpy(H2->x, x->wsum_hess->x, x->wsum_hess->nnz * sizeof(double));
-    cblas_dscal(H2->nnz, two_w, H2->x, 1);
     matrix_values_changed(H2);
 
     sum_matrices_fill_values(H1, H2, node->wsum_hess);
@@ -228,6 +230,8 @@ static void free_type_data(expr *node)
     qnode->QJf = NULL;
     free_matrix(qnode->Qx);
     qnode->Qx = NULL;
+    sp_free(qnode->hess_w);
+    qnode->hess_w = NULL;
     free_expr(qnode->param_source);
     qnode->param_source = NULL;
 }

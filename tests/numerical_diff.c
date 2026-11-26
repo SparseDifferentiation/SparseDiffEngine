@@ -175,7 +175,7 @@ int check_wsum_hess(expr *node, const double *u, const double *w, double h)
     double *H_num = numerical_wsum_hess(node, u, w, h);
 
     /* Now compute analytical (reuses jacobian from numerical) */
-    wsum_hess_init(node);
+    if (node->wsum_hess == NULL) wsum_hess_init(node);
     node->forward(node, u);
     eval_jacobian(node);
     eval_wsum_hess(node, w);

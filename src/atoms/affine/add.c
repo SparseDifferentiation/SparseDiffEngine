@@ -26,8 +26,8 @@
 static void forward(expr *node, const double *u)
 {
     /* children's forward passes */
-    node->left->forward(node->left, u);
-    node->right->forward(node->right, u);
+    expr_forward(node->left, u);
+    expr_forward(node->right, u);
 
     /* add left and right values */
     for (int i = 0; i < node->size; i++)

@@ -22,7 +22,7 @@
 static void forward(expr *node, const double *u)
 {
     /* child's forward pass */
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     /* local forward pass */
     for (int i = 0; i < node->size; i++)
@@ -53,7 +53,7 @@ static void local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_xexp(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = forward;
+    node->forward_impl = forward;
     node->local_jacobian = local_jacobian;
     node->local_wsum_hess = local_wsum_hess;
     return node;

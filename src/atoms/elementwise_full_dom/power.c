@@ -59,7 +59,7 @@ static void forward(expr *node, const double *u)
 {
 
     /* child's forward pass */
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
 
     /* local forward pass */
     double *x = node->left->value;
@@ -93,7 +93,7 @@ expr *new_power(expr *child, double p)
     power_expr *pnode = (power_expr *) sp_calloc(1, sizeof(power_expr));
     expr *node = &pnode->base;
     init_elementwise(node, child);
-    node->forward = forward;
+    node->forward_impl = forward;
     node->local_jacobian = local_jacobian;
     node->local_wsum_hess = local_wsum_hess;
 

@@ -10,8 +10,8 @@
 #include "numerical_diff.h"
 #include "test_helpers.h"
 
-/* Non-affine node: every eval_jacobian call bumps the jacobian's
- * values_version. */
+/* Non-affine node: eval_jacobian bumps the jacobian's values_version once per
+ * forward pass (a re-eval at the same point is skipped). */
 const char *test_values_version_non_affine(void)
 {
     double u[3] = {0.1, 0.2, 0.3};
@@ -25,7 +25,13 @@ const char *test_values_version_non_affine(void)
     eval_jacobian(e);
     mu_assert("first eval must bump", e->jacobian->values_version == v0 + 1);
     eval_jacobian(e);
-    mu_assert("second eval must bump", e->jacobian->values_version == v0 + 2);
+    mu_assert("re-eval at the same point must not bump",
+              e->jacobian->values_version == v0 + 1);
+
+    e->forward(e, u);
+    eval_jacobian(e);
+    mu_assert("eval after a forward pass must bump",
+              e->jacobian->values_version == v0 + 2);
 
     free_expr(e);
     return 0;

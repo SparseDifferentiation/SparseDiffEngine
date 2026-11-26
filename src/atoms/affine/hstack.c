@@ -33,7 +33,7 @@ static void forward(expr *node, const double *u)
     /* children's forward passes */
     for (int i = 0; i < hnode->n_args; i++)
     {
-        hnode->args[i]->forward(hnode->args[i], u);
+        expr_forward(hnode->args[i], u);
     }
 
     /* concatenate values horizontally */

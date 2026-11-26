@@ -33,8 +33,8 @@ static void forward_scalar_vector(expr *node, const double *u)
     expr *y = node->right;
 
     /* children's forward passes */
-    x->forward(x, u);
-    y->forward(y, u);
+    expr_forward(x, u);
+    expr_forward(y, u);
 
     /* local forward pass */
     for (int i = 0; i < node->size; i++)

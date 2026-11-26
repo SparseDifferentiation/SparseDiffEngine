@@ -42,21 +42,32 @@ typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
 typedef bool (*set_needs_refresh_children_fn)(struct expr *node);
 
+/* AFFINITY_UNKNOWN must be 0 (the workspace is calloc'ed) */
+typedef enum
+{
+    AFFINITY_UNKNOWN = 0,
+    AFFINE,
+    NON_AFFINE
+} affinity;
+
 /* Workspace for derivative computation */
 typedef struct
 {
     double *dwork;
     int *iwork;
 
-    /* node->is_affine(node), computed once by jacobian_init (affinity is
-       structural, and the recursive is_affine is too costly per eval). */
-    bool is_affine_cached;
+    affinity affine_state; /* memoized node->is_affine(node) */
 
-    /* True once eval_jacobian has run this parameter epoch; cleared by
-       expr_set_needs_refresh. Only consulted for affine nodes, where it
-       lets the eval_jacobian wrapper skip the values_version bump (same
-       role the old jacobian_csc_filled latch played). */
+    /* The Jacobian values are valid. Cleared by expr_set_needs_refresh and,
+       for a non-affine node, by a new forward pass. */
     bool jacobian_evaluated;
+
+    /* forward pass that last evaluated this node (see expr_forward) */
+    uint64_t fwd_epoch;
+
+    int hess_n_in;          /* number of wsum_hess_init calls (in-edges) */
+    int hess_visits;        /* eval_wsum_hess calls so far in this pass */
+    double *hess_w;         /* weights summed over them (iff hess_n_in > 1) */
     double *local_jac_diag; /* cached f'(g(x)) diagonal */
     matrix *hess_term1;     /* Jg^T D Jg workspace */
     matrix *hess_term2;     /* child wsum_hess workspace */
@@ -78,7 +89,8 @@ typedef struct expr
     double *value;
     matrix *jacobian;
     matrix *wsum_hess;
-    forward_fn forward;
+    forward_fn forward;      /* starts a forward pass */
+    forward_fn forward_impl; /* the atom's rule; recurses with expr_forward */
     jacobian_init_fn jacobian_init_impl;
     wsum_hess_init_fn wsum_hess_init_impl;
     eval_jacobian_fn eval_jacobian_impl;
@@ -87,7 +99,8 @@ typedef struct expr
     // ------------------------------------------------------------------------
     //                      other things
     // ------------------------------------------------------------------------
-    is_affine_fn is_affine;
+    is_affine_fn is_affine;             /* memoizing wrapper */
+    is_affine_fn is_affine_impl;        /* the atom's (recursive) rule */
     local_jacobian_fn local_jacobian;   /* used by elementwise univariate atoms*/
     local_wsum_hess_fn local_wsum_hess; /* used by elementwise univariate atoms*/
     free_type_data_fn free_type_data;   /* Cleanup for type-specific fields */
@@ -129,14 +142,29 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
 
 void free_expr(expr *node);
 
-/* Guarded init: skips if already initialized (safe for DAGs
- * where a node may be visited through multiple parents). */
+/* Forward pass on a DAG. node->forward(node, u) starts a pass and evaluates
+ * the node. Atoms recurse into their children with expr_forward, which
+ * evaluates a node at most once per pass. A new value invalidates a non-affine
+ * node's Jacobian. */
+void expr_forward(expr *node, const double *u);
+
+/* Guarded init: the impl runs once per node, however many parents it has.
+ *
+ * Every wsum_hess_init(node) call counts as one in-edge of the node and must
+ * be matched by exactly one eval_wsum_hess(node, w) call per Hessian pass
+ * (an atom does this for each child; problem does it for its roots). */
 void jacobian_init(expr *node);
 void wsum_hess_init(expr *node);
 
 /* Eval wrappers: run the atom's eval_*_impl and bump the output matrix's
  * values_version so version-guarded caches (CSC mirrors, spd CSR views)
- * refresh. Always call these instead of the impl slots. */
+ * refresh. Always call these instead of the impl slots.
+ *
+ * eval_jacobian skips a node whose Jacobian is still valid.
+ *
+ * eval_wsum_hess evaluates a node with several in-edges once per pass, at the
+ * sum of their weights. An atom must therefore only add a child's Hessian to
+ * its own, never rescale it (a scaling goes into the child's weights). */
 void eval_jacobian(expr *node);
 void eval_wsum_hess(expr *node, const double *w);
 

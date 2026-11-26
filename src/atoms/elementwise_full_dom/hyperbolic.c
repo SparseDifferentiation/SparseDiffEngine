@@ -22,7 +22,7 @@
 /* ----------------------- sinh ----------------------- */
 static void sinh_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = sinh(node->left->value[i]);
@@ -49,7 +49,7 @@ static void sinh_local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_sinh(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = sinh_forward;
+    node->forward_impl = sinh_forward;
     node->local_jacobian = sinh_local_jacobian;
     node->local_wsum_hess = sinh_local_wsum_hess;
     return node;
@@ -58,7 +58,7 @@ expr *new_sinh(expr *child)
 /* ----------------------- tanh ----------------------- */
 static void tanh_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = tanh(node->left->value[i]);
@@ -88,7 +88,7 @@ static void tanh_local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_tanh(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = tanh_forward;
+    node->forward_impl = tanh_forward;
     node->local_jacobian = tanh_local_jacobian;
     node->local_wsum_hess = tanh_local_wsum_hess;
     return node;
@@ -97,7 +97,7 @@ expr *new_tanh(expr *child)
 /* ----------------------- asinh ----------------------- */
 static void asinh_forward(expr *node, const double *u)
 {
-    node->left->forward(node->left, u);
+    expr_forward(node->left, u);
     for (int i = 0; i < node->size; i++)
     {
         node->value[i] = asinh(node->left->value[i]);
@@ -126,7 +126,7 @@ static void asinh_local_wsum_hess(expr *node, double *out, const double *w)
 expr *new_asinh(expr *child)
 {
     expr *node = new_elementwise(child);
-    node->forward = asinh_forward;
+    node->forward_impl = asinh_forward;
     node->local_jacobian = asinh_local_jacobian;
     node->local_wsum_hess = asinh_local_wsum_hess;
     return node;

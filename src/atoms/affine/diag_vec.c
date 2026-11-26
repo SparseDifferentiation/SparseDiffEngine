@@ -33,7 +33,7 @@ static void forward(expr *node, const double *u)
     int n = x->size;
 
     /* child's forward pass */
-    x->forward(x, u);
+    expr_forward(x, u);
 
     /* zero-initialize output, TODO: do we need to do this? */
     memset(node->value, 0, node->size * sizeof(double));
