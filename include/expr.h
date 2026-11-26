@@ -42,15 +42,22 @@ typedef bool (*is_affine_fn)(const struct expr *node);
 typedef void (*free_type_data_fn)(struct expr *node);
 typedef bool (*set_needs_refresh_children_fn)(struct expr *node);
 
+/* Memoized result of node->is_affine(node). Affinity is structural, so it is
+   computed once. AFFINITY_UNKNOWN must be 0 (the workspace is calloc'ed). */
+typedef enum
+{
+    AFFINITY_UNKNOWN = 0,
+    AFFINE,
+    NON_AFFINE
+} affinity;
+
 /* Workspace for derivative computation */
 typedef struct
 {
     double *dwork;
     int *iwork;
 
-    /* Memoized node->is_affine(node): 0 unknown, 1 affine, -1 not affine
-       (affinity is structural). */
-    signed char affine_state;
+    affinity affine_state; /* memoized node->is_affine(node) */
 
     /* True while the Jacobian values are valid, which lets eval_jacobian
        skip the node (and its whole subtree). Set by eval_jacobian; cleared by

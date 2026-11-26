@@ -204,9 +204,7 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
     cblas_dscal(H1->nnz, two_w, H1->x, 1);
     matrix_values_changed(H1);
 
-    /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward).
-       The factor 2w goes into the child's weights, never onto its Hessian
-       (see eval_wsum_hess). */
+    /* term2 = 2w sum_i (Q f(x))_i nabla^2 f_i (dwork = Q f(x) from forward) */
     for (int i = 0; i < qnode->n; i++)
     {
         qnode->hess_w[i] = two_w * node->work->dwork[i];

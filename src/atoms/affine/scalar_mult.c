@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 #include "atoms/affine.h"
+#include "sparsediff_linalg/cblas_wrapper.h"
 #include "sparsediff_linalg/tracked_alloc.h"
 #include "subexpr.h"
 #include <assert.h>
@@ -98,10 +99,8 @@ static void eval_wsum_hess_impl(expr *node, const double *w)
 
     /* the scaling goes into the child's weights, never onto its Hessian (see
        eval_wsum_hess) */
-    for (int i = 0; i < node->size; i++)
-    {
-        node->work->dwork[i] = a * w[i];
-    }
+    memcpy(node->work->dwork, w, node->size * sizeof(double));
+    cblas_dscal(node->size, a, node->work->dwork, 1);
     eval_wsum_hess(x, node->work->dwork);
     memcpy(node->wsum_hess->x, x->wsum_hess->x,
            node->wsum_hess->nnz * sizeof(double));

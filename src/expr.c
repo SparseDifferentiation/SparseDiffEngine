@@ -25,11 +25,11 @@
 static bool expr_is_affine(const expr *node)
 {
     Expr_Work *wk = node->work;
-    if (wk->affine_state == 0)
+    if (wk->affine_state == AFFINITY_UNKNOWN)
     {
-        wk->affine_state = node->is_affine_impl(node) ? 1 : -1;
+        wk->affine_state = node->is_affine_impl(node) ? AFFINE : NON_AFFINE;
     }
-    return wk->affine_state == 1;
+    return wk->affine_state == AFFINE;
 }
 
 SP_THREAD_LOCAL uint64_t expr_fwd_epoch = 0;
