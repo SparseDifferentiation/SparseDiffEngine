@@ -65,7 +65,7 @@ typedef struct
        pass. */
     bool jacobian_evaluated;
 
-    /* expr_fwd_epoch of the last forward pass that evaluated this node */
+    /* forward pass that last evaluated this node (see expr_forward) */
     uint64_t fwd_epoch;
 
     /* Shared-node bookkeeping of eval_wsum_hess: the number of wsum_hess_init
@@ -96,7 +96,7 @@ typedef struct expr
     double *value;
     matrix *jacobian;
     matrix *wsum_hess;
-    forward_fn forward;      /* starts a forward pass: expr_forward_root */
+    forward_fn forward;      /* starts a forward pass */
     forward_fn forward_impl; /* the atom's rule; recurses with expr_forward */
     jacobian_init_fn jacobian_init_impl;
     wsum_hess_init_fn wsum_hess_init_impl;
@@ -149,25 +149,12 @@ void init_expr(expr *node, int d1, int d2, int n_vars, forward_fn forward,
 
 void free_expr(expr *node);
 
-/* Forward pass on a DAG. node->forward(node, u) starts a pass: it bumps
- * expr_fwd_epoch and evaluates the node. Atoms recurse into their children
- * with expr_forward, which evaluates a node at most once per pass. A new value
- * invalidates a non-affine node's Jacobian. The epoch is thread-local, so
- * threads may run forward passes on DAGs that share no nodes. */
-#if defined(_MSC_VER)
-#define SP_THREAD_LOCAL __declspec(thread)
-#else
-#define SP_THREAD_LOCAL __thread
-#endif
-extern SP_THREAD_LOCAL uint64_t expr_fwd_epoch;
-void expr_forward_root(struct expr *node, const double *u);
-static inline void expr_forward(struct expr *node, const double *u)
-{
-    if (node->work->fwd_epoch == expr_fwd_epoch) return;
-    node->work->fwd_epoch = expr_fwd_epoch;
-    if (!node->is_affine(node)) node->work->jacobian_evaluated = false;
-    node->forward_impl(node, u);
-}
+/* Forward pass on a DAG. node->forward(node, u) starts a pass and evaluates
+ * the node. Atoms recurse into their children with expr_forward, which
+ * evaluates a node at most once per pass. A new value invalidates a non-affine
+ * node's Jacobian. Threads may run forward passes on DAGs that share no
+ * nodes. */
+void expr_forward(expr *node, const double *u);
 
 /* Guarded init: the impl runs once per node, however many parents it has.
  *

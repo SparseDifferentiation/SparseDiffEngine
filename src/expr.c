@@ -32,11 +32,28 @@ static bool expr_is_affine(const expr *node)
     return wk->affine_state == AFFINE;
 }
 
-SP_THREAD_LOCAL uint64_t expr_fwd_epoch = 0;
+/* Thread-local storage in C99 (compiler extensions; C11 has _Thread_local) */
+#if defined(_MSC_VER)
+#define EXPR_THREAD_LOCAL __declspec(thread)
+#else
+#define EXPR_THREAD_LOCAL __thread
+#endif
 
-void expr_forward_root(expr *node, const double *u)
+/* Identifies the current forward pass; bumped by every top-level forward. */
+static EXPR_THREAD_LOCAL uint64_t fwd_epoch = 0;
+
+void expr_forward(expr *node, const double *u)
 {
-    expr_fwd_epoch++;
+    if (node->work->fwd_epoch == fwd_epoch) return;
+    node->work->fwd_epoch = fwd_epoch;
+    if (!node->is_affine(node)) node->work->jacobian_evaluated = false;
+    node->forward_impl(node, u);
+}
+
+/* node->forward of every node: starts a new pass */
+static void expr_forward_root(expr *node, const double *u)
+{
+    fwd_epoch++;
     expr_forward(node, u);
 }
 
